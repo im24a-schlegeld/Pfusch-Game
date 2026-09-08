@@ -4,7 +4,7 @@ export default defineConfig({
   timeout: 180000,
   workers: 1,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.PFUSCH_BASE_URL ?? 'http://localhost:5173',
     headless: true,
     launchOptions: { channel: 'msedge' },
     screenshot: 'only-on-failure',
