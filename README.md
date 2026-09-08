@@ -13,6 +13,8 @@ npm run dev
 
 Open http://localhost:5173. For a phone on the same Wi-Fi, use the Network URL printed by Vite. Allow local network access if Windows asks.
 
+Windows uses polling for development file watching. This avoids OneDrive file locks causing `EBUSY` crashes while syncing artwork, and preserves hot reload. If port 5173 is already occupied, use the actual Local URL Vite prints.
+
 ```sh
 npm run typecheck
 npm run lint

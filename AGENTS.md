@@ -12,6 +12,7 @@ Use service interfaces in `app/services/index.ts`. LocalStorage belongs only in 
 Save schema version 1; migrate explicitly before altering shape. XP is cumulative; level is derived from XP. Challenge days and ranking windows use UTC. Coin purchases must check price, balance, required level and existing ownership. A run settles once. Ownership supports LOCKED, UNLOCKED_DIGITAL, OWNED_IRL and EQUIPPED. Product identity uses stable Shopify product IDs; variant IDs stay strings. Game categories are inferred and source fields remain in the catalog. Preserve every publicly discoverable product, including unavailable products. Refresh the central catalog from public Shopify feeds and verify pagination and sitemap coverage; never scatter product data in components.
 
 ## Mobile and quality
+On Windows, keep Vite file watching in polling mode. This OneDrive workspace has reproduced native `fs.watch` EBUSY crashes when artwork is locked during sync. Preserve HMR and verify the server survives locked assets when changing watcher settings.
 Touch is primary. Keep swipe handling inside the ride, no page scrolling during play, reachable buttons and clear keyboard alternatives. Test 390×844 and short/narrow screens. Keep real PFUSCH imagery in product cards. Headwear is represented as helmet customization; nonwearables remain collectibles. No mandatory login, crash-time commerce interruptions or real discount generation.
 
 ## Commands
