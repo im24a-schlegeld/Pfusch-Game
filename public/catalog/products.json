@@ -1,0 +1,3018 @@
+[
+  {
+    "id": "10237102096713",
+    "title": "Keep up Zipper",
+    "handle": "keep-up-zipper",
+    "url": "https://pfusch-clothing.ch/products/keep-up-zipper",
+    "price": 47.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170015177-9032439052.png?v=1781170020"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+    "localImage": "images/keep-up-zipper.png",
+    "type": "Zipper",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#313235",
+    "description": "Verwaschener Zipper mit nachtleuchtendem «Can you keep up?»-Motiv.",
+    "options": [
+      {
+        "name": "Grösse",
+        "values": [
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "54582049898825",
+        "title": "XS",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "XS"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+        "baseColor": "#313235"
+      },
+      {
+        "id": "54582049931593",
+        "title": "S",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+        "baseColor": "#313235"
+      },
+      {
+        "id": "54582049964361",
+        "title": "M",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+        "baseColor": "#313235"
+      },
+      {
+        "id": "54582049997129",
+        "title": "L",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+        "baseColor": "#313235"
+      },
+      {
+        "id": "54582050029897",
+        "title": "XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+        "baseColor": "#313235"
+      },
+      {
+        "id": "54582050062665",
+        "title": "2XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+        "baseColor": "#313235"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Casual",
+      "Cotton",
+      "Hoodie",
+      "Loose",
+      "Oversized",
+      "Unisex",
+      "Washed"
+    ],
+    "publishedAt": "2026-07-24T10:41:15+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht."
+  },
+  {
+    "id": "10237099737417",
+    "title": "Keep up T-Shirt",
+    "handle": "keep-up-t-shirt",
+    "url": "https://pfusch-clothing.ch/products/keep-up-t-shirt",
+    "price": 31.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-7334131272.png?v=1781169708",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-9957463799.png?v=1781169708",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-9967066916.png?v=1781169708",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+    "localImage": "images/keep-up-t-shirt.png",
+    "type": "T-Shirt",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#292a2b",
+    "description": "T-Shirt mit nachtleuchtendem «Can you keep up?»-Motiv.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "Schwarz",
+          "Dunkelgrau",
+          "Hellblau"
+        ]
+      },
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "54582032761161",
+        "title": "Schwarz / S",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Schwarz",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54582032793929",
+        "title": "Dunkelgrau / S",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Dunkelgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54582032826697",
+        "title": "Hellblau / S",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Hellblau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "54582032859465",
+        "title": "Schwarz / M",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Schwarz",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54582032892233",
+        "title": "Dunkelgrau / M",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Dunkelgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54582032925001",
+        "title": "Hellblau / M",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Hellblau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "54582032957769",
+        "title": "Schwarz / L",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Schwarz",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54582032990537",
+        "title": "Dunkelgrau / L",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Dunkelgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54582033023305",
+        "title": "Hellblau / L",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Hellblau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "54582033056073",
+        "title": "Schwarz / XL",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Schwarz",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54582033088841",
+        "title": "Dunkelgrau / XL",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Dunkelgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54582033121609",
+        "title": "Hellblau / XL",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Hellblau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "54582033154377",
+        "title": "Schwarz / 2XL",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Schwarz",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54582033187145",
+        "title": "Dunkelgrau / 2XL",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Dunkelgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54582033219913",
+        "title": "Hellblau / 2XL",
+        "available": true,
+        "price": 31.9,
+        "options": [
+          "Hellblau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+        "baseColor": "#a5bac5"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Distressed",
+      "Fashion",
+      "High Street",
+      "Loose fit",
+      "Unisex",
+      "Vintage",
+      "Washed"
+    ],
+    "publishedAt": "2026-07-24T10:41:14+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht."
+  },
+  {
+    "id": "10237061759305",
+    "title": "Keep up Hoodie",
+    "handle": "keep-up-hoodie",
+    "url": "https://pfusch-clothing.ch/products/keep-up-hoodie",
+    "price": 47.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189722-6254605255.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-9561042364.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0539142308.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-9987517626.png?v=1781167197",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-4272685791.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+    "localImage": "images/keep-up-hoodie.png",
+    "type": "Hoodie",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#292a2b",
+    "description": "Hoodie mit nachtleuchtendem «Can you keep up?»-Motiv.",
+    "options": [
+      {
+        "name": "Color",
+        "values": [
+          "Schwarz",
+          "Militärgrün",
+          "Dunkelgrau",
+          "Violett",
+          "Blau"
+        ]
+      },
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "54581932949833",
+        "title": "Schwarz / S",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Schwarz",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54581932982601",
+        "title": "Militärgrün / S",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Militärgrün",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "54581933015369",
+        "title": "Dunkelgrau / S",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Dunkelgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54581933048137",
+        "title": "Violett / S",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Violett",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "54581933080905",
+        "title": "Blau / S",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Blau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "54581933113673",
+        "title": "Schwarz / M",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Schwarz",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54581933146441",
+        "title": "Militärgrün / M",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Militärgrün",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "54581933179209",
+        "title": "Dunkelgrau / M",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Dunkelgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54581933211977",
+        "title": "Violett / M",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Violett",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "54581933244745",
+        "title": "Blau / M",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Blau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "54581933277513",
+        "title": "Schwarz / L",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Schwarz",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54581933310281",
+        "title": "Militärgrün / L",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Militärgrün",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "54581933343049",
+        "title": "Dunkelgrau / L",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Dunkelgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54581933375817",
+        "title": "Violett / L",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Violett",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "54581933408585",
+        "title": "Blau / L",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Blau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "54581933441353",
+        "title": "Schwarz / XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Schwarz",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54581933474121",
+        "title": "Militärgrün / XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Militärgrün",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "54581933506889",
+        "title": "Dunkelgrau / XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Dunkelgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54581933539657",
+        "title": "Violett / XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Violett",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "54581933572425",
+        "title": "Blau / XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Blau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "54581933605193",
+        "title": "Schwarz / 2XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Schwarz",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54581933637961",
+        "title": "Militärgrün / 2XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Militärgrün",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "54581933670729",
+        "title": "Dunkelgrau / 2XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Dunkelgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "54581933703497",
+        "title": "Violett / 2XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Violett",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "54581933736265",
+        "title": "Blau / 2XL",
+        "available": true,
+        "price": 47.9,
+        "options": [
+          "Blau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+        "baseColor": "#3f6685"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Casual",
+      "Cotton",
+      "Heavyweight",
+      "Hoodie",
+      "Loose",
+      "Oversized",
+      "Retro",
+      "Skate",
+      "Streetwear",
+      "Unisex"
+    ],
+    "publishedAt": "2026-07-24T10:41:14+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht."
+  },
+  {
+    "id": "10224345416009",
+    "title": "P ZERO Cap",
+    "handle": "p-zero-cap",
+    "url": "https://pfusch-clothing.ch/products/p-zero-cap",
+    "price": 24.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-front-6a1ef19711d54.jpg?v=1780412840",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-back-6a1ef1971421d.jpg?v=1780412840",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-product-details-6a1ef1971520e.jpg?v=1780412840",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-6a1ef2df090c8.jpg?v=1780413159",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-back-6a1ef2df0a0a0.jpg?v=1780413159",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-left-side-6a1ef2df0a245.jpg?v=1780413159",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-right-side-6a1ef2df0a409.jpg?v=1780413160",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-front-6a1ef50dae1fe.jpg?v=1780413720",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-back-6a1ef50daf3ee.jpg?v=1780413720",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-left-side-6a1ef50daf705.jpg?v=1780413720",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-right-side-6a1ef50dafa1a.jpg?v=1780413719",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/67f39a2593efb562d788d8653e97451f_l.webp?v=1780434122",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/6c4788433b52f027f89e46228df6ce22_l.webp?v=1780434160"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-front-6a1ef19711d54.jpg?v=1780412840",
+    "localImage": "images/p-zero-cap.jpg",
+    "type": "Cap",
+    "shopifyProductType": "EMBROIDERY",
+    "category": "head",
+    "baseColor": "#67676a",
+    "description": "Verwaschene Cap mit P ZERO Logo und schnellem Verschluss.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "Hellgrau",
+          "Schwarz",
+          "Navy"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "54527578898761",
+        "title": "Hellgrau",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Hellgrau"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-front-6a1ef19711d54.jpg?v=1780412840",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "54527611044169",
+        "title": "Schwarz",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Schwarz"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-6a1ef2df090c8.jpg?v=1780413159",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "54527669141833",
+        "title": "Navy",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Navy"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-front-6a1ef50dae1fe.jpg?v=1780413720",
+        "baseColor": "#1b294d"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2026-07-24T10:29:14+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Verwaschene Cap mit P ZERO Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz."
+  },
+  {
+    "id": "9923161751881",
+    "title": "Racing Zipper",
+    "handle": "racing-zipper",
+    "url": "https://pfusch-clothing.ch/products/racing-zipper",
+    "price": 54.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763122262453-9007431760.png?v=1763198186",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166419-5158304206.png?v=1763198186",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763122262453-9007431760.png?v=1763198186",
+    "localImage": "images/racing-zipper.png",
+    "type": "Zipper",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#343638",
+    "description": "Racing Zipper mit frei wählbarer ein- oder zweistelliger Nummer.",
+    "options": [
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53315639542089",
+        "title": "S",
+        "available": true,
+        "price": 54.9,
+        "options": [
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+        "baseColor": "#343638"
+      },
+      {
+        "id": "53315639574857",
+        "title": "M",
+        "available": true,
+        "price": 54.9,
+        "options": [
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+        "baseColor": "#343638"
+      },
+      {
+        "id": "53315639607625",
+        "title": "L",
+        "available": true,
+        "price": 54.9,
+        "options": [
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+        "baseColor": "#343638"
+      },
+      {
+        "id": "53315639640393",
+        "title": "XL",
+        "available": true,
+        "price": 54.9,
+        "options": [
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+        "baseColor": "#343638"
+      },
+      {
+        "id": "53315639673161",
+        "title": "2XL",
+        "available": true,
+        "price": 54.9,
+        "options": [
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+        "baseColor": "#343638"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Casual",
+      "Cotton",
+      "Hoodie",
+      "Loose",
+      "Oversized",
+      "Unisex",
+      "Washed"
+    ],
+    "publishedAt": "2025-12-02T22:47:37+01:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Racing Zipper mit selber wählbarer Nummer. Sponsoren von Revsticks und LP Carbon . Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt."
+  },
+  {
+    "id": "9874912248137",
+    "title": "Ziptie Windbreaker",
+    "handle": "unisex-windbreaker",
+    "url": "https://pfusch-clothing.ch/products/unisex-windbreaker",
+    "price": 35.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-product-details-68f2468432a0b.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-product-details-68f2468432c60.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-product-details-68f2468432dbf.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-front-68f2468432fc2.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-front-68f24684330bc.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-front-68f2468433311.jpg?v=1760728657",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Tasche_Schwarz.png?v=1761082211",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Tasche_Gruen.png?v=1761082214",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Tasche_Blau.png?v=1761082200"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+    "localImage": "images/unisex-windbreaker.jpg",
+    "type": "Windbreaker",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#173c2f",
+    "description": "Wasserabweisender Windbreaker mit verstaubarer Kapuze, auch als kleine Umhängetasche tragbar.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "British Racing Green",
+          "Navy",
+          "Schwarz"
+        ]
+      },
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53147071775049",
+        "title": "British Racing Green / S",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "British Racing Green",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+        "baseColor": "#213e2d"
+      },
+      {
+        "id": "53147071807817",
+        "title": "British Racing Green / M",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "British Racing Green",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+        "baseColor": "#213e2d"
+      },
+      {
+        "id": "53147071840585",
+        "title": "British Racing Green / L",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "British Racing Green",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+        "baseColor": "#213e2d"
+      },
+      {
+        "id": "53147071873353",
+        "title": "British Racing Green / XL",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "British Racing Green",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+        "baseColor": "#213e2d"
+      },
+      {
+        "id": "53147071906121",
+        "title": "British Racing Green / 2XL",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "British Racing Green",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+        "baseColor": "#213e2d"
+      },
+      {
+        "id": "53147071611209",
+        "title": "Navy / S",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Navy",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+        "baseColor": "#1b294d"
+      },
+      {
+        "id": "53147071643977",
+        "title": "Navy / M",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Navy",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+        "baseColor": "#1b294d"
+      },
+      {
+        "id": "53147071676745",
+        "title": "Navy / L",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Navy",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+        "baseColor": "#1b294d"
+      },
+      {
+        "id": "53147071709513",
+        "title": "Navy / XL",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Navy",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+        "baseColor": "#1b294d"
+      },
+      {
+        "id": "53147071742281",
+        "title": "Navy / 2XL",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Navy",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+        "baseColor": "#1b294d"
+      },
+      {
+        "id": "53147071447369",
+        "title": "Schwarz / S",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Schwarz",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53147071480137",
+        "title": "Schwarz / M",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Schwarz",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53147071512905",
+        "title": "Schwarz / L",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Schwarz",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53147071545673",
+        "title": "Schwarz / XL",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Schwarz",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53147071578441",
+        "title": "Schwarz / 2XL",
+        "available": true,
+        "price": 35.9,
+        "options": [
+          "Schwarz",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+        "baseColor": "#292a2b"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2025-10-17T15:37:18+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Sobald es ein wenig kühler wird, nützt es auch nichts mehr bei Nightrides mehrere Hoodies anzuziehen. Aber ein Windbreaker über 1-2 Pullover und man ist vor der Kälte viel geschützter, da der Windbreaker die Luft blockiert und somit auch ein Teil der Kälte. Langsam regnet es auch immer mehr, auch da hilft unser Windbreaker denn er ist Wasserabweisend. Er hat eine Kapuze die man ein oder ausklappen und mit einem Reissverschluss verstauen kann. Und wenn man ihn nicht mehr braucht kann man ihn einfach in eine kleine Umhängetasche verwandeln."
+  },
+  {
+    "id": "9861079990601",
+    "title": "Chrome Sticker",
+    "handle": "chrome-sticker",
+    "url": "https://pfusch-clothing.ch/products/chrome-sticker",
+    "price": 3.0,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/sticker.png?v=1760199543"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/sticker.png?v=1760199543",
+    "localImage": "images/chrome-sticker.png",
+    "type": "Sticker",
+    "shopifyProductType": "",
+    "category": "collectible",
+    "baseColor": "#252b2d",
+    "description": "Vier Chrome Sticker in Motorrad-Dekor-Qualität, je 6 × 6 cm.",
+    "options": [
+      {
+        "name": "Title",
+        "values": [
+          "Default Title"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53104990323017",
+        "title": "Default Title",
+        "available": true,
+        "price": 3.0,
+        "options": [
+          "Default Title"
+        ],
+        "image": null,
+        "baseColor": "#252b2d"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2025-10-11T18:19:34+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Chrome Sticker in der Qualität von Motorrad Dekoren, dank Unique Designs Switzerland . Es sind 4 Sticker enthalten. 6x6cm"
+  },
+  {
+    "id": "9844509737289",
+    "title": "Streetphotographer T-Shirt",
+    "handle": "streetphotographer-t-shirt-1",
+    "url": "https://pfusch-clothing.ch/products/streetphotographer-t-shirt-1",
+    "price": 29.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316918-5310605399.png?v=1759152348",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7915431234.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-0054185745.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7241584596.png?v=1759152323",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7403228309.png?v=1759152325",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8577393142.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1255764096.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316918-5310605399.png?v=1759152348",
+    "localImage": "images/streetphotographer-t-shirt-1.png",
+    "type": "T-Shirt",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#303134",
+    "description": "Verwaschenes T-Shirt aus Baumwolle mit Streetphotographer-Motiv.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "Schwarz",
+          "Türkis",
+          "Hellbraun",
+          "Hellgrau",
+          "Dunkelgrau",
+          "Hellblau"
+        ]
+      },
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53033370943817",
+        "title": "Schwarz / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033370976585",
+        "title": "Türkis / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033371009353",
+        "title": "Hellbraun / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033371042121",
+        "title": "Hellgrau / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033371074889",
+        "title": "Dunkelgrau / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033371107657",
+        "title": "Hellblau / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033371140425",
+        "title": "Schwarz / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033371173193",
+        "title": "Türkis / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033371205961",
+        "title": "Hellbraun / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033371238729",
+        "title": "Hellgrau / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033371271497",
+        "title": "Dunkelgrau / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033371304265",
+        "title": "Hellblau / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033371337033",
+        "title": "Schwarz / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033371369801",
+        "title": "Türkis / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033371402569",
+        "title": "Hellbraun / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033371435337",
+        "title": "Hellgrau / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033371468105",
+        "title": "Dunkelgrau / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033371500873",
+        "title": "Hellblau / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033371533641",
+        "title": "Schwarz / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033371566409",
+        "title": "Türkis / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033371599177",
+        "title": "Hellbraun / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033371631945",
+        "title": "Hellgrau / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033371664713",
+        "title": "Dunkelgrau / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033371697481",
+        "title": "Hellblau / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033371730249",
+        "title": "Schwarz / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033371763017",
+        "title": "Türkis / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033371795785",
+        "title": "Hellbraun / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033371828553",
+        "title": "Hellgrau / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033371861321",
+        "title": "Dunkelgrau / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033371894089",
+        "title": "Hellblau / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+        "baseColor": "#a5bac5"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Distressed",
+      "Fashion",
+      "High Street",
+      "Loose fit",
+      "Unisex",
+      "Vintage",
+      "Washed"
+    ],
+    "publishedAt": "2025-09-29T15:25:27+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht."
+  },
+  {
+    "id": "9844482703689",
+    "title": "Streetphotographer Hoodie",
+    "handle": "streetphotographer-grey-logo",
+    "url": "https://pfusch-clothing.ch/products/streetphotographer-grey-logo",
+    "price": 44.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287514-4819245561.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-7313329092.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-6023282233.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5462269387.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-1281625261.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5992496249.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-6821496594.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287514-4819245561.png?v=1759151295",
+    "localImage": "images/streetphotographer-grey-logo.png",
+    "type": "Hoodie",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#303134",
+    "description": "Hoodie mit Streetphotographer-Motiv im Stil eines Strassenradars.",
+    "options": [
+      {
+        "name": "Color",
+        "values": [
+          "Schwarz",
+          "Militärgrün",
+          "Dunkelgrau",
+          "Violett",
+          "Türkis",
+          "Blau"
+        ]
+      },
+      {
+        "name": "Size",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53033275883849",
+        "title": "Schwarz / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Schwarz",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033275916617",
+        "title": "Militärgrün / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Militärgrün",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "53033275949385",
+        "title": "Dunkelgrau / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Dunkelgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033275982153",
+        "title": "Violett / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Violett",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "53033276014921",
+        "title": "Türkis / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Türkis",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033276047689",
+        "title": "Blau / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Blau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "53033276080457",
+        "title": "Schwarz / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Schwarz",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033276113225",
+        "title": "Militärgrün / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Militärgrün",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "53033276145993",
+        "title": "Dunkelgrau / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Dunkelgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033276178761",
+        "title": "Violett / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Violett",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "53033276211529",
+        "title": "Türkis / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Türkis",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033276244297",
+        "title": "Blau / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Blau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "53033276277065",
+        "title": "Schwarz / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Schwarz",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033276309833",
+        "title": "Militärgrün / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Militärgrün",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "53033276342601",
+        "title": "Dunkelgrau / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Dunkelgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033276375369",
+        "title": "Violett / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Violett",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "53033276408137",
+        "title": "Türkis / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Türkis",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033276440905",
+        "title": "Blau / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Blau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "53033276473673",
+        "title": "Schwarz / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Schwarz",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033276506441",
+        "title": "Militärgrün / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Militärgrün",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "53033276539209",
+        "title": "Dunkelgrau / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Dunkelgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033276571977",
+        "title": "Violett / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Violett",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "53033276604745",
+        "title": "Türkis / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Türkis",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033276637513",
+        "title": "Blau / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Blau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+        "baseColor": "#3f6685"
+      },
+      {
+        "id": "53033276670281",
+        "title": "Schwarz / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Schwarz",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033276703049",
+        "title": "Militärgrün / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Militärgrün",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+        "baseColor": "#5b6351"
+      },
+      {
+        "id": "53033276735817",
+        "title": "Dunkelgrau / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Dunkelgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033276768585",
+        "title": "Violett / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Violett",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+        "baseColor": "#79677c"
+      },
+      {
+        "id": "53033276801353",
+        "title": "Türkis / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Türkis",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033276834121",
+        "title": "Blau / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Blau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+        "baseColor": "#3f6685"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Casual",
+      "Cotton",
+      "Heavyweight",
+      "Hoodie",
+      "Loose",
+      "Oversized",
+      "Retro",
+      "Skate",
+      "Streetwear",
+      "Unisex"
+    ],
+    "publishedAt": "2025-09-29T15:08:18+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist."
+  },
+  {
+    "id": "9844437909833",
+    "title": "Signs T-Shirt",
+    "handle": "signs-t-shirt",
+    "url": "https://pfusch-clothing.ch/products/signs-t-shirt",
+    "price": 29.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709_bcc03910-34db-449c-8997-afd17ea9a26f.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-9676292743.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8764098808.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-9112576240.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7168575221.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5321320104.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3034264381.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367223-9690163880.png?v=1759148885"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709_bcc03910-34db-449c-8997-afd17ea9a26f.png?v=1759148885",
+    "localImage": "images/signs-t-shirt.png",
+    "type": "T-Shirt",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#303134",
+    "description": "Verwaschenes Baumwoll-T-Shirt mit PFUSCH-Schriftzug aus Strassenschildern.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "Schwarz",
+          "Gelb",
+          "Türkis",
+          "Hellbraun",
+          "Hellgrau",
+          "Dunkelgrau",
+          "Hellblau"
+        ]
+      },
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53033048113481",
+        "title": "Schwarz / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033048146249",
+        "title": "Gelb / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Gelb",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+        "baseColor": "#d1b964"
+      },
+      {
+        "id": "53033048179017",
+        "title": "Türkis / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033048211785",
+        "title": "Hellbraun / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033048244553",
+        "title": "Hellgrau / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033048277321",
+        "title": "Dunkelgrau / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033048310089",
+        "title": "Hellblau / S",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033048342857",
+        "title": "Schwarz / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033048375625",
+        "title": "Gelb / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Gelb",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+        "baseColor": "#d1b964"
+      },
+      {
+        "id": "53033048408393",
+        "title": "Türkis / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033048441161",
+        "title": "Hellbraun / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033048473929",
+        "title": "Hellgrau / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033048506697",
+        "title": "Dunkelgrau / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033048539465",
+        "title": "Hellblau / M",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033048572233",
+        "title": "Schwarz / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033048605001",
+        "title": "Gelb / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Gelb",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+        "baseColor": "#d1b964"
+      },
+      {
+        "id": "53033048637769",
+        "title": "Türkis / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033048670537",
+        "title": "Hellbraun / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033048703305",
+        "title": "Hellgrau / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033048736073",
+        "title": "Dunkelgrau / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033048768841",
+        "title": "Hellblau / L",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033048801609",
+        "title": "Schwarz / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033048834377",
+        "title": "Gelb / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Gelb",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+        "baseColor": "#d1b964"
+      },
+      {
+        "id": "53033048867145",
+        "title": "Türkis / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033048899913",
+        "title": "Hellbraun / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033048932681",
+        "title": "Hellgrau / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033048965449",
+        "title": "Dunkelgrau / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033048998217",
+        "title": "Hellblau / XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033049030985",
+        "title": "Schwarz / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Schwarz",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "53033049063753",
+        "title": "Gelb / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Gelb",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+        "baseColor": "#d1b964"
+      },
+      {
+        "id": "53033049096521",
+        "title": "Türkis / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Türkis",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+        "baseColor": "#518886"
+      },
+      {
+        "id": "53033049129289",
+        "title": "Hellbraun / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellbraun",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+        "baseColor": "#b0a28e"
+      },
+      {
+        "id": "53033049162057",
+        "title": "Hellgrau / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+        "baseColor": "#9c9b98"
+      },
+      {
+        "id": "53033049194825",
+        "title": "Dunkelgrau / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Dunkelgrau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+        "baseColor": "#56565a"
+      },
+      {
+        "id": "53033049227593",
+        "title": "Hellblau / 2XL",
+        "available": true,
+        "price": 29.9,
+        "options": [
+          "Hellblau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+        "baseColor": "#a5bac5"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Distressed",
+      "Fashion",
+      "High Street",
+      "Loose fit",
+      "Unisex",
+      "Vintage",
+      "Washed"
+    ],
+    "publishedAt": "2025-09-29T14:19:38+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht."
+  },
+  {
+    "id": "9844411924809",
+    "title": "Signs Hoodie",
+    "handle": "signs-hoodie",
+    "url": "https://pfusch-clothing.ch/products/signs-hoodie",
+    "price": 44.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773_217917fa-ba49-4cf1-8b46-2e4f66ecd0d0.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288719-6032226399.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288721-8837649407.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288744-3711508696.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288744-6018940393.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773_217917fa-ba49-4cf1-8b46-2e4f66ecd0d0.png?v=1759151339",
+    "localImage": "images/signs-hoodie.png",
+    "type": "Hoodie",
+    "shopifyProductType": "",
+    "category": "upper",
+    "baseColor": "#716458",
+    "description": "Verwaschener Hoodie mit PFUSCH-Schriftzug aus Strassenschildern.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "Braun",
+          "Hellblau",
+          "Grün"
+        ]
+      },
+      {
+        "name": "Grösse",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL",
+          "2XL"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "53033280700745",
+        "title": "Braun / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Braun",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+        "baseColor": "#716458"
+      },
+      {
+        "id": "53033280799049",
+        "title": "Braun / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Braun",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+        "baseColor": "#716458"
+      },
+      {
+        "id": "53033280897353",
+        "title": "Braun / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Braun",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+        "baseColor": "#716458"
+      },
+      {
+        "id": "53033280995657",
+        "title": "Braun / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Braun",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+        "baseColor": "#716458"
+      },
+      {
+        "id": "53033281093961",
+        "title": "Braun / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Braun",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+        "baseColor": "#716458"
+      },
+      {
+        "id": "53033280635209",
+        "title": "Hellblau / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Hellblau",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033280733513",
+        "title": "Hellblau / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Hellblau",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033280831817",
+        "title": "Hellblau / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Hellblau",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033280930121",
+        "title": "Hellblau / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Hellblau",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033281028425",
+        "title": "Hellblau / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Hellblau",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+        "baseColor": "#a5bac5"
+      },
+      {
+        "id": "53033280667977",
+        "title": "Grün / S",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Grün",
+          "S"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+        "baseColor": "#67766c"
+      },
+      {
+        "id": "53033280766281",
+        "title": "Grün / M",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Grün",
+          "M"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+        "baseColor": "#67766c"
+      },
+      {
+        "id": "53033280864585",
+        "title": "Grün / L",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Grün",
+          "L"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+        "baseColor": "#67766c"
+      },
+      {
+        "id": "53033280962889",
+        "title": "Grün / XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Grün",
+          "XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+        "baseColor": "#67766c"
+      },
+      {
+        "id": "53033281061193",
+        "title": "Grün / 2XL",
+        "available": true,
+        "price": 44.9,
+        "options": [
+          "Grün",
+          "2XL"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+        "baseColor": "#67766c"
+      }
+    ],
+    "available": true,
+    "tags": [
+      "Casual",
+      "Cotton",
+      "Heavyweight",
+      "Hoodie",
+      "Loose",
+      "Oversized",
+      "Retro",
+      "Skate",
+      "Streetwear",
+      "Unisex"
+    ],
+    "publishedAt": "2025-09-29T13:44:59+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern auf einem Verwaschen aussehendem Hoodie."
+  },
+  {
+    "id": "9791913918793",
+    "title": "Schlüsselanhänger",
+    "handle": "schlusselanhanger",
+    "url": "https://pfusch-clothing.ch/products/schlusselanhanger",
+    "price": 3.0,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/rn-image_picker_lib_temp_f8544efd-a966-4756-b5e9-17647d8a02f4.jpg?v=1759733194",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/rn-image_picker_lib_temp_703cb2f4-6a70-4d9e-ad3c-461b7965f39e.jpg?v=1759733194"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
+    "localImage": "images/schlusselanhanger.png",
+    "type": "Keychain",
+    "shopifyProductType": "",
+    "category": "accessory",
+    "baseColor": "#28292c",
+    "description": "Schlüsselanhänger mit Pfusch Logo und einer vom Multifunktionsspray inspirierten Rückseite.",
+    "options": [
+      {
+        "name": "Title",
+        "values": [
+          "Default Title"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "52846553989449",
+        "title": "Default Title",
+        "available": true,
+        "price": 3.0,
+        "options": [
+          "Default Title"
+        ],
+        "image": null,
+        "baseColor": "#28292c"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2025-09-25T18:26:28+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Schlüsselanhänger mit Pfusch Logo auf der Vorderseite, und einer Rückseite die an einen Multifunktionsspray erinnert. *Pro Artikel 1 Anhänger"
+  },
+  {
+    "id": "9805150912841",
+    "title": "Logo Cap",
+    "handle": "logo-cap-1",
+    "url": "https://pfusch-clothing.ch/products/logo-cap-1",
+    "price": 24.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-68b9a7ee325c1.jpg?v=1756997622",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-back-68b9a7ee332a9.jpg?v=1756997623",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-maroon-front-68b9a7ee339dc.jpg?v=1756997623",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-maroon-back-68b9a7ee33ee9.jpg?v=1756997623",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/cap_muckup.webp?v=1756279058",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/cap_muckup_red.webp?v=1757014311"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-68b9a7ee325c1.jpg?v=1756997622",
+    "localImage": "images/logo-cap-1.jpg",
+    "type": "Cap",
+    "shopifyProductType": "",
+    "category": "head",
+    "baseColor": "#343638",
+    "description": "Verwaschene Cap mit Pfusch Logo und schnellem Verschluss.",
+    "options": [
+      {
+        "name": "Farbe",
+        "values": [
+          "Schwarz",
+          "Weinrot"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "52890072940873",
+        "title": "Schwarz",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Schwarz"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-68b9a7ee325c1.jpg?v=1756997622",
+        "baseColor": "#292a2b"
+      },
+      {
+        "id": "52890072973641",
+        "title": "Weinrot",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Weinrot"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-maroon-front-68b9a7ee339dc.jpg?v=1756997623",
+        "baseColor": "#633845"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2025-09-04T16:53:44+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Verwaschene Cap mit Pfusch Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz."
+  },
+  {
+    "id": "9736532197705",
+    "title": "Logo Crossbody Tasche",
+    "handle": "logo-crossbody-tasche",
+    "url": "https://pfusch-clothing.ch/products/logo-crossbody-tasche",
+    "price": 27.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-utility-crossbody-bag-white-front-6886ba1d9bada.jpg?v=1753660030",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-utility-crossbody-bag-white-back-6886ba1d9c265.jpg?v=1753660030",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Pfusch_bag_mockup.png?v=1753660030"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-utility-crossbody-bag-white-front-6886ba1d9bada.jpg?v=1753660030",
+    "localImage": "images/logo-crossbody-tasche.jpg",
+    "type": "Bag",
+    "shopifyProductType": "",
+    "category": "accessory",
+    "baseColor": "#26272b",
+    "description": "Kompakte Crossbody-Tasche für Handy, Portemonnaie und Schlüssel.",
+    "options": [
+      {
+        "name": "Title",
+        "values": [
+          "Default Title"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "52631698309449",
+        "title": "Default Title",
+        "available": true,
+        "price": 27.9,
+        "options": [
+          "Default Title"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-utility-crossbody-bag-white-front-6886ba1d9bada.jpg?v=1753660030",
+        "baseColor": "#26272b"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2025-07-10T13:41:51+02:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Man möchte fahren, aber nicht die Hosentaschen mit Handy, Portemonnaie, Schlüssel, ect. vollstopfen. Mit einer solchen Tasche ist das kein Problem: Sie ist nicht zu gross und nicht zu klein. Die Innentasche erinnert wie die Cap an einen gewissen Multifunktionsspray."
+  },
+  {
+    "id": "9478176145737",
+    "title": "Cord Cap",
+    "handle": "pfusch-logo-cap",
+    "url": "https://pfusch-clothing.ch/products/pfusch-logo-cap",
+    "price": 24.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/corduroy-hat-oxford-navy-front-678791f96b99e.jpg?v=1736937986",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/corduroy-hat-oxford-navy-right-front-678791f96b05c.jpg?v=1751545270",
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/corduroy-hat-oxford-navy-right-678791f96ba81.jpg?v=1751545270"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/corduroy-hat-oxford-navy-front-678791f96b99e.jpg?v=1736937986",
+    "localImage": "images/pfusch-logo-cap.jpg",
+    "type": "Cap",
+    "shopifyProductType": "",
+    "category": "head",
+    "baseColor": "#1b294d",
+    "description": "Navyblaue Cord-Cap mit gelbem PFUSCH-Motiv und Baumwollköper-Schweissband.",
+    "options": [
+      {
+        "name": "Title",
+        "values": [
+          "Default Title"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "51463376372041",
+        "title": "Default Title",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Default Title"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/corduroy-hat-oxford-navy-front-678791f96b99e.jpg?v=1736937986",
+        "baseColor": "#1b294d"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2025-01-02T14:21:09+01:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Diese Cap die evtl. an einen Multifunktionsspray erinnert der bei uns allen zu Hause liegt, ist ein muss. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz."
+  },
+  {
+    "id": "9464572805449",
+    "title": "Logo Flagge",
+    "handle": "logo-flagge",
+    "url": "https://pfusch-clothing.ch/products/logo-flagge",
+    "price": 25.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-688a11684ab2f.jpg?v=1753878898"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-688a11684ab2f.jpg?v=1753878898",
+    "localImage": "images/logo-flagge.jpg",
+    "type": "Flag",
+    "shopifyProductType": "",
+    "category": "collectible",
+    "baseColor": "#111111",
+    "description": "Flagge mit Pfusch Logo, 154.94 × 96.52 cm.",
+    "options": [
+      {
+        "name": "Title",
+        "values": [
+          "Default Title"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "51409369792841",
+        "title": "Default Title",
+        "available": true,
+        "price": 25.9,
+        "options": [
+          "Default Title"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-688a11684ab2f.jpg?v=1753878898",
+        "baseColor": "#111111"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2024-12-23T18:21:37+01:00",
+    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
+    "sourceDescription": "Eine Flagge mit dem Logo von Pfusch-Clothing Masse sind: 154.94 × 96.52 cm"
+  }
+]
