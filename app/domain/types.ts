@@ -36,6 +36,29 @@ export interface Product {
   available: boolean;
   options: { name: string; values: string[] }[];
   variants: ProductVariant[];
+  preview?: {
+    colors: {
+      id: string;
+      label: string;
+      optionValue: string | null;
+      variantIds: string[];
+      baseColor: string;
+      front: ProductImage | null;
+      back: ProductImage | null;
+    }[];
+    numberCustomization: boolean;
+    numberConstraints?: { minDigits?: number; maxDigits?: number };
+  };
+}
+export interface ProductImage {
+  source: string;
+  localImage: string;
+  evidence?: string;
+}
+export interface ProductConfiguration {
+  productId: string;
+  variantId: string;
+  customNumber?: string;
 }
 export interface Bike {
   id: string;
@@ -88,10 +111,10 @@ export interface Player {
   irlItems: string[];
   equipped: Partial<Record<Slot, string>>;
   variants: Record<string, string>;
+  customizations: Record<string, { customNumber?: string }>;
   bike: string;
   paint: string;
   rims: string;
-  decal: string;
   challenges: ChallengeProgress;
   redeemedRewards: string[];
   processedRuns: string[];

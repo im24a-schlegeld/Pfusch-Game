@@ -55,15 +55,27 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
     ),
   ).toBe(1);
   await page.getByRole('button', { name: 'OPEN GARAGE' }).click();
-  await page.getByRole('tab', { name: 'GEAR / SHOP' }).click();
+  await page.getByRole('tab', { name: 'RIDER' }).click();
   await expect(page.getByTestId('product-card')).toHaveCount(16);
-  await page.getByRole('button', { name: 'UNLOCK DIGITAL' }).first().click();
+  await page
+    .getByTestId('product-card')
+    .first()
+    .getByRole('button', { name: 'PREVIEW / TRY ON', exact: true })
+    .click();
+  await page.getByRole('button', { name: /UNLOCK DIGITAL/ }).click();
+  const afterUnlock = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('pfusch:player:v1')!),
+  );
+  expect(afterUnlock.equipped.upper).toBeUndefined();
+  await page
+    .getByRole('button', { name: 'EQUIP FOR GAMEPLAY', exact: true })
+    .click();
   await expect(
-    page
-      .getByTestId('product-card')
-      .first()
-      .getByRole('button', { name: 'EQUIPPED', exact: true }),
+    page.getByRole('button', { name: 'EQUIPPED', exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'LEAVE PREVIEW', exact: true })
+    .click();
   await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
   await page.getByRole('button', { name: 'Asphalt paint' }).click();
   await page.screenshot({ path: 'outputs/garage-desktop.png' });
@@ -149,7 +161,7 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
   await page.getByRole('button', { name: 'Pause ride' }).tap();
   await page.getByRole('button', { name: 'END RIDE & COLLECT' }).tap();
   await page.getByRole('button', { name: 'BACK TO GARAGE' }).tap();
-  await page.getByRole('tab', { name: 'GEAR / SHOP' }).tap();
+  await page.getByRole('tab', { name: 'RIDER' }).tap();
   await expect(page.getByTestId('product-card')).toHaveCount(16);
   await page.screenshot({ path: 'outputs/garage-mobile.png', fullPage: true });
   expect(

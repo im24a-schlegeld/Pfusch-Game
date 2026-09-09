@@ -1,0 +1,1734 @@
+{
+  "coordinateConvention": "crop is integer [x,y,width,height] on the referenced bundled 640×640 source. It includes 6px photographed fabric margin for blending where safe, no white gallery background. Placement objects are normalized to the explicitly recorded torso rectangle; origin upper-left, y increases downward. texturePlacement maps the full crop, printPlacement maps the visible print union. These are visually estimated placement guides, not sewing specifications.",
+  "products": {
+    "keep-up-zipper": {
+      "sourcePage": "https://pfusch-clothing.ch/products/keep-up-zipper",
+      "fit": "Short boxy washed zip hoodie; dropped shoulders, roomy full sleeves, rib cuffs/waist, split kangaroo pockets, full center zipper, rear hood.",
+      "inkByColor": "Light silver/white on the one washed-black appearance. No alternate public color.",
+      "front": {
+        "crop": [
+          351,
+          263,
+          50,
+          27
+        ],
+        "visiblePrintBoundsXYXY": [
+          357,
+          269,
+          395,
+          284
+        ],
+        "torsoBoundsXYXY": [
+          187,
+          203,
+          454,
+          507
+        ],
+        "printPlacement": {
+          "center": [
+            0.7079,
+            0.2418
+          ],
+          "width": 0.1423,
+          "height": 0.0493
+        },
+        "texturePlacement": {
+          "center": [
+            0.7079,
+            0.2418
+          ],
+          "width": 0.1873,
+          "height": 0.0888
+        },
+        "completeTransparentArtwork": "ziptie.png",
+        "componentsIncluded": [
+          "small PFUSCH zip-tie chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "original",
+            "label": "Original",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170015177-9032439052.png?v=1781170020",
+            "localImage": "/images/preview/keep-up-zipper-original-front.png",
+            "crop": [
+              351,
+              263,
+              50,
+              27
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          232,
+          271,
+          176,
+          119
+        ],
+        "visiblePrintBoundsXYXY": [
+          238,
+          277,
+          402,
+          384
+        ],
+        "torsoBoundsXYXY": [
+          187,
+          203,
+          454,
+          507
+        ],
+        "printPlacement": {
+          "center": [
+            0.4981,
+            0.4194
+          ],
+          "width": 0.6142,
+          "height": 0.352
+        },
+        "texturePlacement": {
+          "center": [
+            0.4981,
+            0.4194
+          ],
+          "width": 0.6592,
+          "height": 0.3914
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "complete CAN YOU KEEP UP plus powered-by lockup"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "original",
+            "label": "Original",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+            "localImage": "/images/preview/keep-up-zipper-original-back.png",
+            "crop": [
+              232,
+              271,
+              176,
+              119
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full back lockup is absent from supplied files. Crop retains slogan, handwritten line, powered-by text and oval logo.",
+        "ziptie.png letterform is correct but its source gray is darker than Keep Up chest ink; match photographed light silver through the existing alpha mask or use the supplied photo crop."
+      ]
+    },
+    "keep-up-t-shirt": {
+      "sourcePage": "https://pfusch-clothing.ch/products/keep-up-t-shirt",
+      "fit": "Boxy washed cotton tee; dropped shoulder, wide elbow-length short sleeves, crew neck, straight loose torso/hem.",
+      "inkByColor": "All Schwarz, Dunkelgrau, Hellblau photos retain light silver/white ink; no observed inversion or color-specific graphic replacement.",
+      "front": {
+        "crop": [
+          288,
+          240,
+          65,
+          32
+        ],
+        "visiblePrintBoundsXYXY": [
+          294,
+          246,
+          347,
+          266
+        ],
+        "torsoBoundsXYXY": [
+          168,
+          108,
+          470,
+          560
+        ],
+        "printPlacement": {
+          "center": [
+            0.505,
+            0.3274
+          ],
+          "width": 0.1755,
+          "height": 0.0442
+        },
+        "texturePlacement": {
+          "center": [
+            0.505,
+            0.3274
+          ],
+          "width": 0.2152,
+          "height": 0.0708
+        },
+        "completeTransparentArtwork": "ziptie.png",
+        "componentsIncluded": [
+          "small centered PFUSCH zip-tie chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-7334131272.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-schwarz-front.png",
+            "crop": [
+              288,
+              240,
+              65,
+              32
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-9957463799.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-dunkelgrau-front.png",
+            "crop": [
+              288,
+              240,
+              65,
+              32
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-9967066916.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-hellblau-front.png",
+            "crop": [
+              288,
+              240,
+              65,
+              32
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          210,
+          220,
+          219,
+          145
+        ],
+        "visiblePrintBoundsXYXY": [
+          216,
+          226,
+          423,
+          359
+        ],
+        "torsoBoundsXYXY": [
+          168,
+          108,
+          470,
+          560
+        ],
+        "printPlacement": {
+          "center": [
+            0.5017,
+            0.4082
+          ],
+          "width": 0.6854,
+          "height": 0.2942
+        },
+        "texturePlacement": {
+          "center": [
+            0.5017,
+            0.4082
+          ],
+          "width": 0.7252,
+          "height": 0.3208
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "complete CAN YOU KEEP UP plus powered-by lockup"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-schwarz-back.png",
+            "crop": [
+              210,
+              220,
+              219,
+              145
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-dunkelgrau-back.png",
+            "crop": [
+              210,
+              220,
+              219,
+              145
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-hellblau-back.png",
+            "crop": [
+              210,
+              220,
+              219,
+              145
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full back lockup is absent from supplied files. Crop retains slogan, handwritten line, powered-by text and oval logo.",
+        "ziptie.png letterform is correct but its source gray is darker than Keep Up chest ink; match photographed light silver through the existing alpha mask or use the supplied photo crop."
+      ]
+    },
+    "keep-up-hoodie": {
+      "sourcePage": "https://pfusch-clothing.ch/products/keep-up-hoodie",
+      "fit": "Loose pullover hoodie; dropped shoulders, full sleeves with cuffs, large front kangaroo pocket, ribbed hem, folded rear hood.",
+      "inkByColor": "Same light silver/white print on all five colors; no visible ink inversion.",
+      "front": {
+        "crop": [
+          291,
+          233,
+          62,
+          30
+        ],
+        "visiblePrintBoundsXYXY": [
+          297,
+          239,
+          347,
+          257
+        ],
+        "torsoBoundsXYXY": [
+          177,
+          150,
+          470,
+          557
+        ],
+        "printPlacement": {
+          "center": [
+            0.4949,
+            0.2408
+          ],
+          "width": 0.1706,
+          "height": 0.0442
+        },
+        "texturePlacement": {
+          "center": [
+            0.4949,
+            0.2408
+          ],
+          "width": 0.2116,
+          "height": 0.0737
+        },
+        "completeTransparentArtwork": "ziptie.png",
+        "componentsIncluded": [
+          "small centered PFUSCH zip-tie chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189722-6254605255.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-schwarz-front.png",
+            "crop": [
+              291,
+              233,
+              62,
+              30
+            ]
+          },
+          {
+            "colorId": "Militärgrün",
+            "label": "Militärgrün",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-9561042364.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-militargrun-front.png",
+            "crop": [
+              291,
+              233,
+              62,
+              30
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0539142308.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-dunkelgrau-front.png",
+            "crop": [
+              291,
+              233,
+              62,
+              30
+            ]
+          },
+          {
+            "colorId": "Violett",
+            "label": "Violett",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-9987517626.png?v=1781167197",
+            "localImage": "/images/preview/keep-up-hoodie-violett-front.png",
+            "crop": [
+              291,
+              233,
+              62,
+              30
+            ]
+          },
+          {
+            "colorId": "Blau",
+            "label": "Blau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-4272685791.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-blau-front.png",
+            "crop": [
+              291,
+              233,
+              62,
+              30
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          220,
+          245,
+          209,
+          165
+        ],
+        "visiblePrintBoundsXYXY": [
+          226,
+          251,
+          423,
+          404
+        ],
+        "torsoBoundsXYXY": [
+          177,
+          150,
+          470,
+          557
+        ],
+        "printPlacement": {
+          "center": [
+            0.5034,
+            0.4361
+          ],
+          "width": 0.6724,
+          "height": 0.3759
+        },
+        "texturePlacement": {
+          "center": [
+            0.5034,
+            0.4361
+          ],
+          "width": 0.7133,
+          "height": 0.4054
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "complete CAN YOU KEEP UP plus powered-by lockup"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+            "localImage": "/images/preview/keep-up-hoodie-schwarz-back.png",
+            "crop": [
+              220,
+              245,
+              209,
+              165
+            ]
+          },
+          {
+            "colorId": "Militärgrün",
+            "label": "Militärgrün",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-militargrun-back.png",
+            "crop": [
+              220,
+              245,
+              209,
+              165
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-dunkelgrau-back.png",
+            "crop": [
+              220,
+              245,
+              209,
+              165
+            ]
+          },
+          {
+            "colorId": "Violett",
+            "label": "Violett",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-violett-back.png",
+            "crop": [
+              220,
+              245,
+              209,
+              165
+            ]
+          },
+          {
+            "colorId": "Blau",
+            "label": "Blau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-blau-back.png",
+            "crop": [
+              220,
+              245,
+              209,
+              165
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full back lockup is absent from supplied files. Crop retains slogan, handwritten line, powered-by text and oval logo.",
+        "ziptie.png letterform is correct but its source gray is darker than Keep Up chest ink; match photographed light silver through the existing alpha mask or use the supplied photo crop."
+      ]
+    },
+    "racing-zipper": {
+      "sourcePage": "https://pfusch-clothing.ch/products/racing-zipper",
+      "fit": "Short boxy washed full-zip hoodie; dropped shoulder, split kangaroo pockets, ribbed cuffs/waist, rear hood; flame graphics on both outer sleeves.",
+      "inkByColor": "One washed-black appearance. Gray number/PFUSCH/checker/flames; purple Revsticks; yellow and white LP Carbon. Not a monochrome print.",
+      "front": {
+        "crop": [
+          234,
+          234,
+          173,
+          141
+        ],
+        "visiblePrintBoundsXYXY": [
+          240,
+          240,
+          401,
+          369
+        ],
+        "torsoBoundsXYXY": [
+          187,
+          203,
+          454,
+          507
+        ],
+        "printPlacement": {
+          "center": [
+            0.5,
+            0.3339
+          ],
+          "width": 0.603,
+          "height": 0.4243
+        },
+        "texturePlacement": {
+          "center": [
+            0.5,
+            0.3339
+          ],
+          "width": 0.6479,
+          "height": 0.4638
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "upper front Revsticks and LP Carbon sponsor row",
+          "STREET RACING TEAM and checker row",
+          "large front PFUSCH zip-tie lettering"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "original",
+            "label": "Original",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763122262453-9007431760.png?v=1763198186",
+            "localImage": "/images/preview/racing-zipper-original-front.png",
+            "crop": [
+              234,
+              234,
+              173,
+              141
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          220,
+          233,
+          194,
+          38
+        ],
+        "visiblePrintBoundsXYXY": [
+          226,
+          233,
+          408,
+          265
+        ],
+        "torsoBoundsXYXY": [
+          187,
+          203,
+          454,
+          507
+        ],
+        "printPlacement": {
+          "center": [
+            0.4869,
+            0.1513
+          ],
+          "width": 0.6816,
+          "height": 0.1053
+        },
+        "texturePlacement": {
+          "center": [
+            0.4869,
+            0.1612
+          ],
+          "width": 0.7266,
+          "height": 0.125
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "upper rear Revsticks / oval Pfusch / LP Carbon row"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "original",
+            "label": "Original",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+            "localImage": "/images/preview/racing-zipper-original-back.png",
+            "crop": [
+              220,
+              233,
+              194,
+              38
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Front crop contains center zipper as photographed; requires split/front-surface mapping. Sleeve flames are outside torso crops and need separate sleeve mapping. Back crop excludes 23."
+      ],
+      "number": {
+        "font": "Merriweather",
+        "exampleSourceNumber": "23",
+        "examplePixelBoundsXYXY": [
+          244,
+          294,
+          396,
+          406
+        ],
+        "center": [
+          0.4981,
+          0.4836
+        ],
+        "width": 0.5693,
+        "height": 0.3684,
+        "note": "Draw selected one/two-digit number separately. Back crop deliberately ends before photographed number."
+      },
+      "sleeves": {
+        "sourceImage": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763122262453-9007431760.png?v=1763198186",
+        "sourceLocalImage": "/images/preview/racing-zipper-original-front.png",
+        "outerSleeveApproxPixelBoundsXYXY": {
+          "imageLeft": [
+            58,
+            319,
+            140,
+            470
+          ],
+          "imageRight": [
+            498,
+            317,
+            579,
+            471
+          ]
+        },
+        "note": "Silver flame graphics run down both outer forearms. Photo crops include curved/sleeve fabric and require unwarping/isolation; do not redraw flames. Same motifs visible on back photo, partially around sleeve sides."
+      }
+    },
+    "unisex-windbreaker": {
+      "sourcePage": "https://pfusch-clothing.ch/products/unisex-windbreaker",
+      "fit": "Loose lightweight woven full-zip shell; stand collar with hidden hood, elastic cuffs, straight drawcord hem, horizontal pocket seam. No external pullover hood or rib waistband.",
+      "inkByColor": "Same gray-silver ink on British Racing Green, Navy and Schwarz; no observed color-specific print change.",
+      "front": {
+        "crop": [
+          342,
+          173,
+          83,
+          58
+        ],
+        "visiblePrintBoundsXYXY": [
+          348,
+          179,
+          419,
+          225
+        ],
+        "torsoBoundsXYXY": [
+          145,
+          112,
+          489,
+          559
+        ],
+        "printPlacement": {
+          "center": [
+            0.6933,
+            0.2013
+          ],
+          "width": 0.2064,
+          "height": 0.1029
+        },
+        "texturePlacement": {
+          "center": [
+            0.6933,
+            0.2013
+          ],
+          "width": 0.2413,
+          "height": 0.1298
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "oval Pfusch logo on wearer-left breast"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "British Racing Green",
+            "label": "British Racing Green",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-front-68f2468433311.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-british-racing-green-front.png",
+            "crop": [
+              342,
+              173,
+              83,
+              58
+            ]
+          },
+          {
+            "colorId": "Navy",
+            "label": "Navy",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-front-68f24684330bc.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-navy-front.png",
+            "crop": [
+              342,
+              173,
+              83,
+              58
+            ]
+          },
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-front-68f2468432fc2.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-schwarz-front.png",
+            "crop": [
+              342,
+              173,
+              83,
+              58
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          239,
+          196,
+          180,
+          73
+        ],
+        "visiblePrintBoundsXYXY": [
+          245,
+          202,
+          413,
+          263
+        ],
+        "torsoBoundsXYXY": [
+          156,
+          108,
+          490,
+          570
+        ],
+        "printPlacement": {
+          "center": [
+            0.518,
+            0.2695
+          ],
+          "width": 0.503,
+          "height": 0.132
+        },
+        "texturePlacement": {
+          "center": [
+            0.518,
+            0.2695
+          ],
+          "width": 0.5389,
+          "height": 0.158
+        },
+        "completeTransparentArtwork": "ziptie.png",
+        "componentsIncluded": [
+          "upper rear PFUSCH zip-tie lettering"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "British Racing Green",
+            "label": "British Racing Green",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-british-racing-green-back.png",
+            "crop": [
+              239,
+              196,
+              180,
+              73
+            ]
+          },
+          {
+            "colorId": "Navy",
+            "label": "Navy",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-navy-back.png",
+            "crop": [
+              239,
+              196,
+              180,
+              73
+            ]
+          },
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-schwarz-back.png",
+            "crop": [
+              239,
+              196,
+              180,
+              73
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": []
+    },
+    "streetphotographer-t-shirt-1": {
+      "sourcePage": "https://pfusch-clothing.ch/products/streetphotographer-t-shirt-1",
+      "fit": "Boxy washed cotton tee; dropped shoulder, wide short sleeves, crew neck, loose straight hem.",
+      "inkByColor": "Light gray/silver outline and caption on all six colors; no observed inversion. Contrast naturally lower on Hellgrau/Hellbraun.",
+      "front": {
+        "crop": [
+          286,
+          233,
+          67,
+          46
+        ],
+        "visiblePrintBoundsXYXY": [
+          292,
+          239,
+          347,
+          273
+        ],
+        "torsoBoundsXYXY": [
+          168,
+          108,
+          470,
+          560
+        ],
+        "printPlacement": {
+          "center": [
+            0.5017,
+            0.3274
+          ],
+          "width": 0.1821,
+          "height": 0.0752
+        },
+        "texturePlacement": {
+          "center": [
+            0.5017,
+            0.3274
+          ],
+          "width": 0.2219,
+          "height": 0.1018
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "small centered oval Pfusch chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7915431234.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-schwarz-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              46
+            ]
+          },
+          {
+            "colorId": "Türkis",
+            "label": "Türkis",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-0054185745.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-turkis-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              46
+            ]
+          },
+          {
+            "colorId": "Hellbraun",
+            "label": "Hellbraun",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7241584596.png?v=1759152323",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellbraun-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              46
+            ]
+          },
+          {
+            "colorId": "Hellgrau",
+            "label": "Hellgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7403228309.png?v=1759152325",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellgrau-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              46
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8577393142.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-dunkelgrau-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              46
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1255764096.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellblau-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              46
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          183,
+          158,
+          271,
+          295
+        ],
+        "visiblePrintBoundsXYXY": [
+          189,
+          164,
+          448,
+          447
+        ],
+        "torsoBoundsXYXY": [
+          168,
+          108,
+          470,
+          560
+        ],
+        "printPlacement": {
+          "center": [
+            0.4983,
+            0.4369
+          ],
+          "width": 0.8576,
+          "height": 0.6261
+        },
+        "texturePlacement": {
+          "center": [
+            0.4983,
+            0.4369
+          ],
+          "width": 0.8974,
+          "height": 0.6527
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "radar illustration",
+          "STREETPHOTOGRAPHER caption"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-schwarz-back.png",
+            "crop": [
+              183,
+              158,
+              271,
+              295
+            ]
+          },
+          {
+            "colorId": "Türkis",
+            "label": "Türkis",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-turkis-back.png",
+            "crop": [
+              183,
+              158,
+              271,
+              295
+            ]
+          },
+          {
+            "colorId": "Hellbraun",
+            "label": "Hellbraun",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellbraun-back.png",
+            "crop": [
+              183,
+              158,
+              271,
+              295
+            ]
+          },
+          {
+            "colorId": "Hellgrau",
+            "label": "Hellgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellgrau-back.png",
+            "crop": [
+              183,
+              158,
+              271,
+              295
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-dunkelgrau-back.png",
+            "crop": [
+              183,
+              158,
+              271,
+              295
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellblau-back.png",
+            "crop": [
+              183,
+              158,
+              271,
+              295
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full photo back crop includes italic caption absent from supplied radar.png. Preserve tall radar and wide low caption."
+      ]
+    },
+    "streetphotographer-grey-logo": {
+      "sourcePage": "https://pfusch-clothing.ch/products/streetphotographer-grey-logo",
+      "fit": "Loose pullover hoodie; dropped shoulders, full sleeves/cuffs, large kangaroo pocket, ribbed hem, folded rear hood.",
+      "inkByColor": "Same light gray/silver print on all six colors; no observed deliberate ink swap.",
+      "front": {
+        "crop": [
+          291,
+          254,
+          63,
+          42
+        ],
+        "visiblePrintBoundsXYXY": [
+          297,
+          260,
+          348,
+          290
+        ],
+        "torsoBoundsXYXY": [
+          177,
+          150,
+          470,
+          557
+        ],
+        "printPlacement": {
+          "center": [
+            0.4966,
+            0.3071
+          ],
+          "width": 0.1741,
+          "height": 0.0737
+        },
+        "texturePlacement": {
+          "center": [
+            0.4966,
+            0.3071
+          ],
+          "width": 0.215,
+          "height": 0.1032
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "small centered oval Pfusch chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-7313329092.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-schwarz-front.png",
+            "crop": [
+              291,
+              254,
+              63,
+              42
+            ]
+          },
+          {
+            "colorId": "Militärgrün",
+            "label": "Militärgrün",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-6023282233.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-militargrun-front.png",
+            "crop": [
+              291,
+              254,
+              63,
+              42
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5462269387.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-dunkelgrau-front.png",
+            "crop": [
+              291,
+              254,
+              63,
+              42
+            ]
+          },
+          {
+            "colorId": "Violett",
+            "label": "Violett",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-1281625261.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-violett-front.png",
+            "crop": [
+              291,
+              254,
+              63,
+              42
+            ]
+          },
+          {
+            "colorId": "Türkis",
+            "label": "Türkis",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5992496249.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-turkis-front.png",
+            "crop": [
+              291,
+              254,
+              63,
+              42
+            ]
+          },
+          {
+            "colorId": "Blau",
+            "label": "Blau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-6821496594.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-blau-front.png",
+            "crop": [
+              291,
+              254,
+              63,
+              42
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          205,
+          211,
+          243,
+          257
+        ],
+        "visiblePrintBoundsXYXY": [
+          211,
+          217,
+          442,
+          462
+        ],
+        "torsoBoundsXYXY": [
+          177,
+          150,
+          470,
+          557
+        ],
+        "printPlacement": {
+          "center": [
+            0.5102,
+            0.4656
+          ],
+          "width": 0.7884,
+          "height": 0.602
+        },
+        "texturePlacement": {
+          "center": [
+            0.5102,
+            0.4656
+          ],
+          "width": 0.8294,
+          "height": 0.6314
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "radar illustration",
+          "STREETPHOTOGRAPHER caption"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-schwarz-back.png",
+            "crop": [
+              205,
+              211,
+              243,
+              257
+            ]
+          },
+          {
+            "colorId": "Militärgrün",
+            "label": "Militärgrün",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-militargrun-back.png",
+            "crop": [
+              205,
+              211,
+              243,
+              257
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-dunkelgrau-back.png",
+            "crop": [
+              205,
+              211,
+              243,
+              257
+            ]
+          },
+          {
+            "colorId": "Violett",
+            "label": "Violett",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-violett-back.png",
+            "crop": [
+              205,
+              211,
+              243,
+              257
+            ]
+          },
+          {
+            "colorId": "Türkis",
+            "label": "Türkis",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-turkis-back.png",
+            "crop": [
+              205,
+              211,
+              243,
+              257
+            ]
+          },
+          {
+            "colorId": "Blau",
+            "label": "Blau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-blau-back.png",
+            "crop": [
+              205,
+              211,
+              243,
+              257
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full photo back crop includes italic caption absent from supplied radar.png. Preserve tall radar and wide low caption."
+      ]
+    },
+    "signs-t-shirt": {
+      "sourcePage": "https://pfusch-clothing.ch/products/signs-t-shirt",
+      "fit": "Boxy washed cotton tee; dropped shoulder, wide short sleeves, crew neck, loose straight hem.",
+      "inkByColor": "Red/blue/white/black artwork unchanged across all seven colors, with gray oval front logo. No observed ink inversion.",
+      "front": {
+        "crop": [
+          286,
+          233,
+          67,
+          47
+        ],
+        "visiblePrintBoundsXYXY": [
+          292,
+          239,
+          347,
+          274
+        ],
+        "torsoBoundsXYXY": [
+          168,
+          108,
+          470,
+          560
+        ],
+        "printPlacement": {
+          "center": [
+            0.5017,
+            0.3285
+          ],
+          "width": 0.1821,
+          "height": 0.0774
+        },
+        "texturePlacement": {
+          "center": [
+            0.5017,
+            0.3285
+          ],
+          "width": 0.2219,
+          "height": 0.104
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "small centered oval Pfusch chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367223-9690163880.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-schwarz-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          },
+          {
+            "colorId": "Gelb",
+            "label": "Gelb",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-9676292743.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-gelb-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          },
+          {
+            "colorId": "Türkis",
+            "label": "Türkis",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8764098808.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-turkis-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          },
+          {
+            "colorId": "Hellbraun",
+            "label": "Hellbraun",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-9112576240.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellbraun-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          },
+          {
+            "colorId": "Hellgrau",
+            "label": "Hellgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7168575221.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellgrau-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5321320104.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-dunkelgrau-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3034264381.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellblau-front.png",
+            "crop": [
+              286,
+              233,
+              67,
+              47
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          197,
+          241,
+          240,
+          78
+        ],
+        "visiblePrintBoundsXYXY": [
+          203,
+          247,
+          431,
+          313
+        ],
+        "torsoBoundsXYXY": [
+          168,
+          108,
+          470,
+          560
+        ],
+        "printPlacement": {
+          "center": [
+            0.4934,
+            0.3805
+          ],
+          "width": 0.755,
+          "height": 0.146
+        },
+        "texturePlacement": {
+          "center": [
+            0.4934,
+            0.3805
+          ],
+          "width": 0.7947,
+          "height": 0.1726
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "six-letter PFUSCH sign composition",
+          "red STOP-sign punctuation"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Schwarz",
+            "label": "Schwarz",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-schwarz-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          },
+          {
+            "colorId": "Gelb",
+            "label": "Gelb",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-gelb-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          },
+          {
+            "colorId": "Türkis",
+            "label": "Türkis",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-turkis-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          },
+          {
+            "colorId": "Hellbraun",
+            "label": "Hellbraun",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellbraun-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          },
+          {
+            "colorId": "Hellgrau",
+            "label": "Hellgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellgrau-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          },
+          {
+            "colorId": "Dunkelgrau",
+            "label": "Dunkelgrau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-dunkelgrau-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellblau-back.png",
+            "crop": [
+              197,
+              241,
+              240,
+              78
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full photo back crop includes tiny STOP sign absent from supplied signs.png."
+      ]
+    },
+    "signs-hoodie": {
+      "sourcePage": "https://pfusch-clothing.ch/products/signs-hoodie",
+      "fit": "Heavily washed/acid-wash loose pullover hoodie; dropped shoulder, wide long sleeves, large kangaroo pocket, rib cuffs/hem, folded rear hood.",
+      "inkByColor": "Same full-color sign artwork and gray oval front on Braun, Hellblau and Grün; no observed graphic/ink change.",
+      "front": {
+        "crop": [
+          291,
+          251,
+          61,
+          45
+        ],
+        "visiblePrintBoundsXYXY": [
+          297,
+          257,
+          346,
+          290
+        ],
+        "torsoBoundsXYXY": [
+          177,
+          150,
+          470,
+          557
+        ],
+        "printPlacement": {
+          "center": [
+            0.4932,
+            0.3034
+          ],
+          "width": 0.1672,
+          "height": 0.0811
+        },
+        "texturePlacement": {
+          "center": [
+            0.4932,
+            0.3034
+          ],
+          "width": 0.2082,
+          "height": 0.1106
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "small centered oval Pfusch chest logo"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Braun",
+            "label": "Braun",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288744-6018940393.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-braun-front.png",
+            "crop": [
+              291,
+              251,
+              61,
+              45
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288721-8837649407.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-hellblau-front.png",
+            "crop": [
+              291,
+              251,
+              61,
+              45
+            ]
+          },
+          {
+            "colorId": "Grün",
+            "label": "Grün",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288744-3711508696.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-grun-front.png",
+            "crop": [
+              291,
+              251,
+              61,
+              45
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "back": {
+        "crop": [
+          202,
+          269,
+          233,
+          77
+        ],
+        "visiblePrintBoundsXYXY": [
+          208,
+          275,
+          429,
+          340
+        ],
+        "torsoBoundsXYXY": [
+          177,
+          150,
+          470,
+          563
+        ],
+        "printPlacement": {
+          "center": [
+            0.4829,
+            0.3814
+          ],
+          "width": 0.7543,
+          "height": 0.1574
+        },
+        "texturePlacement": {
+          "center": [
+            0.4829,
+            0.3814
+          ],
+          "width": 0.7952,
+          "height": 0.1864
+        },
+        "completeTransparentArtwork": null,
+        "componentsIncluded": [
+          "six-letter PFUSCH sign composition",
+          "red STOP-sign punctuation"
+        ],
+        "sourcesByColor": [
+          {
+            "colorId": "Braun",
+            "label": "Braun",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-braun-back.png",
+            "crop": [
+              202,
+              269,
+              233,
+              77
+            ]
+          },
+          {
+            "colorId": "Hellblau",
+            "label": "Hellblau",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-hellblau-back.png",
+            "crop": [
+              202,
+              269,
+              233,
+              77
+            ]
+          },
+          {
+            "colorId": "Grün",
+            "label": "Grün",
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-grun-back.png",
+            "crop": [
+              202,
+              269,
+              233,
+              77
+            ]
+          }
+        ],
+        "colorLayoutDifferences": "None visible in the published flat product photos. Same crop applies to each listed color source."
+      },
+      "limitations": [
+        "Full photo back crop includes tiny STOP sign absent from supplied signs.png."
+      ]
+    }
+  }
+}

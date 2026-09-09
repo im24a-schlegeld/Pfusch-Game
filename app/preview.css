@@ -1,0 +1,356 @@
+@font-face {
+  font-family: 'Merriweather';
+  src: url('/fonts/merriweather-latin-700-oldstyle.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  font-feature-settings:
+    'onum' 1,
+    'pnum' 1;
+}
+.garage-product-panel {
+  background: #f2f1ed;
+  color: #202a24;
+  border: 1px solid #39423c;
+  margin-top: 20px;
+}
+.product-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #cbd0c7;
+}
+.product-paging {
+  display: flex;
+  gap: 8px;
+}
+.product-paging .icon-button {
+  color: #273824;
+  border-color: #aab5a5;
+}
+.product-detail {
+  padding: 24px;
+}
+.product-detail > .eyebrow {
+  color: #52614d;
+}
+.product-detail h2 {
+  font-size: 36px;
+  line-height: 1.06;
+  margin: 8px 0 14px;
+}
+.detail-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.detail-price span {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.product-view-controls {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #c8cbc4;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+.product-view-controls button {
+  background: none;
+  border: 0;
+  padding: 8px 0;
+  font-size: 10px;
+  font-weight: 750;
+  color: #606762;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.product-view-controls button[aria-pressed='true'] {
+  color: #16201a;
+  border-color: #16201a;
+}
+.product-view-controls > span {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  margin-left: auto;
+}
+.authoritative-image {
+  height: 300px;
+  background: white;
+  position: relative;
+}
+.authoritative-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px 12px 25px;
+}
+.authoritative-image > span {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  color: #62665f;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+.preview-source-note {
+  font-size: 11px;
+  color: #697066;
+  line-height: 1.5;
+  margin: 9px 0 22px;
+}
+.preview-field-label,
+.preview-variant label,
+.number-customization label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  display: block;
+  margin-bottom: 10px;
+}
+.preview-field-label b {
+  font-weight: 450;
+  margin-left: 12px;
+}
+.preview-colors > div {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.preview-colors button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: 1px solid #b9c1b3;
+  padding: 9px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.preview-colors button[aria-pressed='true'] {
+  border-color: #203026;
+  box-shadow: inset 0 0 0 1px #203026;
+}
+.preview-colors i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #9a9f94;
+}
+.preview-variant {
+  margin-top: 18px;
+}
+.garage-product-panel .variant-select {
+  width: 100%;
+  background: white;
+  color: #202a24;
+  border-color: #a4ad9e;
+}
+.number-customization {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 12px;
+  margin: 22px 0;
+  border-top: 1px solid #c8cbc4;
+  padding-top: 18px;
+}
+.number-customization label {
+  grid-column: 1/-1;
+  margin: 0;
+}
+.number-customization small {
+  display: block;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-top: 6px;
+}
+.number-customization input {
+  width: 80px;
+  min-height: 60px;
+  background: white;
+  color: #202a24;
+  border: 1px solid #a4ad9e;
+  text-align: center;
+  font:
+    700 34px Merriweather,
+    serif;
+  color-scheme: light;
+}
+.number-proof {
+  background: #242728;
+  color: #b8b8b6;
+  display: grid;
+  place-items: center;
+  min-height: 75px;
+  font:
+    700 58px Merriweather,
+    serif;
+}
+.number-customization input,
+.number-proof {
+  font-family: 'Merriweather', serif;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  font-feature-settings:
+    'onum' 1,
+    'pnum' 1;
+  font-synthesis: none;
+}
+.number-customization > p {
+  grid-column: 1/-1;
+  font-size: 10px;
+  color: #697066;
+}
+.detail-description {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #4c574c;
+  white-space: pre-line;
+}
+.preview-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+  border-top: 1px solid #c8cbc4;
+  padding-top: 20px;
+}
+.preview-actions .product-link {
+  text-align: center;
+  justify-content: center;
+  margin-top: 5px;
+}
+.gameplay-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+.reset-preview {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.garage-angles {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.garage-angles button {
+  background: none;
+  border: 0;
+  padding: 5px 0;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 1px solid #889687;
+}
+.product-open {
+  border: 0;
+  cursor: pointer;
+  width: 100%;
+  padding: 0;
+}
+.product-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+.product-body .button {
+  width: 100%;
+}
+.bike-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+.bike-info {
+  flex: 1;
+}
+.bike-info .eyebrow {
+  display: block;
+  font-size: 8px;
+  margin-top: 9px;
+}
+.bike-unlock,
+.finish-unlock {
+  margin-top: 14px;
+}
+.bike-confirm {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.preview-bottom h2 {
+  text-transform: none;
+}
+@media (max-width: 760px) {
+  .garage-preview {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    min-height: 330px;
+    height: 330px;
+    max-height: none;
+  }
+  .garage-model {
+    inset: 0 0 84px;
+  }
+  .preview-top {
+    padding: 10px 12px;
+  }
+  .preview-bottom {
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px;
+    align-items: center;
+  }
+  .garage-angles {
+    grid-column: 1/-1;
+    gap: 12px;
+    margin: 0;
+  }
+  .preview-bottom h2 {
+    font-size: 23px;
+  }
+  .preview-bottom > p,
+  .preview-bottom .xp-block {
+    display: none;
+  }
+  .preview-bottom > .button {
+    font-size: 8px;
+    padding: 9px;
+    min-height: 34px;
+    margin: 0;
+    width: auto;
+  }
+  .product-detail {
+    padding: 20px 16px;
+  }
+  .product-preview-header {
+    padding: 12px;
+  }
+  .authoritative-image {
+    height: 250px;
+  }
+  .product-view-controls {
+    gap: 12px;
+  }
+  .product-view-controls > span {
+    font-size: 7px;
+  }
+  .bike-card {
+    flex-wrap: wrap;
+  }
+  .bike-confirm .button {
+    flex: 1;
+  }
+}

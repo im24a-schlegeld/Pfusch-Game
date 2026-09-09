@@ -1,0 +1,128 @@
+{
+  "verifiedAtUtc": "2026-09-08T18:17:17.648133+00:00",
+  "feedUrl": "https://pfusch-clothing.ch/products.json?limit=250&page=1",
+  "paginationPage2Count": 0,
+  "canonicalSitemapUrl": "https://pfusch-clothing.ch/sitemap_products_1.xml?from=9464572805449&to=10237102096713",
+  "feedProductCount": 16,
+  "sitemapProductCount": 16,
+  "variantCount": 186,
+  "colorsWithActualOptionValues": 38,
+  "singleAppearanceProductCount": 7,
+  "previewColorCount": 45,
+  "downloadedPreviewImageCount": 87,
+  "totalSourceImagesReviewed": 112,
+  "numberCustomizationHandles": [
+    "racing-zipper"
+  ],
+  "missingBackPhotos": [
+    "chrome-sticker",
+    "pfusch-logo-cap",
+    "logo-flagge"
+  ],
+  "changedFromLocal": [
+    {
+      "handle": "keep-up-zipper",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "keep-up-t-shirt",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "keep-up-hoodie",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "p-zero-cap",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "racing-zipper",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "unisex-windbreaker",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "chrome-sticker",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "streetphotographer-t-shirt-1",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "streetphotographer-grey-logo",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "signs-t-shirt",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "signs-hoodie",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "schlusselanhanger",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "logo-cap-1",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "logo-crossbody-tasche",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "pfusch-logo-cap",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    },
+    {
+      "handle": "logo-flagge",
+      "changedFields": [
+        "sourceUpdatedAt"
+      ]
+    }
+  ],
+  "notes": [
+    "All source photos were visually reviewed via numbered contact sheets.",
+    "Base colors are visual estimates for rendering, not authoritative colorimetric product specifications.",
+    "Single-appearance products use label Original and null optionValue; no Shopify color is fabricated.",
+    "Cord Cap side/three-quarter photographs are not relabeled as back.",
+    "Racing Zipper selected back is the variant-linked public image; the example number 23 is already baked into the photograph.",
+    "No products were dropped, including unavailable products."
+  ]
+}

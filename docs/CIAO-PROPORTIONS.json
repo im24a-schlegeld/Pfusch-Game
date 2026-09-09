@@ -1,0 +1,127 @@
+{
+  "primarySources": [
+    {
+      "title": "Piaggio Ciao Operation and Maintenance, original manufacturer manual archived by RPW",
+      "url": "https://www.rpw.it/Files/Piaggio_Ciao_OAM.pdf",
+      "pages": {
+        "6": "C7 uses 2\u201317 wheels; C9 uses 2\u201319 wheels.",
+        "10": "Wheelbase 1000mm; C7 total length1570mm, C9 total length1615mm; tire size2\u201317 or2\u201319; handlebar width630mm."
+      }
+    },
+    {
+      "title": "Piaggio Group Wide: Vintage Passion, April2023, photographs credited to Aste Bolaffi",
+      "url": "https://wide.piaggiogroup.com/en/articles/garage/vintage-passion/index.html"
+    }
+  ],
+  "photographMeasurements": [
+    {
+      "image": "piaggio-wide-ciao-1.jpg",
+      "source": "https://wide.piaggiogroup.com/articles/garage/passione-vintage/g2/full/1.jpg",
+      "measurementCanvas": [
+        1250,
+        909
+      ],
+      "rearAxlePx": [
+        359,
+        579
+      ],
+      "frontAxlePx": [
+        896,
+        589
+      ],
+      "rearTireOuterRadiusPx": 152,
+      "frontTireOuterRadiusPx": 155,
+      "saddleTopPx": [
+        446,
+        296
+      ],
+      "wheelbasePx": 537.1,
+      "outerDiameterPx": 307,
+      "outerDiameterToWheelbase": 0.572,
+      "saddleHeightToOuterDiameter": 1.459,
+      "limitations": "Approximate landmarks, modest perspective, standing bike and adjustable saddle. Do not treat as orthographic engineering drawing."
+    },
+    {
+      "image": "piaggio-wide-ciao-5.jpg",
+      "source": "https://wide.piaggiogroup.com/articles/garage/passione-vintage/g2/full/5.jpg",
+      "measurementCanvas": [
+        1250,
+        925
+      ],
+      "rearAxlePx": [
+        301,
+        615
+      ],
+      "frontAxlePx": [
+        835,
+        625
+      ],
+      "rearTireOuterRadiusPx": 138,
+      "frontTireOuterRadiusPx": 139,
+      "saddleTopPx": [
+        377,
+        348
+      ],
+      "wheelbasePx": 534.1,
+      "outerDiameterPx": 277,
+      "outerDiameterToWheelbase": 0.519,
+      "saddleHeightToOuterDiameter": 1.502,
+      "limitations": "Approximate landmarks, modest perspective, standing bike and adjustable saddle. Do not treat as orthographic engineering drawing."
+    }
+  ],
+  "target17inchRatios": {
+    "tireOuterDiameterOverWheelbase": [
+      0.52,
+      0.54
+    ],
+    "saddleHeightOverTireOuterDiameter": [
+      1.45,
+      1.55
+    ],
+    "note": "Saddle ratio is photographic estimate and adjustable. Original2\u201317 tire implies nominal outside diameter around(17+2*2)in=533.4mm, so OD/WB\u2248.533, not17in/1000mm."
+  },
+  "currentModel": {
+    "radius": 0.29,
+    "wheelbase": 1.28,
+    "outerDiameterOverWheelbase": 0.45312499999999994,
+    "approxSaddleTop": 0.83,
+    "saddleHeightOverOuterDiameter": 1.4310344827586208,
+    "tireTubeRadius": 0.034
+  },
+  "recommendation": {
+    "preferredCompactChassis": {
+      "keepWheelRadius": 0.29,
+      "wheelbaseRange": [
+        1.08,
+        1.12
+      ],
+      "saddleTopRange": [
+        0.84,
+        0.9
+      ],
+      "tireTubeRadiusRange": [
+        0.026,
+        0.029
+      ],
+      "reason": "Shortening chassis fixes small-wheel impression while preserving current absolute adult/contact scale. Adjust frame/fork/contact targets together; keep immutable rider bone lengths and solve IK."
+    },
+    "alternativeKeepWheelbase": {
+      "wheelbase": 1.28,
+      "wheelRadiusRange": [
+        0.333,
+        0.346
+      ],
+      "saddleTopRange": [
+        0.97,
+        1.06
+      ],
+      "reason": "Larger wheels also require taller frame/seat/contact targets. Increasing wheels alone makes the saddle visually too low."
+    }
+  },
+  "visualLandmarks": [
+    "Long narrow enclosed engine/belt case below the step-through, with its top around axle height and pedal spindle just below/near axle height.",
+    "A slim diagonally rising pressed-steel fuel-tank spine; no large motorcycle tank.",
+    "Small single saddle on distinct seat post, rear utility rack roughly near tire-top height.",
+    "Thin wheels with narrow tires and close curved mudguards, not small scooter wheels."
+  ]
+}

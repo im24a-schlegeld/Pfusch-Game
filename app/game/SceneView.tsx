@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
-import { box, disposeUnique, makeBike, makeTraffic, sign } from './models';
+import { box, disposeUnique, makeTraffic, sign } from './models';
+import { makeBike } from './vehicle';
 
 interface Props {
   player: Player;
@@ -11,6 +13,8 @@ interface Props {
   engine?: Engine;
   onFrame?: (engine: Engine) => void;
   onReady?: () => void;
+  inspectionAngle?: number;
+  inspectionRevision?: number;
 }
 export default function SceneView({
   player,
@@ -19,14 +23,22 @@ export default function SceneView({
   engine,
   onFrame,
   onReady,
+  inspectionAngle,
+  inspectionRevision,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const frameCallback = useRef(onFrame);
   const readyCallback = useRef(onReady);
   const [error, setError] = useState('');
+  const appearance=useRef({player,products,key:''});
+  appearance.current={player,products,key:JSON.stringify([player.bike,player.paint,player.rims,player.equipped,player.variants,player.customizations])};
+  const inspection=useRef({inspectionAngle,inspectionRevision});
+  inspection.current={inspectionAngle,inspectionRevision};
+  const quality=player.settings.quality;
   frameCallback.current = onFrame;
   readyCallback.current = onReady;
   useEffect(() => {
+    const {player,products}=appearance.current;
     const el = host.current;
     if (!el) return;
     let renderer: THREE.WebGLRenderer;
@@ -47,9 +59,12 @@ export default function SceneView({
     renderer.setClearColor(mode === 'ride' ? '#8d999b' : '#181d1f');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = mode !== 'ride';
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
+    const studio=new RoomEnvironment();const environmentGenerator=new THREE.PMREMGenerator(renderer);const environment=environmentGenerator.fromScene(studio,.04);scene.environment=environment.texture;scene.environmentIntensity=.7;studio.dispose();environmentGenerator.dispose();
     scene.fog = new THREE.Fog(
       mode === 'ride' ? '#8d999b' : '#181d1f',
       mode === 'ride' ? 55 : 16,
@@ -61,20 +76,34 @@ export default function SceneView({
       0.1,
       190,
     );
-    scene.add(new THREE.HemisphereLight('#e3f0f2', '#343a2f', 2.4));
-    const sunlight = new THREE.DirectionalLight('#fff5d9', 3.2);
-    sunlight.position.set(-12, 24, 6);
+    scene.add(new THREE.HemisphereLight('#e3f0f2', '#343a2f', 1.4));
+    const sunlight = new THREE.DirectionalLight('#fff5e6', 3.4);
+    sunlight.position.set(-3, 7, 4);
+    sunlight.castShadow = mode !== 'ride';
+    sunlight.shadow.mapSize.set(low ? 512 : 1024, low ? 512 : 1024);
+    Object.assign(sunlight.shadow.camera, {
+      left: -4,
+      right: 4,
+      top: 4,
+      bottom: -4,
+      near: 0.1,
+      far: 20,
+    });
+    sunlight.shadow.normalBias = 0.015;
+    sunlight.shadow.bias = -0.00015;
     scene.add(sunlight);
-    const fill = new THREE.DirectionalLight('#a4bcd1', 1.5);
+    const fill = new THREE.DirectionalLight('#a4bcd1', 0.9);
     fill.position.set(12, 8, -10);
     scene.add(fill);
-    const bike = makeBike(player, products);
+    let bike = makeBike(player, products);
+    let vehicleKey=appearance.current.key,vehicleProducts=products;
     scene.add(bike.root);
     const scenery: THREE.Group[] = [];
     const roadMarks: THREE.Mesh[] = [];
     const traffic: THREE.Group[] = [];
     const templates = new Map<string, THREE.Group>();
-    let rotation = -0.95;
+    let appliedAngle=inspection.current.inspectionAngle,appliedRevision=inspection.current.inspectionRevision;
+    let rotation = appliedAngle ?? 2.35;
     let dragging = false;
     let previousX = 0;
     let tilt = 0;
@@ -157,21 +186,22 @@ export default function SceneView({
     } else {
       box(scene, 100, 0.2, 100, 0, -0.12, 0, '#262d2f');
       const platform = new THREE.Mesh(
-        new THREE.CylinderGeometry(3.1, 3.18, 0.12, 64),
+        new THREE.CylinderGeometry(2.4, 2.48, 0.12, 64),
         new THREE.MeshStandardMaterial({
           color: '#343c3e',
           metalness: 0.4,
           roughness: 0.6,
         }),
       );
-      platform.position.y = -0.025;
+      platform.position.y = -0.06;
+      platform.receiveShadow = true;
       scene.add(platform);
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(3.08, 0.012, 4, 80),
+        new THREE.TorusGeometry(2.38, 0.012, 4, 80),
         new THREE.MeshBasicMaterial({ color: '#9ca582' }),
       );
       ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.041;
+      ring.position.y = 0.002;
       scene.add(ring);
       for (let i = -4; i <= 4; i++) {
         box(scene, 0.015, 0.004, 60, i * 3, 0.002, 0, '#475052');
@@ -184,10 +214,6 @@ export default function SceneView({
         box(scene, 0.15, 12, 0.2, x, 6, -9.5, '#b9c6b6');
         box(scene, 1.5, 0.05, 5, x, 7, -6, '#b9c6b6');
       }
-      const wall = sign('PFUSCH.');
-      wall.scale.set(2, 2, 2);
-      wall.position.set(0, 5.7, -9.5);
-      scene.add(wall);
       for (const x of [-6, 6]) {
         box(scene, 2.3, 1.2, 1.6, x, 0.6, -5, '#333d3e');
         for (let j = 0; j < 3; j++)
@@ -242,14 +268,27 @@ export default function SceneView({
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       clock += dt;
+      const nextAppearance=appearance.current;
+      if(nextAppearance.key!==vehicleKey||nextAppearance.products!==vehicleProducts){
+        scene.remove(bike.root);disposeVehicle(bike.root);
+        bike=makeBike(nextAppearance.player,nextAppearance.products);scene.add(bike.root);
+        vehicleKey=nextAppearance.key;vehicleProducts=nextAppearance.products;
+      }
+      const command=inspection.current;
+      if(command.inspectionAngle!==appliedAngle||command.inspectionRevision!==appliedRevision){
+        appliedAngle=command.inspectionAngle;appliedRevision=command.inspectionRevision;
+        if(appliedAngle!==undefined)rotation=appliedAngle;
+      }
       if (engine && mode === 'ride') {
         engine.advance(dt);
         const moving = engine.phase === 'playing';
         const distance = engine.distance;
         bike.root.position.set(engine.x, engine.height, 0);
-        tilt += (Number(engine.wheelie) * -0.48 - tilt) * Math.min(1, dt * 9);
+        tilt += (Number(engine.wheelie) * 0.48 - tilt) * Math.min(1, dt * 9);
         bike.body.rotation.x = tilt;
-        bike.body.position.y = engine.wheelie ? 0.17 : 0;
+        bike.body.position.y =
+          bike.wheelRadius * (1 - Math.cos(tilt)) +
+          bike.rearAxle * Math.sin(tilt);
         bike.root.rotation.z = THREE.MathUtils.lerp(
           bike.root.rotation.z,
           (engine.lane * LANE - engine.x) * -0.09,
@@ -278,7 +317,7 @@ export default function SceneView({
           }
         });
         const shake =
-          player.settings.reducedMotion || !moving
+          appearance.current.player.settings.reducedMotion || !moving
             ? 0
             : Math.sin(clock * 23) * 0.016;
         camera.position.set(
@@ -298,10 +337,20 @@ export default function SceneView({
           hud = 0;
         }
       } else {
-        if (!dragging && !player.settings.reducedMotion) rotation += dt * 0.075;
+        if (
+          !dragging &&
+          !appearance.current.player.settings.reducedMotion &&
+          appliedAngle === undefined &&
+          mode === 'menu'
+        )
+          rotation += dt * 0.04;
         bike.root.rotation.y = rotation;
         const portrait = camera.aspect < 0.8;
-        camera.position.set(0, 3.1, portrait ? 10.4 : 8.8);
+        camera.position.set(
+          0,
+          mode === 'garage' ? 2.7 : 2.9,
+          mode === 'garage' ? (portrait ? 7.2 : 5.5) : portrait ? 8.8 : 7.4,
+        );
         camera.lookAt(0, 1.3, 0);
       }
       renderer.render(scene, camera);
@@ -337,9 +386,11 @@ export default function SceneView({
       geometries.forEach((g) => g.dispose());
       mats.forEach((m) => m.dispose());
       renderer.dispose();
+      environment.dispose();
+      renderer.forceContextLoss();
       renderer.domElement.remove();
     };
-  }, [player, products, mode, engine]);
+  }, [mode, engine, quality]);
   return (
     <div
       className={`scene scene-${mode}`}
@@ -360,4 +411,9 @@ export default function SceneView({
       )}
     </div>
   );
+}
+function disposeVehicle(root:THREE.Object3D){
+ const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();
+ root.traverse(o=>{if(o instanceof THREE.Mesh){geometries.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}});
+ geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
 }

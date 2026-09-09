@@ -128,13 +128,13 @@ export function ProgressContent({ player }: { player: Player }) {
               <b>{LEVEL_NAMES[i]}</b>
               <span>
                 {i === 0
-                  ? 'PFUSCH 125 + 150 starting coins'
+                  ? 'Töffli + 150 starting coins'
                   : i === 2
-                    ? 'SUMO 450 + Crew 01 reward available'
+                    ? 'Supermoto available'
                     : i === 4
                       ? 'After hours rims reward available'
                       : i === 5
-                        ? 'PFUSCH 701 available'
+                        ? 'Sport available'
                         : `${fmt(xp)} lifetime XP`}
               </span>
             </div>
@@ -193,8 +193,6 @@ export function Rewards({
               <div className="reward-art">
                 {r.kind === 'coins' ? (
                   <span className="reward-coin">P</span>
-                ) : r.kind === 'decal' ? (
-                  <strong className="decal-art">01/</strong>
                 ) : r.kind === 'cosmetic' ? (
                   <span className="rim-art" />
                 ) : (

@@ -96,7 +96,9 @@ export function decodePlayer(raw: string): Player {
   for (const field of ['paint', 'rims'] as const)
     if (typeof v[field] === 'string' && /^#[0-9a-f]{6}$/i.test(v[field]))
       p[field] = v[field];
-  if (v.decal === 'PFUSCH' || v.decal === '01') p.decal = v.decal;
+  // Additive v1 migration: obsolete vehicle registration customization is discarded.
+  p.ownedItems=p.ownedItems.filter(id=>!id.startsWith("decal:"));
+  p.redeemedRewards=p.redeemedRewards.filter(id=>id!=="crew-decal");
   if (isRecord(v.equipped))
     for (const slot of [
       'upper',
@@ -111,6 +113,15 @@ export function decodePlayer(raw: string): Player {
   if (isRecord(v.variants))
     for (const [id, value] of Object.entries(v.variants))
       if (typeof value === 'string') p.variants[id] = value;
+  // Additive v1 migration: earlier saves have no garment customization map.
+  if (isRecord(v.customizations))
+    for (const [id, value] of Object.entries(v.customizations))
+      if (
+        isRecord(value) &&
+        typeof value.customNumber === 'string' &&
+        /^\d{1,2}$/.test(value.customNumber)
+      )
+        p.customizations[id] = { customNumber: value.customNumber };
   if (isRecord(v.settings)) {
     for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const)
       if (typeof v.settings[field] === 'boolean')
@@ -206,7 +217,6 @@ export class MockRewardService implements RewardService {
       return null;
     const next = { ...p, redeemedRewards: [...p.redeemedRewards, id] };
     if (r.kind === 'coins') next.coins += 100;
-    if (r.kind === 'decal') next.ownedItems = [...p.ownedItems, 'decal:01'];
     if (r.kind === 'cosmetic')
       next.ownedItems = [...p.ownedItems, 'rims:#d9f365'];
     return next;

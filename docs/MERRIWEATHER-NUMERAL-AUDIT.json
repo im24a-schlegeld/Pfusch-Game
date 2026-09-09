@@ -1,0 +1,1058 @@
+{
+  "sourceUrl": "https://raw.githubusercontent.com/google/fonts/main/ofl/merriweather/Merriweather%5Bopsz%2Cwdth%2Cwght%5D.ttf",
+  "sourceRepository": "https://github.com/EbenSorkin/Merriweather4",
+  "sourceSha256": "d0ed0e359e396af7ad05e73dffd11a3a4c326ea0d0283c56bd9361cb2cc86a96",
+  "license": "SIL Open Font License 1.1; OFL.txt retained. Derivatives have new internal family names because Merriweather is a Reserved Font Name.",
+  "instance": {
+    "wght": 700,
+    "wdth": 100,
+    "opsz": 18,
+    "unitsPerEm": 2000
+  },
+  "existingFeatures": [
+    "calt",
+    "ccmp",
+    "dnom",
+    "frac",
+    "liga",
+    "locl",
+    "numr",
+    "pnum",
+    "tnum"
+  ],
+  "fullSourceFeatures": [
+    "aalt",
+    "c2sc",
+    "calt",
+    "case",
+    "ccmp",
+    "dlig",
+    "dnom",
+    "frac",
+    "liga",
+    "lnum",
+    "locl",
+    "numr",
+    "onum",
+    "ordn",
+    "pnum",
+    "sinf",
+    "smcp",
+    "ss01",
+    "ss02",
+    "ss03",
+    "ss04",
+    "subs",
+    "sups",
+    "tnum",
+    "zero"
+  ],
+  "latinSubsetFeatures": [
+    "aalt",
+    "c2sc",
+    "calt",
+    "case",
+    "ccmp",
+    "dlig",
+    "dnom",
+    "frac",
+    "liga",
+    "lnum",
+    "locl",
+    "numr",
+    "onum",
+    "ordn",
+    "pnum",
+    "sinf",
+    "smcp",
+    "ss01",
+    "ss02",
+    "ss03",
+    "subs",
+    "sups",
+    "tnum",
+    "zero"
+  ],
+  "oldstyleDefaultMapping": {
+    "48": "zero.osf",
+    "49": "one.osf",
+    "50": "two.osf",
+    "51": "three.osf",
+    "52": "four.osf",
+    "53": "five.osf",
+    "54": "six.osf",
+    "55": "seven.osf",
+    "56": "eight.osf",
+    "57": "nine.osf"
+  },
+  "existingDefaultDigits": [
+    {
+      "glyph": "zero",
+      "advance": 1248,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 95,
+        "yBearing": 1505,
+        "width": 1134,
+        "height": -1525
+      }
+    },
+    {
+      "glyph": "one",
+      "advance": 911,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 70,
+        "yBearing": 1505,
+        "width": 811,
+        "height": -1505
+      }
+    },
+    {
+      "glyph": "two",
+      "advance": 1127,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 42,
+        "yBearing": 1503,
+        "width": 1065,
+        "height": -1503
+      }
+    },
+    {
+      "glyph": "three",
+      "advance": 1119,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 62,
+        "yBearing": 1503,
+        "width": 981,
+        "height": -1536
+      }
+    },
+    {
+      "glyph": "four",
+      "advance": 1129,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 48,
+        "yBearing": 1497,
+        "width": 1188,
+        "height": -1497
+      }
+    },
+    {
+      "glyph": "five",
+      "advance": 1146,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 117,
+        "yBearing": 1524,
+        "width": 944,
+        "height": -1555
+      }
+    },
+    {
+      "glyph": "six",
+      "advance": 1066,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 95,
+        "yBearing": 1535,
+        "width": 1063,
+        "height": -1567
+      }
+    },
+    {
+      "glyph": "seven",
+      "advance": 1131,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 85,
+        "yBearing": 1486,
+        "width": 1055,
+        "height": -1487
+      }
+    },
+    {
+      "glyph": "eight",
+      "advance": 1199,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 93,
+        "yBearing": 1505,
+        "width": 1057,
+        "height": -1526
+      }
+    },
+    {
+      "glyph": "nine",
+      "advance": 1235,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 72,
+        "yBearing": 1505,
+        "width": 1068,
+        "height": -1600
+      }
+    }
+  ],
+  "source700DefaultDigits": [
+    {
+      "glyph": "zero",
+      "advance": 1248,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 95,
+        "yBearing": 1505,
+        "width": 1134,
+        "height": -1525
+      }
+    },
+    {
+      "glyph": "one",
+      "advance": 911,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 70,
+        "yBearing": 1505,
+        "width": 811,
+        "height": -1505
+      }
+    },
+    {
+      "glyph": "two",
+      "advance": 1127,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 42,
+        "yBearing": 1503,
+        "width": 1065,
+        "height": -1503
+      }
+    },
+    {
+      "glyph": "three",
+      "advance": 1119,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 62,
+        "yBearing": 1503,
+        "width": 981,
+        "height": -1536
+      }
+    },
+    {
+      "glyph": "four",
+      "advance": 1129,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 48,
+        "yBearing": 1497,
+        "width": 1188,
+        "height": -1497
+      }
+    },
+    {
+      "glyph": "five",
+      "advance": 1146,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 117,
+        "yBearing": 1524,
+        "width": 944,
+        "height": -1555
+      }
+    },
+    {
+      "glyph": "six",
+      "advance": 1066,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 95,
+        "yBearing": 1535,
+        "width": 1063,
+        "height": -1567
+      }
+    },
+    {
+      "glyph": "seven",
+      "advance": 1131,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 85,
+        "yBearing": 1486,
+        "width": 1055,
+        "height": -1487
+      }
+    },
+    {
+      "glyph": "eight",
+      "advance": 1199,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 93,
+        "yBearing": 1505,
+        "width": 1057,
+        "height": -1526
+      }
+    },
+    {
+      "glyph": "nine",
+      "advance": 1235,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 72,
+        "yBearing": 1505,
+        "width": 1068,
+        "height": -1600
+      }
+    }
+  ],
+  "source700OldstyleProportionalDigits": [
+    {
+      "glyph": "zero.osf",
+      "advance": 1233,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 107,
+        "yBearing": 1260,
+        "width": 1091,
+        "height": -1280
+      }
+    },
+    {
+      "glyph": "one.osf",
+      "advance": 894,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 73,
+        "yBearing": 1267,
+        "width": 807,
+        "height": -1267
+      }
+    },
+    {
+      "glyph": "two.osf",
+      "advance": 1084,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 55,
+        "yBearing": 1262,
+        "width": 1078,
+        "height": -1262
+      }
+    },
+    {
+      "glyph": "three.osf",
+      "advance": 1104,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 69,
+        "yBearing": 1262,
+        "width": 961,
+        "height": -1583
+      }
+    },
+    {
+      "glyph": "four.osf",
+      "advance": 1140,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 38,
+        "yBearing": 1388,
+        "width": 1221,
+        "height": -1709
+      }
+    },
+    {
+      "glyph": "five.osf",
+      "advance": 1128,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 151,
+        "yBearing": 1281,
+        "width": 932,
+        "height": -1603
+      }
+    },
+    {
+      "glyph": "six.osf",
+      "advance": 1227,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 125,
+        "yBearing": 1572,
+        "width": 1083,
+        "height": -1596
+      }
+    },
+    {
+      "glyph": "seven.osf",
+      "advance": 1115,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 58,
+        "yBearing": 1243,
+        "width": 1063,
+        "height": -1602
+      }
+    },
+    {
+      "glyph": "eight.osf",
+      "advance": 1213,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 96,
+        "yBearing": 1505,
+        "width": 1074,
+        "height": -1526
+      }
+    },
+    {
+      "glyph": "nine.osf",
+      "advance": 1318,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 110,
+        "yBearing": 1263,
+        "width": 1083,
+        "height": -1596
+      }
+    }
+  ],
+  "latinSubsetOldstyleProportionalDigits": [
+    {
+      "glyph": "zero.osf",
+      "advance": 1233,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 107,
+        "yBearing": 1260,
+        "width": 1091,
+        "height": -1280
+      }
+    },
+    {
+      "glyph": "one.osf",
+      "advance": 894,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 73,
+        "yBearing": 1267,
+        "width": 807,
+        "height": -1267
+      }
+    },
+    {
+      "glyph": "two.osf",
+      "advance": 1084,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 55,
+        "yBearing": 1262,
+        "width": 1078,
+        "height": -1262
+      }
+    },
+    {
+      "glyph": "three.osf",
+      "advance": 1104,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 69,
+        "yBearing": 1262,
+        "width": 961,
+        "height": -1583
+      }
+    },
+    {
+      "glyph": "four.osf",
+      "advance": 1140,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 38,
+        "yBearing": 1388,
+        "width": 1221,
+        "height": -1709
+      }
+    },
+    {
+      "glyph": "five.osf",
+      "advance": 1128,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 151,
+        "yBearing": 1281,
+        "width": 932,
+        "height": -1603
+      }
+    },
+    {
+      "glyph": "six.osf",
+      "advance": 1227,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 125,
+        "yBearing": 1572,
+        "width": 1083,
+        "height": -1596
+      }
+    },
+    {
+      "glyph": "seven.osf",
+      "advance": 1115,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 58,
+        "yBearing": 1243,
+        "width": 1063,
+        "height": -1602
+      }
+    },
+    {
+      "glyph": "eight.osf",
+      "advance": 1213,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 96,
+        "yBearing": 1505,
+        "width": 1074,
+        "height": -1526
+      }
+    },
+    {
+      "glyph": "nine.osf",
+      "advance": 1318,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 110,
+        "yBearing": 1263,
+        "width": 1083,
+        "height": -1596
+      }
+    }
+  ],
+  "fallbackDefaultDigits": [
+    {
+      "glyph": "zero.osf",
+      "advance": 1233,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 107,
+        "yBearing": 1260,
+        "width": 1091,
+        "height": -1280
+      }
+    },
+    {
+      "glyph": "one.osf",
+      "advance": 894,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 73,
+        "yBearing": 1267,
+        "width": 807,
+        "height": -1267
+      }
+    },
+    {
+      "glyph": "two.osf",
+      "advance": 1084,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 55,
+        "yBearing": 1262,
+        "width": 1078,
+        "height": -1262
+      }
+    },
+    {
+      "glyph": "three.osf",
+      "advance": 1104,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 69,
+        "yBearing": 1262,
+        "width": 961,
+        "height": -1583
+      }
+    },
+    {
+      "glyph": "four.osf",
+      "advance": 1140,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 38,
+        "yBearing": 1388,
+        "width": 1221,
+        "height": -1709
+      }
+    },
+    {
+      "glyph": "five.osf",
+      "advance": 1128,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 151,
+        "yBearing": 1281,
+        "width": 932,
+        "height": -1603
+      }
+    },
+    {
+      "glyph": "six.osf",
+      "advance": 1227,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 125,
+        "yBearing": 1572,
+        "width": 1083,
+        "height": -1596
+      }
+    },
+    {
+      "glyph": "seven.osf",
+      "advance": 1115,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 58,
+        "yBearing": 1243,
+        "width": 1063,
+        "height": -1602
+      }
+    },
+    {
+      "glyph": "eight.osf",
+      "advance": 1213,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 96,
+        "yBearing": 1505,
+        "width": 1074,
+        "height": -1526
+      }
+    },
+    {
+      "glyph": "nine.osf",
+      "advance": 1318,
+      "xOffset": 0,
+      "yOffset": 0,
+      "extents": {
+        "xBearing": 110,
+        "yBearing": 1263,
+        "width": 1083,
+        "height": -1596
+      }
+    }
+  ],
+  "samples": {
+    "23": {
+      "originalWithOnumPnum": [
+        {
+          "glyph": "two.osf",
+          "advance": 1084,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 55,
+            "yBearing": 1262,
+            "width": 1078,
+            "height": -1262
+          }
+        },
+        {
+          "glyph": "three.osf",
+          "advance": 1102,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 69,
+            "yBearing": 1262,
+            "width": 961,
+            "height": -1583
+          }
+        }
+      ],
+      "fallbackDefault": [
+        {
+          "glyph": "two.osf",
+          "advance": 1084,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 55,
+            "yBearing": 1262,
+            "width": 1078,
+            "height": -1262
+          }
+        },
+        {
+          "glyph": "three.osf",
+          "advance": 1102,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 69,
+            "yBearing": 1262,
+            "width": 961,
+            "height": -1583
+          }
+        }
+      ],
+      "identical": true
+    },
+    "32": {
+      "originalWithOnumPnum": [
+        {
+          "glyph": "three.osf",
+          "advance": 1078,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 69,
+            "yBearing": 1262,
+            "width": 961,
+            "height": -1583
+          }
+        },
+        {
+          "glyph": "two.osf",
+          "advance": 1191,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 55,
+            "yBearing": 1262,
+            "width": 1078,
+            "height": -1262
+          }
+        }
+      ],
+      "fallbackDefault": [
+        {
+          "glyph": "three.osf",
+          "advance": 1078,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 69,
+            "yBearing": 1262,
+            "width": 961,
+            "height": -1583
+          }
+        },
+        {
+          "glyph": "two.osf",
+          "advance": 1191,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 55,
+            "yBearing": 1262,
+            "width": 1078,
+            "height": -1262
+          }
+        }
+      ],
+      "identical": true
+    },
+    "37": {
+      "originalWithOnumPnum": [
+        {
+          "glyph": "three.osf",
+          "advance": 1061,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 69,
+            "yBearing": 1262,
+            "width": 961,
+            "height": -1583
+          }
+        },
+        {
+          "glyph": "seven.osf",
+          "advance": 1147,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 58,
+            "yBearing": 1243,
+            "width": 1063,
+            "height": -1602
+          }
+        }
+      ],
+      "fallbackDefault": [
+        {
+          "glyph": "three.osf",
+          "advance": 1061,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 69,
+            "yBearing": 1262,
+            "width": 961,
+            "height": -1583
+          }
+        },
+        {
+          "glyph": "seven.osf",
+          "advance": 1147,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 58,
+            "yBearing": 1243,
+            "width": 1063,
+            "height": -1602
+          }
+        }
+      ],
+      "identical": true
+    },
+    "00": {
+      "originalWithOnumPnum": [
+        {
+          "glyph": "zero.osf",
+          "advance": 1291,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 107,
+            "yBearing": 1260,
+            "width": 1091,
+            "height": -1280
+          }
+        },
+        {
+          "glyph": "zero.osf",
+          "advance": 1305,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 107,
+            "yBearing": 1260,
+            "width": 1091,
+            "height": -1280
+          }
+        }
+      ],
+      "fallbackDefault": [
+        {
+          "glyph": "zero.osf",
+          "advance": 1291,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 107,
+            "yBearing": 1260,
+            "width": 1091,
+            "height": -1280
+          }
+        },
+        {
+          "glyph": "zero.osf",
+          "advance": 1305,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 107,
+            "yBearing": 1260,
+            "width": 1091,
+            "height": -1280
+          }
+        }
+      ],
+      "identical": true
+    },
+    "11": {
+      "originalWithOnumPnum": [
+        {
+          "glyph": "one.osf",
+          "advance": 865,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 73,
+            "yBearing": 1267,
+            "width": 807,
+            "height": -1267
+          }
+        },
+        {
+          "glyph": "one.osf",
+          "advance": 917,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 73,
+            "yBearing": 1267,
+            "width": 807,
+            "height": -1267
+          }
+        }
+      ],
+      "fallbackDefault": [
+        {
+          "glyph": "one.osf",
+          "advance": 865,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 73,
+            "yBearing": 1267,
+            "width": 807,
+            "height": -1267
+          }
+        },
+        {
+          "glyph": "one.osf",
+          "advance": 917,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 73,
+            "yBearing": 1267,
+            "width": 807,
+            "height": -1267
+          }
+        }
+      ],
+      "identical": true
+    },
+    "88": {
+      "originalWithOnumPnum": [
+        {
+          "glyph": "eight.osf",
+          "advance": 1248,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 96,
+            "yBearing": 1505,
+            "width": 1074,
+            "height": -1526
+          }
+        },
+        {
+          "glyph": "eight.osf",
+          "advance": 1266,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 96,
+            "yBearing": 1505,
+            "width": 1074,
+            "height": -1526
+          }
+        }
+      ],
+      "fallbackDefault": [
+        {
+          "glyph": "eight.osf",
+          "advance": 1248,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 96,
+            "yBearing": 1505,
+            "width": 1074,
+            "height": -1526
+          }
+        },
+        {
+          "glyph": "eight.osf",
+          "advance": 1266,
+          "xOffset": 0,
+          "yOffset": 0,
+          "extents": {
+            "xBearing": 96,
+            "yBearing": 1505,
+            "width": 1074,
+            "height": -1526
+          }
+        }
+      ],
+      "identical": true
+    }
+  },
+  "files": {
+    "merriweather-latin-700-normal.woff2": {
+      "bytes": 48660,
+      "sha256": "4e1ab49396c02be0d9a2a25eed7bc73781c047d85fcb5dfc2889873eaf992b09"
+    },
+    "merriweather-source-latin-700-features.woff2": {
+      "bytes": 204936,
+      "sha256": "a9a3067fbfc6aaa6b88a597150b7cdad24bd44bbe1e668479b6ab27e386b5c78"
+    },
+    "pfusch-oldstyle-numbers-700.woff2": {
+      "bytes": 2272,
+      "sha256": "a60d776b1f04b0749663f09def7006cedf8262b3d3c4e0dbe9d6e35302b16309"
+    }
+  },
+  "canvasRecommendation": "Try FontFace with featureSettings: \"\"onum\" 1, \"pnum\" 1\", weight: \"700\", await load and document.fonts.add before drawing. Runtime-test a large 3 descender. For guaranteed Canvas glyph choice, use pfusch-oldstyle-numbers-700.woff2 whose digit cmap defaults already reference the real Merriweather oldstyle proportional glyphs; no glyph redrawing or scaling was performed.",
+  "oldstyleHmtxAdvances": {
+    "0": 1305,
+    "1": 917,
+    "2": 1191,
+    "3": 1102,
+    "4": 1293,
+    "5": 1192,
+    "6": 1318,
+    "7": 1147,
+    "8": 1266,
+    "9": 1318
+  },
+  "rootBrowserTest": "Root task reports Edge Canvas FontFace.featureSettings works on full original: oldstyle 3 descender35px at220px, lining3 descender4px. Subset browser test still delegated to root."
+}

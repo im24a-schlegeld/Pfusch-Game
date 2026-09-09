@@ -8,6 +8,7 @@ export default defineConfig({
   css: { postcss: { plugins: [tailwindcss()] } },
   server: {
     host: '0.0.0.0',
+    hmr: false,
     // OneDrive can lock PNGs while syncing. Native fs.watch then throws EBUSY
     // and kills Vite. Polling preserves HMR without holding native file watches.
     watch: process.platform === 'win32' ? { usePolling: true, interval: 300 } : undefined,

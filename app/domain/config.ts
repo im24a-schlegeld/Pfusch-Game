@@ -2,7 +2,7 @@ import type { Bike, ChallengeDefinition } from './types';
 export const BIKES: Bike[] = [
   {
     id: '125',
-    name: 'PFUSCH 125',
+    name: 'Töffli',
     tag: 'THE DAILY DRIVER',
     price: 0,
     level: 1,
@@ -14,7 +14,7 @@ export const BIKES: Bike[] = [
   },
   {
     id: '450',
-    name: 'SUMO 450',
+    name: 'Supermoto',
     tag: 'MADE FOR THE STREETS',
     price: 450,
     level: 3,
@@ -26,7 +26,7 @@ export const BIKES: Bike[] = [
   },
   {
     id: '701',
-    name: 'PFUSCH 701',
+    name: 'Sport',
     tag: 'NO HALF MEASURES',
     price: 1000,
     level: 6,
@@ -123,13 +123,6 @@ export const REWARDS = [
     description: '100 PFUSCH Coins. One time, on the house.',
     kind: 'coins',
     level: 1,
-  },
-  {
-    id: 'crew-decal',
-    title: 'Crew 01 decal',
-    description: 'A digital racing number for your bike.',
-    kind: 'decal',
-    level: 3,
   },
   {
     id: 'exclusive-rims',

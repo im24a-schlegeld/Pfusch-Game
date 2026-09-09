@@ -109,8 +109,37 @@
       "Washed"
     ],
     "publishedAt": "2026-07-24T10:41:15+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht.",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "54582049898825",
+            "54582049931593",
+            "54582049964361",
+            "54582049997129",
+            "54582050029897",
+            "54582050062665"
+          ],
+          "baseColor": "#313235",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170015177-9032439052.png?v=1781170020",
+            "localImage": "/images/preview/keep-up-zipper-original-front.png",
+            "evidence": "Visually verified front zipper, chest graphics and front pockets."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781170068987-7040491584.png?v=1781170075",
+            "localImage": "/images/preview/keep-up-zipper-original-back.png",
+            "evidence": "Visually verified rear neck/hood and large rear graphic; no front zipper."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "10237099737417",
@@ -347,8 +376,82 @@
       "Washed"
     ],
     "publishedAt": "2026-07-24T10:41:14+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht.",
+    "preview": {
+      "colors": [
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "54582032761161",
+            "54582032859465",
+            "54582032957769",
+            "54582033056073",
+            "54582033154377"
+          ],
+          "baseColor": "#292a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-7334131272.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-schwarz-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-4781007150.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-schwarz-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "dunkelgrau",
+          "label": "Dunkelgrau",
+          "optionValue": "Dunkelgrau",
+          "variantIds": [
+            "54582032793929",
+            "54582032892233",
+            "54582032990537",
+            "54582033088841",
+            "54582033187145"
+          ],
+          "baseColor": "#3a3c3a",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-9957463799.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-dunkelgrau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-9993159150.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-dunkelgrau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellblau",
+          "label": "Hellblau",
+          "optionValue": "Hellblau",
+          "variantIds": [
+            "54582032826697",
+            "54582032925001",
+            "54582033023305",
+            "54582033121609",
+            "54582033219913"
+          ],
+          "baseColor": "#7b9fba",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702959-9967066916.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-hellblau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781169702960-8379544407.png?v=1781169708",
+            "localImage": "/images/preview/keep-up-t-shirt-hellblau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "10237061759305",
@@ -714,8 +817,128 @@
       "Unisex"
     ],
     "publishedAt": "2026-07-24T10:41:14+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht.",
+    "preview": {
+      "colors": [
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "54581932949833",
+            "54581933113673",
+            "54581933277513",
+            "54581933441353",
+            "54581933605193"
+          ],
+          "baseColor": "#292a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189722-6254605255.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-schwarz-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-1642454531.png?v=1781167196",
+            "localImage": "/images/preview/keep-up-hoodie-schwarz-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "militargrun",
+          "label": "Militärgrün",
+          "optionValue": "Militärgrün",
+          "variantIds": [
+            "54581932982601",
+            "54581933146441",
+            "54581933310281",
+            "54581933474121",
+            "54581933637961"
+          ],
+          "baseColor": "#55563c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-9561042364.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-militargrun-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-7317006570.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-militargrun-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "dunkelgrau",
+          "label": "Dunkelgrau",
+          "optionValue": "Dunkelgrau",
+          "variantIds": [
+            "54581933015369",
+            "54581933179209",
+            "54581933343049",
+            "54581933506889",
+            "54581933670729"
+          ],
+          "baseColor": "#55565c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0539142308.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-dunkelgrau-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-8956409041.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-dunkelgrau-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "violett",
+          "label": "Violett",
+          "optionValue": "Violett",
+          "variantIds": [
+            "54581933048137",
+            "54581933211977",
+            "54581933375817",
+            "54581933539657",
+            "54581933703497"
+          ],
+          "baseColor": "#503078",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-9987517626.png?v=1781167197",
+            "localImage": "/images/preview/keep-up-hoodie-violett-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-0846572275.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-violett-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "blau",
+          "label": "Blau",
+          "optionValue": "Blau",
+          "variantIds": [
+            "54581933080905",
+            "54581933244745",
+            "54581933408585",
+            "54581933572425",
+            "54581933736265"
+          ],
+          "baseColor": "#25627d",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-4272685791.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-blau-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1781167189723-3625161257.png?v=1781167195",
+            "localImage": "/images/preview/keep-up-hoodie-blau-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "10224345416009",
@@ -794,8 +1017,70 @@
     "available": true,
     "tags": [],
     "publishedAt": "2026-07-24T10:29:14+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Verwaschene Cap mit P ZERO Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Verwaschene Cap mit P ZERO Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
+    "preview": {
+      "colors": [
+        {
+          "id": "hellgrau",
+          "label": "Hellgrau",
+          "optionValue": "Hellgrau",
+          "variantIds": [
+            "54527578898761"
+          ],
+          "baseColor": "#989692",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-front-6a1ef19711d54.jpg?v=1780412840",
+            "localImage": "/images/preview/p-zero-cap-hellgrau-front.png",
+            "evidence": "Visually verified: brim and front logo face the camera."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-charcoal-grey-back-6a1ef1971421d.jpg?v=1780412840",
+            "localImage": "/images/preview/p-zero-cap-hellgrau-back.png",
+            "evidence": "Visually verified: rear opening, strap and rear embroidery face the camera; source filename also identifies back."
+          }
+        },
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "54527611044169"
+          ],
+          "baseColor": "#282a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-6a1ef2df090c8.jpg?v=1780413159",
+            "localImage": "/images/preview/p-zero-cap-schwarz-front.png",
+            "evidence": "Visually verified: brim and front logo face the camera."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-back-6a1ef2df0a0a0.jpg?v=1780413159",
+            "localImage": "/images/preview/p-zero-cap-schwarz-back.png",
+            "evidence": "Visually verified: rear opening, strap and rear embroidery face the camera; source filename also identifies back."
+          }
+        },
+        {
+          "id": "navy",
+          "label": "Navy",
+          "optionValue": "Navy",
+          "variantIds": [
+            "54527669141833"
+          ],
+          "baseColor": "#59677e",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-front-6a1ef50dae1fe.jpg?v=1780413720",
+            "localImage": "/images/preview/p-zero-cap-navy-front.png",
+            "evidence": "Visually verified: brim and front logo face the camera."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-navy-back-6a1ef50daf3ee.jpg?v=1780413720",
+            "localImage": "/images/preview/p-zero-cap-navy-back.png",
+            "evidence": "Visually verified: rear opening, strap and rear embroidery face the camera; source filename also identifies back."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9923161751881",
@@ -896,8 +1181,44 @@
       "Washed"
     ],
     "publishedAt": "2025-12-02T22:47:37+01:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Racing Zipper mit selber wählbarer Nummer. Sponsoren von Revsticks und LP Carbon . Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Racing Zipper mit selber wählbarer Nummer. Sponsoren von Revsticks und LP Carbon . Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt.",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "53315639542089",
+            "53315639574857",
+            "53315639607625",
+            "53315639640393",
+            "53315639673161"
+          ],
+          "baseColor": "#343638",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763122262453-9007431760.png?v=1763198186",
+            "localImage": "/images/preview/racing-zipper-original-front.png",
+            "evidence": "Visually verified front zipper, chest graphics and front pockets."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1763124166420-9910006297.png?v=1763124178",
+            "localImage": "/images/preview/racing-zipper-original-back.png",
+            "evidence": "Visually verified rear neck/hood and large rear graphic; no front zipper."
+          }
+        }
+      ],
+      "numberCustomization": true,
+      "numberConstraints": {
+        "minDigits": 1,
+        "maxDigits": 2,
+        "pattern": "^[0-9]{1,2}$",
+        "source": "https://pfusch-clothing.ch/products/racing-zipper",
+        "evidence": "Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt.",
+        "notes": "Keep the input as text. The shop states the digit count only; treatment of leading zeroes is unspecified. Public photos show example number 23 on the back."
+      }
+    }
   },
   {
     "id": "9874912248137",
@@ -1132,8 +1453,82 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-10-17T15:37:18+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Sobald es ein wenig kühler wird, nützt es auch nichts mehr bei Nightrides mehrere Hoodies anzuziehen. Aber ein Windbreaker über 1-2 Pullover und man ist vor der Kälte viel geschützter, da der Windbreaker die Luft blockiert und somit auch ein Teil der Kälte. Langsam regnet es auch immer mehr, auch da hilft unser Windbreaker denn er ist Wasserabweisend. Er hat eine Kapuze die man ein oder ausklappen und mit einem Reissverschluss verstauen kann. Und wenn man ihn nicht mehr braucht kann man ihn einfach in eine kleine Umhängetasche verwandeln."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Sobald es ein wenig kühler wird, nützt es auch nichts mehr bei Nightrides mehrere Hoodies anzuziehen. Aber ein Windbreaker über 1-2 Pullover und man ist vor der Kälte viel geschützter, da der Windbreaker die Luft blockiert und somit auch ein Teil der Kälte. Langsam regnet es auch immer mehr, auch da hilft unser Windbreaker denn er ist Wasserabweisend. Er hat eine Kapuze die man ein oder ausklappen und mit einem Reissverschluss verstauen kann. Und wenn man ihn nicht mehr braucht kann man ihn einfach in eine kleine Umhängetasche verwandeln.",
+    "preview": {
+      "colors": [
+        {
+          "id": "british-racing-green",
+          "label": "British Racing Green",
+          "optionValue": "British Racing Green",
+          "variantIds": [
+            "53147071775049",
+            "53147071807817",
+            "53147071840585",
+            "53147071873353",
+            "53147071906121"
+          ],
+          "baseColor": "#293f30",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-front-68f2468433311.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-british-racing-green-front.png",
+            "evidence": "Visually verified front zipper, chest graphics and front pockets."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-forest-green-back-68f2468433479.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-british-racing-green-back.png",
+            "evidence": "Visually verified rear neck/hood and large rear graphic; no front zipper."
+          }
+        },
+        {
+          "id": "navy",
+          "label": "Navy",
+          "optionValue": "Navy",
+          "variantIds": [
+            "53147071611209",
+            "53147071643977",
+            "53147071676745",
+            "53147071709513",
+            "53147071742281"
+          ],
+          "baseColor": "#282d39",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-front-68f24684330bc.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-navy-front.png",
+            "evidence": "Visually verified front zipper, chest graphics and front pockets."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-navy-back-68f24684331c3.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-navy-back.png",
+            "evidence": "Visually verified rear neck/hood and large rear graphic; no front zipper."
+          }
+        },
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "53147071447369",
+            "53147071480137",
+            "53147071512905",
+            "53147071545673",
+            "53147071578441"
+          ],
+          "baseColor": "#202120",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-front-68f2468432fc2.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-schwarz-front.png",
+            "evidence": "Visually verified front zipper, chest graphics and front pockets."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/basic-unisex-windbreaker-black-back-68f24684317f9.jpg?v=1760728657",
+            "localImage": "/images/preview/unisex-windbreaker-schwarz-back.png",
+            "evidence": "Visually verified rear neck/hood and large rear graphic; no front zipper."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9861079990601",
@@ -1176,8 +1571,28 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-10-11T18:19:34+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Chrome Sticker in der Qualität von Motorrad Dekoren, dank Unique Designs Switzerland . Es sind 4 Sticker enthalten. 6x6cm"
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Chrome Sticker in der Qualität von Motorrad Dekoren, dank Unique Designs Switzerland . Es sind 4 Sticker enthalten. 6x6cm",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "53104990323017"
+          ],
+          "baseColor": "#252b2d",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/sticker.png?v=1760199543",
+            "localImage": "/images/preview/chrome-sticker-original-front.png",
+            "evidence": "Visually verified printed face; no reverse product photo published."
+          },
+          "back": null
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9844509737289",
@@ -1604,8 +2019,151 @@
       "Washed"
     ],
     "publishedAt": "2025-09-29T15:25:27+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht.",
+    "preview": {
+      "colors": [
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "53033370943817",
+            "53033371140425",
+            "53033371337033",
+            "53033371533641",
+            "53033371730249"
+          ],
+          "baseColor": "#292a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7915431234.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-schwarz-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1259605715.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-schwarz-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "turkis",
+          "label": "Türkis",
+          "optionValue": "Türkis",
+          "variantIds": [
+            "53033370976585",
+            "53033371173193",
+            "53033371369801",
+            "53033371566409",
+            "53033371763017"
+          ],
+          "baseColor": "#317c7c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-0054185745.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-turkis-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8166402360.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-turkis-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellbraun",
+          "label": "Hellbraun",
+          "optionValue": "Hellbraun",
+          "variantIds": [
+            "53033371009353",
+            "53033371205961",
+            "53033371402569",
+            "53033371599177",
+            "53033371795785"
+          ],
+          "baseColor": "#b0a58a",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7241584596.png?v=1759152323",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellbraun-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1260108731.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellbraun-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellgrau",
+          "label": "Hellgrau",
+          "optionValue": "Hellgrau",
+          "variantIds": [
+            "53033371042121",
+            "53033371238729",
+            "53033371435337",
+            "53033371631945",
+            "53033371828553"
+          ],
+          "baseColor": "#aaaaa8",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-7403228309.png?v=1759152325",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellgrau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-3331412841.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellgrau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "dunkelgrau",
+          "label": "Dunkelgrau",
+          "optionValue": "Dunkelgrau",
+          "variantIds": [
+            "53033371074889",
+            "53033371271497",
+            "53033371468105",
+            "53033371664713",
+            "53033371861321"
+          ],
+          "baseColor": "#3a3c3a",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-8577393142.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-dunkelgrau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-6175880335.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-dunkelgrau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellblau",
+          "label": "Hellblau",
+          "optionValue": "Hellblau",
+          "variantIds": [
+            "53033371107657",
+            "53033371304265",
+            "53033371500873",
+            "53033371697481",
+            "53033371894089"
+          ],
+          "baseColor": "#7b9fba",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-1255764096.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellblau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759152316919-5033349150.png?v=1759152324",
+            "localImage": "/images/preview/streetphotographer-t-shirt-1-hellblau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9844482703689",
@@ -2035,8 +2593,151 @@
       "Unisex"
     ],
     "publishedAt": "2025-09-29T15:08:18+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist.",
+    "preview": {
+      "colors": [
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "53033275883849",
+            "53033276080457",
+            "53033276277065",
+            "53033276473673",
+            "53033276670281"
+          ],
+          "baseColor": "#292a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-7313329092.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-schwarz-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5344345267.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-schwarz-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "militargrun",
+          "label": "Militärgrün",
+          "optionValue": "Militärgrün",
+          "variantIds": [
+            "53033275916617",
+            "53033276113225",
+            "53033276309833",
+            "53033276506441",
+            "53033276703049"
+          ],
+          "baseColor": "#55563c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-6023282233.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-militargrun-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-4730653015.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-militargrun-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "dunkelgrau",
+          "label": "Dunkelgrau",
+          "optionValue": "Dunkelgrau",
+          "variantIds": [
+            "53033275949385",
+            "53033276145993",
+            "53033276342601",
+            "53033276539209",
+            "53033276735817"
+          ],
+          "baseColor": "#55565c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5462269387.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-dunkelgrau-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9540209798.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-dunkelgrau-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "violett",
+          "label": "Violett",
+          "optionValue": "Violett",
+          "variantIds": [
+            "53033275982153",
+            "53033276178761",
+            "53033276375369",
+            "53033276571977",
+            "53033276768585"
+          ],
+          "baseColor": "#503078",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-1281625261.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-violett-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-9044331809.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-violett-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "turkis",
+          "label": "Türkis",
+          "optionValue": "Türkis",
+          "variantIds": [
+            "53033276014921",
+            "53033276211529",
+            "53033276408137",
+            "53033276604745",
+            "53033276801353"
+          ],
+          "baseColor": "#2a6e71",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-5992496249.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-turkis-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-3161267356.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-turkis-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "blau",
+          "label": "Blau",
+          "optionValue": "Blau",
+          "variantIds": [
+            "53033276047689",
+            "53033276244297",
+            "53033276440905",
+            "53033276637513",
+            "53033276834121"
+          ],
+          "baseColor": "#3c5f8b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287515-6821496594.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-blau-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759151287516-7046239390.png?v=1759151295",
+            "localImage": "/images/preview/streetphotographer-grey-logo-blau-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9844437909833",
@@ -2526,8 +3227,174 @@
       "Washed"
     ],
     "publishedAt": "2025-09-29T14:19:38+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht.",
+    "preview": {
+      "colors": [
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "53033048113481",
+            "53033048342857",
+            "53033048572233",
+            "53033048801609",
+            "53033049030985"
+          ],
+          "baseColor": "#292a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367223-9690163880.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-schwarz-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4372480709.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-schwarz-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "gelb",
+          "label": "Gelb",
+          "optionValue": "Gelb",
+          "variantIds": [
+            "53033048146249",
+            "53033048375625",
+            "53033048605001",
+            "53033048834377",
+            "53033049063753"
+          ],
+          "baseColor": "#e9b93e",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-9676292743.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-gelb-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4485742229.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-gelb-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "turkis",
+          "label": "Türkis",
+          "optionValue": "Türkis",
+          "variantIds": [
+            "53033048179017",
+            "53033048408393",
+            "53033048637769",
+            "53033048867145",
+            "53033049096521"
+          ],
+          "baseColor": "#317c7c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8764098808.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-turkis-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-4845262026.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-turkis-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellbraun",
+          "label": "Hellbraun",
+          "optionValue": "Hellbraun",
+          "variantIds": [
+            "53033048211785",
+            "53033048441161",
+            "53033048670537",
+            "53033048899913",
+            "53033049129289"
+          ],
+          "baseColor": "#b0a58a",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-9112576240.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellbraun-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5576663614.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellbraun-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellgrau",
+          "label": "Hellgrau",
+          "optionValue": "Hellgrau",
+          "variantIds": [
+            "53033048244553",
+            "53033048473929",
+            "53033048703305",
+            "53033048932681",
+            "53033049162057"
+          ],
+          "baseColor": "#aaaaa8",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7168575221.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellgrau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3947393409.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellgrau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "dunkelgrau",
+          "label": "Dunkelgrau",
+          "optionValue": "Dunkelgrau",
+          "variantIds": [
+            "53033048277321",
+            "53033048506697",
+            "53033048736073",
+            "53033048965449",
+            "53033049194825"
+          ],
+          "baseColor": "#3a3c3a",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-5321320104.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-dunkelgrau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-8663854851.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-dunkelgrau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        },
+        {
+          "id": "hellblau",
+          "label": "Hellblau",
+          "optionValue": "Hellblau",
+          "variantIds": [
+            "53033048310089",
+            "53033048539465",
+            "53033048768841",
+            "53033048998217",
+            "53033049227593"
+          ],
+          "baseColor": "#7b9fba",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-3034264381.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellblau-front.png",
+            "evidence": "Visually verified lower front neckline and small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759148367224-7834349201.png?v=1759148885",
+            "localImage": "/images/preview/signs-t-shirt-hellblau-back.png",
+            "evidence": "Visually verified higher rear neckline and large rear graphic; paired with matching color front photograph."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9844411924809",
@@ -2769,8 +3636,82 @@
       "Unisex"
     ],
     "publishedAt": "2025-09-29T13:44:59+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern auf einem Verwaschen aussehendem Hoodie."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern auf einem Verwaschen aussehendem Hoodie.",
+    "preview": {
+      "colors": [
+        {
+          "id": "braun",
+          "label": "Braun",
+          "optionValue": "Braun",
+          "variantIds": [
+            "53033280700745",
+            "53033280799049",
+            "53033280897353",
+            "53033280995657",
+            "53033281093961"
+          ],
+          "baseColor": "#71604f",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288744-6018940393.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-braun-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-5222164773.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-braun-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "hellblau",
+          "label": "Hellblau",
+          "optionValue": "Hellblau",
+          "variantIds": [
+            "53033280635209",
+            "53033280733513",
+            "53033280831817",
+            "53033280930121",
+            "53033281028425"
+          ],
+          "baseColor": "#5e91a8",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288721-8837649407.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-hellblau-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-7186993896.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-hellblau-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        },
+        {
+          "id": "grun",
+          "label": "Grün",
+          "optionValue": "Grün",
+          "variantIds": [
+            "53033280667977",
+            "53033280766281",
+            "53033280864585",
+            "53033280962889",
+            "53033281061193"
+          ],
+          "baseColor": "#3c7f54",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288744-3711508696.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-grun-front.png",
+            "evidence": "Visually verified hood opening and front kangaroo pocket with small chest logo."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/store-1759146288745-3903724318.png?v=1759151339",
+            "localImage": "/images/preview/signs-hoodie-grun-back.png",
+            "evidence": "Visually verified outside of hood and large rear graphic; no kangaroo pocket."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9791913918793",
@@ -2815,8 +3756,32 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-09-25T18:26:28+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Schlüsselanhänger mit Pfusch Logo auf der Vorderseite, und einer Rückseite die an einen Multifunktionsspray erinnert. *Pro Artikel 1 Anhänger"
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Schlüsselanhänger mit Pfusch Logo auf der Vorderseite, und einer Rückseite die an einen Multifunktionsspray erinnert. *Pro Artikel 1 Anhänger",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "52846553989449"
+          ],
+          "baseColor": "#28292c",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/rn-image_picker_lib_temp_f8544efd-a966-4756-b5e9-17647d8a02f4.jpg?v=1759733194",
+            "localImage": "/images/preview/schlusselanhanger-original-front.png",
+            "evidence": "Visually verified Pfusch-logo face; product description identifies this as the front."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/rn-image_picker_lib_temp_703cb2f4-6a70-4d9e-ad3c-461b7965f39e.jpg?v=1759733194",
+            "localImage": "/images/preview/schlusselanhanger-original-back.png",
+            "evidence": "Visually verified blue/yellow multifunction-spray motif; product description identifies this as the reverse."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9805150912841",
@@ -2876,8 +3841,51 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-09-04T16:53:44+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Verwaschene Cap mit Pfusch Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Verwaschene Cap mit Pfusch Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
+    "preview": {
+      "colors": [
+        {
+          "id": "schwarz",
+          "label": "Schwarz",
+          "optionValue": "Schwarz",
+          "variantIds": [
+            "52890072940873"
+          ],
+          "baseColor": "#282a2b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-front-68b9a7ee325c1.jpg?v=1756997622",
+            "localImage": "/images/preview/logo-cap-1-schwarz-front.png",
+            "evidence": "Visually verified: brim and front logo face the camera."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-black-back-68b9a7ee332a9.jpg?v=1756997623",
+            "localImage": "/images/preview/logo-cap-1-schwarz-back.png",
+            "evidence": "Visually verified: rear opening, strap and rear embroidery face the camera; source filename also identifies back."
+          }
+        },
+        {
+          "id": "weinrot",
+          "label": "Weinrot",
+          "optionValue": "Weinrot",
+          "variantIds": [
+            "52890072973641"
+          ],
+          "baseColor": "#83394b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-maroon-front-68b9a7ee339dc.jpg?v=1756997623",
+            "localImage": "/images/preview/logo-cap-1-weinrot-front.png",
+            "evidence": "Visually verified: brim and front logo face the camera."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/vintage-cap-maroon-back-68b9a7ee33ee9.jpg?v=1756997623",
+            "localImage": "/images/preview/logo-cap-1-weinrot-back.png",
+            "evidence": "Visually verified: rear opening, strap and rear embroidery face the camera; source filename also identifies back."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9736532197705",
@@ -2922,8 +3930,32 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-07-10T13:41:51+02:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Man möchte fahren, aber nicht die Hosentaschen mit Handy, Portemonnaie, Schlüssel, ect. vollstopfen. Mit einer solchen Tasche ist das kein Problem: Sie ist nicht zu gross und nicht zu klein. Die Innentasche erinnert wie die Cap an einen gewissen Multifunktionsspray."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Man möchte fahren, aber nicht die Hosentaschen mit Handy, Portemonnaie, Schlüssel, ect. vollstopfen. Mit einer solchen Tasche ist das kein Problem: Sie ist nicht zu gross und nicht zu klein. Die Innentasche erinnert wie die Cap an einen gewissen Multifunktionsspray.",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "52631698309449"
+          ],
+          "baseColor": "#26272b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-utility-crossbody-bag-white-front-6886ba1d9bada.jpg?v=1753660030",
+            "localImage": "/images/preview/logo-crossbody-tasche-original-front.png",
+            "evidence": "Visually verified logo face and front pocket."
+          },
+          "back": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-utility-crossbody-bag-white-back-6886ba1d9c265.jpg?v=1753660030",
+            "localImage": "/images/preview/logo-crossbody-tasche-original-back.png",
+            "evidence": "Visually verified plain rear face with no front pocket; source filename identifies back."
+          }
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9478176145737",
@@ -2968,8 +4000,28 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-01-02T14:21:09+01:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Diese Cap die evtl. an einen Multifunktionsspray erinnert der bei uns allen zu Hause liegt, ist ein muss. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz."
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Diese Cap die evtl. an einen Multifunktionsspray erinnert der bei uns allen zu Hause liegt, ist ein muss. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "51463376372041"
+          ],
+          "baseColor": "#1b294d",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/corduroy-hat-oxford-navy-front-678791f96b99e.jpg?v=1736937986",
+            "localImage": "/images/preview/pfusch-logo-cap-original-front.png",
+            "evidence": "Visually verified: brim and front logo face the camera."
+          },
+          "back": null
+        }
+      ],
+      "numberCustomization": false
+    }
   },
   {
     "id": "9464572805449",
@@ -3012,7 +4064,27 @@
     "available": true,
     "tags": [],
     "publishedAt": "2024-12-23T18:21:37+01:00",
-    "sourceUpdatedAt": "2026-09-08T15:09:58+02:00",
-    "sourceDescription": "Eine Flagge mit dem Logo von Pfusch-Clothing Masse sind: 154.94 × 96.52 cm"
+    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceDescription": "Eine Flagge mit dem Logo von Pfusch-Clothing Masse sind: 154.94 × 96.52 cm",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "51409369792841"
+          ],
+          "baseColor": "#111111",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-688a11684ab2f.jpg?v=1753878898",
+            "localImage": "/images/preview/logo-flagge-original-front.png",
+            "evidence": "Visually verified printed face; no reverse product photo published."
+          },
+          "back": null
+        }
+      ],
+      "numberCustomization": false
+    }
   }
 ]
