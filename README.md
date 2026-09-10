@@ -28,7 +28,7 @@ Browser tests use locally installed Microsoft Edge. Change `channel` in `playwri
 
 ## Controls
 
-Mobile: swipe left/right to dodge, swipe up or tap Jump, hold Wheelie. Reachable arrow buttons are also provided. Desktop: A/D or left/right arrows; W/up to jump; Space to wheelie; Escape/P to pause. The bike accelerates automatically. Jump striped barriers, dodge vehicles, and use ramps. Release wheelie before the balance meter fills. Close lateral passes, cleared obstacles and controlled wheelies build a timed combo. Blur pauses a ride.
+Mobile: swipe left/right to dodge, swipe up or tap LIFT for a short front-wheel lift, hold WHEELIE. Desktop: A/D or left/right arrows; W/up to lift; S/down to wheelie; Escape/P to pause. Lift just before a low striped road edge; cars and vans must be dodged. Manual lift keeps the rear wheel grounded and has a short recovery period. Roadwork ramps provide a speed-dependent launch automatically. Exactly one accepted lane change is allowed per flight; landing restores normal lane switching. Release wheelie before the balance meter fills. Blur pauses the ride and its rider animation.
 
 ## Game and progression
 
@@ -56,7 +56,7 @@ Future Shopify customer identity, cloud save, order entitlements and valuable re
 
 The Garage has one persistent 3D renderer with inline product controls. Prints are composed into garment textures. All three bikes use one immutable adult skeleton and fixed-length arm/leg IK. The Töffli wheelbase, wheel size and fender clearance have been corrected. Merriweather is bundled with its real onum/pnum glyphs; font loading and oldstyle descent are checked before number rendering. See docs/MERRIWEATHER-NUMERAL-AUDIT.json.
 
-Remaining from the visual repair brief: further helmet/garment polish, Supermoto chassis and Sport front/fairing refinement, Down/S wheelie controls, a motorcycle-specific replacement for manual jumping, one airborne lane change, rider motion and tunnels. Current controls above describe the implemented behavior. Work stopped at stabilization when the visible usage window became low; these remaining items are not claimed complete.
+The current pass reworks the Supermoto chassis and Sport fairings, connects garment shoulders, smooths visor/headlight outlines, adds fixed-length skinned rider motion and replaces manual jumping with a road-edge lift. All nine equippable tops have front/back Garage comparisons against the real product photographs. See `docs/COMPLETION-PASS.md` for validation and the exact remaining work. Road/environment variety and actual tunnels are unfinished; so are source-derived washed-fabric variation and finer product-specific pocket/cuff construction. These are not claimed complete.
 
 ## Next refinement
 

@@ -1,4 +1,5 @@
 import type { Bike, RunStats } from '../domain/types';
+import { roadSection } from './roadSections';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
 export type ObstacleKind = 'car' | 'van' | 'barrier' | 'ramp';
@@ -10,6 +11,7 @@ export interface Obstacle {
   passed: boolean;
   closest: number;
   color: number;
+  cleared: boolean;
 }
 export interface GameEvent {
   text: string;
@@ -26,6 +28,11 @@ export class Engine {
   x = 0;
   height = 0;
   velocityY = 0;
+  airLaneChangeUsed = false;
+  landingSerial = 0;
+  landingSpeed = 0;
+  liftTime = 0;
+  liftCooldown = 0;
   wheelie = false;
   wheelieHeld = false;
   wheelieHeat = 0;
@@ -46,6 +53,7 @@ export class Engine {
     passed: false,
     closest: Infinity,
     color: 0,
+    cleared: false,
   }));
   private rng: number;
   private spawnIn = 40;
@@ -69,17 +77,35 @@ export class Engine {
     this.phase = 'playing';
   }
   move(direction: number) {
-    if (this.phase === 'playing')
-      this.lane = Math.max(-1, Math.min(1, this.lane + direction));
+    if (this.phase !== 'playing') return;
+    const airborne = this.height > 0 || this.velocityY !== 0;
+    const next = Math.max(-1, Math.min(1, this.lane + direction));
+    if (next === this.lane || (airborne && this.airLaneChangeUsed)) return;
+    this.lane = next;
+    if (airborne) this.airLaneChangeUsed = true;
   }
-  jump(ramp = false) {
-    if (this.phase !== 'playing' || this.height > 0.05) return;
-    this.velocityY = ramp ? 10.5 : 8.4;
+  lift() {
+    if (
+      this.phase !== 'playing' ||
+      this.height > 0 ||
+      this.velocityY !== 0 ||
+      this.liftCooldown > 0
+    )
+      return;
+    this.liftTime = 0.5;
+    this.liftCooldown = 0.85;
+  }
+  private launchFromRamp() {
+    if (this.phase !== 'playing' || this.height > 0 || this.velocityY !== 0)
+      return;
+    // Only a roadwork wedge launches the motorcycle; button input stays grounded.
+    this.velocityY = Math.min(6.5, this.speed * 0.22);
     this.height = 0.01;
     this.wheelie = false;
     this.jumps++;
     this.jumpRewarded = false;
-    if (ramp) this.skill('RAMP SEND', 100);
+    this.liftTime = 0;
+    this.skill('ROAD CREST', 60);
   }
   hold(value: boolean) {
     this.wheelieHeld = value;
@@ -124,13 +150,18 @@ export class Engine {
     const candidates = [-1, 0, 1].filter((l) => l !== this.nextSafe);
     const count = this.elapsed > 20 && this.random() < 0.55 ? 2 : 1;
     if (this.random() < 0.5) candidates.reverse();
+    const section = roadSection(this.distance + 145);
     for (let i = 0; i < count; i++) {
       const roll = this.random();
       const kind: ObstacleKind =
-        roll < 0.52 ? 'car' : roll < 0.75 ? 'van' : 'barrier';
+        section === 'industrial' && roll >= 0.65
+          ? 'barrier'
+          : roll < 0.65
+            ? 'car'
+            : 'van';
       this.spawn(kind, candidates[i], 145);
     }
-    if (count === 1 && this.random() < 0.24)
+    if (count === 1 && section === 'industrial' && this.random() < 0.6)
       this.spawn('ramp', candidates[1], 145);
     this.spawnIn = Math.max(54, 78 - this.elapsed * 0.22);
   }
@@ -145,10 +176,13 @@ export class Engine {
         passed: false,
         closest: Infinity,
         color: Math.floor(this.random() * 4),
+        cleared: false,
       });
     return o;
   }
   private tick(dt: number) {
+    this.liftTime = Math.max(0, this.liftTime - dt);
+    this.liftCooldown = Math.max(0, this.liftCooldown - dt);
     this.elapsed += dt;
     this.speed = Math.min(
       this.bike.maxSpeed,
@@ -165,8 +199,11 @@ export class Engine {
       this.velocityY -= 21 * dt;
       this.height += this.velocityY * dt;
       if (this.height <= 0) {
+        this.landingSpeed = Math.abs(this.velocityY);
+        this.landingSerial++;
         this.height = 0;
         this.velocityY = 0;
+        this.airLaneChangeUsed = false;
       }
     }
     this.wheelieLock = Math.max(0, this.wheelieLock - dt);
@@ -207,24 +244,37 @@ export class Engine {
       const dx = Math.abs(this.x - o.lane * LANE);
       const length = o.kind === 'van' ? 3.3 : o.kind === 'car' ? 3 : 1.6;
       if (o.kind === 'ramp') {
-        if (prev >= 0 && o.z <= 0 && dx < 0.95) this.jump(true);
+        if (!o.passed && prev >= 0 && o.z <= 0) {
+          o.passed = true;
+          if (dx < 0.95) this.launchFromRamp();
+        }
       } else {
         const overlap = o.z < length && prev > -length;
         const top =
-          o.kind === 'barrier' ? 0.78 : o.kind === 'van' ? 2.55 : 2.05;
+          o.kind === 'barrier' ? 0.16 : o.kind === 'van' ? 2.55 : 2.05;
         if (overlap && this.height < top) {
           const gap = dx - (o.kind === 'barrier' ? 1.12 : 1.16);
           if (gap < 0) {
-            this.crash(
-              o.kind === 'barrier' ? 'Clipped a barrier' : 'Traffic collision',
-            );
-            break;
+            if (
+              o.kind === 'barrier' &&
+              (o.cleared || this.liftTime > 0 || this.wheelie)
+            )
+              o.cleared = true;
+            else {
+              this.crash(
+                o.kind === 'barrier'
+                  ? 'Caught the raised road edge'
+                  : 'Traffic collision',
+              );
+              break;
+            }
           }
-          o.closest = Math.min(o.closest, gap);
+          if (gap >= 0) o.closest = Math.min(o.closest, gap);
         }
         if (!o.passed && o.z < -length) {
           o.passed = true;
-          if (o.closest < 0.6) {
+          if (o.cleared) this.skill('CLEAN LIFT', 90);
+          else if (o.closest < 0.6) {
             this.nearMisses++;
             this.skill('NEAR MISS', 150);
           } else if (dx < 1.1 && this.height > 0.6 && !this.jumpRewarded) {

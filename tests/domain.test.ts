@@ -131,7 +131,7 @@ describe('deterministic riding', () => {
     e.move(-1);
     e.move(-1);
     expect(e.lane).toBe(-1);
-    e.jump();
+    e.lift();
     e.hold(true);
     e.advance(0.1);
     e.pause();
@@ -140,16 +140,16 @@ describe('deterministic riding', () => {
     expect([e.distance, e.height, e.elapsed]).toEqual(before);
     expect(e.wheelieHeld).toBe(false);
   });
-  it('crashes on traffic even during a normal jump', () => {
+  it('crashes on traffic even during a front-wheel lift', () => {
     const e = ride();
     e.spawn('van', 0, 0);
-    e.jump();
+    e.lift();
     e.advance(STEP);
     expect(e.phase).toBe('crashed');
   });
-  it('clears barriers with a timed jump and lands', () => {
+  it('clears a low road edge with a timed lift while staying grounded', () => {
     const e = ride();
-    e.jump();
+    e.lift();
     for (let i = 0; i < 20; i++) e.advance(STEP);
     e.spawn('barrier', 0, 1);
     for (let i = 0; i < 50; i++) e.advance(STEP);

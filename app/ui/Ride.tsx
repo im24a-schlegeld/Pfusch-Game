@@ -75,13 +75,16 @@ export default function Ride({
           'ArrowLeft',
           'ArrowRight',
           'ArrowUp',
+          'ArrowDown',
           ' ',
           'a',
           'd',
           'w',
+          's',
           'A',
           'D',
           'W',
+          'S',
           'Escape',
           'p',
           'P',
@@ -97,11 +100,13 @@ export default function Ride({
       }
       if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') engine.move(-1);
       if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') engine.move(1);
-      if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') engine.jump();
-      if (e.code === 'Space') engine.hold(true);
+      if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') engine.lift();
+      if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's')
+        engine.hold(true);
     };
     const keyup = (e: KeyboardEvent) => {
-      if (e.code === 'Space') engine.hold(false);
+      if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's')
+        engine.hold(false);
     };
     const blur = () => {
       engine.pause();
@@ -143,6 +148,8 @@ export default function Ride({
       data-phase={engine.phase}
       data-lane={engine.lane}
       data-height={engine.height.toFixed(2)}
+      data-lift={engine.liftTime > 0}
+      data-distance={engine.distance.toFixed(2)}
       data-wheelie={engine.wheelie}
       data-frame={tick}
     >
@@ -156,7 +163,7 @@ export default function Ride({
       />
       <div
         className="gesture-zone"
-        aria-label="Swipe left or right to dodge, swipe up to jump"
+        aria-label="Swipe left or right to dodge, swipe up to lift the front wheel"
         onPointerDown={(e) => {
           gesture.current = { x: e.clientX, y: e.clientY };
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -169,7 +176,7 @@ export default function Ride({
             dy = e.clientY - start.y;
           if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
           if (Math.abs(dx) > Math.abs(dy)) engine.move(dx < 0 ? -1 : 1);
-          else if (dy < 0) engine.jump();
+          else if (dy < 0) engine.lift();
         }}
         onPointerCancel={() => {
           gesture.current = null;
@@ -228,11 +235,11 @@ export default function Ride({
         <div className="countdown">
           <p className="eyebrow">MAKE IT YOUR LINE</p>
           <strong>{ready ? countdown : '…'}</strong>
-          <p>Dodge traffic. Jump low barriers.</p>
+          <p>Dodge traffic. Lift over low road edges.</p>
         </div>
       )}
       {engine.elapsed < 9 && countdown === 0 && (
-        <div className="ride-tip">SWIPE TO DODGE · ↑ JUMP · HOLD WHEELIE</div>
+        <div className="ride-tip">SWIPE TO DODGE · ↑ LIFT · S / ↓ WHEELIE</div>
       )}
       <div className="ride-controls">
         <div className="steer-controls">
@@ -258,14 +265,14 @@ export default function Ride({
         <div className="action-controls">
           <button
             className="jump-control"
-            aria-label="Jump"
+            aria-label="Lift front wheel"
             onPointerDown={(e) => {
               e.preventDefault();
-              engine.jump();
+              engine.lift();
             }}
           >
             <ArrowUp />
-            <span>JUMP</span>
+            <span>LIFT</span>
           </button>
           <button
             className={`wheelie-control ${engine.wheelie ? 'held' : ''}`}
@@ -312,18 +319,20 @@ export default function Ride({
               ← → / A D <b>Dodge</b>
             </span>
             <span>
-              ↑ / W <b>Jump</b>
+              ↑ / W <b>Front-wheel lift</b>
             </span>
             <span>
-              SPACE <b>Hold wheelie</b>
+              ↓ / S <b>Hold wheelie</b>
             </span>
             <span>
               ESC / P <b>Pause</b>
             </span>
           </div>
           <p className="muted">
-            Release wheelie before the balance bar fills. Jump the low striped
-            barriers; dodge cars and vans.
+            Tap lift just before a low striped road edge. Dodge cars and vans.
+            Roadwork ramps launch automatically: one lane change in the air,
+            then normal steering on landing. Release wheelie before the balance
+            bar fills.
           </p>
           <button
             className="button primary"

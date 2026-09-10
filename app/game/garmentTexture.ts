@@ -26,21 +26,25 @@ function load(url: string) {
   return value;
 }
 /** Extract exact photographed ink, with the sampled fabric removed and soft edge margins. */
-function printedCrop(img: HTMLImageElement, crop: number[]) {
+function printedCrop(img: HTMLImageElement, crop: number[], maskImage = img) {
   const [x, y, w, h] = crop,
     canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
-  const pixels = ctx.getImageData(0, 0, w, h),
+  const pixels = ctx.getImageData(0, 0, w, h);
+  // Aligned high-contrast product photography supplies the ink mask; selected-color RGB stays intact.
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(maskImage, x, y, w, h, 0, 0, w, h);
+  const mask = ctx.getImageData(0, 0, w, h),
     samples: number[][] = [[], [], []];
   for (let j = 0; j < h; j++)
     for (let i = 0; i < w; i++)
       if (i < 3 || j < 3 || i >= w - 3 || j >= h - 3) {
         const k = (j * w + i) * 4;
-        if (pixels.data[k + 3] > 32)
-          for (let c = 0; c < 3; c++) samples[c].push(pixels.data[k + c]);
+        if (mask.data[k + 3] > 32)
+          for (let c = 0; c < 3; c++) samples[c].push(mask.data[k + c]);
       }
   const base = samples.map(
     (s) => s.sort((a, b) => a - b)[Math.floor(s.length / 2)] ?? 0,
@@ -48,7 +52,7 @@ function printedCrop(img: HTMLImageElement, crop: number[]) {
   for (let j = 0; j < h; j++)
     for (let i = 0; i < w; i++) {
       const k = (j * w + i) * 4,
-        dist = Math.hypot(...base.map((b, c) => pixels.data[k + c] - b)),
+        dist = Math.hypot(...base.map((b, c) => mask.data[k + c] - b)),
         edge = Math.min(i, j, w - 1 - i, h - 1 - j) / 4;
       pixels.data[k + 3] = Math.round(
         pixels.data[k + 3] *
@@ -94,13 +98,27 @@ export function garmentMaterial(
         (['front', 'back'] as const).map(async (side) => {
           const spec = entry[side];
           if (!spec) return;
+          const normalize = (s: string) =>
+            s
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-');
           const source =
-            spec.sourcesByColor.find((s) => s.colorId === selected?.id) ??
-            spec.sourcesByColor[0];
+            spec.sourcesByColor.find(
+              (s) => normalize(s.colorId) === selected?.id,
+            ) ?? spec.sourcesByColor[0];
           if (!source) return;
-          const img = await load(source.localImage);
+          const maskSource =
+            spec.sourcesByColor.find(
+              (s) => normalize(s.colorId) === 'schwarz',
+            ) ?? source;
+          const [img, maskImage] = await Promise.all([
+            load(source.localImage),
+            load(maskSource.localImage),
+          ]);
           if (disposed) return;
-          const cropped = printedCrop(img, spec.crop),
+          const cropped = printedCrop(img, spec.crop, maskImage),
             p = spec.texturePlacement;
           const panelWidth = 365,
             centerX =

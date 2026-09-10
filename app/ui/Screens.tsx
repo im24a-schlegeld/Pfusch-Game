@@ -368,10 +368,10 @@ export function SettingsScreen({
             SWIPE ← → / A D <b>Dodge</b>
           </span>
           <span>
-            SWIPE ↑ / W <b>Jump</b>
+            SWIPE ↑ / W <b>Front-wheel lift</b>
           </span>
           <span>
-            HOLD / SPACE <b>Wheelie</b>
+            HOLD / S / ↓ <b>Wheelie</b>
           </span>
           <span>
             ESC / P <b>Pause</b>
@@ -379,8 +379,10 @@ export function SettingsScreen({
         </div>
         <p>
           Wheelies build score and combos. Release before the balance bar fills.
-          Close lateral dodges earn near misses. Clear striped low barriers with
-          a jump; dodge traffic. Ramps launch automatically.
+          Close lateral dodges earn near misses. Tap lift just before a low
+          striped road edge; dodge traffic. Roadwork ramps launch automatically.
+          One lane change is allowed in the air; landing restores normal
+          steering.
         </p>
       </section>
       <footer className="settings-section">

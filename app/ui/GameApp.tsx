@@ -453,15 +453,16 @@ export default function GameApp() {
               SWIPE ← → <b>Dodge traffic</b>
             </span>
             <span>
-              SWIPE ↑ <b>Jump barriers</b>
+              SWIPE ↑ <b>Lift over road edges</b>
             </span>
             <span>
               HOLD WHEELIE <b>Build your combo</b>
             </span>
           </div>
           <p className="muted">
-            Desktop: A / D to dodge, W to jump, hold Space to wheelie. Release
-            wheelie before the balance bar fills. Cars and vans need a dodge.
+            Desktop: A / D to dodge, W / ↑ to lift, hold S / ↓ to wheelie.
+            Release wheelie before the balance bar fills. Cars and vans need a
+            dodge.
           </p>
           <button
             className="button primary"

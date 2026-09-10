@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
 import { box, disposeUnique, makeTraffic, sign } from './models';
@@ -30,15 +30,26 @@ export default function SceneView({
   const frameCallback = useRef(onFrame);
   const readyCallback = useRef(onReady);
   const [error, setError] = useState('');
-  const appearance=useRef({player,products,key:''});
-  appearance.current={player,products,key:JSON.stringify([player.bike,player.paint,player.rims,player.equipped,player.variants,player.customizations])};
-  const inspection=useRef({inspectionAngle,inspectionRevision});
-  inspection.current={inspectionAngle,inspectionRevision};
-  const quality=player.settings.quality;
+  const appearance = useRef({ player, products, key: '' });
+  appearance.current = {
+    player,
+    products,
+    key: JSON.stringify([
+      player.bike,
+      player.paint,
+      player.rims,
+      player.equipped,
+      player.variants,
+      player.customizations,
+    ]),
+  };
+  const inspection = useRef({ inspectionAngle, inspectionRevision });
+  inspection.current = { inspectionAngle, inspectionRevision };
+  const quality = player.settings.quality;
   frameCallback.current = onFrame;
   readyCallback.current = onReady;
   useEffect(() => {
-    const {player,products}=appearance.current;
+    const { player, products } = appearance.current;
     const el = host.current;
     if (!el) return;
     let renderer: THREE.WebGLRenderer;
@@ -64,7 +75,13 @@ export default function SceneView({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    const studio=new RoomEnvironment();const environmentGenerator=new THREE.PMREMGenerator(renderer);const environment=environmentGenerator.fromScene(studio,.04);scene.environment=environment.texture;scene.environmentIntensity=.7;studio.dispose();environmentGenerator.dispose();
+    const studio = new RoomEnvironment();
+    const environmentGenerator = new THREE.PMREMGenerator(renderer);
+    const environment = environmentGenerator.fromScene(studio, 0.04);
+    scene.environment = environment.texture;
+    scene.environmentIntensity = 0.7;
+    studio.dispose();
+    environmentGenerator.dispose();
     scene.fog = new THREE.Fog(
       mode === 'ride' ? '#8d999b' : '#181d1f',
       mode === 'ride' ? 55 : 16,
@@ -96,17 +113,21 @@ export default function SceneView({
     fill.position.set(12, 8, -10);
     scene.add(fill);
     let bike = makeBike(player, products);
-    let vehicleKey=appearance.current.key,vehicleProducts=products;
+    let vehicleKey = appearance.current.key,
+      vehicleProducts = products;
     scene.add(bike.root);
     const scenery: THREE.Group[] = [];
     const roadMarks: THREE.Mesh[] = [];
     const traffic: THREE.Group[] = [];
     const templates = new Map<string, THREE.Group>();
-    let appliedAngle=inspection.current.inspectionAngle,appliedRevision=inspection.current.inspectionRevision;
+    let appliedAngle = inspection.current.inspectionAngle,
+      appliedRevision = inspection.current.inspectionRevision;
     let rotation = appliedAngle ?? 2.35;
     let dragging = false;
     let previousX = 0;
     let tilt = 0;
+    let landingSerial = 0,
+      landing = 0;
     if (mode === 'ride') {
       box(scene, 260, 0.15, 360, 0, -0.23, -75, '#626e65');
       box(scene, 9.6, 0.16, 340, 0, -0.09, -75, '#3b4448');
@@ -268,32 +289,58 @@ export default function SceneView({
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       clock += dt;
-      const nextAppearance=appearance.current;
-      if(nextAppearance.key!==vehicleKey||nextAppearance.products!==vehicleProducts){
-        scene.remove(bike.root);disposeVehicle(bike.root);
-        bike=makeBike(nextAppearance.player,nextAppearance.products);scene.add(bike.root);
-        vehicleKey=nextAppearance.key;vehicleProducts=nextAppearance.products;
+      const nextAppearance = appearance.current;
+      if (
+        nextAppearance.key !== vehicleKey ||
+        nextAppearance.products !== vehicleProducts
+      ) {
+        scene.remove(bike.root);
+        disposeVehicle(bike.root);
+        bike = makeBike(nextAppearance.player, nextAppearance.products);
+        scene.add(bike.root);
+        vehicleKey = nextAppearance.key;
+        vehicleProducts = nextAppearance.products;
       }
-      const command=inspection.current;
-      if(command.inspectionAngle!==appliedAngle||command.inspectionRevision!==appliedRevision){
-        appliedAngle=command.inspectionAngle;appliedRevision=command.inspectionRevision;
-        if(appliedAngle!==undefined)rotation=appliedAngle;
+      const command = inspection.current;
+      if (
+        command.inspectionAngle !== appliedAngle ||
+        command.inspectionRevision !== appliedRevision
+      ) {
+        appliedAngle = command.inspectionAngle;
+        appliedRevision = command.inspectionRevision;
+        if (appliedAngle !== undefined) rotation = appliedAngle;
       }
       if (engine && mode === 'ride') {
         engine.advance(dt);
         const moving = engine.phase === 'playing';
         const distance = engine.distance;
         bike.root.position.set(engine.x, engine.height, 0);
-        tilt += (Number(engine.wheelie) * 0.48 - tilt) * Math.min(1, dt * 9);
+        if (moving) {
+          if (engine.landingSerial !== landingSerial) {
+            landingSerial = engine.landingSerial;
+            landing = Math.min(1, engine.landingSpeed / 6.5);
+          } else landing *= Math.exp(-dt * 9);
+          const frontLift = engine.wheelie ? 1 : engine.liftTime > 0 ? .6 : 0;
+          tilt += (frontLift * 0.48 - tilt) * (1 - Math.exp(-dt * 9));
+          bike.animateRider(
+            {
+              wheelie: frontLift,
+              steer: (engine.lane * LANE - engine.x) / LANE,
+              landing,
+            },
+            dt,
+          );
+          bike.root.rotation.z = THREE.MathUtils.lerp(
+            bike.root.rotation.z,
+            (engine.lane * LANE - engine.x) * -0.09,
+            1 - Math.exp(-dt * 12),
+          );
+        }
         bike.body.rotation.x = tilt;
         bike.body.position.y =
           bike.wheelRadius * (1 - Math.cos(tilt)) +
-          bike.rearAxle * Math.sin(tilt);
-        bike.root.rotation.z = THREE.MathUtils.lerp(
-          bike.root.rotation.z,
-          (engine.lane * LANE - engine.x) * -0.09,
-          dt * 12,
-        );
+          bike.rearAxle * Math.sin(tilt) -
+          landing * 0.025;
         if (moving)
           for (const wheel of bike.wheels)
             wheel.rotation.x -= (engine.speed * dt) / 0.47;
@@ -369,6 +416,7 @@ export default function SceneView({
       el.removeEventListener('pointercancel', up);
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       disposeUnique(scene);
+      disposeSkeletons(scene);
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse((o) => {
@@ -412,8 +460,25 @@ export default function SceneView({
     </div>
   );
 }
-function disposeVehicle(root:THREE.Object3D){
- const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();
- root.traverse(o=>{if(o instanceof THREE.Mesh){geometries.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}});
- geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
+function disposeVehicle(root: THREE.Object3D) {
+  disposeSkeletons(root);
+  const geometries = new Set<THREE.BufferGeometry>(),
+    materials = new Set<THREE.Material>();
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      geometries.add(o.geometry);
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) =>
+        materials.add(m),
+      );
+    }
+  });
+  geometries.forEach((g) => g.dispose());
+  materials.forEach((m) => m.dispose());
+}
+function disposeSkeletons(root: THREE.Object3D) {
+  const skeletons = new Set<THREE.Skeleton>();
+  root.traverse((o) => {
+    if (o instanceof THREE.SkinnedMesh) skeletons.add(o.skeleton);
+  });
+  skeletons.forEach((s) => s.dispose());
 }

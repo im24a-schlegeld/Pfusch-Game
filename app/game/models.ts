@@ -90,29 +90,36 @@ export function makeTraffic(kind: string, colorIndex: number) {
       'position',
       new THREE.Float32BufferAttribute(
         [
-          -1, 0, 1.4, 1, 0, 1.4, -1, 0.65, -1.4, 1, 0, 1.4, 1, 0.65, -1.4, -1,
-          0.65, -1.4,
+          -1, 0, 1.5, 1, 0, 1.5, -1, 0.66, -1.5, 1, 0, 1.5, 1, 0.66, -1.5, -1,
+          0.66, -1.5, -1, 0, 1.5, -1, 0.66, -1.5, -1, 0, -1.5, 1, 0, 1.5, 1, 0,
+          -1.5, 1, 0.66, -1.5, -1, 0, -1.5, -1, 0.66, -1.5, 1, 0.66, -1.5, -1,
+          0, -1.5, 1, 0.66, -1.5, 1, 0, -1.5,
         ],
         3,
       ),
     );
     geometry.computeVertexNormals();
-    const ramp = new THREE.Mesh(geometry, mat('#ccda83'));
+    const ramp = new THREE.Mesh(geometry, mat('#555f60', 0.3));
     group.add(ramp);
-    box(group, 0.08, 0.07, 2.8, -0.93, 0.32, 0, '#f2f2df').rotation.x = 0.23;
-    box(group, 0.08, 0.07, 2.8, 0.93, 0.32, 0, '#f2f2df').rotation.x = 0.23;
+    for (const side of [-1, 1]) {
+      box(group, 0.08, 0.02, 3.05, side * 0.94, 0.34, 0, '#dbc896').rotation.x =
+        0.216;
+      box(group, 0.24, 0.42, 0.24, side * 1.24, 0.21, -1.8, '#d7864f');
+      box(group, 0.26, 0.07, 0.26, side * 1.24, 0.26, -1.8, '#e6e8de');
+    }
     return group;
   }
   if (kind === 'barrier') {
-    box(group, 2, 0.72, 0.7, 0, 0.36, 0, '#bba775');
+    // Exposed edge of a temporary road plate, low enough for a controlled wheel lift.
+    box(group, 2, 0.16, 0.7, 0, 0.08, 0, '#7a7464');
     for (let i = -1; i <= 1; i++) {
       const stripe = box(
         group,
         0.22,
-        0.7,
+        0.14,
         0.02,
         i * 0.57,
-        0.36,
+        0.08,
         0.36,
         '#303635',
       );
