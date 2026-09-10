@@ -179,11 +179,19 @@ export function sleeveMaterial(
     disposed = true;
     map.dispose();
   });
-  void load(`/images/artwork/racing-sleeve-${side > 0 ? 'left' : 'right'}.png`)
+  // Authoritative supplied RGBA artwork. Its alpha already separates the ink;
+  // re-extracting it from a white/black background would erase genuine details.
+  void load('/images/artwork/tribal-racing.png')
     .then((img) => {
       if (disposed) return;
-      const artwork = printedCrop(img, [0, 0, img.width, img.height]);
-      ctx.drawImage(artwork, 176, 230, 160, 250);
+      ctx.save();
+      ctx.translate(256, 350);
+      ctx.scale(side > 0 ? 1 : -1, 1);
+      // Flame toward the upper arm, checkered tail toward the cuff; outer sleeve
+      // is u=.5 for both IK-skinned sleeves, with mirrored wrap across the arm.
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -135, -43, 270, 86);
+      ctx.restore();
       map.needsUpdate = true;
     })
     .catch((error) => console.error(error));

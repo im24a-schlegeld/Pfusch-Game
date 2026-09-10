@@ -1,0 +1,10 @@
+app/game/clothShape.ts
+app/game/garmentTexture.ts
+app/game/sportGeometry.ts
+app/game/vehicle.ts
+docs/CURRENT-CHANGED-FILES.txt
+docs/CURRENT-TARGET-STATUS.md
+docs/SPORT-REFERENCE-AUDIT.md
+public/images/artwork/tribal-racing.png
+tests/browser/garment-visual.spec.ts
+tests/sport-geometry.test.ts

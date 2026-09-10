@@ -40,6 +40,15 @@ test('all nine tops render front/back with their actual product photographs', as
         .getByTestId('preview-product-image')
         .screenshot({ path: `outputs/source-${p.handle}-${side}.png` });
     }
+    if (['racing-zipper', 'keep-up-t-shirt', 'keep-up-hoodie'].includes(p.handle)) {
+      for (const angle of ['SIDE', 'FRONT ¾', 'REAR ¾']) {
+        await page.getByRole('button', { name: `Inspect ${angle}`, exact: true }).click();
+        await page.waitForTimeout(500);
+        await page.getByTestId('garage-model').screenshot({
+          path: `outputs/garment-detail-${p.handle}-${angle.replace(' ¾', '-quarter')}.png`,
+        });
+      }
+    }
     await page
       .getByRole('button', { name: 'LEAVE PREVIEW', exact: true })
       .click();
