@@ -1,3 +1,4 @@
+app/domain/config.ts
 app/game/audio.ts
 app/game/driveGeometry.ts
 app/game/engine.ts
@@ -14,8 +15,12 @@ app/globals.css
 app/ui/GameApp.tsx
 app/ui/Ride.tsx
 app/ui/Screens.tsx
+docs/CATALOG.md
 docs/CURRENT-CHANGED-FILES.txt
 docs/CURRENT-TARGET-STATUS.md
+docs/GARMENT-VISUAL-REVIEW.md
+index.html
+public/catalog/fabric-samples.json
 public/catalog/products.json
 tests/air-lane.test.ts
 tests/browser/accessory-visual.spec.ts

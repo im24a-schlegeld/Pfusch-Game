@@ -2,6 +2,8 @@
 
 Implementation follow-up, 2026-09-10: findings 1–5 below were corrected (normalized color lookup, aligned contrast mask, shorter/wider zip silhouette, longer tee sleeves, zip-hood sponsor clearance). All nine tops were then viewed front/back in the Garage beside their source photograph. The following text records the original findings. Finding 6 is partially addressed: folds, hem volume and windbreaker collar are present; photographed wash variation and finer pocket/cuff construction remain unfinished.
 
+Follow-up, 2026-09-11: photographed wash variation, fitted kangaroo/split pockets, shoulder and sleeve-hem seams are implemented and visually checked in the running Garage. Remaining construction details are the windbreaker pockets, ribbed cuffs/hem and further waist-layering pose checks. The numbered findings below remain the historical audit, not the current implementation status.
+
 Research-only review of the current `vehicle.ts`, `garmentTexture.ts`, the shop feed, and all 70 front/back photographs for 35 color appearances across nine tops. The live feed still has 16 products; page 2 is empty; the canonical product sitemap has 16 URLs. All 112 published image URLs are unchanged. The checked-in garment-textures.json exactly matches the previously verified texture-crops.json. No new print artwork or crop bounds are required.
 
 ## Corrections in the current code

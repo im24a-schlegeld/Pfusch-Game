@@ -242,11 +242,7 @@ export default function GameApp() {
             <p className="eyebrow">
               <span className="signal-dot" /> PFUSCH CLOTHING PRESENTS
             </p>
-            <h1>
-              CAN YOU
-              <br />
-              <span>KEEP UP?</span>
-            </h1>
+            <h1>PFUSCH</h1>
             <p className="intro">
               Three lanes. One wheel.
               <br />

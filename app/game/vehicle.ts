@@ -4,6 +4,7 @@ import {
   garmentMaterial,
   sleeveMaterial,
   accessoryMaterial,
+  fabricMaterial,
 } from './garmentTexture';
 import { POSES, RIDER_DIMENSIONS, type RiderPose } from './riderSkeleton';
 import { riderMotionPose, type RiderMotion } from './riderMotion';
@@ -1520,7 +1521,7 @@ function makeRider(
     p?.baseColor ??
     '#394143';
   const color = productColor(upper),
-    cloth = material(color, 0, 0.96),
+    cloth = fabricMaterial(upper, player, color),
     pants = material('#242d31', 0, 0.96),
     boot = material('#141c20', 0, 0.82),
     skin = material('#987565', 0, 0.9);

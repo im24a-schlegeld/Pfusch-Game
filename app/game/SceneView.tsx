@@ -189,7 +189,7 @@ export default function SceneView({
             box(group, 0.7, 7, 6, side * 6.2, 3.5, 0, '#505c5d');
         }
         if (i === 8 || i === 17) {
-          const board = sign('CAN YOU KEEP UP?');
+          const board = sign('PFUSCH');
           board.position.set(-10, 4, 2);
           board.rotation.y = 0.25;
           group.add(board);

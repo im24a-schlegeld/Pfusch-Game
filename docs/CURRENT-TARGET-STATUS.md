@@ -19,6 +19,11 @@ This remains a partial checkpoint of the full requested target. The authoritativ
 - All three caps retain the original hip location, with curved crown/brim directed rearward, sideways and down. Actual source artwork is integrated in their curved materials. The grey P-Zero variant uses its source charcoal grey.
 - Bag sits rearward against the torso/hip, with front and rear strap routing and its actual source graphic.
 - Hoodies now have surface-fitted kangaroo pockets; Racing/Keep Up Zippers have split pockets. Pocket vertices and UVs are sampled directly from the draped torso, preserving the original material. Subtle opening/stitch edges and dropped-shoulder/sleeve-hem seams follow the existing skinned sleeves. Garment and motion browser checks pass.
+- Fabric now uses unprinted samples from each selected product color's actual front photograph. Mirrored sample edges tile continuously; bounded luminance variation preserves the catalog base color. Wash is stronger on the Signs Hoodie and zippers, restrained on plain hoodies and the windbreaker. Torso, sleeves, hood and hem share the source-derived material; original print and number composition is applied afterward. Visually checked all nine tops front/back, both Racing sleeves, Signs wash and the 23/32/37 number textures. All catalog color previews also pass without console errors.
+
+## Branding correction
+
+The menu heading and road sign now read PFUSCH, the final rank is STREET LEGEND, and the ranking kicker is LOCAL LEADERBOARD. Browser title and Sites title are PFUSCH Street Run; generic metadata no longer contains a clothing slogan. The historical catalog brand paragraph was corrected too. Remaining phrase matches are actual product names/descriptions/artwork metadata in `public/catalog/products.json` and `garment-textures.json`, plus product-specific research/QA descriptions in `CATALOG.md`, `GARMENT-VISUAL-REVIEW.md`, `COMPLETION-PASS.md` and this checkpoint. Product-specific nighttime treatment remains open below.
 
 ## New balance gameplay
 
@@ -47,7 +52,7 @@ Current evidence includes `outputs/final-*-*.png`, `garment-*.png`, `accessory-*
 
 ## Exact remaining work, in priority order
 
-1. Clothing construction remains partial: source-derived washed fabric, windbreaker pocket seams, ribbed cuff/hem material and final waist layering through more poses. Kangaroo/split pockets and shoulder/sleeve seams are implemented and visually checked. Preserve sleeve artwork and skeleton.
+1. Clothing construction remains partial: windbreaker pocket seams, ribbed cuff/hem material and final waist layering through more poses. Source-derived washed fabric, kangaroo/split pockets and shoulder/sleeve seams are implemented and visually checked. Preserve sleeve artwork and skeleton.
 2. Finish close mechanical visual acceptance of Supermoto frame/shock/chain/brakes and Sport tank/cockpit/fairing detail; preserve corrected dimensions, axle positions and short fender.
 3. Audible realism acceptance of all three engine voices; later verify tunnel identity.
 4. Further riding pose/skill-feel QA at sustained balance, active forward correction and overrotation on all three bikes.
@@ -57,7 +62,7 @@ Current evidence includes `outputs/final-*-*.png`, `garment-*.png`, `accessory-*
 8. Continuous bridges over water, visible water on both sides, rails/body and land transitions.
 9. Day, golden hour, night and dawn variation; restrained tunnel audio connected to actual environment state.
 10. Subtle blue emissive mask from real ink only on exact Keep Up tee/hoodie/zipper in dark environments; daylight remains true to source. No floating planes.
-11. Remove unrelated global slogan uses: menu heading, road sign, final rank label, ranking kicker, browser title/description, Sites metadata and historical generic documentation. Product-specific catalog names/artwork/tests stay. Branding cleanup is not yet complete.
+11. Global branding cleanup is complete; retain it during future work. Product-specific names, artwork, catalog data and their QA documentation remain legitimate.
 12. Full visual/world/gameplay/audio QA, commands and owner-private publication after the remaining systems. Optional chase events only after required core is stable.
 13. **Added by the user on 11 September, at the bottom of the list:** a motocross helmet option and helmet color selection. Preserve immutable head scale, temporary preview and explicit Equip. Not yet implemented.
 
@@ -68,5 +73,7 @@ Typecheck, lint, 44 unit tests in eight files and production build pass for the 
 This validated source is ready for owner-private publication. The Windows Sites build helper has an established npm-shim issue; the project command `npm run build` succeeds. Packaging uses the supplied Sites helper via Git Bash with /c paths.
 
 Following the pocket/seam and shallow-visor changes: typecheck, lint, 44 unit tests and build passed. The garment, all-bike inspection (including measured visor convexity) and rider-motion browser cases passed together (2.1 minutes). Viewed hoodie and zipper fronts, tee shoulder/cuff side and helmet side/front-three-quarter; the earlier full 14-case regression remains the broader gameplay checkpoint.
+
+Final stabilization checkpoint: source-derived fabric passes the four garment, font and preview cases (2.6 minutes), including every catalog color preview. After the neutral-branding correction, typecheck, lint, all 44 unit tests and the production build pass again; the other ten browser cases pass (3.0 minutes), covering accessories, actual WebAudio output, keyboard/mobile controls, all-bike visor inspection, animated rider contacts, narrow screens, pause, crash/rewards, restart and persistence. Thus all 14 browser cases have passed for the final changes in two targeted batches. No blocking runtime errors were observed. The build retains its existing non-blocking Three.js chunk-size warning. Source and output are ready for private publication; no new world features were started during this stabilization phase.
 
 Changed-file manifest: `CURRENT-CHANGED-FILES.txt`. Earlier visual evidence is retained in `SPORT-REFERENCE-AUDIT.md` and prior checkpoint documentation.

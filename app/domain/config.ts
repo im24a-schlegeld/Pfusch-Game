@@ -48,7 +48,7 @@ export const LEVEL_NAMES = [
   'NIGHT SHIFT',
   'STREET AUTHORITY',
   'PFUSCH CREW',
-  'KEEP UP LEGEND',
+  'STREET LEGEND',
 ];
 export const DAILY_CHALLENGES: ChallengeDefinition[] = [
   {

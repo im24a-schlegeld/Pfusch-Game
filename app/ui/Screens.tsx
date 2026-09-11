@@ -248,7 +248,7 @@ export function Leaderboard({
   return (
     <main className="standard-page narrow">
       <ScreenHeading
-        kicker="CAN THEY KEEP UP?"
+        kicker="LOCAL LEADERBOARD"
         title="STREET RANKING."
         back={back}
       />

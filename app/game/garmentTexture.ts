@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
 import audit from '../../public/catalog/garment-textures.json';
+import fabricAudit from '../../public/catalog/fabric-samples.json';
 import { loadNumberFont } from './numberFont';
 type Placement = { center: number[]; width: number; height: number };
 type Side = {
@@ -11,19 +12,118 @@ type Side = {
 type Entry = { front: Side; back: Side; number?: unknown };
 const entries = audit.products as unknown as Record<string, Entry>;
 const images = new Map<string, Promise<HTMLImageElement>>();
+const fabricTiles = new Map<string, Promise<HTMLCanvasElement>>();
 function load(url: string) {
   let value = images.get(url);
   if (!value) {
     value = new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
-      img.onerror = () =>
+      img.onerror = () => {
+        images.delete(url);
         reject(new Error(`Cannot load garment artwork: ${url}`));
+      };
       img.src = url;
     });
     images.set(url, value);
   }
   return value;
+}
+async function paintFabric(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  product: Product | undefined,
+  player: Player,
+  color: string,
+) {
+  if (!product) return;
+  const spec = (
+    fabricAudit.products as Record<string, { crop: number[]; contrast: number }>
+  )[product.handle];
+  const selected =
+    product.preview?.colors.find((c) =>
+      c.variantIds.includes(player.variants[product.id]),
+    ) ?? product.preview?.colors[0];
+  const source = selected?.front?.localImage;
+  if (!spec || !source) return;
+  const key = source + ':' + color;
+  let pending = fabricTiles.get(key);
+  if (!pending) {
+    pending = load(source)
+      .then((img) => {
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = 256;
+        const paint = tile.getContext('2d')!;
+        const [x, y, w, h] = spec.crop;
+        // Mirrored edges make a continuous weave sample, without copying prints,
+        // pocket outlines or photographic background onto the garment.
+        for (const sx of [-1, 1])
+          for (const sy of [-1, 1]) {
+            paint.save();
+            paint.translate(128, 128);
+            paint.scale(sx, sy);
+            paint.drawImage(img, x, y, w, h, 0, 0, 128, 128);
+            paint.restore();
+          }
+        const pixels = paint.getImageData(0, 0, 256, 256),
+          values = pixels.data;
+        let mean = 0;
+        for (let i = 0; i < values.length; i += 4)
+          mean += (values[i] + values[i + 1] + values[i + 2]) / 3;
+        mean /= values.length / 4;
+        const hex = new THREE.Color(color).getHex(),
+          base = [hex >> 16, (hex >> 8) & 255, hex & 255];
+        for (let i = 0; i < values.length; i += 4) {
+          const luminance = (values[i] + values[i + 1] + values[i + 2]) / 3;
+          const factor = THREE.MathUtils.clamp(
+            1 + (luminance / Math.max(1, mean) - 1) * spec.contrast,
+            0.72,
+            1.28,
+          );
+          for (let c = 0; c < 3; c++)
+            values[i + c] = Math.round(base[c] * factor);
+          values[i + 3] = 255;
+        }
+        paint.putImageData(pixels, 0, 0);
+        return tile;
+      })
+      .catch((error) => {
+        fabricTiles.delete(key);
+        throw error;
+      });
+    fabricTiles.set(key, pending);
+  }
+  const tile = await pending;
+  ctx.fillStyle = ctx.createPattern(tile, 'repeat')!;
+  ctx.fillRect(0, 0, size, size);
+}
+export function fabricMaterial(
+  product: Product | undefined,
+  player: Player,
+  color: string,
+) {
+  if (!product)
+    return new THREE.MeshStandardMaterial({ color, roughness: 0.96 });
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 512, 512);
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 4;
+  const m = new THREE.MeshStandardMaterial({ map, roughness: 0.96 });
+  let disposed = false;
+  m.addEventListener('dispose', () => {
+    disposed = true;
+    map.dispose();
+  });
+  void paintFabric(ctx, 512, product, player, color)
+    .then(() => {
+      if (!disposed) map.needsUpdate = true;
+    })
+    .catch((error) => console.error(error));
+  return m;
 }
 /** Extract exact photographed ink, with the sampled fabric removed and soft edge margins. */
 function printedCrop(img: HTMLImageElement, crop: number[], maskImage = img) {
@@ -93,6 +193,9 @@ export function garmentMaterial(
       c.variantIds.includes(player.variants[product.id]),
     ) ?? product?.preview?.colors[0];
   const draw = async () => {
+    await paintFabric(ctx, 1024, product, player, color);
+    if (disposed) return;
+    texture.needsUpdate = true;
     if (entry)
       await Promise.all(
         (['front', 'back'] as const).map(async (side) => {
@@ -181,7 +284,8 @@ export function sleeveMaterial(
   });
   // Authoritative supplied RGBA artwork. Its alpha already separates the ink;
   // re-extracting it from a white/black background would erase genuine details.
-  void load('/images/artwork/tribal-racing.png')
+  void paintFabric(ctx, 512, product, player, color)
+    .then(() => load('/images/artwork/tribal-racing.png'))
     .then((img) => {
       if (disposed) return;
       ctx.save();

@@ -1,0 +1,14 @@
+{
+  "description": "Blank, unprinted fabric samples from the bundled front product photographs. Crops are x,y,width,height in the 640px source. Only luminance variation is sampled; the selected catalog base color remains authoritative.",
+  "products": {
+    "keep-up-zipper": { "crop": [211, 292, 90, 65], "contrast": 0.85 },
+    "racing-zipper": { "crop": [199, 270, 32, 88], "contrast": 0.85 },
+    "keep-up-t-shirt": { "crop": [220, 320, 170, 140], "contrast": 0.45 },
+    "streetphotographer-t-shirt-1": { "crop": [220, 320, 170, 140], "contrast": 0.45 },
+    "signs-t-shirt": { "crop": [220, 320, 170, 140], "contrast": 0.45 },
+    "keep-up-hoodie": { "crop": [220, 310, 170, 65], "contrast": 0.4 },
+    "streetphotographer-grey-logo": { "crop": [220, 310, 170, 65], "contrast": 0.4 },
+    "signs-hoodie": { "crop": [220, 310, 170, 65], "contrast": 0.85 },
+    "unisex-windbreaker": { "crop": [185, 175, 90, 100], "contrast": 0.2 }
+  }
+}
