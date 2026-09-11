@@ -2,6 +2,7 @@ app/game/audio.ts
 app/game/driveGeometry.ts
 app/game/engine.ts
 app/game/engineSound.ts
+app/game/garmentDetails.ts
 app/game/garmentTexture.ts
 app/game/models.ts
 app/game/riderMotion.ts
@@ -21,6 +22,7 @@ tests/browser/accessory-visual.spec.ts
 tests/browser/audio.spec.ts
 tests/browser/controls.spec.ts
 tests/browser/garment-visual.spec.ts
+tests/browser/inspection.spec.ts
 tests/browser/smoke.spec.ts
 tests/domain.test.ts
 tests/drive-geometry.test.ts

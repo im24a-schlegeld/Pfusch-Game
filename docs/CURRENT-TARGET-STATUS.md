@@ -6,7 +6,7 @@ This remains a partial checkpoint of the full requested target. The authoritativ
 
 - Töffli front axle moved forward 120 mm with wheel and fender together. Correct rake, existing tire size and concentric clearance retained.
 - Sport: true 17-inch rims, independent 120/70 front and 190/55 rear tire profiles, 1441 mm axle spacing, corrected fork/wheel placement and shorter concentric fender. Upper nose and side fairings share a curved boundary; distinct lower panel, belly pan and radiator. BMW internet references and dimensions: `SPORT-REFERENCE-AUDIT.md`.
-- Full-face helmet: fuller rear, reduced visor recess, shared 6.5% scale increase and slight downward orientation across all bikes.
+- Full-face helmet: fuller rear, shared 6.5% scale increase and slight downward orientation across all bikes. The visor now uses a separate shallow convex section instead of inheriting the inward-dipping shell profile. Its center sits only 2.5 mm outside the chord between its edges. The actual rendered mesh is checked for no inward dip and less than 3 mm outward crown on all three bikes.
 - Clothing: localized directional folds at armpit/hip/elbow/cuff, less inflated sleeve starts, loose short sleeves and thin layered hems over a concealed waistband. No body dimension changes.
 - Racing Zipper: exact supplied `tribal-racing.png`, SHA-256 `1700D3D4773351D7B789DD93C7B41FE8D148CD82B77C975E99595D9B3D10D9AE`. Integrated into mirrored outer-sleeve UVs. The user clarified that the required correction is reflection about the source artwork's horizontal axis (top/bottom swap), not a 180-degree turn. Restored the original lengthwise placement and applied that reflection to both sleeves. Curved sleeves, no floating artwork planes.
 - Preserved: one immutable adult skeleton, fixed-length IK, real Merriweather oldstyle 23/32/37, integrated torso artwork, persistent Garage, free locked preview and explicit Equip, no registration plates.
@@ -18,6 +18,7 @@ This remains a partial checkpoint of the full requested target. The authoritativ
 - Both motorcycles have a left-side drive with front/rear toothed sprockets, carrier/hub, external tangent chain runs and links around the sprockets. Chain instances are bounded and do not allocate per frame. A geometric regression checks tangency, closure and sprocket clearance.
 - All three caps retain the original hip location, with curved crown/brim directed rearward, sideways and down. Actual source artwork is integrated in their curved materials. The grey P-Zero variant uses its source charcoal grey.
 - Bag sits rearward against the torso/hip, with front and rear strap routing and its actual source graphic.
+- Hoodies now have surface-fitted kangaroo pockets; Racing/Keep Up Zippers have split pockets. Pocket vertices and UVs are sampled directly from the draped torso, preserving the original material. Subtle opening/stitch edges and dropped-shoulder/sleeve-hem seams follow the existing skinned sleeves. Garment and motion browser checks pass.
 
 ## New balance gameplay
 
@@ -46,7 +47,7 @@ Current evidence includes `outputs/final-*-*.png`, `garment-*.png`, `accessory-*
 
 ## Exact remaining work, in priority order
 
-1. Clothing construction remains partial: source-derived washed fabric, finer shoulder seams, hoodie/jacket pockets, cuffs and final waist layering through more poses. Preserve sleeve artwork and skeleton.
+1. Clothing construction remains partial: source-derived washed fabric, windbreaker pocket seams, ribbed cuff/hem material and final waist layering through more poses. Kangaroo/split pockets and shoulder/sleeve seams are implemented and visually checked. Preserve sleeve artwork and skeleton.
 2. Finish close mechanical visual acceptance of Supermoto frame/shock/chain/brakes and Sport tank/cockpit/fairing detail; preserve corrected dimensions, axle positions and short fender.
 3. Audible realism acceptance of all three engine voices; later verify tunnel identity.
 4. Further riding pose/skill-feel QA at sustained balance, active forward correction and overrotation on all three bikes.
@@ -65,5 +66,7 @@ Current evidence includes `outputs/final-*-*.png`, `garment-*.png`, `accessory-*
 Typecheck, lint, 44 unit tests in eight files and production build pass for the new balance implementation. The four targeted browser cases for audio, keyboard, mobile balance and rider motion passed, followed by all 14 cases in the complete browser regression (6.4 minutes). After the final horizontal-axis sleeve reflection, build/typecheck and lint passed. The garment browser regression passed for all nine tops, including an opposite-side Racing Zipper view; both arms were visually checked. Its first run encountered connection refusals during a local preview restart; the fresh run passed without console errors. Preview remains `http://127.0.0.1:5190`. Preserve polling watcher/HMR settings.
 
 This validated source is ready for owner-private publication. The Windows Sites build helper has an established npm-shim issue; the project command `npm run build` succeeds. Packaging uses the supplied Sites helper via Git Bash with /c paths.
+
+Following the pocket/seam and shallow-visor changes: typecheck, lint, 44 unit tests and build passed. The garment, all-bike inspection (including measured visor convexity) and rider-motion browser cases passed together (2.1 minutes). Viewed hoodie and zipper fronts, tee shoulder/cuff side and helmet side/front-three-quarter; the earlier full 14-case regression remains the broader gameplay checkpoint.
 
 Changed-file manifest: `CURRENT-CHANGED-FILES.txt`. Earlier visual evidence is retained in `SPORT-REFERENCE-AUDIT.md` and prior checkpoint documentation.

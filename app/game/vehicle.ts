@@ -9,6 +9,7 @@ import { POSES, RIDER_DIMENSIONS, type RiderPose } from './riderSkeleton';
 import { riderMotionPose, type RiderMotion } from './riderMotion';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
+import { addGarmentPockets, sleeveSeams } from './garmentDetails';
 import {
   SPORT_GEOMETRY,
   sportTireGeometry,
@@ -493,12 +494,21 @@ function makeHelmet(parent: THREE.Object3D, center: Point) {
                 ? THREE.MathUtils.lerp(upper, upper + 0.006, (i - 66) / 3)
                 : THREE.MathUtils.lerp(upper + 0.006, 0.154, (i - 69) / 43);
       const p = atHeight(y);
-      const visorBand =
-        THREE.MathUtils.smoothstep(p.x, -0.062, -0.033) *
-        (1 - THREE.MathUtils.smoothstep(p.x, 0.033, 0.06));
-      const recess =
-        0.0025 * visorBand * (1 - THREE.MathUtils.smoothstep(theta, 1.5, 1.8));
-      const depth = front ? p.z - recess : rearDepth(p.x);
+      // The shell profile dipped inward between chin and brow. Give the visor
+      // its own shallow convex section: only 2.5 mm outside the edge chord.
+      const visorT = THREE.MathUtils.clamp(
+        (p.x - lower) / (upper - lower),
+        0,
+        1,
+      );
+      const visorDepth =
+        THREE.MathUtils.lerp(atHeight(lower).z, atHeight(upper).z, visorT) +
+        0.0025 * 4 * visorT * (1 - visorT);
+      const depth = front
+        ? i >= 31 && i <= 66
+          ? visorDepth
+          : p.z
+        : rearDepth(p.x);
       positions.push(
         Math.sin(a) * p.y,
         p.x,
@@ -1539,6 +1549,12 @@ function makeRider(
   );
   torso.name = 'tailored-garment';
   torsoDrape(torso.geometry, hem, hoodie || zipper);
+  const stitching = material(
+    new THREE.Color(color).multiplyScalar(0.8).getStyle(),
+    0,
+    1,
+  );
+  if (hoodie) addGarmentPockets(torsoGroup, torso, zipper, stitching);
   const hemEdge = loft(
     torsoGroup,
     [
@@ -1674,6 +1690,16 @@ function makeRider(
         ),
       );
     sleeveFolds(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20, tee);
+    if (upper) {
+      const seams = sleeveSeams(
+        armMeshes[0],
+        tee ? 24 : 36,
+        tee ? 24 : 20,
+        stitching,
+      );
+      seams.forEach((seam) => rider.add(seam));
+      armMeshes.push(...seams);
+    }
     // The cuff overlaps the glove, which curls around the actual grip center.
     tube(
       rider,
