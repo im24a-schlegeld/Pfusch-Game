@@ -187,9 +187,10 @@ export function sleeveMaterial(
       ctx.save();
       ctx.translate(256, 350);
       ctx.scale(side > 0 ? 1 : -1, 1);
-      // Pointed tribal end toward the cuff, checker toward the elbow.
-      // Outer sleeve is u=.5 on both arms; preserve their mirrored wrap.
-      ctx.rotate(-Math.PI / 2);
+      // Keep the original lengthwise placement; flip the source top-to-bottom
+      // about its horizontal axis before wrapping it around either sleeve.
+      ctx.rotate(Math.PI / 2);
+      ctx.scale(1, -1);
       ctx.drawImage(img, -135, -43, 270, 86);
       ctx.restore();
       map.needsUpdate = true;
