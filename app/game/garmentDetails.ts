@@ -1,5 +1,44 @@
 import * as THREE from 'three';
 
+/** Turn the actual open garment edge inward, with no second belt-shaped shell. */
+export function foldGarmentHem(parent: THREE.Group, torso: THREE.Mesh, sides = 24) {
+  const source = torso.geometry.getAttribute('position');
+  const uv = torso.geometry.getAttribute('uv');
+  const index = torso.geometry.getIndex()!;
+  const open: number[] = [];
+  for (let i = 0; i < index.count; i += 3) {
+    const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
+    if (a <= sides && b <= sides && c <= sides) continue;
+    open.push(a, b, c);
+  }
+  torso.geometry.setIndex(open);
+  torso.geometry.computeVertexNormals();
+  const positions: number[] = [], uvs: number[] = [], indices: number[] = [];
+  for (const [inset, dy] of [[0, 0], [0.002, -0.002], [0.004, 0.009]]) {
+    for (let j = 0; j <= sides; j++) {
+      const x = source.getX(j), y = source.getY(j), z = source.getZ(j);
+      const radius = Math.hypot(x, z);
+      const scale = 1 - inset / Math.max(radius, 0.001);
+      positions.push(x * scale, y + dy, z * scale);
+      uvs.push(uv.getX(j), uv.getY(j) + Math.max(0, dy) / 0.675);
+    }
+  }
+  for (let row = 0; row < 2; row++) for (let j = 0; j < sides; j++) {
+    const a = row * (sides + 1) + j, b = a + sides + 1;
+    indices.push(a, b, a + 1, a + 1, b, b + 1);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const hem = new THREE.Mesh(geometry, torso.material);
+  hem.name = 'folded-garment-hem';
+  hem.castShadow = hem.receiveShadow = true;
+  parent.add(hem);
+  return hem;
+}
+
 /** Sewn panels sampled directly from the draped torso, including its existing UVs. */
 export function addGarmentPockets(
   parent: THREE.Group,
@@ -96,7 +135,7 @@ export function sleeveSeams(
   material: THREE.Material,
 ) {
   const position = sleeve.geometry.getAttribute('position');
-  return [0.28, 0.96].map((t, index) => {
+  return [0.96].map((t) => {
     const ring = Math.round(t * rings),
       points: THREE.Vector3[] = [];
     const center = new THREE.Vector3();
@@ -118,7 +157,7 @@ export function sleeveSeams(
       true,
     );
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = index ? 'sleeve-hem-stitch' : 'dropped-shoulder-stitch';
+    mesh.name = 'sleeve-hem-stitch';
     return mesh;
   });
 }

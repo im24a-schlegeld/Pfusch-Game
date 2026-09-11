@@ -14,6 +14,33 @@ describe('motorcycle weight and road-edge handling', () => {
   for (const bike of BIKES) {
     it(
       bike.name +
+        ': initial tug is stronger, continuous and identical for touch and keyboard',
+      () => {
+        const keyboard = ride(bike),
+          touch = ride(bike);
+        keyboard.hold(true);
+        touch.weight(1);
+        let previous = 0;
+        for (let i = 0; i < 21; i++) {
+          keyboard.advance(STEP);
+          touch.advance(STEP);
+          expect(keyboard.wheelieAngle - previous).toBeLessThan(0.04);
+          expect(touch.wheelieAngle).toBe(keyboard.wheelieAngle);
+          previous = keyboard.wheelieAngle;
+        }
+        expect(keyboard.wheelieAngle).toBeGreaterThan(0.04);
+        expect(keyboard.wheelieAngle).toBeLessThan(0.35);
+        expect(keyboard.liftPull).toBeLessThan(0.1);
+        const pulse = keyboard.liftPull;
+        keyboard.hold(false);
+        keyboard.advance(STEP);
+        keyboard.hold(true);
+        keyboard.advance(STEP);
+        expect(keyboard.liftPull).toBeLessThan(pulse);
+      },
+    );
+    it(
+      bike.name +
         ': forward weight never launches; holding throttle overrotates',
       () => {
         const e = ride(bike);
@@ -103,6 +130,22 @@ describe('motorcycle weight and road-edge handling', () => {
       before,
     );
     expect([e.wheelieHeld, e.forwardHeld]).toEqual([false, false]);
+  });
+  it('touch meters each direction without replacing a held keyboard input, and pause clears it', () => {
+    const e = ride();
+    e.weight(0.5);
+    expect([e.throttleInput, e.forwardInput]).toEqual([0.5, 0]);
+    e.hold(true);
+    e.weight(-0.4);
+    expect([e.throttleInput, e.forwardInput]).toEqual([1, 0.4]);
+    e.weight(0);
+    expect(e.throttleInput).toBe(1);
+    e.weight(-1);
+    e.pause();
+    expect([e.throttleInput, e.forwardInput, e.touchWeight]).toEqual([0, 0, 0]);
+    e.weight(1);
+    e.resume();
+    expect(e.touchWeight).toBe(0);
   });
   it('requires actual front clearance and settles a road-edge skill once', () => {
     const crashed = ride();

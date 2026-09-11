@@ -35,10 +35,13 @@ export class Engine {
   wheelie = false;
   wheelieHeld = false;
   forwardHeld = false;
+  touchWeight = 0;
   wheelieAngle = 0;
   wheelieAngularVelocity = 0;
   throttleLoad = 0;
   forwardLoad = 0;
+  liftPull = 0;
+  liftArmed = true;
   balanceQuality = 0;
   balancedSeconds = 0;
   wheelieMeters = 0;
@@ -96,6 +99,18 @@ export class Engine {
   forward(value: boolean) {
     this.forwardHeld = value && this.phase === 'playing';
   }
+  weight(value: number) {
+    this.touchWeight =
+      this.phase === 'playing' && Number.isFinite(value)
+        ? Math.max(-1, Math.min(1, value))
+        : 0;
+  }
+  get throttleInput() {
+    return Math.max(this.wheelieHeld ? 1 : 0, this.touchWeight);
+  }
+  get forwardInput() {
+    return Math.max(this.forwardHeld ? 1 : 0, -this.touchWeight);
+  }
   pause() {
     if (this.phase === 'playing') {
       this.phase = 'paused';
@@ -108,6 +123,7 @@ export class Engine {
   clearInput() {
     this.wheelieHeld = false;
     this.forwardHeld = false;
+    this.touchWeight = 0;
   }
   skill(text: string, points: number) {
     this.combo = Math.min(5, this.combo + 0.5);
@@ -192,8 +208,8 @@ export class Engine {
       this,
       this.balanceProfile,
       this.speed,
-      this.wheelieHeld && this.height === 0,
-      this.forwardHeld,
+      this.height === 0 ? this.throttleInput : 0,
+      this.forwardInput,
       dt,
     );
     if (touchdown > 0.4) {

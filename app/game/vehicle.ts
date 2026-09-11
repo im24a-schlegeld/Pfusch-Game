@@ -10,7 +10,7 @@ import { POSES, RIDER_DIMENSIONS, type RiderPose } from './riderSkeleton';
 import { riderMotionPose, type RiderMotion } from './riderMotion';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
-import { addGarmentPockets, sleeveSeams } from './garmentDetails';
+import { addGarmentPockets, foldGarmentHem, sleeveSeams } from './garmentDetails';
 import {
   SPORT_GEOMETRY,
   sportTireGeometry,
@@ -1556,18 +1556,7 @@ function makeRider(
     1,
   );
   if (hoodie) addGarmentPockets(torsoGroup, torso, zipper, stitching);
-  const hemEdge = loft(
-    torsoGroup,
-    [
-      [hem - 0.004, 0.199 * volume, 0.126 * volume, 0],
-      [hem + 0.001, 0.203 * volume, 0.13 * volume, 0],
-      [hem + 0.012, 0.203 * volume, 0.13 * volume, 0],
-      [hem + 0.026, 0.204 * volume, 0.131 * volume, 0],
-    ],
-    cloth,
-  );
-  torsoDrape(hemEdge.geometry, hem, hoodie || zipper);
-  hemEdge.name = 'folded-garment-hem';
+  foldGarmentHem(torsoGroup, torso);
   if (hoodie) {
     loft(
       torsoGroup,
@@ -1732,7 +1721,7 @@ function makeRider(
         V(knee).lerp(V(ankle), 0.5).toArray() as Point,
         ankle,
       ],
-      [0.116, 0.11, 0.092, 0.084, 0.062],
+      [0.116, 0.11, 0.092, 0.096, 0.085],
       pants,
       40,
       20,
@@ -1755,7 +1744,9 @@ function makeRider(
           p = new THREE.Vector3()
             .fromBufferAttribute(lp, k)
             .sub(c)
-            .multiplyScalar(1 + fold)
+            // Only the hidden trouser cloth at the hip narrows under the top.
+            // The thigh centerline and immutable hip joint do not move.
+            .multiplyScalar((1 + fold) * (1 - 0.3 * Math.max(0, 1 - t / 0.12) ** 2))
             .add(c);
         lp.setXYZ(k, p.x, p.y, p.z);
       }

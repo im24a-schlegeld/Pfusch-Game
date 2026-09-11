@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Pause,
-  Volume2,
-  VolumeX,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Pause, Volume2, VolumeX } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +11,7 @@ import { BIKES } from '../domain/config';
 import { Engine } from '../game/engine';
 import { GameAudio } from '../game/audio';
 import { Preview, fmt } from './shared';
+import { WeightControl } from './WeightControl';
 interface Props {
   player: Player;
   products: Product[];
@@ -132,11 +126,11 @@ export default function Ride({
   function frame(e: Engine) {
     audio.update(
       e.speed,
-      e.wheelieHeld,
+      e.throttleInput > 0,
       e.phase === 'playing',
       e.bike.id,
       0,
-      e.forwardHeld,
+      e.forwardInput > 0,
     );
     if (e.event.serial !== lastEvent.current) {
       lastEvent.current = e.event.serial;
@@ -158,7 +152,9 @@ export default function Ride({
       data-phase={engine.phase}
       data-lane={engine.lane}
       data-height={engine.height.toFixed(2)}
-      data-forward={engine.forwardHeld}
+      data-forward={engine.forwardInput > 0}
+      data-throttle-input={engine.throttleInput.toFixed(3)}
+      data-forward-input={engine.forwardInput.toFixed(3)}
       data-angle={engine.wheelieAngle.toFixed(3)}
       data-angular-velocity={engine.wheelieAngularVelocity.toFixed(3)}
       data-balance={engine.balanceQuality.toFixed(3)}
@@ -192,7 +188,6 @@ export default function Ride({
         }}
         onPointerCancel={() => {
           gesture.current = null;
-          engine.clearInput();
         }}
       />
       <div className="ride-top">
@@ -212,7 +207,13 @@ export default function Ride({
           <button
             className="icon-button"
             aria-label="Pause ride"
-            onClick={pause}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              pause();
+            }}
+            onClick={(e) => {
+              if (e.detail === 0) pause();
+            }}
           >
             <Pause />
           </button>
@@ -252,7 +253,13 @@ export default function Ride({
       )}
       {engine.elapsed < 9 && countdown === 0 && (
         <div className="ride-tip">
-          S / ↓ RAISE · W / ↑ CORRECT · SWIPE TO DODGE
+          <span className="desktop-control-tip">
+            S / ↓ RAISE · W / ↑ CORRECT
+          </span>
+          <span className="touch-control-tip">
+            HOLD WHEELIE · SLIDE UP TO CORRECT
+          </span>
+          {' · SWIPE TO DODGE'}
         </div>
       )}
       <div className="ride-controls">
@@ -276,61 +283,7 @@ export default function Ride({
             <ArrowRight />
           </button>
         </div>
-        <div className="action-controls">
-          <button
-            className={`forward-control ${engine.forwardHeld ? 'held' : ''}`}
-            aria-label="Hold forward weight"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.currentTarget.setPointerCapture(e.pointerId);
-              engine.forward(true);
-            }}
-            onPointerUp={() => engine.forward(false)}
-            onPointerCancel={() => engine.forward(false)}
-            onLostPointerCapture={() => engine.forward(false)}
-          >
-            <ArrowUp />
-            <span>FORWARD</span>
-          </button>
-          <button
-            className={`wheelie-control ${engine.wheelie ? 'held' : ''}`}
-            aria-label="Hold wheelie"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.currentTarget.setPointerCapture(e.pointerId);
-              engine.hold(true);
-            }}
-            onPointerUp={() => engine.hold(false)}
-            onPointerCancel={() => engine.hold(false)}
-            onLostPointerCapture={() => engine.hold(false)}
-          >
-            <span>WHEELIE</span>
-            <div className="balance-meter" aria-label="Wheelie angle">
-              <b
-                style={{
-                  left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
-                }}
-              />
-              <i
-                style={{
-                  width: `${(engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100}%`,
-                  background:
-                    engine.wheelieAngle >
-                    engine.balanceProfile.balancePoint + 0.12
-                      ? '#ec8b59'
-                      : undefined,
-                }}
-              />
-            </div>
-            <small>
-              {engine.wheelieAngle > engine.balanceProfile.balancePoint + 0.12
-                ? 'WEIGHT FORWARD'
-                : engine.balanceQuality > 0.35
-                  ? 'BALANCED'
-                  : 'THROTTLE / BACK'}
-            </small>
-          </button>
-        </div>
+        <WeightControl engine={engine} />
       </div>
       <Dialog
         open={engine.phase === 'paused'}
@@ -360,10 +313,12 @@ export default function Ride({
             </span>
           </div>
           <p className="muted">
-            Use short throttle inputs to raise the front. Release below the
-            balance marker; hold forward weight to catch an overrotation. Steady
-            balance earns more than holding throttle. Dodge traffic, or clear a
-            low road edge with the front already raised.
+            On touch, hold WHEELIE and slide that thumb up to reduce throttle or
+            shift forward. Slide down to raise again; release for neutral. Use
+            short throttle inputs to raise the front. Release below the balance
+            marker; hold forward weight to catch an overrotation. Steady balance
+            earns more than holding throttle. Dodge traffic, or clear a low road
+            edge with the front already raised.
           </p>
           <button
             className="button primary"

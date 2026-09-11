@@ -2,6 +2,22 @@
 
 This remains a partial checkpoint of the full requested target. The authoritative brief is `C:/Users/dario/.codex/attachments/9fe43898-1d4b-462e-872b-323d835aefc8/pasted-text.txt`. The goal stays active; do not treat a runnable checkpoint as full completion.
 
+## New highest priorities — user instruction, 11 September
+
+The additional brief `C:/Users/dario/.codex/attachments/a9eab8c1-d200-47f9-9f26-ab97f25bf53c/pasted-text.txt` is inserted ABOVE the existing work, without replacing it. Required order: (1) easier mobile controls and continuous wheelie input, (2) stronger initial pull-up then existing balance, (3) clean layered top/pants transition, (4) remove unjustified sleeve line, (5) baggier lower-leg pants, (6) relocate feedback beside HUD rather than the scene center, (7) motion for start/balance/forward correction/steering/load/landing/road, (8) desktop and multiple mobile viewport visual QA, (9) tests/build, then remaining previous target. Preserve accepted sleeve reflection, shallow visor, all fixed bone lengths and validated features.
+
+New-priority progress: the mobile buttons are now one connected, larger captured-pointer control. Holding raises; sliding up continuously reduces throttle, crosses neutral and applies forward correction; sliding down increases rearward input. Release/cancel/pause returns touch input to zero. Keyboard input remains independent, and an unrelated canceled swipe no longer releases held controls. Native Edge touch tests cover 320×568, 390×844, 820×1180 and 667×360, half-throttle, neutral, forward correction, a simultaneous second-thumb lane change and cancellation. All four layouts were visually inspected. These are emulated viewports, not physical-device acceptance.
+
+The initial lift now adds one rapidly decaying, bike-specific torque pulse from the grounded pose; angular velocity remains continuous and the existing unstable balance simulation takes over. Unit coverage proves identical keyboard/touch response, a finite early rise, no re-trigger from pumping during an existing wheelie, recovery and overrotation across all three bikes. Further dedicated rider/suspension start animation belongs to the still-open animation step.
+
+**Resume next:** finish final browser validation of this new input/pull checkpoint, then the requested top-to-pants cleanup → unjustified sleeve-line removal → baggier lower legs → feedback placement → expanded motion, in that exact order. These clothing/UI/animation corrections have NOT been implemented in this new pass. Afterwards continue the existing target below without reordering it. The last visible quota read reported primary 32% consumed and weekly 100% consumed; no reset was redeemed. The user subsequently clarified that 68% remains and instructed normal continuation. Do not stop early to deploy based on the earlier interpretation of the weekly display.
+
+## Final deployment instruction — latest user instruction
+
+When the FULL active target is complete, run typecheck, lint, full unit tests, full browser tests and production build, then verify local production preview. Inspect git status, commit all intended changes and push the existing GitHub deployment branch: current checkout `main`, origin `https://github.com/im24a-schlegeld/Pfusch-Game.git`. Update the existing Vercel project for `https://pfusch-game.vercel.app/`; do not create a new repository, branch or Vercel project. Verify the actual live app, Garage, ride, assets and console, and report commit/branch/push/deployment/live URL. The final requested deployment provider is now Vercel, superseding the earlier Sites publication route. Do not claim this final release is complete while the goal is partial. Continue automatically until the goal is complete or remaining capacity is too low to work safely.
+
+The user also authorizes the same commit → existing GitHub branch → existing Vercel → live verification sequence for a stable partial checkpoint when actual remaining usable capacity is known to be 5% or below, then stop. Above 5%, continue the existing priorities. GitHub authentication is available for `im24a-schlegeld`; the existing Vercel Git integration reports successful deployment of the prior `main` commit to project `dario-schlegels-projects/pfusch-game`. No new remote, branch or Vercel project is needed.
+
 ## Completed visual repairs, retained from c1f31cc
 
 - Töffli front axle moved forward 120 mm with wheel and fender together. Correct rake, existing tire size and concentric clearance retained.

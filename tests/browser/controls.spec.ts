@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { newPlayer } from '../../app/domain/progression';
 test.use({ hasTouch: true });
 async function start(page: Page) {
   await page.clock.install({ time: new Date('2026-09-11T10:00:00Z') });
@@ -33,6 +34,69 @@ async function settle(page: Page) {
   await page.clock.runFor(1300);
   await expect(ride).toHaveAttribute('data-angle', '0.000');
   await expect(ride).toHaveAttribute('data-height', '0.00');
+}
+
+for (const bike of ['125', '450', '701']) {
+  test(`${bike} gives a finite initial tug with keyboard and touch`, async ({
+    page,
+    context,
+  }) => {
+    const player = newPlayer();
+    player.bike = bike;
+    await page.addInitScript(
+      (p) => localStorage.setItem('pfusch:player:v1', JSON.stringify(p)),
+      player,
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await start(page);
+    const ride = page.getByTestId('ride-screen');
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.keyboard.down('s');
+    // Canceling an unrelated swipe must not release the held key.
+    await page
+      .getByLabel('Swipe left or right to dodge')
+      .dispatchEvent('pointercancel', { pointerId: 9 });
+    await page.clock.runFor(350);
+    const angle = Number(await ride.getAttribute('data-angle'));
+    expect(angle).toBeGreaterThan(0.04);
+    expect(angle).toBeLessThan(0.35);
+    await expect(ride).toHaveAttribute('data-throttle-input', '1.000');
+    await page.screenshot({ path: `outputs/initial-pull-${bike}.png` });
+    await page.keyboard.up('s');
+    await page.keyboard.down('w');
+    await settle(page);
+    await page.keyboard.up('w');
+    await page.clock.runFor(250);
+    const cdp = await context.newCDPSession(page);
+    const b = (await page
+      .getByRole('button', { name: 'Hold wheelie', exact: true })
+      .boundingBox())!;
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ id: 1, x: b.x + b.width / 2, y: b.y + b.height / 2 }],
+    });
+    await page.clock.runFor(350);
+    expect(Number(await ride.getAttribute('data-angle'))).toBeGreaterThan(0.04);
+    const pause = (await page
+      .getByRole('button', { name: 'Pause ride' })
+      .boundingBox())!;
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { id: 1, x: b.x + b.width / 2, y: b.y + b.height / 2 },
+        { id: 2, x: pause.x + pause.width / 2, y: pause.y + pause.height / 2 },
+      ],
+    });
+    await expect(ride).toHaveAttribute('data-phase', 'paused');
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+    await expect(ride).toHaveAttribute('data-phase', 'paused');
+    await expect(ride).toHaveAttribute('data-throttle-input', '0.000');
+    expect(errors).toEqual([]);
+  });
 }
 test('S and Down raise; W and Up correct; Space and upward swipe never launch', async ({
   page,
@@ -123,3 +187,83 @@ test('mobile hold, release and forward correction use the same balance state', a
   await expect(ride).toHaveAttribute('data-lane', '-1');
   await page.screenshot({ path: 'outputs/balance-mobile.png' });
 });
+
+for (const [width, height] of [
+  [320, 568],
+  [390, 844],
+  [820, 1180],
+  [667, 360],
+]) {
+  test(`one thumb meters throttle and correction at ${width}x${height}`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await start(page);
+    const ride = page.getByTestId('ride-screen');
+    const rear = (await page
+      .getByRole('button', { name: 'Hold wheelie', exact: true })
+      .boundingBox())!;
+    const front = (await page
+      .getByRole('button', { name: 'Hold forward weight', exact: true })
+      .boundingBox())!;
+    const left = (await page
+      .getByRole('button', { name: 'Dodge left', exact: true })
+      .boundingBox())!;
+    for (const b of [rear, front, left]) {
+      expect(b.width).toBeGreaterThanOrEqual(45);
+      expect(b.height).toBeGreaterThanOrEqual(44);
+      expect(b.x).toBeGreaterThanOrEqual(0);
+      expect(b.y + b.height).toBeLessThanOrEqual(height);
+      expect(b.x + b.width).toBeLessThanOrEqual(width);
+    }
+    expect(left.x + left.width).toBeLessThan(rear.x);
+    const cdp = await context.newCDPSession(page);
+    const x = rear.x + rear.width / 2,
+      y = rear.y + rear.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ id: 1, x, y }],
+    });
+    await rise(page);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ id: 1, x, y: y - 28 }],
+    });
+    await page.clock.runFor(100);
+    await expect(ride).toHaveAttribute('data-throttle-input', '0.500');
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ id: 1, x, y: y - 56 }],
+    });
+    await page.clock.runFor(100);
+    await expect(ride).toHaveAttribute('data-throttle-input', '0.000');
+    await expect(ride).toHaveAttribute('data-forward-input', '0.000');
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ id: 1, x, y: y - 112 }],
+    });
+    await page.clock.runFor(100);
+    await expect(ride).toHaveAttribute('data-forward-input', '1.000');
+    // A second thumb can still dodge while the first holds correction.
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { id: 1, x, y: y - 112 },
+        { id: 2, x: left.x + left.width / 2, y: left.y + left.height / 2 },
+      ],
+    });
+    await page.clock.runFor(100);
+    await expect(ride).toHaveAttribute('data-lane', '-1');
+    await expect(ride).toHaveAttribute('data-forward-input', '1.000');
+    await settle(page);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchCancel',
+      touchPoints: [],
+    });
+    await page.clock.runFor(100);
+    await expect(ride).toHaveAttribute('data-forward-input', '0.000');
+    await expect(ride).toHaveAttribute('data-throttle-input', '0.000');
+    await page.screenshot({ path: `outputs/controls-${width}x${height}.png` });
+  });
+}
