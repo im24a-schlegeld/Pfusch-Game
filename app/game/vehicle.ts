@@ -1,11 +1,20 @@
 import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
-import { garmentMaterial, sleeveMaterial } from './garmentTexture';
+import {
+  garmentMaterial,
+  sleeveMaterial,
+  accessoryMaterial,
+} from './garmentTexture';
 import { POSES, RIDER_DIMENSIONS, type RiderPose } from './riderSkeleton';
 import { riderMotionPose, type RiderMotion } from './riderMotion';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
-import { SPORT_GEOMETRY, sportTireGeometry } from './sportGeometry';
+import {
+  SPORT_GEOMETRY,
+  sportTireGeometry,
+  roadTireGeometry,
+} from './sportGeometry';
+import { brakeRotorGeometry, makeDrive } from './driveGeometry';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -548,8 +557,8 @@ export function makeBike(player: Player, products: Product[]) {
     sport = player.bike === '701';
   const rear = moped ? 0.55 : sport ? SPORT_GEOMETRY.rearAxle : 0.76,
     front = moped ? -0.7 : sport ? SPORT_GEOMETRY.frontAxle : -0.77,
-    radius = moped ? 0.305 : sport ? SPORT_GEOMETRY.frontRadius : 0.325,
-    rearRadius = sport ? SPORT_GEOMETRY.rearRadius : radius;
+    radius = moped ? 0.305 : sport ? SPORT_GEOMETRY.frontRadius : 0.2999,
+    rearRadius = moped ? radius : sport ? SPORT_GEOMETRY.rearRadius : 0.3119;
   const wheels: THREE.Group[] = [];
   for (const [i, z] of [front, rear].entries()) {
     const wheel = new THREE.Group();
@@ -570,13 +579,18 @@ export function makeBike(player: Player, products: Product[]) {
       wheel,
       sport
         ? sportTireGeometry(i === 1)
-        : new THREE.TorusGeometry(radius - width, width, 12, 48),
+        : moped
+          ? new THREE.TorusGeometry(radius - width, width, 12, 48)
+          : roadTireGeometry(
+              i === 0 ? radius : rearRadius,
+              i === 0 ? 0.12 : 0.16,
+            ),
       rubber,
     );
     tire.name = 'tire';
-    if (!sport) tire.rotation.y = Math.PI / 2;
-    const rimRadius = sport ? SPORT_GEOMETRY.rimRadius : radius - width * 1.85;
-    for (const x of sport ? [-width * 0.81, width * 0.81] : [0]) {
+    if (moped) tire.rotation.y = Math.PI / 2;
+    const rimRadius = moped ? radius - width * 1.85 : SPORT_GEOMETRY.rimRadius;
+    for (const x of moped ? [0] : [-width * 0.81, width * 0.81]) {
       const lip = mesh(
         wheel,
         new THREE.TorusGeometry(rimRadius, 0.007, 10, 64),
@@ -601,17 +615,16 @@ export function makeBike(player: Player, products: Product[]) {
         rim,
       );
     }
-    if (sport) {
+    if (!moped) {
       const discMaterial = alloy.clone();
       discMaterial.side = THREE.DoubleSide;
-      for (const x of i === 0 ? [-0.085, 0.085] : [0.105]) {
-        const outer = i === 0 ? 0.16 : 0.11;
-        const disc = mesh(
-          wheel,
-          new THREE.RingGeometry(outer * 0.66, outer, 64),
-          discMaterial,
-        );
-        disc.rotation.y = Math.PI / 2;
+      for (const x of i === 0
+        ? sport
+          ? [-0.085, 0.085]
+          : [-0.085]
+        : [0.105]) {
+        const outer = i === 0 ? (sport ? 0.16 : 0.155) : 0.11;
+        const disc = mesh(wheel, brakeRotorGeometry(outer), discMaterial);
         disc.position.x = x;
         for (let bolt = 0; bolt < 6; bolt++) {
           const a = (bolt * Math.PI) / 3;
@@ -634,16 +647,12 @@ export function makeBike(player: Player, products: Product[]) {
           dark,
         ).name = 'brake-caliper';
       }
-    } else if (!moped) {
-      const disk = mesh(wheel, new THREE.RingGeometry(0.075, 0.145, 32), alloy);
-      disk.rotation.y = Math.PI / 2;
-      disk.position.x = 0.072;
     }
   }
   const forkTop: Point = [
     0,
     moped ? 0.94 : sport ? SPORT_GEOMETRY.forkTopY : 1.1,
-    moped ? -0.47 : sport ? SPORT_GEOMETRY.forkTopZ : -0.51,
+    moped ? -0.47 : sport ? SPORT_GEOMETRY.forkTopZ : -0.4,
   ];
   for (const side of [-1, 1]) {
     const forkX = side * (sport ? 0.105 : 0.08);
@@ -666,7 +675,7 @@ export function makeBike(player: Player, products: Product[]) {
         sport ? 0.028 : 0.038,
         dark,
       );
-    if (!sport)
+    if (moped)
       rod(
         body,
         [side * 0.105, rearRadius, rear],
@@ -841,8 +850,8 @@ export function makeBike(player: Player, products: Product[]) {
         [
           [0.1, 0.033, 0.057, 0.5],
           [0.37, 0.037, 0.053, 0.43],
-          [0.72, 0.028, 0.034, 0.335],
-          [0.79, 0.023, 0.026, 0.325],
+          [rear - 0.04, 0.028, 0.034, rearRadius + 0.01],
+          [rear + 0.03, 0.023, 0.026, rearRadius],
         ],
         alloy,
         'z',
@@ -852,8 +861,24 @@ export function makeBike(player: Player, products: Product[]) {
       swingarm.name = 'box-section-swingarm';
       rod(
         body,
-        [s * 0.08, 0.36, -0.76],
-        [s * 0.08, 0.64, -0.655],
+        [
+          s * 0.08,
+          0.36,
+          THREE.MathUtils.lerp(
+            front,
+            forkTop[2],
+            (0.36 - radius) / (forkTop[1] - radius),
+          ),
+        ],
+        [
+          s * 0.08,
+          0.64,
+          THREE.MathUtils.lerp(
+            front,
+            forkTop[2],
+            (0.64 - radius) / (forkTop[1] - radius),
+          ),
+        ],
         0.043,
         paint,
       );
@@ -912,19 +937,6 @@ export function makeBike(player: Player, products: Product[]) {
           0.0035,
           engine,
         );
-      rod(
-        body,
-        [s * 0.077, 0.325, -0.77],
-        [s * 0.087, 0.325, -0.77],
-        0.135,
-        alloy,
-      );
-      const caliper = mesh(
-        body,
-        new THREE.BoxGeometry(0.043, 0.08, 0.047),
-        dark,
-      );
-      caliper.position.set(s * 0.085, 0.4, -0.65);
     }
     rod(body, [-0.15, 0.5, 0.12], [0.15, 0.5, 0.12], 0.05, dark);
     // Compact crankcase, cylinder and head occupy the cradle instead of floating below the tank.
@@ -1007,21 +1019,6 @@ export function makeBike(player: Player, products: Product[]) {
       100,
       8,
     ).name = 'rear-shock-spring';
-    // Drive chain lies outside the wheel, parallel to the left swingarm.
-    tube(
-      body,
-      [
-        [-0.183, 0.53, 0.12],
-        [-0.183, 0.4, 0.75],
-        [-0.183, 0.26, 0.75],
-        [-0.183, 0.43, 0.12],
-        [-0.183, 0.53, 0.12],
-      ],
-      [0.007, 0.007, 0.007, 0.007, 0.007],
-      dark,
-      36,
-      8,
-    );
     loft(
       body,
       [
@@ -1432,6 +1429,7 @@ export function makeBike(player: Player, products: Product[]) {
     );
     rearLamp.name = 'tail-light';
   }
+  if (!moped) makeDrive(body, wheels[1], 0.08, 0.49, engine);
   // One exhaust only, on the rider's right; curved header joins the engine.
   const exhaustX = moped ? 0.15 : 0.23;
   const exhaustY = moped ? 0.22 : sport ? 0.48 : 0.8;
@@ -1774,7 +1772,7 @@ function makeRider(
       [
         [-0.19, 0.53, -0.1],
         [0.05, 0.29, -0.16],
-        [0.2, 0.06, 0],
+        [0.22, 0.1, 0.075],
       ],
       [0.019, 0.019, 0.019],
       boot,
@@ -1782,17 +1780,48 @@ function makeRider(
       12,
       0.38,
     );
-    const bag = loft(
+    tube(
       torsoGroup,
       [
-        [0.09, 0.1, 0.03, -0.21],
-        [0.14, 0.14, 0.047, -0.21],
-        [0.29, 0.135, 0.042, -0.21],
-        [0.32, 0.09, 0.023, -0.21],
+        [0.22, 0.1, 0.14],
+        [0.03, 0.35, 0.17],
+        [-0.19, 0.53, 0.11],
+        [-0.19, 0.58, 0],
+        [-0.19, 0.53, -0.1],
       ],
-      material(productColor(accessory), 0, 0.93),
+      [0.019, 0.019, 0.019, 0.019, 0.019],
+      boot,
+      30,
+      12,
+      0.38,
     );
-    bag.position.x = 0.06;
+    const bag = new THREE.Group();
+    bag.name = 'carried-crossbody-bag';
+    bag.position.set(0.2, 0.115, 0.17);
+    bag.rotation.set(0.08, -Math.PI + 0.25, -0.1);
+    torsoGroup.add(bag);
+    loft(
+      bag,
+      [
+        [-0.12, 0.07, 0.026, 0],
+        [-0.1, 0.1, 0.038, 0],
+        [0.09, 0.095, 0.037, 0],
+        [0.12, 0.065, 0.025, 0],
+      ],
+      accessoryMaterial(accessory, player, productColor(accessory)),
+    );
+    tube(
+      bag,
+      [
+        [-0.083, 0.06, -0.024],
+        [0, 0.073, -0.039],
+        [0.083, 0.06, -0.024],
+      ],
+      [0.002, 0.002, 0.002],
+      boot,
+      18,
+      8,
+    );
   } else if (accessory) {
     const ring = mesh(
       pelvis,
@@ -1816,7 +1845,8 @@ function makeRider(
     const capM = material(productColor(cap), 0, 0.97),
       group = new THREE.Group();
     group.position.set(-0.225, pose.hip[1] - 0.05, pose.hip[2] + 0.1);
-    group.rotation.set(-0.8, 0, 0.3);
+    group.name = 'carried-cap';
+    group.rotation.set(0.62, Math.PI - 0.4, 0.12);
     pelvis.add(group);
     loft(
       group,
@@ -1826,25 +1856,48 @@ function makeRider(
         [0.1, 0.07, 0.065, 0],
         [0.12, 0.012, 0.013, 0],
       ],
-      capM,
+      accessoryMaterial(cap, player, productColor(cap)),
     );
-    loft(
-      group,
-      [
-        [-0.2, 0.016, 0.007, 0],
-        [-0.15, 0.101, 0.012, 0],
-        [-0.04, 0.116, 0.01, 0],
-      ],
-      capM,
-      'z',
+    const brimVertices: number[] = [],
+      brimIndices: number[] = [];
+    const rows = 14,
+      cols = 24;
+    for (let i = 0; i <= rows; i++)
+      for (let j = 0; j <= cols; j++) {
+        const t = i / rows,
+          u = (j / cols) * 2 - 1;
+        brimVertices.push(
+          u * (0.108 - 0.018 * t),
+          -0.025 * u * u - 0.014 * t,
+          -0.045 - t * (0.19 - 0.06 * u * u),
+        );
+      }
+    for (let i = 0; i < rows; i++)
+      for (let j = 0; j < cols; j++) {
+        const a = i * (cols + 1) + j,
+          b = a + cols + 1;
+        brimIndices.push(a, a + 1, b, b, a + 1, b + 1);
+      }
+    const brimGeometry = new THREE.BufferGeometry();
+    brimGeometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(brimVertices, 3),
     );
+    brimGeometry.setIndex(brimIndices);
+    capM.side = THREE.DoubleSide;
+    mesh(group, brimGeometry, capM).name = 'curved-cap-brim';
   }
   rider.userData.skeleton = RIDER_DIMENSIONS;
-  const motion: RiderMotion = { wheelie: 0, steer: 0, landing: 0 };
+  const motion: Required<RiderMotion> = {
+    wheelie: 0,
+    steer: 0,
+    landing: 0,
+    forward: 0,
+  };
   const animate = (target: RiderMotion, dt: number) => {
     const blend = 1 - Math.exp(-12 * dt);
-    for (const key of ['wheelie', 'steer', 'landing'] as const)
-      motion[key] += (target[key] - motion[key]) * blend;
+    for (const key of ['wheelie', 'steer', 'landing', 'forward'] as const)
+      motion[key] += ((target[key] ?? 0) - motion[key]) * blend;
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);

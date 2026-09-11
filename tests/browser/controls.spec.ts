@@ -1,135 +1,125 @@
 import { test, expect, type Page } from '@playwright/test';
-import { Engine, STEP } from '../../app/game/engine';
-import { BIKES } from '../../app/domain/config';
 test.use({ hasTouch: true });
-
-// Choose an ordinary seeded roadwork wave, reached through real gameplay.
-function rampRoute() {
-  for (let seed = 1; seed < 100; seed++) {
-    const engine = new Engine(BIKES[0], seed);
-    engine.start();
-    for (let i = 0; i < 120; i++) engine.advance(STEP);
-    const ramp = engine.obstacles.find((o) => o.active && o.kind === 'ramp');
-    const traffic = engine.obstacles.find((o) => o.active && o.kind !== 'ramp');
-    if (!ramp || !traffic) continue;
-    const safe = [-1, 0, 1].find((l) => l !== ramp.lane && l !== traffic.lane)!;
-    if (Math.abs(safe - ramp.lane) === 1)
-      return {
-        seed,
-        lane: ramp.lane,
-        safe,
-        distance: engine.distance + ramp.z,
-      };
-  }
-  throw Error('No seeded adjacent safe ramp route');
-}
-const route = rampRoute();
 async function start(page: Page) {
-  await page.clock.install({ time: new Date('2026-09-10T10:00:00Z') });
-  await page.clock.pauseAt(new Date('2026-09-10T10:00:01Z'));
-  await page.addInitScript((seed) => {
-    Math.random = () => seed / 0xffffffff;
-  }, route.seed);
+  await page.clock.install({ time: new Date('2026-09-11T10:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-09-11T10:00:01Z'));
+  await page.addInitScript(() => {
+    Math.random = () => 5489 / 0xffffffff;
+  });
   await page.goto('/');
   await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
   await page.getByRole('button', { name: 'GOT IT. LET’S RIDE' }).click();
   await page.locator('canvas').waitFor();
-  await page.clock.runFor(100);
-  await page.clock.runFor(2100);
+  await page.clock.runFor(2200);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',
     'playing',
   );
 }
-async function airLaneTest(page: Page, mobile: boolean) {
+async function rise(page: Page) {
   const ride = page.getByTestId('ride-screen');
-  const move = async (direction: number) => {
-    if (mobile)
-      await page
-        .getByRole('button', {
-          name: direction < 0 ? 'Dodge left' : 'Dodge right',
-          exact: true,
-        })
-        .tap();
-    else await page.keyboard.press(direction < 0 ? 'ArrowLeft' : 'ArrowRight');
-  };
-  if (route.lane !== 0) await move(route.lane);
-  while (Number(await ride.getAttribute('data-distance')) < route.distance - 3)
-    await page.clock.runFor(100);
   for (
     let i = 0;
-    i < 20 && Number(await ride.getAttribute('data-height')) === 0;
+    i < 30 && Number(await ride.getAttribute('data-angle')) < 0.3;
     i++
   )
-    await page.clock.runFor(16);
-  expect(Number(await ride.getAttribute('data-height'))).toBeGreaterThan(0);
-  const direction = route.safe - route.lane;
-  await move(direction);
-  await page.clock.runFor(80);
-  await expect(ride).toHaveAttribute('data-lane', String(route.safe));
-  await move(-direction);
-  await page.clock.runFor(80);
-  await expect(ride).toHaveAttribute('data-lane', String(route.safe));
-  expect(Number(await ride.getAttribute('data-height'))).toBeGreaterThan(0);
-  await page.clock.runFor(650);
+    await page.clock.runFor(100);
+  expect(Number(await ride.getAttribute('data-angle'))).toBeGreaterThan(0.3);
+  await expect(ride).toHaveAttribute('data-wheelie', 'true');
   await expect(ride).toHaveAttribute('data-height', '0.00');
-  await move(-direction);
-  await page.clock.runFor(80);
-  await expect(ride).toHaveAttribute('data-lane', String(route.lane));
-  await expect(ride).toHaveAttribute('data-phase', 'playing');
 }
-test('keyboard wheelie, grounded lift and exactly one steering input on a real ramp', async ({
+async function settle(page: Page) {
+  const ride = page.getByTestId('ride-screen');
+  await page.clock.runFor(1300);
+  await expect(ride).toHaveAttribute('data-angle', '0.000');
+  await expect(ride).toHaveAttribute('data-height', '0.00');
+}
+test('S and Down raise; W and Up correct; Space and upward swipe never launch', async ({
   page,
 }) => {
   await start(page);
   const ride = page.getByTestId('ride-screen');
-  for (const key of ['s', 'ArrowDown']) {
-    await page.keyboard.down(key);
-    await page.clock.runFor(100);
-    await expect(ride).toHaveAttribute('data-wheelie', 'true');
-    await page.keyboard.up(key);
-    await page.clock.runFor(100);
-    await expect(ride).toHaveAttribute('data-wheelie', 'false');
+  for (const [rear, front] of [
+    ['s', 'w'],
+    ['ArrowDown', 'ArrowUp'],
+  ]) {
+    await page.keyboard.down(rear);
+    await rise(page);
+    const raised = Number(await ride.getAttribute('data-angle'));
+    await page.keyboard.up(rear);
+    await page.keyboard.down(front);
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(100);
+        return Number(await ride.getAttribute('data-angular-velocity'));
+      })
+      .toBeLessThan(0);
+    expect(Number(await ride.getAttribute('data-angle'))).toBeLessThan(
+      raised + 0.15,
+    );
+    await settle(page);
+    await page.keyboard.up(front);
   }
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press(' ');
+  await page.keyboard.down('ArrowUp');
   await page.clock.runFor(100);
-  await expect(ride).toHaveAttribute('data-lift', 'true');
   await expect(ride).toHaveAttribute('data-height', '0.00');
-  await airLaneTest(page, false);
+  await expect(ride).toHaveAttribute('data-angle', '0.000');
+  await page.keyboard.up('ArrowUp');
+  await page.keyboard.press('ArrowLeft');
+  await page.clock.runFor(80);
+  await expect(ride).toHaveAttribute('data-lane', '-1');
+  await page.keyboard.press('ArrowRight');
+  await page.clock.runFor(80);
+  await expect(ride).toHaveAttribute('data-lane', '0');
+  await expect(
+    page.getByRole('button', { name: /jump|lift front/i }),
+  ).toHaveCount(0);
 });
-test('mobile wheelie, lift and airborne steering use the same rules', async ({
+test('mobile hold, release and forward correction use the same balance state', async ({
   page,
   context,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await context
-    .newCDPSession(page)
-    .then((cdp) =>
-      cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true }),
-    );
   await start(page);
-  const ride = page.getByTestId('ride-screen');
-  const box = (await page
-    .getByRole('button', { name: 'Hold wheelie' })
-    .boundingBox())!;
   const cdp = await context.newCDPSession(page);
+  const touch = async (name: string, down: boolean) => {
+    const b = (await page
+      .getByRole('button', { name, exact: true })
+      .boundingBox())!;
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: down ? 'touchStart' : 'touchEnd',
+      touchPoints: down
+        ? [{ x: b.x + b.width / 2, y: b.y + b.height / 2 }]
+        : [],
+    });
+  };
+  await touch('Hold wheelie', true);
+  await rise(page);
+  await touch('Hold wheelie', false);
+  await touch('Hold forward weight', true);
+  await settle(page);
+  await touch('Hold forward weight', false);
+  const ride = page.getByTestId('ride-screen');
+  await page.clock.runFor(100);
+  await expect(ride).toHaveAttribute('data-forward', 'false');
+  // Vertical ride gestures have no launch action.
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
-    touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+    touchPoints: [{ x: 190, y: 460 }],
   });
-  await page.clock.runFor(100);
-  await expect(ride).toHaveAttribute('data-wheelie', 'true');
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: 190, y: 320 }],
+  });
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchEnd',
     touchPoints: [],
   });
   await page.clock.runFor(100);
-  await expect(ride).toHaveAttribute('data-wheelie', 'false');
-  await page
-    .getByRole('button', { name: 'Lift front wheel', exact: true })
-    .tap();
-  await page.clock.runFor(100);
-  await expect(ride).toHaveAttribute('data-lift', 'true');
   await expect(ride).toHaveAttribute('data-height', '0.00');
-  await airLaneTest(page, true);
+  await page.getByRole('button', { name: 'Dodge left', exact: true }).tap();
+  await page.clock.runFor(100);
+  await expect(ride).toHaveAttribute('data-lane', '-1');
+  await page.screenshot({ path: 'outputs/balance-mobile.png' });
 });

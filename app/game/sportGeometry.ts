@@ -17,8 +17,14 @@ export const SPORT_GEOMETRY = Object.freeze({
  * A circular torus incorrectly makes wider rear tires radially thicker too. */
 export function sportTireGeometry(rear: boolean) {
   const radius = rear ? SPORT_GEOMETRY.rearRadius : SPORT_GEOMETRY.frontRadius;
-  const half =
-    (rear ? SPORT_GEOMETRY.rearWidth : SPORT_GEOMETRY.frontWidth) / 2;
+  return roadTireGeometry(
+    radius,
+    rear ? SPORT_GEOMETRY.rearWidth : SPORT_GEOMETRY.frontWidth,
+  );
+}
+
+export function roadTireGeometry(radius: number, width: number) {
+  const half = width / 2;
   const bead = SPORT_GEOMETRY.rimRadius;
   const profile = new THREE.SplineCurve([
     new THREE.Vector2(bead - 0.003, -half * 0.68),

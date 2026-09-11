@@ -22,18 +22,18 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
     '-1',
   );
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('w');
+  await page.keyboard.down('w');
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
-    'data-lift',
+    'data-forward',
     'true',
   );
-  await page.waitForTimeout(1100);
+  await page.keyboard.up('w');
   await page.keyboard.down('s');
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-wheelie',
     'true',
   );
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(200);
   await page.keyboard.up('s');
   await page.screenshot({ path: 'outputs/ride-desktop.png' });
   await page.keyboard.press('Escape');
@@ -127,10 +127,12 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
     'data-lane',
     '-1',
   );
-  await page.getByRole('button', { name: 'Lift front wheel', exact: true }).tap();
+  await page
+    .getByRole('button', { name: 'Hold forward weight', exact: true })
+    .tap();
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
-    'data-lift',
-    'true',
+    'data-height',
+    '0.00',
   );
   const cdp = await context.newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', {

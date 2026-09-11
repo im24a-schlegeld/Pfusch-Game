@@ -201,7 +201,7 @@ export default function SceneView({
         scene.add(group);
         traffic.push(group);
       }
-      for (const kind of ['car', 'van', 'barrier', 'ramp'])
+      for (const kind of ['car', 'van', 'barrier'])
         for (let color = 0; color < 4; color++)
           templates.set(`${kind}:${color}`, makeTraffic(kind, color));
     } else {
@@ -320,11 +320,15 @@ export default function SceneView({
             landingSerial = engine.landingSerial;
             landing = Math.min(1, engine.landingSpeed / 6.5);
           } else landing *= Math.exp(-dt * 9);
-          const frontLift = engine.wheelie ? 1 : engine.liftTime > 0 ? .6 : 0;
-          tilt += (frontLift * 0.48 - tilt) * (1 - Math.exp(-dt * 9));
+          const frontLift = Math.min(
+            1,
+            engine.wheelieAngle / engine.balanceProfile.balancePoint,
+          );
+          tilt = engine.wheelieAngle;
           bike.animateRider(
             {
               wheelie: frontLift,
+              forward: engine.forwardLoad,
               steer: (engine.lane * LANE - engine.x) / LANE,
               landing,
             },

@@ -453,16 +453,16 @@ export default function GameApp() {
               SWIPE ← → <b>Dodge traffic</b>
             </span>
             <span>
-              SWIPE ↑ <b>Lift over road edges</b>
+              HOLD FORWARD <b>Correct your balance</b>
             </span>
             <span>
-              HOLD WHEELIE <b>Build your combo</b>
+              WHEELIE <b>Throttle / weight back</b>
             </span>
           </div>
           <p className="muted">
-            Desktop: A / D to dodge, W / ↑ to lift, hold S / ↓ to wheelie.
-            Release wheelie before the balance bar fills. Cars and vans need a
-            dodge.
+            A / D or arrows to dodge. S / ↓ raises the front; release and use W
+            / ↑ to shift forward and recover. Holding throttle too long can flip
+            the bike. Steady balance earns more. Dodge cars and vans.
           </p>
           <button
             className="button primary"

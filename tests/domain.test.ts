@@ -131,7 +131,7 @@ describe('deterministic riding', () => {
     e.move(-1);
     e.move(-1);
     expect(e.lane).toBe(-1);
-    e.lift();
+    e.forward(true);
     e.hold(true);
     e.advance(0.1);
     e.pause();
@@ -143,14 +143,15 @@ describe('deterministic riding', () => {
   it('crashes on traffic even during a front-wheel lift', () => {
     const e = ride();
     e.spawn('van', 0, 0);
-    e.lift();
+    e.wheelieAngle = 0.4;
     e.advance(STEP);
     expect(e.phase).toBe('crashed');
   });
-  it('clears a low road edge with a timed lift while staying grounded', () => {
+  it('clears a low road edge with the front raised while staying grounded', () => {
     const e = ride();
-    e.lift();
-    for (let i = 0; i < 20; i++) e.advance(STEP);
+    e.hold(true);
+    while (e.wheelieAngle < 0.25) e.advance(STEP);
+    e.hold(false);
     e.spawn('barrier', 0, 1);
     for (let i = 0; i < 50; i++) e.advance(STEP);
     expect(e.phase).toBe('playing');
@@ -174,14 +175,14 @@ describe('deterministic riding', () => {
     for (let i = 0; i < 30; i++) far.advance(STEP);
     expect(far.nearMisses).toBe(0);
   });
-  it('ramps launch once and pools remain bounded', () => {
+  it('road events do not launch the motorcycle and pools remain bounded', () => {
     const e = ride();
-    e.spawn('ramp', 0, 0.1);
+    e.spawn('barrier', 1, 0.1);
     e.advance(STEP);
-    expect(e.height).toBeGreaterThan(0);
-    expect(e.jumps).toBe(1);
+    expect(e.height).toBe(0);
+    expect(e.jumps).toBe(0);
     for (let i = 0; i < 20; i++) e.advance(STEP);
-    expect(e.jumps).toBe(1);
+    expect(e.jumps).toBe(0);
     expect(e.obstacles).toHaveLength(32);
   });
   it('every wave leaves a reachable safe lane', () => {
@@ -189,9 +190,7 @@ describe('deterministic riding', () => {
     let previousSafe = 0;
     for (let i = 0; i < 12000; i++) {
       e.advance(STEP);
-      const wave = e.obstacles.filter(
-        (o) => o.active && o.z > 143 && o.kind !== 'ramp',
-      );
+      const wave = e.obstacles.filter((o) => o.active && o.z > 143);
       if (wave.length) {
         const occupied = new Set(wave.map((o) => o.lane));
         expect(occupied.size).toBeLessThan(3);

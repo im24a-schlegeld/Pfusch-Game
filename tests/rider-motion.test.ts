@@ -14,35 +14,44 @@ describe('animated immutable rider', () => {
     for (const base of Object.values(POSES))
       for (const wheelie of [0, 0.5, 1])
         for (const steer of [-1, 0, 1])
-          for (const landing of [0, 0.5, 1]) {
-            const p = riderMotionPose(base, { wheelie, steer, landing });
-            expect(distance(p.hip, p.shoulder)).toBeCloseTo(d.torsoLength, 10);
-            expect(
-              distance(p.limbs[0].arm.start, p.limbs[1].arm.start),
-            ).toBeCloseTo(d.shoulderHalf * 2, 10);
-            expect(
-              distance(p.limbs[0].leg.start, p.limbs[1].leg.start),
-            ).toBeCloseTo(d.hipHalf * 2, 10);
-            p.limbs.forEach(({ arm, leg }, i) => {
-              expect(distance(arm.start, arm.joint)).toBeCloseTo(
-                d.upperArm,
+          for (const landing of [0, 0.5, 1])
+            for (const forward of [0, 0.5, 1]) {
+              const p = riderMotionPose(base, {
+                wheelie,
+                steer,
+                landing,
+                forward,
+              });
+              expect(distance(p.hip, p.shoulder)).toBeCloseTo(
+                d.torsoLength,
                 10,
               );
-              expect(distance(arm.joint, arm.end)).toBeCloseTo(d.forearm, 10);
-              expect(distance(leg.start, leg.joint)).toBeCloseTo(d.thigh, 10);
-              expect(distance(leg.joint, leg.end)).toBeCloseTo(d.shin, 10);
-              expect(arm.end).toEqual([
-                (i ? 1 : -1) * base.wrist[0],
-                base.wrist[1],
-                base.wrist[2],
-              ]);
-              expect(leg.end).toEqual([
-                (i ? 1 : -1) * base.ankle[0],
-                base.ankle[1],
-                base.ankle[2],
-              ]);
-            });
-          }
+              expect(
+                distance(p.limbs[0].arm.start, p.limbs[1].arm.start),
+              ).toBeCloseTo(d.shoulderHalf * 2, 10);
+              expect(
+                distance(p.limbs[0].leg.start, p.limbs[1].leg.start),
+              ).toBeCloseTo(d.hipHalf * 2, 10);
+              p.limbs.forEach(({ arm, leg }, i) => {
+                expect(distance(arm.start, arm.joint)).toBeCloseTo(
+                  d.upperArm,
+                  10,
+                );
+                expect(distance(arm.joint, arm.end)).toBeCloseTo(d.forearm, 10);
+                expect(distance(leg.start, leg.joint)).toBeCloseTo(d.thigh, 10);
+                expect(distance(leg.joint, leg.end)).toBeCloseTo(d.shin, 10);
+                expect(arm.end).toEqual([
+                  (i ? 1 : -1) * base.wrist[0],
+                  base.wrist[1],
+                  base.wrist[2],
+                ]);
+                expect(leg.end).toEqual([
+                  (i ? 1 : -1) * base.ankle[0],
+                  base.ankle[1],
+                  base.ankle[2],
+                ]);
+              });
+            }
   });
   it('skins curved meshes without moving their rest pose or stretching endpoint contacts', () => {
     const parent = new THREE.Group();

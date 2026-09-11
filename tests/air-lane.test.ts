@@ -9,7 +9,9 @@ describe('one accepted lane change per flight', () => {
       e.move(-1);
       e.move(1);
       expect(e.lane).toBe(0);
-      e.spawn('ramp', 0, 0.1);
+      // External physical flight fixture; there is no player launch action.
+      e.height = 0.3;
+      e.velocityY = 2;
       e.advance(STEP);
       e.move(1);
       expect(e.lane).toBe(1);
@@ -20,11 +22,11 @@ describe('one accepted lane change per flight', () => {
       e.resume();
       e.move(-1);
       expect(e.lane).toBe(1);
-      e.lift();
-      e.spawn('ramp', 0, 0.1);
+      e.forward(true);
+      e.hold(true);
       e.advance(STEP);
       expect(e.airLaneChangeUsed).toBe(true);
-      expect(e.jumps).toBe(1);
+      expect(e.height).toBeGreaterThan(0);
       e.height = 0.04;
       e.velocityY = -2;
       e.move(-1);
@@ -42,7 +44,8 @@ describe('one accepted lane change per flight', () => {
     e.start();
     e.move(-1);
     e.x = -LANE;
-    e.spawn('ramp', -1, 0.1);
+    e.height = 0.3;
+    e.velocityY = 2;
     e.advance(STEP);
     e.move(-1);
     expect(e.airLaneChangeUsed).toBe(false);

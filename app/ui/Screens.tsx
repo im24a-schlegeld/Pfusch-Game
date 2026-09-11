@@ -368,21 +368,21 @@ export function SettingsScreen({
             SWIPE ← → / A D <b>Dodge</b>
           </span>
           <span>
-            SWIPE ↑ / W <b>Front-wheel lift</b>
+            HOLD FORWARD / W / ↑ <b>Weight forward / correct</b>
           </span>
           <span>
-            HOLD / S / ↓ <b>Wheelie</b>
+            WHEELIE / S / ↓ <b>Throttle / weight back</b>
           </span>
           <span>
             ESC / P <b>Pause</b>
           </span>
         </div>
         <p>
-          Wheelies build score and combos. Release before the balance bar fills.
-          Close lateral dodges earn near misses. Tap lift just before a low
-          striped road edge; dodge traffic. Roadwork ramps launch automatically.
-          One lane change is allowed in the air; landing restores normal
-          steering.
+          Raise the front with short throttle inputs. Release below the balance
+          marker and hold forward weight to recover. Holding throttle too long
+          can overrotate the bike. Steady balance, duration and speed build
+          score. Close lateral dodges earn near misses. Dodge traffic or clear a
+          low road edge with the front already raised.
         </p>
       </section>
       <footer className="settings-section">

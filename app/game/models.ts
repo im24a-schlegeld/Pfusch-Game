@@ -84,31 +84,6 @@ export function makeTraffic(kind: string, colorIndex: number) {
   const group = new THREE.Group();
   const colors = ['#526065', '#b8b9ad', '#895c50', '#677762'];
   const color = colors[colorIndex % 4];
-  if (kind === 'ramp') {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(
-        [
-          -1, 0, 1.5, 1, 0, 1.5, -1, 0.66, -1.5, 1, 0, 1.5, 1, 0.66, -1.5, -1,
-          0.66, -1.5, -1, 0, 1.5, -1, 0.66, -1.5, -1, 0, -1.5, 1, 0, 1.5, 1, 0,
-          -1.5, 1, 0.66, -1.5, -1, 0, -1.5, -1, 0.66, -1.5, 1, 0.66, -1.5, -1,
-          0, -1.5, 1, 0.66, -1.5, 1, 0, -1.5,
-        ],
-        3,
-      ),
-    );
-    geometry.computeVertexNormals();
-    const ramp = new THREE.Mesh(geometry, mat('#555f60', 0.3));
-    group.add(ramp);
-    for (const side of [-1, 1]) {
-      box(group, 0.08, 0.02, 3.05, side * 0.94, 0.34, 0, '#dbc896').rotation.x =
-        0.216;
-      box(group, 0.24, 0.42, 0.24, side * 1.24, 0.21, -1.8, '#d7864f');
-      box(group, 0.26, 0.07, 0.26, side * 1.24, 0.26, -1.8, '#e6e8de');
-    }
-    return group;
-  }
   if (kind === 'barrier') {
     // Exposed edge of a temporary road plate, low enough for a controlled wheel lift.
     box(group, 2, 0.16, 0.7, 0, 0.08, 0, '#7a7464');

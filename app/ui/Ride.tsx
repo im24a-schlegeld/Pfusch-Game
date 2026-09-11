@@ -100,11 +100,14 @@ export default function Ride({
       }
       if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') engine.move(-1);
       if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') engine.move(1);
-      if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') engine.lift();
+      if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w')
+        engine.forward(true);
       if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's')
         engine.hold(true);
     };
     const keyup = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w')
+        engine.forward(false);
       if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's')
         engine.hold(false);
     };
@@ -127,7 +130,14 @@ export default function Ride({
     };
   }, [engine, audio]);
   function frame(e: Engine) {
-    audio.update(e.speed, e.wheelie, e.phase === 'playing');
+    audio.update(
+      e.speed,
+      e.wheelieHeld,
+      e.phase === 'playing',
+      e.bike.id,
+      0,
+      e.forwardHeld,
+    );
     if (e.event.serial !== lastEvent.current) {
       lastEvent.current = e.event.serial;
       eventTime.current = performance.now();
@@ -148,7 +158,10 @@ export default function Ride({
       data-phase={engine.phase}
       data-lane={engine.lane}
       data-height={engine.height.toFixed(2)}
-      data-lift={engine.liftTime > 0}
+      data-forward={engine.forwardHeld}
+      data-angle={engine.wheelieAngle.toFixed(3)}
+      data-angular-velocity={engine.wheelieAngularVelocity.toFixed(3)}
+      data-balance={engine.balanceQuality.toFixed(3)}
       data-distance={engine.distance.toFixed(2)}
       data-wheelie={engine.wheelie}
       data-frame={tick}
@@ -163,7 +176,7 @@ export default function Ride({
       />
       <div
         className="gesture-zone"
-        aria-label="Swipe left or right to dodge, swipe up to lift the front wheel"
+        aria-label="Swipe left or right to dodge"
         onPointerDown={(e) => {
           gesture.current = { x: e.clientX, y: e.clientY };
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -176,7 +189,6 @@ export default function Ride({
             dy = e.clientY - start.y;
           if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
           if (Math.abs(dx) > Math.abs(dy)) engine.move(dx < 0 ? -1 : 1);
-          else if (dy < 0) engine.lift();
         }}
         onPointerCancel={() => {
           gesture.current = null;
@@ -235,11 +247,13 @@ export default function Ride({
         <div className="countdown">
           <p className="eyebrow">MAKE IT YOUR LINE</p>
           <strong>{ready ? countdown : '…'}</strong>
-          <p>Dodge traffic. Lift over low road edges.</p>
+          <p>Dodge traffic. Balance the front wheel.</p>
         </div>
       )}
       {engine.elapsed < 9 && countdown === 0 && (
-        <div className="ride-tip">SWIPE TO DODGE · ↑ LIFT · S / ↓ WHEELIE</div>
+        <div className="ride-tip">
+          S / ↓ RAISE · W / ↑ CORRECT · SWIPE TO DODGE
+        </div>
       )}
       <div className="ride-controls">
         <div className="steer-controls">
@@ -264,15 +278,19 @@ export default function Ride({
         </div>
         <div className="action-controls">
           <button
-            className="jump-control"
-            aria-label="Lift front wheel"
+            className={`forward-control ${engine.forwardHeld ? 'held' : ''}`}
+            aria-label="Hold forward weight"
             onPointerDown={(e) => {
               e.preventDefault();
-              engine.lift();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              engine.forward(true);
             }}
+            onPointerUp={() => engine.forward(false)}
+            onPointerCancel={() => engine.forward(false)}
+            onLostPointerCapture={() => engine.forward(false)}
           >
             <ArrowUp />
-            <span>LIFT</span>
+            <span>FORWARD</span>
           </button>
           <button
             className={`wheelie-control ${engine.wheelie ? 'held' : ''}`}
@@ -287,16 +305,29 @@ export default function Ride({
             onLostPointerCapture={() => engine.hold(false)}
           >
             <span>WHEELIE</span>
-            <div className="heat">
+            <div className="balance-meter" aria-label="Wheelie angle">
+              <b
+                style={{
+                  left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
+                }}
+              />
               <i
                 style={{
-                  width: `${engine.wheelieHeat * 100}%`,
-                  background: engine.wheelieHeat > 0.75 ? '#ec8b59' : undefined,
+                  width: `${(engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100}%`,
+                  background:
+                    engine.wheelieAngle >
+                    engine.balanceProfile.balancePoint + 0.12
+                      ? '#ec8b59'
+                      : undefined,
                 }}
               />
             </div>
             <small>
-              {engine.wheelieHeat > 0.75 ? 'RELEASE TO COOL' : 'HOLD'}
+              {engine.wheelieAngle > engine.balanceProfile.balancePoint + 0.12
+                ? 'WEIGHT FORWARD'
+                : engine.balanceQuality > 0.35
+                  ? 'BALANCED'
+                  : 'THROTTLE / BACK'}
             </small>
           </button>
         </div>
@@ -319,20 +350,20 @@ export default function Ride({
               ← → / A D <b>Dodge</b>
             </span>
             <span>
-              ↑ / W <b>Front-wheel lift</b>
+              ↑ / W <b>Weight forward / correct</b>
             </span>
             <span>
-              ↓ / S <b>Hold wheelie</b>
+              ↓ / S <b>Throttle / weight back</b>
             </span>
             <span>
               ESC / P <b>Pause</b>
             </span>
           </div>
           <p className="muted">
-            Tap lift just before a low striped road edge. Dodge cars and vans.
-            Roadwork ramps launch automatically: one lane change in the air,
-            then normal steering on landing. Release wheelie before the balance
-            bar fills.
+            Use short throttle inputs to raise the front. Release below the
+            balance marker; hold forward weight to catch an overrotation. Steady
+            balance earns more than holding throttle. Dodge traffic, or clear a
+            low road edge with the front already raised.
           </p>
           <button
             className="button primary"

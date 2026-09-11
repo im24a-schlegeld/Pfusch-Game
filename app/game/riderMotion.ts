@@ -10,6 +10,7 @@ export interface RiderMotion {
   wheelie: number;
   steer: number;
   landing: number;
+  forward?: number;
 }
 export interface LimbPose {
   start: Point;
@@ -24,12 +25,14 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
   const wheelie = Math.max(0, Math.min(1, motion.wheelie));
   const steer = Math.max(-1, Math.min(1, motion.steer));
   const landing = Math.max(0, Math.min(1, motion.landing));
+  const forward = Math.max(0, Math.min(1, motion.forward ?? 0));
   const hip: Point = [
     base.hip[0] + 0.015 * steer,
     base.hip[1] - 0.015 * landing,
-    base.hip[2] + 0.035 * wheelie,
+    base.hip[2] + 0.035 * wheelie - 0.025 * forward,
   ];
-  const lean = base.torsoLean + 0.06 * wheelie + 0.04 * landing;
+  const lean =
+    base.torsoLean + 0.06 * wheelie + 0.04 * landing + 0.09 * forward;
   const roll = -0.03 * steer;
   const orientation = new Quaternion().setFromEuler(new Euler(-lean, 0, roll));
   const onTorso = (p: Point) =>

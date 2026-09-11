@@ -1,8 +1,9 @@
 import type { Bike, RunStats } from '../domain/types';
 import { roadSection } from './roadSections';
+import { BALANCE, advanceBalance, balanceAccuracy } from './wheelie';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
-export type ObstacleKind = 'car' | 'van' | 'barrier' | 'ramp';
+export type ObstacleKind = 'car' | 'van' | 'barrier';
 export interface Obstacle {
   active: boolean;
   kind: ObstacleKind;
@@ -31,12 +32,15 @@ export class Engine {
   airLaneChangeUsed = false;
   landingSerial = 0;
   landingSpeed = 0;
-  liftTime = 0;
-  liftCooldown = 0;
   wheelie = false;
   wheelieHeld = false;
-  wheelieHeat = 0;
-  wheelieLock = 0;
+  forwardHeld = false;
+  wheelieAngle = 0;
+  wheelieAngularVelocity = 0;
+  throttleLoad = 0;
+  forwardLoad = 0;
+  balanceQuality = 0;
+  balancedSeconds = 0;
   wheelieMeters = 0;
   combo = 1;
   bestCombo = 1;
@@ -59,7 +63,6 @@ export class Engine {
   private spawnIn = 40;
   private nextSafe = 0;
   private wheelieChain = 0;
-  private jumpRewarded = false;
   private accumulator = 0;
   private id: string;
   constructor(
@@ -84,31 +87,14 @@ export class Engine {
     this.lane = next;
     if (airborne) this.airLaneChangeUsed = true;
   }
-  lift() {
-    if (
-      this.phase !== 'playing' ||
-      this.height > 0 ||
-      this.velocityY !== 0 ||
-      this.liftCooldown > 0
-    )
-      return;
-    this.liftTime = 0.5;
-    this.liftCooldown = 0.85;
-  }
-  private launchFromRamp() {
-    if (this.phase !== 'playing' || this.height > 0 || this.velocityY !== 0)
-      return;
-    // Only a roadwork wedge launches the motorcycle; button input stays grounded.
-    this.velocityY = Math.min(6.5, this.speed * 0.22);
-    this.height = 0.01;
-    this.wheelie = false;
-    this.jumps++;
-    this.jumpRewarded = false;
-    this.liftTime = 0;
-    this.skill('ROAD CREST', 60);
+  get balanceProfile() {
+    return BALANCE[this.bike.id] ?? BALANCE['450'];
   }
   hold(value: boolean) {
-    this.wheelieHeld = value;
+    this.wheelieHeld = value && this.phase === 'playing';
+  }
+  forward(value: boolean) {
+    this.forwardHeld = value && this.phase === 'playing';
   }
   pause() {
     if (this.phase === 'playing') {
@@ -121,7 +107,7 @@ export class Engine {
   }
   clearInput() {
     this.wheelieHeld = false;
-    this.wheelie = false;
+    this.forwardHeld = false;
   }
   skill(text: string, points: number) {
     this.combo = Math.min(5, this.combo + 0.5);
@@ -161,8 +147,6 @@ export class Engine {
             : 'van';
       this.spawn(kind, candidates[i], 145);
     }
-    if (count === 1 && section === 'industrial' && this.random() < 0.6)
-      this.spawn('ramp', candidates[1], 145);
     this.spawnIn = Math.max(54, 78 - this.elapsed * 0.22);
   }
   spawn(kind: ObstacleKind, lane: number, z: number) {
@@ -181,8 +165,6 @@ export class Engine {
     return o;
   }
   private tick(dt: number) {
-    this.liftTime = Math.max(0, this.liftTime - dt);
-    this.liftCooldown = Math.max(0, this.liftCooldown - dt);
     this.elapsed += dt;
     this.speed = Math.min(
       this.bike.maxSpeed,
@@ -206,32 +188,49 @@ export class Engine {
         this.airLaneChangeUsed = false;
       }
     }
-    this.wheelieLock = Math.max(0, this.wheelieLock - dt);
-    this.wheelie =
-      this.wheelieHeld && this.height === 0 && this.wheelieLock === 0;
+    const touchdown = advanceBalance(
+      this,
+      this.balanceProfile,
+      this.speed,
+      this.wheelieHeld && this.height === 0,
+      this.forwardHeld,
+      dt,
+    );
+    if (touchdown > 0.4) {
+      this.landingSerial++;
+      this.landingSpeed = touchdown * 2;
+    }
+    if (this.wheelieAngle >= this.balanceProfile.crashAngle) {
+      this.crash('Overrotated the wheelie');
+      return;
+    }
+    this.wheelie = this.wheelieAngle > 0.12 && this.height === 0;
+    this.balanceQuality = this.wheelie
+      ? balanceAccuracy(this, this.balanceProfile)
+      : 0;
     if (this.wheelie) {
       this.wheelieMeters += travel;
-      this.wheelieChain += travel;
-      this.score += travel * 1.8 * this.combo;
-      this.wheelieHeat += dt / (4.5 * this.bike.stability);
-      if (this.wheelieChain >= 28) {
-        this.wheelieChain -= 28;
-        this.skill('ONE WHEEL', 35);
-      }
-      if (this.wheelieHeat >= 1) {
-        this.wheelie = false;
-        this.wheelieLock = 1.3;
-        this.wheelieHeat = 0.6;
-        this.combo = 1;
-        this.event = {
-          text: 'SETTLE IT · RELEASE WHEELIE',
-          kind: 'warning',
-          serial: this.event.serial + 1,
-        };
+      this.balancedSeconds += dt * this.balanceQuality;
+      this.wheelieChain += travel * this.balanceQuality;
+      const durationBonus = 1 + Math.min(1, this.balancedSeconds / 6);
+      const risk =
+        1 +
+        Math.max(0, this.wheelieAngle - this.balanceProfile.balancePoint) * 2;
+      this.score +=
+        travel *
+        4 *
+        this.balanceQuality *
+        durationBonus *
+        (this.speed / 22) *
+        risk *
+        this.combo;
+      if (this.wheelieChain >= 20) {
+        this.wheelieChain -= 20;
+        this.skill('BALANCED', 45);
       }
     } else {
-      this.wheelieHeat = Math.max(0, this.wheelieHeat - dt * 0.65);
       this.wheelieChain = 0;
+      this.balancedSeconds = 0;
     }
     this.comboTime -= dt;
     if (this.comboTime <= 0) this.combo = 1;
@@ -243,22 +242,14 @@ export class Engine {
       o.z -= travel;
       const dx = Math.abs(this.x - o.lane * LANE);
       const length = o.kind === 'van' ? 3.3 : o.kind === 'car' ? 3 : 1.6;
-      if (o.kind === 'ramp') {
-        if (!o.passed && prev >= 0 && o.z <= 0) {
-          o.passed = true;
-          if (dx < 0.95) this.launchFromRamp();
-        }
-      } else {
+      {
         const overlap = o.z < length && prev > -length;
         const top =
           o.kind === 'barrier' ? 0.16 : o.kind === 'van' ? 2.55 : 2.05;
         if (overlap && this.height < top) {
           const gap = dx - (o.kind === 'barrier' ? 1.12 : 1.16);
           if (gap < 0) {
-            if (
-              o.kind === 'barrier' &&
-              (o.cleared || this.liftTime > 0 || this.wheelie)
-            )
+            if (o.kind === 'barrier' && (o.cleared || this.wheelieAngle > 0.17))
               o.cleared = true;
             else {
               this.crash(
@@ -277,9 +268,6 @@ export class Engine {
           else if (o.closest < 0.6) {
             this.nearMisses++;
             this.skill('NEAR MISS', 150);
-          } else if (dx < 1.1 && this.height > 0.6 && !this.jumpRewarded) {
-            this.jumpRewarded = true;
-            this.skill('CLEAN CLEAR', 90);
           }
         }
       }

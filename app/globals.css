@@ -1688,7 +1688,7 @@ p {
 .ride-controls button:active {
   background: #536e4b;
 }
-.action-controls .jump-control {
+.action-controls .forward-control {
   flex-direction: column;
   gap: 4px;
   width: 68px;
@@ -1718,12 +1718,21 @@ p {
   font-weight: 700;
   letter-spacing: 0.08em;
 }
-.heat {
+.balance-meter {
+  position: relative;
   height: 4px;
   width: 75%;
   background: #657749;
 }
-.heat i {
+.balance-meter b {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 10px;
+  background: #142216;
+  z-index: 1;
+}
+.balance-meter i {
   display: block;
   height: 100%;
   background: #273925;
@@ -2347,7 +2356,7 @@ p {
   .action-controls {
     gap: 7px;
   }
-  .action-controls .jump-control {
+  .action-controls .forward-control {
     min-width: 48px;
     width: 48px;
     height: 70px;

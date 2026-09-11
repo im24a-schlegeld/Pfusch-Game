@@ -197,3 +197,75 @@ export function sleeveMaterial(
     .catch((error) => console.error(error));
   return m;
 }
+
+/** Exact photographed embroidery/ink composited into the curved accessory's UVs. */
+export function accessoryMaterial(
+  product: Product,
+  player: Player,
+  color: string,
+) {
+  const designs: Record<
+    string,
+    { crop: number[]; width: number; height: number; y: number }
+  > = {
+    'p-zero-cap': {
+      crop: [157, 226, 330, 87],
+      width: 240,
+      height: 280,
+      y: 560,
+    },
+    'logo-cap-1': {
+      crop: [185, 180, 236, 153],
+      width: 215,
+      height: 580,
+      y: 530,
+    },
+    'pfusch-logo-cap': {
+      crop: [244, 241, 146, 84],
+      width: 185,
+      height: 380,
+      y: 555,
+    },
+    'logo-crossbody-tasche': {
+      crop: [199, 334, 162, 96],
+      width: 225,
+      height: 350,
+      y: 650,
+    },
+  };
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1024;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 1024, 1024);
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 4;
+  const material = new THREE.MeshStandardMaterial({ map, roughness: 0.96 });
+  let disposed = false;
+  material.addEventListener('dispose', () => {
+    disposed = true;
+    map.dispose();
+  });
+  const selected =
+    product.preview?.colors.find((c) =>
+      c.variantIds.includes(player.variants[product.id]),
+    ) ?? product.preview?.colors[0];
+  const source = selected?.front?.localImage,
+    design = designs[product.handle];
+  if (source && design)
+    void load(source)
+      .then((img) => {
+        if (disposed) return;
+        ctx.drawImage(
+          printedCrop(img, design.crop),
+          768 - design.width / 2,
+          design.y - design.height / 2,
+          design.width,
+          design.height,
+        );
+        map.needsUpdate = true;
+      })
+      .catch((error) => console.error(error));
+  return material;
+}
