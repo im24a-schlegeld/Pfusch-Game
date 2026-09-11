@@ -40,14 +40,34 @@ test('all nine tops render front/back with their actual product photographs', as
         .getByTestId('preview-product-image')
         .screenshot({ path: `outputs/source-${p.handle}-${side}.png` });
     }
-    if (['racing-zipper', 'keep-up-t-shirt', 'keep-up-hoodie'].includes(p.handle)) {
+    if (
+      ['racing-zipper', 'keep-up-t-shirt', 'keep-up-hoodie'].includes(p.handle)
+    ) {
       for (const angle of ['SIDE', 'FRONT ¾', 'REAR ¾']) {
-        await page.getByRole('button', { name: `Inspect ${angle}`, exact: true }).click();
+        await page
+          .getByRole('button', { name: `Inspect ${angle}`, exact: true })
+          .click();
         await page.waitForTimeout(500);
         await page.getByTestId('garage-model').screenshot({
           path: `outputs/garment-detail-${p.handle}-${angle.replace(' ¾', '-quarter')}.png`,
         });
       }
+    }
+    if (p.handle === 'racing-zipper') {
+      await page
+        .getByRole('button', { name: 'Inspect SIDE', exact: true })
+        .click();
+      const bounds = (await page.locator('canvas').boundingBox())!;
+      const x = bounds.x + bounds.width * 0.2,
+        y = bounds.y + bounds.height * 0.45;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + Math.PI / 0.009, y, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+      await page.getByTestId('garage-model').screenshot({
+        path: 'outputs/garment-detail-racing-zipper-OPPOSITE-SIDE.png',
+      });
     }
     await page
       .getByRole('button', { name: 'LEAVE PREVIEW', exact: true })

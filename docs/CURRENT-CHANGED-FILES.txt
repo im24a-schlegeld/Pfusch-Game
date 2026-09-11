@@ -20,6 +20,7 @@ tests/air-lane.test.ts
 tests/browser/accessory-visual.spec.ts
 tests/browser/audio.spec.ts
 tests/browser/controls.spec.ts
+tests/browser/garment-visual.spec.ts
 tests/browser/smoke.spec.ts
 tests/domain.test.ts
 tests/drive-geometry.test.ts

@@ -187,9 +187,9 @@ export function sleeveMaterial(
       ctx.save();
       ctx.translate(256, 350);
       ctx.scale(side > 0 ? 1 : -1, 1);
-      // Flame toward the upper arm, checkered tail toward the cuff; outer sleeve
-      // is u=.5 for both IK-skinned sleeves, with mirrored wrap across the arm.
-      ctx.rotate(Math.PI / 2);
+      // Pointed tribal end toward the cuff, checker toward the elbow.
+      // Outer sleeve is u=.5 on both arms; preserve their mirrored wrap.
+      ctx.rotate(-Math.PI / 2);
       ctx.drawImage(img, -135, -43, 270, 86);
       ctx.restore();
       map.needsUpdate = true;

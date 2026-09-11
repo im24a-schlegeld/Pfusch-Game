@@ -8,7 +8,7 @@ This remains a partial checkpoint of the full requested target. The authoritativ
 - Sport: true 17-inch rims, independent 120/70 front and 190/55 rear tire profiles, 1441 mm axle spacing, corrected fork/wheel placement and shorter concentric fender. Upper nose and side fairings share a curved boundary; distinct lower panel, belly pan and radiator. BMW internet references and dimensions: `SPORT-REFERENCE-AUDIT.md`.
 - Full-face helmet: fuller rear, reduced visor recess, shared 6.5% scale increase and slight downward orientation across all bikes.
 - Clothing: localized directional folds at armpit/hip/elbow/cuff, less inflated sleeve starts, loose short sleeves and thin layered hems over a concealed waistband. No body dimension changes.
-- Racing Zipper: exact supplied `tribal-racing.png`, SHA-256 `1700D3D4773351D7B789DD93C7B41FE8D148CD82B77C975E99595D9B3D10D9AE`. Integrated into mirrored outer-sleeve UVs, flame toward upper arm/elbow and checker toward cuff. Curved sleeves, no floating artwork planes.
+- Racing Zipper: exact supplied `tribal-racing.png`, SHA-256 `1700D3D4773351D7B789DD93C7B41FE8D148CD82B77C975E99595D9B3D10D9AE`. Integrated into mirrored outer-sleeve UVs. The user identified the previous lengthwise orientation as upside down; corrected both sleeves by 180 degrees so the pointed tribal end faces the cuff and the checker faces the elbow. Curved sleeves, no floating artwork planes.
 - Preserved: one immutable adult skeleton, fixed-length IK, real Merriweather oldstyle 23/32/37, integrated torso artwork, persistent Garage, free locked preview and explicit Equip, no registration plates.
 
 ## New mechanical and accessory work
@@ -62,7 +62,7 @@ Current evidence includes `outputs/final-*-*.png`, `garment-*.png`, `accessory-*
 
 ## Validation state
 
-Typecheck, lint, 44 unit tests in eight files and production build pass for the new balance implementation. The four targeted browser cases for audio, keyboard, mobile balance and rider motion passed, followed by all 14 cases in the complete browser regression (6.4 minutes). Preview remains `http://127.0.0.1:5190`. Preserve polling watcher/HMR settings.
+Typecheck, lint, 44 unit tests in eight files and production build pass for the new balance implementation. The four targeted browser cases for audio, keyboard, mobile balance and rider motion passed, followed by all 14 cases in the complete browser regression (6.4 minutes). After the user's sleeve-orientation correction, typecheck/lint/44 unit tests/build passed again; the garment browser regression passed for all nine tops and added an opposite-side Racing Zipper view. Both sleeves were visually checked after the 180-degree correction. Preview remains `http://127.0.0.1:5190`. Preserve polling watcher/HMR settings.
 
 This validated source is ready for owner-private publication. The Windows Sites build helper has an established npm-shim issue; the project command `npm run build` succeeds. Packaging uses the supplied Sites helper via Git Bash with /c paths.
 
