@@ -1586,13 +1586,17 @@ p {
 }
 .skill-event {
   position: absolute;
-  top: 36%;
-  left: 0;
-  right: 0;
-  text-align: center;
+  top: 205px;
+  left: 30px;
+  max-width: calc(100% - 165px);
+  padding: 7px 10px;
+  border-left: 2px solid currentColor;
+  background: #142127dc;
+  text-align: left;
+  pointer-events: none;
   z-index: 3;
   font-family: Impact, 'Arial Narrow', Arial, sans-serif;
-  font-size: 32px;
+  font-size: 20px;
   font-style: italic;
   letter-spacing: 0.025em;
   color: var(--primary);
@@ -1601,7 +1605,7 @@ p {
 }
 .skill-event.warning {
   color: #ffe1af;
-  font-size: 23px;
+  font-size: 18px;
 }
 @keyframes skill-in {
   from {
@@ -2393,11 +2397,13 @@ p {
     bottom: 190px;
   }
   .skill-event {
-    font-size: 29px;
-    top: 34%;
+    font-size: 17px;
+    top: 173px;
+    left: 16px;
+    max-width: calc(100% - 125px);
   }
   .skill-event.warning {
-    font-size: 19px;
+    font-size: 16px;
   }
   .toast {
     font-size: 12px;

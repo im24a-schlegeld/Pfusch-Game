@@ -208,6 +208,7 @@ export default function Ride({
             className="icon-button"
             aria-label="Pause ride"
             onPointerDown={(e) => {
+              if (e.button !== 0) return;
               e.preventDefault();
               pause();
             }}
@@ -287,6 +288,7 @@ export default function Ride({
       </div>
       <Dialog
         open={engine.phase === 'paused'}
+        disablePointerDismissal
         onOpenChange={(open) => {
           if (!open) {
             engine.resume();

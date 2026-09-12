@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Engine, STEP } from '../app/game/engine';
 import { BIKES } from '../app/domain/config';
+import { BALANCE, wheelieScoreFactor } from '../app/game/wheelie';
 const ride = (bike = BIKES[0]) => {
   const e = new Engine(bike);
   e.start();
@@ -9,6 +10,88 @@ const ride = (bike = BIKES[0]) => {
 const steps = (e: Engine, n: number) => {
   for (let i = 0; i < n; i++) e.advance(STEP);
 };
+
+describe('controlled rearward wheelie scoring', () => {
+  for (const [bike, profile] of Object.entries(BALANCE)) {
+    it(`${bike}: farther rearward angles earn more at comparable angular velocity`, () => {
+      for (const wheelieAngularVelocity of [0, 0.2, -0.2, 0.6]) {
+        let previous = 0;
+        for (const wheelieAngle of [
+          0.13,
+          0.3,
+          profile.balancePoint,
+          profile.balancePoint + 0.14,
+          profile.crashAngle - 0.01,
+        ]) {
+          const factor = wheelieScoreFactor(
+            { wheelieAngle, wheelieAngularVelocity },
+            profile,
+          );
+          expect(factor).toBeGreaterThan(previous);
+          expect(factor).toBeLessThanOrEqual(3);
+          previous = factor;
+        }
+      }
+    });
+    it(`${bike}: rapid uncontrolled rotation cannot outscore a controlled lift`, () => {
+      const controlled = wheelieScoreFactor(
+        { wheelieAngle: profile.balancePoint, wheelieAngularVelocity: 0.1 },
+        profile,
+      );
+      for (const wheelieAngularVelocity of [1.1, -1.1, 1.2, -1.2, 3]) {
+        const uncontrolled = wheelieScoreFactor(
+          { wheelieAngle: profile.crashAngle - 0.001, wheelieAngularVelocity },
+          profile,
+        );
+        expect(uncontrolled).toBeLessThan(controlled);
+        if (Math.abs(wheelieAngularVelocity) >= 1.2)
+          expect(uncontrolled).toBe(0);
+      }
+    });
+    it(`${bike}: scoring remains finite and bounded for invalid or out-of-range inputs`, () => {
+      for (const invalid of [NaN, Infinity, -Infinity]) {
+        expect(
+          wheelieScoreFactor(
+            { wheelieAngle: invalid, wheelieAngularVelocity: 0 },
+            profile,
+          ),
+        ).toBe(0);
+        expect(
+          wheelieScoreFactor(
+            { wheelieAngle: 0.6, wheelieAngularVelocity: invalid },
+            profile,
+          ),
+        ).toBe(0);
+        expect(
+          wheelieScoreFactor(
+            { wheelieAngle: 0.6, wheelieAngularVelocity: 0 },
+            { ...profile, crashAngle: invalid },
+          ),
+        ).toBe(0);
+      }
+      for (const wheelieAngle of [-5, 0, 0.12]) {
+        expect(
+          wheelieScoreFactor(
+            { wheelieAngle, wheelieAngularVelocity: 0 },
+            profile,
+          ),
+        ).toBe(0);
+      }
+      expect(
+        wheelieScoreFactor(
+          { wheelieAngle: 5, wheelieAngularVelocity: 0 },
+          profile,
+        ),
+      ).toBe(3);
+      expect(
+        wheelieScoreFactor(
+          { wheelieAngle: 0.6, wheelieAngularVelocity: 0 },
+          { ...profile, crashAngle: 0.12 },
+        ),
+      ).toBe(0);
+    });
+  }
+});
 
 describe('motorcycle weight and road-edge handling', () => {
   for (const bike of BIKES) {

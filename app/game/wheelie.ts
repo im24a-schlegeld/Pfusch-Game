@@ -113,3 +113,27 @@ export function balanceAccuracy(state: BalanceState, profile: BalanceProfile) {
   );
   return position * position * steadiness;
 }
+
+/** Reward controlled rearward lift throughout the safe angle range.
+ * Accuracy around the equilibrium remains a separate balance/combo measure. */
+export function wheelieScoreFactor(
+  state: Pick<BalanceState, 'wheelieAngle' | 'wheelieAngularVelocity'>,
+  profile: BalanceProfile,
+) {
+  if (
+    !Number.isFinite(state.wheelieAngle) ||
+    !Number.isFinite(state.wheelieAngularVelocity) ||
+    !Number.isFinite(profile.crashAngle) ||
+    profile.crashAngle <= 0.12
+  )
+    return 0;
+  const lift = Math.max(
+    0,
+    Math.min(1, (state.wheelieAngle - 0.12) / (profile.crashAngle - 0.12)),
+  );
+  const steadiness = Math.max(
+    0,
+    1 - Math.abs(state.wheelieAngularVelocity) / 1.2,
+  );
+  return lift * (1 + 2 * lift) * steadiness;
+}

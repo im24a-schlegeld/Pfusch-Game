@@ -11,6 +11,12 @@ export interface RiderMotion {
   steer: number;
   landing: number;
   forward?: number;
+  /** Short rearward pull at the start of a lift. */
+  launch?: number;
+  /** Signed balance and load corrections, limited to small posture changes. */
+  balance?: number;
+  load?: number;
+  road?: number;
 }
 export interface LimbPose {
   start: Point;
@@ -19,21 +25,40 @@ export interface LimbPose {
 }
 const vector = (p: Point) => new Vector3(...p);
 const point = (v: Vector3) => v.toArray() as Point;
+const bounded = (value: number | undefined, min = 0) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(min, Math.min(1, value))
+    : 0;
 
 /** All motion changes contact-relative pose, never anatomy. Each side has its own IK solve. */
 export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
-  const wheelie = Math.max(0, Math.min(1, motion.wheelie));
-  const steer = Math.max(-1, Math.min(1, motion.steer));
-  const landing = Math.max(0, Math.min(1, motion.landing));
-  const forward = Math.max(0, Math.min(1, motion.forward ?? 0));
+  const wheelie = bounded(motion.wheelie);
+  const steer = bounded(motion.steer, -1);
+  const landing = bounded(motion.landing);
+  const forward = bounded(motion.forward);
+  const launch = bounded(motion.launch);
+  const balance = bounded(motion.balance, -1);
+  const load = bounded(motion.load, -1);
+  const road = bounded(motion.road, -1);
   const hip: Point = [
-    base.hip[0] + 0.015 * steer,
-    base.hip[1] - 0.015 * landing,
-    base.hip[2] + 0.035 * wheelie - 0.025 * forward,
+    base.hip[0] + 0.022 * steer,
+    base.hip[1] - 0.015 * landing + 0.0025 * road,
+    base.hip[2] +
+      0.035 * wheelie -
+      0.025 * forward +
+      0.008 * launch +
+      0.004 * load,
   ];
   const lean =
-    base.torsoLean + 0.06 * wheelie + 0.04 * landing + 0.09 * forward;
-  const roll = -0.03 * steer;
+    base.torsoLean +
+    0.06 * wheelie +
+    0.04 * landing +
+    0.09 * forward +
+    0.012 * launch +
+    0.012 * balance +
+    0.008 * load +
+    0.003 * road;
+  const roll = -0.06 * steer;
   const orientation = new Quaternion().setFromEuler(new Euler(-lean, 0, roll));
   const onTorso = (p: Point) =>
     point(vector(p).applyQuaternion(orientation).add(vector(hip)));

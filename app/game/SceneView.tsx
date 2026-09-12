@@ -128,6 +128,8 @@ export default function SceneView({
     let tilt = 0;
     let landingSerial = 0,
       landing = 0;
+    let suspension = 0,
+      previousSpeed = engine?.speed ?? 22;
     if (mode === 'ride') {
       box(scene, 260, 0.15, 360, 0, -0.23, -75, '#626e65');
       box(scene, 9.6, 0.16, 340, 0, -0.09, -75, '#3b4448');
@@ -325,26 +327,52 @@ export default function SceneView({
             engine.wheelieAngle / engine.balanceProfile.balancePoint,
           );
           tilt = engine.wheelieAngle;
+          const launch = engine.liftPull * engine.throttleInput;
+          const acceleration = dt > 0 ? (engine.speed - previousSpeed) / dt : 0;
+          previousSpeed = engine.speed;
+          const road = appearance.current.player.settings.reducedMotion
+            ? 0
+            : Math.sin(distance * 1.7) * 0.65 +
+              Math.sin(distance * 0.57) * 0.35;
+          const load = THREE.MathUtils.clamp(
+            acceleration * 0.35 +
+              engine.throttleLoad * 0.3 -
+              engine.forwardLoad * 0.6,
+            -1,
+            1,
+          );
+          const balance = THREE.MathUtils.clamp(
+            (engine.forwardLoad - engine.throttleLoad * 0.4) * frontLift +
+              engine.wheelieAngularVelocity * 0.2,
+            -1,
+            1,
+          );
           bike.animateRider(
             {
               wheelie: frontLift,
               forward: engine.forwardLoad,
               steer: (engine.lane * LANE - engine.x) / LANE,
               landing,
+              launch,
+              balance,
+              load,
+              road,
             },
             dt,
           );
+          const compression =
+            landing * 0.022 +
+            engine.forwardLoad * 0.003 -
+            launch * 0.006 +
+            road * 0.002;
+          suspension += (compression - suspension) * (1 - Math.exp(-dt * 18));
           bike.root.rotation.z = THREE.MathUtils.lerp(
             bike.root.rotation.z,
             (engine.lane * LANE - engine.x) * -0.09,
             1 - Math.exp(-dt * 12),
           );
         }
-        bike.body.rotation.x = tilt;
-        bike.body.position.y =
-          bike.wheelRadius * (1 - Math.cos(tilt)) +
-          bike.rearAxle * Math.sin(tilt) -
-          landing * 0.025;
+        bike.animateSuspension(tilt, suspension);
         if (moving)
           for (const wheel of bike.wheels)
             wheel.rotation.x -= (engine.speed * dt) / 0.47;

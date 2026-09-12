@@ -35,6 +35,20 @@ async function settle(page: Page) {
   await expect(ride).toHaveAttribute('data-angle', '0.000');
   await expect(ride).toHaveAttribute('data-height', '0.00');
 }
+async function expectWeight(page: Page, throttle: number, forward: number) {
+  const ride = page.getByTestId('ride-screen');
+  // Native pointer moves can arrive after the last throttled HUD frame.
+  // Keep advancing the paused test clock until that input has been rendered.
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(80);
+      return Promise.all([
+        ride.getAttribute('data-throttle-input'),
+        ride.getAttribute('data-forward-input'),
+      ]);
+    })
+    .toEqual([throttle.toFixed(3), forward.toFixed(3)]);
+}
 
 for (const bike of ['125', '450', '701']) {
   test(`${bike} gives a finite initial tug with keyboard and touch`, async ({
@@ -93,6 +107,8 @@ for (const bike of ['125', '450', '701']) {
       type: 'touchEnd',
       touchPoints: [],
     });
+    // The pointer that opened the dialog must not dismiss it on release.
+    await page.clock.runFor(350);
     await expect(ride).toHaveAttribute('data-phase', 'paused');
     await expect(ride).toHaveAttribute('data-throttle-input', '0.000');
     expect(errors).toEqual([]);
@@ -230,21 +246,17 @@ for (const [width, height] of [
       type: 'touchMove',
       touchPoints: [{ id: 1, x, y: y - 28 }],
     });
-    await page.clock.runFor(100);
-    await expect(ride).toHaveAttribute('data-throttle-input', '0.500');
+    await expectWeight(page, 0.5, 0);
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchMove',
       touchPoints: [{ id: 1, x, y: y - 56 }],
     });
-    await page.clock.runFor(100);
-    await expect(ride).toHaveAttribute('data-throttle-input', '0.000');
-    await expect(ride).toHaveAttribute('data-forward-input', '0.000');
+    await expectWeight(page, 0, 0);
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchMove',
       touchPoints: [{ id: 1, x, y: y - 112 }],
     });
-    await page.clock.runFor(100);
-    await expect(ride).toHaveAttribute('data-forward-input', '1.000');
+    await expectWeight(page, 0, 1);
     // A second thumb can still dodge while the first holds correction.
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchStart',
@@ -253,17 +265,14 @@ for (const [width, height] of [
         { id: 2, x: left.x + left.width / 2, y: left.y + left.height / 2 },
       ],
     });
-    await page.clock.runFor(100);
+    await expectWeight(page, 0, 1);
     await expect(ride).toHaveAttribute('data-lane', '-1');
-    await expect(ride).toHaveAttribute('data-forward-input', '1.000');
     await settle(page);
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchCancel',
       touchPoints: [],
     });
-    await page.clock.runFor(100);
-    await expect(ride).toHaveAttribute('data-forward-input', '0.000');
-    await expect(ride).toHaveAttribute('data-throttle-input', '0.000');
+    await expectWeight(page, 0, 0);
     await page.screenshot({ path: `outputs/controls-${width}x${height}.png` });
   });
 }

@@ -1,6 +1,6 @@
 import type { Bike, RunStats } from '../domain/types';
 import { roadSection } from './roadSections';
-import { BALANCE, advanceBalance, balanceAccuracy } from './wheelie';
+import { BALANCE, advanceBalance, balanceAccuracy, wheelieScoreFactor } from './wheelie';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
 export type ObstacleKind = 'car' | 'van' | 'barrier';
@@ -229,16 +229,12 @@ export class Engine {
       this.balancedSeconds += dt * this.balanceQuality;
       this.wheelieChain += travel * this.balanceQuality;
       const durationBonus = 1 + Math.min(1, this.balancedSeconds / 6);
-      const risk =
-        1 +
-        Math.max(0, this.wheelieAngle - this.balanceProfile.balancePoint) * 2;
       this.score +=
         travel *
         4 *
-        this.balanceQuality *
+        wheelieScoreFactor(this, this.balanceProfile) *
         durationBonus *
         (this.speed / 22) *
-        risk *
         this.combo;
       if (this.wheelieChain >= 20) {
         this.wheelieChain -= 20;

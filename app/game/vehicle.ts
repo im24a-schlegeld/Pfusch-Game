@@ -10,13 +10,18 @@ import { POSES, RIDER_DIMENSIONS, type RiderPose } from './riderSkeleton';
 import { riderMotionPose, type RiderMotion } from './riderMotion';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
-import { addGarmentPockets, foldGarmentHem, sleeveSeams } from './garmentDetails';
+import {
+  addGarmentPockets,
+  foldGarmentHem,
+  sleeveSeams,
+} from './garmentDetails';
 import {
   SPORT_GEOMETRY,
   sportTireGeometry,
   roadTireGeometry,
 } from './sportGeometry';
 import { brakeRotorGeometry, makeDrive } from './driveGeometry';
+import { suspensionPose } from './bikeMotion';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -556,6 +561,9 @@ export function makeBike(player: Player, products: Product[]) {
   root.scale.setScalar(1.45);
   const body = new THREE.Group();
   root.add(body);
+  const frontAssembly = new THREE.Group();
+  frontAssembly.name = 'front-suspension-axle';
+  body.add(frontAssembly);
   const pose = POSES[player.bike as keyof typeof POSES] ?? POSES['125'];
   const rubber = material('#111719', 0, 0.97),
     alloy = material('#a3abad', 0.82, 0.28),
@@ -575,7 +583,7 @@ export function makeBike(player: Player, products: Product[]) {
     const wheel = new THREE.Group();
     wheel.name = i === 0 ? 'front-wheel' : 'rear-wheel';
     wheel.position.set(0, i === 0 ? radius : rearRadius, z);
-    body.add(wheel);
+    (i === 0 ? frontAssembly : body).add(wheel);
     wheels.push(wheel);
     const width = moped
       ? 0.034
@@ -652,7 +660,7 @@ export function makeBike(player: Player, products: Product[]) {
           );
         }
         oval(
-          body,
+          i === 0 ? frontAssembly : body,
           [x, wheel.position.y + outer * 0.35, z + outer * 0.78],
           [0.024, 0.055, 0.034],
           dark,
@@ -665,15 +673,30 @@ export function makeBike(player: Player, products: Product[]) {
     moped ? 0.94 : sport ? SPORT_GEOMETRY.forkTopY : 1.1,
     moped ? -0.47 : sport ? SPORT_GEOMETRY.forkTopZ : -0.4,
   ];
+  const forkSliders: {
+    mesh: THREE.Mesh;
+    lower: THREE.Vector3;
+    upper: THREE.Vector3;
+    length: number;
+  }[] = [];
   for (const side of [-1, 1]) {
     const forkX = side * (sport ? 0.105 : 0.08);
-    rod(
+    const lower = new THREE.Vector3(forkX, radius, front);
+    const upper = new THREE.Vector3(forkX, forkTop[1], forkTop[2]);
+    const slider = rod(
       body,
       [forkX, radius, front],
       [forkX, forkTop[1], forkTop[2]],
       moped ? 0.032 : 0.025,
       alloy,
     );
+    slider.name = 'telescopic-fork-slider';
+    forkSliders.push({
+      mesh: slider,
+      lower,
+      upper,
+      length: lower.distanceTo(upper),
+    });
     if (!moped)
       rod(
         body,
@@ -758,7 +781,8 @@ export function makeBike(player: Player, products: Product[]) {
       seat,
       'z',
     );
-    for (const z of [front, rear]) makeFender(body, radius, z, dark);
+    makeFender(frontAssembly, radius, front, dark);
+    makeFender(body, radius, rear, dark);
     tube(
       body,
       [
@@ -871,7 +895,7 @@ export function makeBike(player: Player, products: Product[]) {
       swingarm.position.x = s * 0.14;
       swingarm.name = 'box-section-swingarm';
       rod(
-        body,
+        frontAssembly,
         [
           s * 0.08,
           0.36,
@@ -1427,7 +1451,7 @@ export function makeBike(player: Player, products: Product[]) {
       }),
     );
     screen.name = 'curved-windscreen';
-    makeSportFender(body, radius, front, paint);
+    makeSportFender(frontAssembly, radius, front, paint);
     const rearLamp = loft(
       body,
       [
@@ -1489,12 +1513,36 @@ export function makeBike(player: Player, products: Product[]) {
     );
   }
   const rider = makeRider(body, pose, player, products);
+  const movedLower = new THREE.Vector3(),
+    direction = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  const animateSuspension = (pitch: number, travel: number) => {
+    const pose = suspensionPose(pitch, travel, rear, front, rearRadius);
+    body.rotation.x = pose.pitch;
+    body.position.copy(pose.position);
+    frontAssembly.rotation.x = pose.axleAngle;
+    frontAssembly.position.copy(pose.axlePosition);
+    for (const fork of forkSliders) {
+      movedLower
+        .copy(fork.lower)
+        .applyAxisAngle(up.set(1, 0, 0), pose.axleAngle)
+        .add(pose.axlePosition);
+      direction.copy(fork.upper).sub(movedLower);
+      fork.mesh.position.copy(movedLower).add(fork.upper).multiplyScalar(0.5);
+      fork.mesh.scale.y = direction.length() / fork.length;
+      fork.mesh.quaternion.setFromUnitVectors(
+        up.set(0, 1, 0),
+        direction.normalize(),
+      );
+    }
+  };
   return {
     root,
     body,
     wheels,
     rider: rider.group,
     animateRider: rider.animate,
+    animateSuspension,
     wheelRadius: rearRadius,
     rearAxle: rear,
   };
@@ -1746,7 +1794,9 @@ function makeRider(
             .sub(c)
             // Only the hidden trouser cloth at the hip narrows under the top.
             // The thigh centerline and immutable hip joint do not move.
-            .multiplyScalar((1 + fold) * (1 - 0.3 * Math.max(0, 1 - t / 0.12) ** 2))
+            .multiplyScalar(
+              (1 + fold) * (1 - 0.3 * Math.max(0, 1 - t / 0.12) ** 2),
+            )
             .add(c);
         lp.setXYZ(k, p.x, p.y, p.z);
       }
@@ -1911,11 +1961,26 @@ function makeRider(
     steer: 0,
     landing: 0,
     forward: 0,
+    launch: 0,
+    balance: 0,
+    load: 0,
+    road: 0,
   };
   const animate = (target: RiderMotion, dt: number) => {
-    const blend = 1 - Math.exp(-12 * dt);
-    for (const key of ['wheelie', 'steer', 'landing', 'forward'] as const)
+    for (const key of [
+      'wheelie',
+      'steer',
+      'landing',
+      'forward',
+      'launch',
+      'balance',
+      'load',
+      'road',
+    ] as const) {
+      const blend =
+        1 - Math.exp(-(key === 'launch' || key === 'landing' ? 20 : 12) * dt);
       motion[key] += ((target[key] ?? 0) - motion[key]) * blend;
+    }
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);
@@ -1930,7 +1995,11 @@ function makeRider(
       current.shoulder[2] - pose.shoulder[2],
     );
     helmet.position.set(...current.head);
-    helmet.rotation.set(-0.07 - motion.wheelie * 0.16, 0, motion.steer * 0.055);
+    helmet.rotation.set(
+      -0.07 - motion.wheelie * 0.16 + motion.balance * 0.025,
+      0,
+      motion.steer * 0.055,
+    );
     current.limbs.forEach((limb, i) => {
       limbs[i].arm(limb.arm);
       limbs[i].leg(limb.leg);

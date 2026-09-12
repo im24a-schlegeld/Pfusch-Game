@@ -1,5 +1,6 @@
 app/domain/config.ts
 app/game/audio.ts
+app/game/bikeMotion.ts
 app/game/driveGeometry.ts
 app/game/engine.ts
 app/game/engineSound.ts
@@ -15,6 +16,7 @@ app/globals.css
 app/ui/GameApp.tsx
 app/ui/Ride.tsx
 app/ui/Screens.tsx
+app/ui/WeightControl.tsx
 docs/CATALOG.md
 docs/CURRENT-CHANGED-FILES.txt
 docs/CURRENT-TARGET-STATUS.md
@@ -23,9 +25,11 @@ index.html
 public/catalog/fabric-samples.json
 public/catalog/products.json
 tests/air-lane.test.ts
+tests/bike-motion.test.ts
 tests/browser/accessory-visual.spec.ts
 tests/browser/audio.spec.ts
 tests/browser/controls.spec.ts
+tests/browser/feedback.spec.ts
 tests/browser/garment-visual.spec.ts
 tests/browser/inspection.spec.ts
 tests/browser/smoke.spec.ts
