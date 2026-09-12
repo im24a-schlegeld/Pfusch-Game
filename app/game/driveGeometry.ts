@@ -1,5 +1,31 @@
 import * as THREE from 'three';
 
+/** Shared lateral envelope: the complete chain sits between tire and left beam. */
+export const CHAIN_DRIVE = Object.freeze({
+  planeX: -0.132,
+  chainHalfWidth: 0.0105,
+  frontRadius: 0.04,
+  rearRadius: 0.12,
+  leftSwingarmX: -0.19,
+  maxSwingarmHalfWidth: 0.038,
+  maxRearTireHalfWidth: 0.096,
+  hubFaceX: -0.06,
+});
+
+/** Ciao-style engine belt, separate from the pedal mechanism. Units are metres. */
+export const MOPED_BELT = Object.freeze({
+  planeX: -0.064,
+  frontZ: 0.03,
+  frontY: 0.28,
+  frontRadius: 0.035,
+  rearRadius: 0.11,
+  width: 0.014,
+  thickness: 0.005,
+  pulleyHalfWidth: 0.01,
+  rearTireHalfWidth: 0.034,
+  leftStayInnerX: -0.077,
+});
+
 export function brakeRotorGeometry(radius: number) {
   const face = new THREE.Shape();
   face.absarc(0, 0, radius, 0, Math.PI * 2, false);
@@ -120,22 +146,23 @@ export function makeDrive(
   frontY: number,
   material: THREE.MeshStandardMaterial,
 ) {
-  const x = -0.185,
-    small = 0.04,
-    large = 0.12;
+  const x = CHAIN_DRIVE.planeX,
+    small = CHAIN_DRIVE.frontRadius,
+    large = CHAIN_DRIVE.rearRadius;
   const front = sprocket(small, 14, material);
   front.position.set(x, frontY, frontZ);
   parent.add(front);
   const rear = sprocket(large, 42, material);
   rear.position.x = x;
   rearWheel.add(rear);
-  // Carrier connects the rear sprocket to the rotating hub.
+  // Connect only the sprocket plane to the existing hub's left face.
   const carrier = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.055, 0.055, 0.14, 24),
+    new THREE.CylinderGeometry(0.055, 0.055, CHAIN_DRIVE.hubFaceX - x, 24),
     material,
   );
   carrier.rotation.z = Math.PI / 2;
-  carrier.position.x = -0.115;
+  carrier.position.x = (x + CHAIN_DRIVE.hubFaceX) / 2;
+  carrier.name = 'rear-sprocket-carrier';
   rearWheel.add(carrier);
   for (let i = 0; i < 5; i++) {
     const a = (i * Math.PI * 2) / 5;
@@ -145,6 +172,7 @@ export function makeDrive(
     );
     arm.position.set(x, Math.sin(a) * 0.059, Math.cos(a) * 0.059);
     arm.rotation.x = -a;
+    arm.name = 'sprocket-carrier-spoke';
     rearWheel.add(arm);
   }
   const path = chainRoute(
@@ -182,4 +210,95 @@ export function makeDrive(
   plates.name = 'left-drive-chain';
   rollers.name = 'chain-rollers';
   parent.add(plates, rollers);
+}
+
+/** Smooth V-groove pulley; no chain teeth or links on the moped power drive. */
+function beltPulley(radius: number, material: THREE.Material) {
+  const half = MOPED_BELT.pulleyHalfWidth;
+  const hub = Math.min(radius * 0.35, 0.019);
+  const profile = [
+    [hub, -half],
+    [radius - 0.008, -half],
+    [radius + 0.005, -half + 0.001],
+    [radius + 0.005, -0.0075],
+    [radius, -0.005],
+    [radius - 0.003, 0],
+    [radius, 0.005],
+    [radius + 0.005, 0.0075],
+    [radius + 0.005, half - 0.001],
+    [radius - 0.008, half],
+    [hub, half],
+    [hub, -half],
+  ].map(([r, axial]) => new THREE.Vector2(r, axial));
+  const geometry = new THREE.LatheGeometry(profile, 64);
+  geometry.rotateZ(Math.PI / 2);
+  const pulley = new THREE.Mesh(geometry, material);
+  pulley.name = 'smooth-belt-pulley';
+  return pulley;
+}
+
+/** A closed trapezoidal ribbon, including both sidewalls and the contact face. */
+function beltGeometry(route: THREE.CurvePath<THREE.Vector3>) {
+  const vertices: number[] = [],
+    indices: number[] = [];
+  const steps = 256,
+    halfThickness = MOPED_BELT.thickness / 2;
+  for (let i = 0; i <= steps; i++) {
+    const t = i === steps ? 0 : i / steps;
+    const point = route.getPointAt(t),
+      tangent = route.getTangentAt(t),
+      outward = new THREE.Vector3(0, tangent.z, -tangent.y).normalize();
+    for (const [x, depth] of [
+      [-MOPED_BELT.width / 2, halfThickness],
+      [MOPED_BELT.width / 2, halfThickness],
+      [0.005, -halfThickness],
+      [-0.005, -halfThickness],
+    ]) {
+      vertices.push(
+        MOPED_BELT.planeX + x,
+        point.y + outward.y * depth,
+        point.z + outward.z * depth,
+      );
+    }
+  }
+  for (let i = 0; i < steps; i++)
+    for (let edge = 0; edge < 4; edge++) {
+      const a = i * 4 + edge,
+        b = i * 4 + ((edge + 1) % 4),
+        c = a + 4,
+        d = b + 4;
+      indices.push(a, c, b, b, c, d);
+    }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(vertices, 3),
+  );
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+export function makeBeltDrive(
+  parent: THREE.Group,
+  rearWheel: THREE.Group,
+  metal: THREE.MeshStandardMaterial,
+  rubber: THREE.MeshStandardMaterial,
+) {
+  const front = beltPulley(MOPED_BELT.frontRadius, metal);
+  front.position.set(MOPED_BELT.planeX, MOPED_BELT.frontY, MOPED_BELT.frontZ);
+  parent.add(front);
+  const rear = beltPulley(MOPED_BELT.rearRadius, metal);
+  rear.position.x = MOPED_BELT.planeX;
+  rearWheel.add(rear);
+  const route = chainRoute(
+    new THREE.Vector2(MOPED_BELT.frontZ, MOPED_BELT.frontY),
+    new THREE.Vector2(rearWheel.position.z, rearWheel.position.y),
+    MOPED_BELT.frontRadius + MOPED_BELT.thickness / 2,
+    MOPED_BELT.rearRadius + MOPED_BELT.thickness / 2,
+  );
+  const belt = new THREE.Mesh(beltGeometry(route), rubber);
+  belt.name = 'moped-drive-belt';
+  parent.add(belt);
+  return { front, rear, belt };
 }

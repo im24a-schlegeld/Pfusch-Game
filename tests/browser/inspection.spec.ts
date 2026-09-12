@@ -38,6 +38,43 @@ test('all bike inspection views render, and repeating a preset restores it after
       await page
         .getByRole('button', { name: 'Asphalt paint', exact: true })
         .click();
+    const drive = await page.evaluate(() => {
+      const scene = window.garageScenes.filter((s) => s.getObjectByName('full-face-helmet')).at(-1)!;
+      scene.updateMatrixWorld(true);
+      const rearWheel = scene.getObjectByName('rear-wheel')!;
+      const body = rearWheel.parent!;
+      const inverse = body.matrixWorld.clone().invert();
+      const bounds = (object: THREE.Object3D) => {
+        const mesh = object as THREE.Mesh;
+        const positions = mesh.geometry.getAttribute('position');
+        const point = body.position.clone();
+        const instance = body.matrix.clone();
+        let min = Infinity, max = -Infinity;
+        const count = (mesh as THREE.InstancedMesh).isInstancedMesh ? (mesh as THREE.InstancedMesh).count : 1;
+        for (let item = 0; item < count; item++) {
+          if ((mesh as THREE.InstancedMesh).isInstancedMesh) (mesh as THREE.InstancedMesh).getMatrixAt(item, instance);
+          else instance.identity();
+          for (let i = 0; i < positions.count; i++) {
+            point.fromBufferAttribute(positions, i).applyMatrix4(instance).applyMatrix4(mesh.matrixWorld).applyMatrix4(inverse);
+            min = Math.min(min, point.x); max = Math.max(max, point.x);
+          }
+        }
+        return { min, max };
+      };
+      const tire = bounds(rearWheel.getObjectByName('tire')!);
+      const belt = scene.getObjectByName('moped-drive-belt');
+      if (belt) return { belt: bounds(belt), tire, chain: null, swingarm: null, pulleys: body.getObjectsByProperty('name', 'smooth-belt-pulley').length };
+      const chain = bounds(scene.getObjectByName('left-drive-chain')!);
+      const arm = body.getObjectsByProperty('name', 'box-section-swingarm').find((o) => o.position.x < 0)!;
+      return { belt: null, tire, chain, swingarm: bounds(arm), pulleys: 0 };
+    });
+    if (id === '125') {
+      expect(drive.belt!.max).toBeLessThan(drive.tire.min - 0.015);
+      expect(drive.pulleys).toBe(2);
+    } else {
+      expect(drive.chain!.min).toBeGreaterThan(drive.swingarm!.max + 0.006);
+      expect(drive.chain!.max).toBeLessThan(drive.tire.min - 0.02);
+    }
     const visor = await page.evaluate(() => {
       const scene = window.garageScenes
         .filter((s) => s.getObjectByName('full-face-helmet'))

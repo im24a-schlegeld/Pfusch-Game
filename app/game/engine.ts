@@ -1,6 +1,11 @@
 import type { Bike, RunStats } from '../domain/types';
 import { roadSection } from './roadSections';
-import { BALANCE, advanceBalance, balanceAccuracy, wheelieScoreFactor } from './wheelie';
+import {
+  BALANCE,
+  advanceBalance,
+  balanceAccuracy,
+  wheelieScoreFactor,
+} from './wheelie';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
 export type ObstacleKind = 'car' | 'van' | 'barrier';

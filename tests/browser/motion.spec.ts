@@ -20,6 +20,8 @@ test('rider joints react independently, retain contacts and freeze while paused'
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.clock.install({ time: new Date('2026-09-12T10:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-09-12T10:00:01Z'));
   await page.addInitScript(() => {
     window.motionProbe = { scenes: [], side: false };
     window.__THREE_DEVTOOLS__ = new EventTarget();
@@ -47,6 +49,8 @@ test('rider joints react independently, retain contacts and freeze while paused'
   await page.goto('/');
   await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
   await page.getByRole('button', { name: 'GOT IT. LET’S RIDE' }).click();
+  await page.locator('canvas').waitFor();
+  await page.clock.runFor(2200);
   const ride = page.getByTestId('ride-screen');
   await expect(ride).toHaveAttribute('data-phase', 'playing', {
     timeout: 20000,
@@ -75,9 +79,15 @@ test('rider joints react independently, retain contacts and freeze while paused'
     });
   const before = await pose();
   await page.keyboard.down('s');
-  await expect(ride).toHaveAttribute('data-wheelie', 'true');
+  await expect.poll(async () => {
+    await page.clock.runFor(100);
+    return ride.getAttribute('data-wheelie');
+  }).toBe('true');
   await expect
-    .poll(async () => (await pose()).hip[2])
+    .poll(async () => {
+      await page.clock.runFor(100);
+      return (await pose()).hip[2];
+    })
     .toBeGreaterThan(before.hip[2] + 0.02);
   const wheelie = await pose();
   expect(wheelie.joints).not.toEqual(before.joints);
@@ -85,7 +95,7 @@ test('rider joints react independently, retain contacts and freeze while paused'
   await page.keyboard.press('Escape');
   await expect(ride).toHaveAttribute('data-phase', 'paused');
   const paused = await pose();
-  await page.waitForTimeout(200);
+  await page.clock.runFor(200);
   expect(await pose()).toEqual(paused);
   await page.evaluate(() => {
     window.motionProbe.side = true;
@@ -104,9 +114,13 @@ test('rider joints react independently, retain contacts and freeze while paused'
   await capture('outputs/rider-wheelie-side.png');
   await page.keyboard.up('s');
   await page.keyboard.press('Escape');
+  await page.clock.runFor(250);
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await page.keyboard.press('ArrowRight');
-  await expect.poll(async () => (await pose()).hip[0]).toBeGreaterThan(0.0005);
+  await expect.poll(async () => {
+    await page.clock.runFor(100);
+    return (await pose()).hip[0];
+  }).toBeGreaterThan(0.0005);
   await page.keyboard.press('Escape');
   await capture('outputs/rider-lane-response.png');
   expect(errors).toEqual([]);

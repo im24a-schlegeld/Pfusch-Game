@@ -12,15 +12,22 @@ import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
 import {
   addGarmentPockets,
+  addWindbreakerDetails,
   foldGarmentHem,
   sleeveSeams,
 } from './garmentDetails';
+import { applyRibbedTrim } from './garmentTrim';
 import {
   SPORT_GEOMETRY,
   sportTireGeometry,
   roadTireGeometry,
 } from './sportGeometry';
-import { brakeRotorGeometry, makeDrive } from './driveGeometry';
+import {
+  brakeRotorGeometry,
+  makeDrive,
+  makeBeltDrive,
+  CHAIN_DRIVE,
+} from './driveGeometry';
 import { suspensionPose } from './bikeMotion';
 
 type Point = [number, number, number];
@@ -744,32 +751,38 @@ export function makeBike(player: Player, products: Product[]) {
       16,
       16,
     );
-    for (const side of [-1, 1])
+    for (const side of [-1, 1]) {
+      const stayX = side < 0 ? -0.108 : 0.085;
       tube(
         body,
         [
-          [side * 0.085, 0.35, 0.4],
-          [side * 0.085, 0.5, 0.61],
-          [side * 0.085, 0.64, 0.68],
+          [stayX, 0.35, 0.4],
+          [stayX, 0.5, 0.61],
+          [stayX, 0.64, 0.68],
         ],
         [0.026, 0.026, 0.021],
         dark,
         14,
         16,
       );
-    const chainCover = loft(
+    }
+    const beltGuard = sidePanel(
       body,
+      -1,
       [
-        [-0.06, 0.033, 0.09, 0.3],
-        [0.1, 0.038, 0.1, 0.29],
-        [0.43, 0.031, 0.09, 0.3],
-        [0.52, 0.025, 0.06, 0.31],
+        [0.084, 0.34, -0.025],
+        [0.087, 0.365, 0.18],
+        [0.087, 0.425, 0.48],
+        [0.084, 0.435, 0.58],
+        [0.084, 0.39, 0.63],
+        [0.084, 0.325, 0.48],
+        [0.084, 0.285, 0.035],
       ],
       dark,
-      'z',
+      0.003,
     );
-    chainCover.position.x = 0.09;
-    oval(body, [0, 0.3, 0.03], [0.115, 0.13, 0.17], engine);
+    beltGuard.name = 'moped-belt-guard';
+    oval(body, [0.015, 0.3, 0.03], [0.068, 0.1, 0.145], engine);
     loft(
       body,
       [
@@ -892,7 +905,7 @@ export function makeBike(player: Player, products: Product[]) {
         'z',
         16,
       );
-      swingarm.position.x = s * 0.14;
+      swingarm.position.x = s < 0 ? CHAIN_DRIVE.leftSwingarmX : 0.14;
       swingarm.name = 'box-section-swingarm';
       rod(
         frontAssembly,
@@ -1224,7 +1237,7 @@ export function makeBike(player: Player, products: Product[]) {
       paint,
       'z',
     );
-    oval(body, [0, 0.52, -0.02], [0.182, 0.185, 0.25], engine);
+    oval(body, [0.015, 0.52, -0.02], [0.13, 0.185, 0.25], engine);
     for (const s of [-1, 1]) {
       tube(
         body,
@@ -1261,7 +1274,8 @@ export function makeBike(player: Player, products: Product[]) {
         'z',
         16,
       );
-      swingarm.position.x = s * 0.14;
+      swingarm.position.x = s < 0 ? CHAIN_DRIVE.leftSwingarmX : 0.14;
+      swingarm.name = 'box-section-swingarm';
       fairingPanel(body, s, paint);
       sidePanel(
         body,
@@ -1464,7 +1478,23 @@ export function makeBike(player: Player, products: Product[]) {
     );
     rearLamp.name = 'tail-light';
   }
-  if (!moped) makeDrive(body, wheels[1], 0.08, 0.49, engine);
+  if (!moped) {
+    makeDrive(body, wheels[1], 0.08, 0.49, engine);
+    rod(
+      body,
+      [CHAIN_DRIVE.leftSwingarmX - 0.035, rearRadius, rear],
+      [0.18, rearRadius, rear],
+      0.012,
+      alloy,
+    );
+    rod(
+      body,
+      [CHAIN_DRIVE.leftSwingarmX, 0.46, 0.18],
+      [0.16, 0.46, 0.18],
+      0.022,
+      dark,
+    );
+  } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
   const exhaustX = moped ? 0.15 : 0.23;
   const exhaustY = moped ? 0.22 : sport ? 0.48 : 0.8;
@@ -1598,12 +1628,16 @@ function makeRider(
   );
   torso.name = 'tailored-garment';
   torsoDrape(torso.geometry, hem, hoodie || zipper);
+  if (hoodie)
+    applyRibbedTrim(torso.material as THREE.MeshStandardMaterial, 'hem');
   const stitching = material(
     new THREE.Color(color).multiplyScalar(0.8).getStyle(),
     0,
     1,
   );
   if (hoodie) addGarmentPockets(torsoGroup, torso, zipper, stitching);
+  if (upper?.handle === 'unisex-windbreaker')
+    addWindbreakerDetails(torsoGroup, torso, stitching);
   foldGarmentHem(torsoGroup, torso);
   if (hoodie) {
     loft(
@@ -1718,8 +1752,13 @@ function makeRider(
             0.077 * volume,
             0.045,
           ],
-          upper?.handle === 'racing-zipper'
-            ? sleeveMaterial(upper, player, color, side)
+          hoodie
+            ? applyRibbedTrim(
+                upper?.handle === 'racing-zipper'
+                  ? sleeveMaterial(upper, player, color, side)
+                  : cloth.clone(),
+                'cuff',
+              )
             : cloth,
           36,
           20,
