@@ -17,14 +17,13 @@ function engineVoice(ctx: AudioContext, output: AudioNode, id: EngineSoundId) {
     imaginary = new Float32Array(65);
   for (let i = 1; i < real.length; i++) {
     real[i] =
-      Math.exp(-i * (id === '450' ? 0.04 : 0.015)) /
-      i ** profile.harmonicFalloff;
-    imaginary[i] = (id === '125' ? 0.45 : 0.12) * real[i] * (i % 2 ? 1 : -1);
+      Math.exp(-i * profile.harmonicDecay) / i ** profile.harmonicFalloff;
+    imaginary[i] = profile.phaseOffset * real[i] * (i % 2 ? 1 : -1);
   }
   combustion.setPeriodicWave(ctx.createPeriodicWave(real, imaginary));
-  mechanical.type = id === '701' ? 'triangle' : 'sine';
+  mechanical.type = profile.mechanicalWave;
   filter.type = 'lowpass';
-  filter.Q.value = id === '125' ? 1.6 : 0.7;
+  filter.Q.value = profile.resonance;
   gain.gain.value = profile.level;
   mechanicalGain.gain.value = profile.level * 0.14;
   combustion.connect(filter);
@@ -45,7 +44,7 @@ function engineVoice(ctx: AudioContext, output: AudioNode, id: EngineSoundId) {
   noise.buffer = buffer;
   noise.loop = true;
   noiseFilter.type = 'bandpass';
-  noiseFilter.frequency.value = id === '125' ? 1900 : id === '450' ? 650 : 3200;
+  noiseFilter.frequency.value = profile.noiseBand;
   noiseFilter.Q.value = 0.6;
   noiseGain.gain.value = profile.noise;
   noise.connect(noiseFilter);
@@ -63,7 +62,7 @@ function engineVoice(ctx: AudioContext, output: AudioNode, id: EngineSoundId) {
         0.1,
       );
       mechanical.frequency.setTargetAtTime(
-        (rpm / 60) * (id === '125' ? 2.03 : 1.01),
+        (rpm / 60) * profile.mechanicalRatio,
         t,
         0.12,
       );

@@ -3,7 +3,7 @@ import {Vector3} from 'three';
 import {POSES,RIDER_DIMENSIONS as d,solveJoint,type Point} from '../app/game/riderSkeleton';
 const distance=(a:Point,b:Point)=>new Vector3(...a).distanceTo(new Vector3(...b));
 describe('immutable adult skeleton',()=>{
- it('keeps both arm and leg bone lengths on all three motorcycles',()=>{
+ it('keeps both arm and leg bone lengths on every vehicle',()=>{
   for(const p of Object.values(POSES))for(const side of [-1,1]){
    const mirror=(v:Point):Point=>[side*v[0],v[1],v[2]];
    expect(distance(p.hip,p.shoulder)).toBeCloseTo(d.torsoLength,10);

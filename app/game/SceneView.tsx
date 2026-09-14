@@ -8,7 +8,13 @@ import { makeBike } from './vehicle';
 import { ROAD_EVENT_KINDS } from './roadEvents';
 import { makeWorldView } from './worldView';
 import { makeWorldLighting } from './worldLighting';
+import { createBikeHeadlightRig } from './bikeHeadlight';
+import { createCrashAnimation } from './crashAnimation';
 import { createGarmentGlowUpdater } from './garmentGlow';
+
+// Match makeBike's body selection, including its default Supermoto geometry.
+const headlightModel = (id: string) =>
+  id === '125' || id === 'scooter' || id === '701' ? id : '450';
 
 interface Props {
   player: Player;
@@ -17,6 +23,7 @@ interface Props {
   engine?: Engine;
   onFrame?: (engine: Engine) => void;
   onReady?: () => void;
+  onCrashComplete?: () => void;
   inspectionAngle?: number;
   inspectionRevision?: number;
 }
@@ -27,12 +34,14 @@ export default function SceneView({
   engine,
   onFrame,
   onReady,
+  onCrashComplete,
   inspectionAngle,
   inspectionRevision,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const frameCallback = useRef(onFrame);
   const readyCallback = useRef(onReady);
+  const crashCallback = useRef(onCrashComplete);
   const [error, setError] = useState('');
   const appearance = useRef({ player, products, key: '' });
   appearance.current = {
@@ -54,6 +63,7 @@ export default function SceneView({
   const quality = player.settings.quality;
   frameCallback.current = onFrame;
   readyCallback.current = onReady;
+  crashCallback.current = onCrashComplete;
   useEffect(() => {
     const { player, products } = appearance.current;
     const el = host.current;
@@ -120,11 +130,13 @@ export default function SceneView({
     fill.position.set(12, 8, -10);
     scene.add(fill);
     let bike = makeBike(player, products);
+    bike.root.name = 'player-bike';
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;
     scene.add(bike.root);
     let updateGlow = createGarmentGlowUpdater(bike.root);
-    const updateLighting =
+    let headlightRig = createBikeHeadlightRig(headlightModel(player.bike));
+    const lighting =
       mode === 'ride'
         ? makeWorldLighting(scene, renderer, hemisphere, sunlight, fill)
         : null;
@@ -141,6 +153,11 @@ export default function SceneView({
       landing = 0;
     let suspension = 0,
       previousSpeed = engine?.speed ?? 22;
+    let previousXPosition = engine?.x ?? 0,
+      previousLateralSpeed = 0;
+    let crash: ReturnType<typeof createCrashAnimation> | undefined;
+    let crashNotified = false;
+    let crashReported = false;
     if (mode === 'ride') {
       worldView = makeWorldView(scene, low);
       for (let i = 0; i < 32; i++) {
@@ -232,11 +249,28 @@ export default function SceneView({
       hud = 0,
       clock = 0;
     let ready = false;
+    let focused = document.hasFocus(),
+      visible = !document.hidden;
+    const visualBlur = () => {
+      focused = false;
+    };
+    const visualFocus = () => {
+      focused = true;
+      last = performance.now();
+    };
+    const visualVisibility = () => {
+      visible = !document.hidden;
+      last = performance.now();
+    };
+    window.addEventListener('blur', visualBlur);
+    window.addEventListener('focus', visualFocus);
+    document.addEventListener('visibilitychange', visualVisibility);
     const animate = (now: number) => {
       raf = requestAnimationFrame(animate);
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       clock += dt;
+      let crashComplete = false;
       const nextAppearance = appearance.current;
       if (
         nextAppearance.key !== vehicleKey ||
@@ -245,8 +279,13 @@ export default function SceneView({
         scene.remove(bike.root);
         disposeVehicle(bike.root);
         bike = makeBike(nextAppearance.player, nextAppearance.products);
+        bike.root.name = 'player-bike';
+        crash = undefined;
         scene.add(bike.root);
         updateGlow = createGarmentGlowUpdater(bike.root);
+        headlightRig = createBikeHeadlightRig(
+          headlightModel(nextAppearance.player.bike),
+        );
         vehicleKey = nextAppearance.key;
         vehicleProducts = nextAppearance.products;
       }
@@ -262,9 +301,21 @@ export default function SceneView({
       if (engine && mode === 'ride') {
         engine.advance(dt);
         const moving = engine.phase === 'playing';
+        const crashed =
+          engine.phase === 'crashed' && engine.event.text !== 'Ride ended';
+        const crashActive = focused && visible;
+        let longitudinalAcceleration = 0,
+          lateralAcceleration = 0;
         const distance = engine.distance;
         worldView!.update(engine.world, distance);
-        updateGlow(updateLighting!(engine.world, distance, engine.x));
+        updateGlow(
+          lighting!.update(
+            engine.world,
+            distance,
+            engine.x,
+            headlightRig.count,
+          ),
+        );
         bike.root.position.set(engine.x, engine.height, 0);
         if (moving) {
           if (engine.landingSerial !== landingSerial) {
@@ -278,6 +329,16 @@ export default function SceneView({
           tilt = engine.wheelieAngle;
           const launch = engine.liftPull * engine.throttleInput;
           const acceleration = dt > 0 ? (engine.speed - previousSpeed) / dt : 0;
+          longitudinalAcceleration = Number.isFinite(acceleration)
+            ? acceleration
+            : 0;
+          const lateralSpeed = dt > 0 ? (engine.x - previousXPosition) / dt : 0;
+          const lateralChange =
+            dt > 0 ? (lateralSpeed - previousLateralSpeed) / dt : 0;
+          lateralAcceleration = Number.isFinite(lateralChange)
+            ? lateralChange
+            : 0;
+          previousLateralSpeed = lateralSpeed;
           previousSpeed = engine.speed;
           const road = appearance.current.player.settings.reducedMotion
             ? 0
@@ -323,7 +384,37 @@ export default function SceneView({
             1 - Math.exp(-dt * 12),
           );
         }
-        bike.animateSuspension(tilt, suspension);
+        if (!moving) previousLateralSpeed = 0;
+        previousXPosition = engine.x;
+        if (crashed) {
+          if (!crash) {
+            tilt = engine.wheelieAngle;
+            bike.animateSuspension(tilt, suspension);
+            crash = createCrashAnimation(bike, {
+              cause: engine.event.text,
+              pitch: tilt,
+              travel: suspension,
+              reducedMotion: appearance.current.player.settings.reducedMotion,
+            });
+          }
+          crashComplete = crash.advance(dt, crashActive);
+        } else bike.animateSuspension(tilt, suspension);
+        // Final ordinary/crash pose: accessory gravity and both light endpoints
+        // consume these same transforms before the scene is rendered.
+        bike.animateAccessories(
+          {
+            longitudinalAcceleration,
+            lateralAcceleration,
+            landing,
+            paused:
+              engine.phase === 'paused' ||
+              engine.phase === 'ready' ||
+              (crashed && !crashActive),
+            reducedMotion: appearance.current.player.settings.reducedMotion,
+          },
+          crashed && !crashActive ? 0 : dt,
+        );
+        headlightRig.copyPose(bike.body, lighting!.headlights);
         if (moving)
           for (const wheel of bike.wheels)
             wheel.rotation.x -= (engine.speed * dt) / 0.47;
@@ -349,14 +440,28 @@ export default function SceneView({
           8.4,
         );
         camera.lookAt(engine.x * 0.38, 1.4, -12);
+        if (crash) {
+          const blend = crash.cameraBlend;
+          camera.position.set(
+            THREE.MathUtils.lerp(engine.x * 0.27, crash.focus.x, blend),
+            THREE.MathUtils.lerp(4.4 + engine.height * 0.13, 3.5, blend),
+            THREE.MathUtils.lerp(8.4, 7.2, blend),
+          );
+          camera.lookAt(
+            THREE.MathUtils.lerp(engine.x * 0.38, crash.focus.x, blend),
+            THREE.MathUtils.lerp(1.4, crash.focus.y, blend),
+            THREE.MathUtils.lerp(-12, crash.focus.z, blend),
+          );
+        }
         const fov = 61 + (engine.speed - 22) * 0.22;
         if (Math.abs(camera.fov - fov) > 0.05) {
           camera.fov = fov;
           camera.updateProjectionMatrix();
         }
         hud += dt;
-        if (hud > 0.075 || engine.phase === 'crashed') {
+        if (hud > 0.075 || (engine.phase === 'crashed' && !crashReported)) {
           frameCallback.current?.(engine);
+          if (engine.phase === 'crashed') crashReported = true;
           hud = 0;
         }
       } else {
@@ -375,8 +480,13 @@ export default function SceneView({
           mode === 'garage' ? (portrait ? 7.2 : 5.5) : portrait ? 8.8 : 7.4,
         );
         camera.lookAt(0, 1.3, 0);
+        bike.animateAccessories({ reducedMotion: true }, dt);
       }
       renderer.render(scene, camera);
+      if (crashComplete && !crashNotified) {
+        crashNotified = true;
+        crashCallback.current?.();
+      }
       if (!ready) {
         ready = true;
         readyCallback.current?.();
@@ -386,6 +496,9 @@ export default function SceneView({
     return () => {
       cancelAnimationFrame(raf);
       observer.disconnect();
+      window.removeEventListener('blur', visualBlur);
+      window.removeEventListener('focus', visualFocus);
+      document.removeEventListener('visibilitychange', visualVisibility);
       el.removeEventListener('pointerdown', down);
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', up);

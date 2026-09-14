@@ -42,6 +42,8 @@ export function foldGarmentHem(
   parent: THREE.Group,
   torso: THREE.Mesh,
   sides = 24,
+  bandHeight = 0.024,
+  seamMaterial?: THREE.Material,
 ) {
   const source = torso.geometry.getAttribute('position');
   const uv = torso.geometry.getAttribute('uv');
@@ -92,6 +94,58 @@ export function foldGarmentHem(
   hem.name = 'folded-garment-hem';
   hem.castShadow = hem.receiveShadow = true;
   parent.add(hem);
+  if (seamMaterial) {
+    const rows = source.count / (sides + 1);
+    // Both rows follow the actual draped edge. This is a sewn turn-up/rib-band
+    // join, sharing the existing cloth instead of an unrelated rigid ring.
+    for (const offset of [bandHeight, bandHeight - 0.0025]) {
+      const points = Array.from({ length: sides * 4 }, (_, i) => {
+        const j = i / 4,
+          a = Math.floor(j),
+          b = (a + 1) % sides;
+        const t = j - a;
+        const x = THREE.MathUtils.lerp(source.getX(a), source.getX(b), t);
+        const z = THREE.MathUtils.lerp(source.getZ(a), source.getZ(b), t);
+        const y =
+          THREE.MathUtils.lerp(source.getY(a), source.getY(b), t) + offset;
+        const outward = new THREE.Vector3(x, 0, z).normalize();
+        // Interpolate the existing loft columns directly. A horizontal ray at
+        // the duplicate UV seam can miss a shared triangle edge by roundoff.
+        const at = (row: number) =>
+          new THREE.Vector3()
+            .fromBufferAttribute(source, row * (sides + 1) + a)
+            .lerp(
+              new THREE.Vector3().fromBufferAttribute(
+                source,
+                row * (sides + 1) + b,
+              ),
+              t,
+            );
+        let lower = at(0);
+        for (let row = 1; row < rows; row++) {
+          const upper = at(row);
+          if (upper.y >= y)
+            return lower
+              .lerp(upper, (y - lower.y) / (upper.y - lower.y))
+              .addScaledVector(outward, 0.00085);
+          lower = upper;
+        }
+        throw new Error('Garment hem band extends above the torso');
+      });
+      const stitch = new THREE.Mesh(
+        new THREE.TubeGeometry(
+          new THREE.CatmullRomCurve3(points, true),
+          sides * 8,
+          0.00065,
+          5,
+          true,
+        ),
+        seamMaterial,
+      );
+      stitch.name = 'garment-bottom-hem-stitch';
+      parent.add(stitch);
+    }
+  }
   return hem;
 }
 

@@ -223,7 +223,7 @@ for (const item of keepUp) {
       .toBeGreaterThanOrEqual(3);
     const state = await garmentState(page);
     expect(state.map).toBe('keep-up-ink-emission');
-    expect(state.color).toBe('668bff');
+    expect(state.color).toBe('1d6bff');
     // Sleeves, cuffs, hood and every other blank garment piece retain no ink emission map.
     expect(state.emissionMaterials).toEqual([state.material]);
     const mask = await page.evaluate(
@@ -290,7 +290,7 @@ for (const item of keepUp) {
     for (const lighting of ['day', 'tunnel', 'night', 'day'] as const) {
       await positionInWorld(page, lighting);
       expect((await garmentState(page)).intensity).toBe(
-        lighting === 'day' ? 0 : 0.22,
+        lighting === 'day' ? 0 : 0.95,
       );
       if (lighting === 'tunnel')
         await page.screenshot({

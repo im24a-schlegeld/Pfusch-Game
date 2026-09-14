@@ -61,12 +61,25 @@ export function makeWorldLighting(
   fill: THREE.DirectionalLight,
 ) {
   const sky = new THREE.Color();
-  const headlight = new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2);
-  headlight.name = 'road-headlight';
+  const headlights = [
+    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2),
+    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2),
+  ] as const;
+  headlights[0].name = 'road-headlight';
+  headlights[1].name = 'road-headlight-secondary';
+  for (const headlight of headlights) {
+    headlight.visible = false;
+    scene.add(headlight, headlight.target);
+  }
   const riderLight = new THREE.PointLight('#c4d3dd', 0, 18, 1.5);
   riderLight.name = 'tunnel-rider-fill';
-  scene.add(headlight, headlight.target, riderLight);
-  return (world: World, distance: number, x: number) => {
+  scene.add(riderLight);
+  const update = (
+    world: World,
+    distance: number,
+    x: number,
+    headlightCount: 1 | 2,
+  ) => {
     const segment = world.at(distance)!;
     const previous = world.at(Math.max(0, segment.start - 0.01));
     const from = previous?.lighting ?? segment.lighting;
@@ -102,11 +115,14 @@ export function makeWorldLighting(
       tunnel,
     );
     const dark = Math.max(mix('dark'), tunnel);
-    headlight.intensity = dark * 55;
-    headlight.position.set(x, 1.25, -1);
-    headlight.target.position.set(x, 0.03, -24);
+    for (let i = 0; i < headlights.length; i++) {
+      const active = i < headlightCount;
+      headlights[i].visible = active && dark > 0;
+      headlights[i].intensity = active ? (dark * 55) / headlightCount : 0;
+    }
     riderLight.intensity = dark * 8;
     riderLight.position.set(x - 2, 4.5, 2);
     return dark;
   };
+  return { headlights, update };
 }

@@ -28,6 +28,84 @@ const run: RunStats = {
   cause: 'Traffic collision',
 };
 describe('progression and storage', () => {
+  it('places the Roller between existing bike IDs with its own progression and pace', () => {
+    expect(BIKES.map((bike) => bike.id)).toEqual([
+      '125',
+      'scooter',
+      '450',
+      '701',
+    ]);
+    const scooter = BIKES.find((bike) => bike.id === 'scooter')!;
+    const moped = BIKES.find((bike) => bike.id === '125')!;
+    const sumo = BIKES.find((bike) => bike.id === '450')!;
+    expect([scooter.name, scooter.price, scooter.level]).toEqual([
+      'Roller',
+      250,
+      2,
+    ]);
+    for (const stat of ['acceleration', 'handling', 'maxSpeed'] as const) {
+      expect(scooter[stat]).toBeGreaterThan(moped[stat]);
+      expect(scooter[stat]).toBeLessThan(sumo[stat]);
+    }
+  });
+  it('checks Roller price and level and never equips as a side effect of purchase', async () => {
+    const bike = BIKES.find((entry) => entry.id === 'scooter')!;
+    const id = `bike:${bike.id}`;
+    const richNewPlayer = { ...newPlayer(), coins: 1000 };
+    expect(unlock(richNewPlayer, id, bike.price, bike.level)).toBeNull();
+    const eligible = {
+      ...newPlayer(),
+      xp: LEVELS[1],
+      level: 2,
+      coins: bike.price - 1,
+    };
+    expect(unlock(eligible, id, bike.price, bike.level)).toBeNull();
+    eligible.coins = bike.price;
+    const purchased = unlock(eligible, id, bike.price, bike.level)!;
+    expect(purchased.coins).toBe(0);
+    expect(purchased.ownedItems).toContain(id);
+    expect(purchased.bike).toBe('125');
+    expect(eligible.ownedItems).not.toContain(id);
+    expect(unlock(purchased, id, bike.price, bike.level)).toBe(purchased);
+    const map = new Map<string, string>();
+    const repo = new LocalPlayerRepository({
+      getItem: (key) => map.get(key) ?? null,
+      setItem: (key, value) => {
+        map.set(key, value);
+      },
+    });
+    repo.save(purchased);
+    const reloaded = await repo.load();
+    expect(reloaded).toEqual(purchased);
+    expect(map.has('pfusch:player:v1')).toBe(true);
+    // Garage's explicit Equip supplies the chosen ID after ownership checks.
+    repo.save({ ...reloaded, bike: 'scooter' });
+    expect((await repo.load()).bike).toBe('scooter');
+    expect((await repo.load()).version).toBe(1);
+  });
+  it.each(['125', '450', '701'])(
+    'preserves legacy schema-1 %s selection, ownership and progress',
+    (bike) => {
+      const legacy = {
+        ...newPlayer(),
+        bike,
+        xp: LEVELS[5],
+        level: 6,
+        coins: 927,
+        ownedItems: [
+          'bike:125',
+          'bike:450',
+          'bike:701',
+          'paint:#e7e7df',
+          'rims:#a6acb0',
+        ],
+      };
+      expect(decodePlayer(JSON.stringify(legacy))).toEqual(legacy);
+      expect(decodePlayer(JSON.stringify(legacy)).ownedItems).not.toContain(
+        'bike:scooter',
+      );
+    },
+  );
   it('settles a run and completed challenges once', () => {
     const p = newPlayer();
     const result = finishRun(p, run)!;

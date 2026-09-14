@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { SPORT_GEOMETRY as bike, sportTireGeometry } from '../app/game/sportGeometry';
 
 describe('Sport road wheel proportions', () => {
-  it('uses a 1441 mm wheelbase and 17 inch rims with different front/rear tire sections', () => {
-    expect(bike.rearAxle - bike.frontAxle).toBeCloseTo(1.441, 8);
+  it('uses the R1 1405 mm wheelbase and 17 inch rims with different front/rear tire sections', () => {
+    expect(bike.rearAxle - bike.frontAxle).toBeCloseTo(1.405, 8);
     expect(bike.rimRadius * 2 / 0.0254).toBeCloseTo(17, 8);
     expect(bike.frontRadius).toBeCloseTo(0.2999, 8);
     expect(bike.rearRadius).toBeCloseTo(0.3204, 8);

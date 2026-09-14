@@ -120,21 +120,28 @@ describe('bike-specific road contacts', () => {
     }
   }
   it('keeps the intended relative surface tolerance instead of sharing one profile', () => {
-    expect(BIKES.map((b) => SURFACE_PROFILES[b.id].potholeClearance)).toEqual([
-      0.2, 0.12, 0.18,
-    ]);
-    const impact = BIKES.map(
-      (b) => roadResponse('rough', b.id, 0, 0).roughness,
-    );
-    expect(impact[1]).toBeLessThan(impact[0]);
-    expect(impact[0]).toBeLessThan(impact[2]);
+    expect(
+      Object.fromEntries(
+        BIKES.map((b) => [b.id, SURFACE_PROFILES[b.id].potholeClearance]),
+      ),
+    ).toEqual({
+      '125': 0.2,
+      scooter: 0.23,
+      '450': 0.12,
+      '701': 0.18,
+    });
+    const impact = (id: string) => roadResponse('rough', id, 0, 0).roughness;
+    expect(impact('450')).toBeLessThan(impact('125'));
+    expect(impact('125')).toBeLessThan(impact('scooter'));
+    expect(impact('scooter')).toBeLessThan(impact('701'));
     expect(SURFACE_PROFILES['450'].gravelGrip).toBeGreaterThan(
       SURFACE_PROFILES['701'].gravelGrip,
     );
   });
   it('applies actual grip to lane response, recovers, and freezes surface state during pause', () => {
-    const slippery = ride(BIKES[2]),
-      dry = ride(BIKES[2]);
+    const sport = BIKES.find((bike) => bike.id === '701')!;
+    const slippery = ride(sport),
+      dry = ride(sport);
     slippery.spawn('wet', 0, 0);
     for (const engine of [slippery, dry]) {
       steps(engine, 1);
@@ -216,7 +223,10 @@ describe('world integration and readable traffic', () => {
   });
   it('surface responses and world state replay identically at 30, 60 and 120 Hz', () => {
     const values = [30, 60, 120].map((fps) => {
-      const engine = ride(BIKES[1], 752);
+      const engine = ride(
+        BIKES.find((bike) => bike.id === '450')!,
+        752,
+      );
       engine.spawn('gravel', 0, 0);
       engine.forward(true);
       for (let frame = 0; frame < fps * 4; frame++) engine.advance(1 / fps);

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Box3, Line3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import {
+  Box3,
+  Line3,
+  Mesh,
+  MeshStandardMaterial,
+  Raycaster,
+  Vector3,
+} from 'three';
 import type { CylinderGeometry } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
@@ -26,37 +33,116 @@ function ringCenter(part: Mesh, ring: number, sides = 14) {
   const vertices = part.geometry.getAttribute('position');
   const result = new Vector3();
   for (let i = 0; i < sides; i++)
-    result.add(new Vector3().fromBufferAttribute(vertices, ring * (sides + 1) + i));
+    result.add(
+      new Vector3().fromBufferAttribute(vertices, ring * (sides + 1) + i),
+    );
   return result.divideScalar(sides);
 }
 
 describe('assembled motorcycle connections', () => {
+  it.each(['450', '701'] as const)(
+    '%s connects each caliper through a real carrier plate to its axle',
+    (bikeId) => {
+      const bike = makeBike({ ...newPlayer(), bike: bikeId }, []);
+      bike.root.scale.setScalar(1);
+      // Inspect the mechanical coordinate system; display scale is covered by
+      // the assembled motorcycle scale tests.
+      bike.body.scale.setScalar(1);
+      bike.root.updateMatrixWorld(true);
+      const calipers = bike.body.getObjectsByProperty(
+        'name',
+        'brake-caliper',
+      ) as Mesh[];
+      const carriers = bike.body.getObjectsByProperty(
+        'name',
+        'brake-caliper-carrier',
+      ) as Mesh[];
+      expect(carriers).toHaveLength(calipers.length);
+      const ray = new Raycaster();
+      for (const caliper of calipers) {
+        ray.set(
+          new Vector3(1, caliper.position.y, caliper.position.z),
+          new Vector3(-1, 0, 0),
+        );
+        const connection = ray
+          .intersectObjects(carriers, false)
+          .find((hit) => Math.abs(hit.point.x - caliper.position.x) < 0.024);
+        expect(connection).toBeDefined();
+        // The same solid plate reaches the axle; a detached decorative plate
+        // near the caliper is insufficient to pass this connectivity check.
+        const wheel =
+          caliper.parent === bike.wheels[0].parent
+            ? bike.wheels[0]
+            : bike.wheels[1];
+        ray.set(
+          new Vector3(1, wheel.position.y, wheel.position.z),
+          new Vector3(-1, 0, 0),
+        );
+        expect(
+          ray.intersectObject(connection!.object, false).length,
+        ).toBeGreaterThan(0);
+      }
+      expect(bike.body.getObjectByName('rear-brake-torque-link')).toBeDefined();
+      if (bikeId === '701') {
+        const rearsets = bike.body.getObjectsByProperty(
+          'name',
+          'frame-mounted-rearset',
+        );
+        expect(rearsets).toHaveLength(2);
+        for (const yAndZ of [
+          [0.56, 0.16],
+          [0.41, 0.4],
+        ]) {
+          ray.set(new Vector3(1, yAndZ[0], yAndZ[1]), new Vector3(-1, 0, 0));
+          for (const rearset of rearsets)
+            expect(ray.intersectObject(rearset, false).length).toBeGreaterThan(
+              0,
+            );
+        }
+      }
+    },
+  );
   it.each(['125', '450', '701'] as const)(
     '%s joins both fork legs with coaxial yokes, bearings and a frame head',
     (bikeId) => {
       const bike = makeBike({ ...newPlayer(), bike: bikeId }, []);
-      const forks = bike.body.getObjectsByProperty('name', 'telescopic-fork-slider') as Mesh[];
-      const yokes = bike.body.getObjectsByProperty('name', 'fork-yoke') as Mesh[];
+      const forks = bike.body.getObjectsByProperty(
+        'name',
+        'telescopic-fork-slider',
+      ) as Mesh[];
+      const yokes = bike.body.getObjectsByProperty(
+        'name',
+        'fork-yoke',
+      ) as Mesh[];
       expect(forks).toHaveLength(2);
       expect(yokes).toHaveLength(2);
-      expect(bike.body.getObjectsByProperty('name', 'steering-head')).toHaveLength(1);
+      expect(
+        bike.body.getObjectsByProperty('name', 'steering-head'),
+      ).toHaveLength(1);
       const nearest = new Vector3();
       for (const yoke of yokes) {
         const endpoints = rodAxis(yoke);
         for (const end of [endpoints.start, endpoints.end]) {
-          const fork = forks.find((part) => Math.sign(part.position.x) === Math.sign(end.x))!;
+          const fork = forks.find(
+            (part) => Math.sign(part.position.x) === Math.sign(end.x),
+          )!;
           rodAxis(fork).closestPointToPoint(end, true, nearest);
           expect(nearest.distanceTo(end)).toBeLessThan(1e-6);
         }
       }
       const head = rodAxis(bike.body.getObjectByName('steering-head') as Mesh);
-      for (const bearing of bike.body.getObjectsByProperty('name', 'steering-head-bearing') as Mesh[]) {
+      for (const bearing of bike.body.getObjectsByProperty(
+        'name',
+        'steering-head-bearing',
+      ) as Mesh[]) {
         const center = rodAxis(bearing).getCenter(new Vector3());
         head.closestPointToPoint(center, true, nearest);
         expect(nearest.distanceTo(center)).toBeLessThan(1e-6);
       }
       // A yoke may not substitute for/relocate a wheel or stretch the fork.
-      expect(bike.wheels[0].position.z).toBe(bikeId === '125' ? -0.7 : bikeId === '450' ? -0.77 : -0.72);
+      expect(bike.wheels[0].position.z).toBe(
+        bikeId === '125' ? -0.7 : bikeId === '450' ? -0.77 : -0.72,
+      );
       const upper = rodAxis(forks[0]).end;
       bike.animateSuspension(0.035, 0.02);
       expect(rodAxis(forks[0]).end.distanceTo(upper)).toBeLessThan(1e-6);
@@ -69,10 +155,22 @@ describe('assembled motorcycle connections', () => {
     const top = rodAxis(stem).end;
     expect(top.distanceTo(new Vector3(0, 1, -0.45))).toBeLessThan(0.013);
     bike.root.updateMatrixWorld(true);
-    expect(new Box3().setFromObject(stem).intersectsBox(new Box3().setFromObject(bike.body.getObjectByName('steering-head')!))).toBe(true);
-    expect(bike.body.getObjectsByProperty('name', 'headlamp-bracket')).toHaveLength(2);
-    expect(bike.body.getObjectsByProperty('name', 'rack-frame-mount')).toHaveLength(2);
-    expect(bike.body.getObjectsByProperty('name', 'rack-crossbar')).toHaveLength(4);
+    expect(
+      new Box3()
+        .setFromObject(stem)
+        .intersectsBox(
+          new Box3().setFromObject(bike.body.getObjectByName('steering-head')!),
+        ),
+    ).toBe(true);
+    expect(
+      bike.body.getObjectsByProperty('name', 'headlamp-bracket'),
+    ).toHaveLength(2);
+    expect(
+      bike.body.getObjectsByProperty('name', 'rack-frame-mount'),
+    ).toHaveLength(2);
+    expect(
+      bike.body.getObjectsByProperty('name', 'rack-crossbar'),
+    ).toHaveLength(4);
     expect(bike.body.getObjectByName('moped-drive-belt')).toBeDefined();
     expect(bike.body.getObjectByName('left-drive-chain')).toBeUndefined();
   });
@@ -88,15 +186,22 @@ describe('assembled motorcycle connections', () => {
       const nearest = mufflerAxis.closestPointToPoint(end, true, new Vector3());
       expect(nearest.distanceTo(end)).toBeLessThan(0.016);
       const start = ringCenter(pipe, 0);
-      expect(start.y).toBeGreaterThan(bikeId === '450' ? 0.7 : bikeId === '701' ? 0.35 : 0.27);
+      expect(start.y).toBeGreaterThan(
+        bikeId === '450' ? 0.7 : bikeId === '701' ? 0.35 : 0.27,
+      );
       expect(start.z).toBeLessThan(-0.14);
       expect(bike.body.getObjectByName('exhaust-frame-hanger')).toBeDefined();
       expect(bike.body.getObjectByName('exhaust-mount-band')).toBeDefined();
       if (bikeId === '701') {
-        const headers = bike.body.getObjectsByProperty('name', 'four-cylinder-exhaust-header') as Mesh[];
+        const headers = bike.body.getObjectsByProperty(
+          'name',
+          'four-cylinder-exhaust-header',
+        ) as Mesh[];
         expect(headers).toHaveLength(4);
         for (const header of headers)
-          expect(ringCenter(header, 18, 10).distanceTo(start)).toBeLessThan(1e-6);
+          expect(ringCenter(header, 18, 10).distanceTo(start)).toBeLessThan(
+            1e-6,
+          );
       }
     },
   );

@@ -38,6 +38,8 @@ Practical pass:
 
 ### Sport: 06, 07 and 08
 
+Factory dimensional cross-check: [Yamaha R1 2024 official fact sheet](https://cdn2.yamaha-motor.eu/prod/product-assets/2024/YZF1000R1/Factsheets/2024-YZF1000R1_en.pdf) specifies a 1405 mm wheelbase and 120/70 R17 / 190/55 R17 tires. The current pass uses those wheel dimensions; bodywork shaping remains a visual inference from supplied photos, not a claim of measured factory CAD.
+
 The Yamaha R1 references show a compact forward-pointing upper nose, a smoothly rising curved windscreen, angular shoulder/intake/light pockets, a distinct tank dome, a low rider-seat valley and a slender raised tail. The side fairing forms a tapering wrapper around the engine, not a vertical rectangular skirt. The rear swingarm is visually substantial around the axle and the tire sits centrally below the tail; the exhaust joins a visible collector/header path.
 
 The baseline upper cowl is too broad, pale and bulbous: from the side it reads as a large blunt horizontal block; from three-quarter view the wide top slab visually merges the nose with the tank. The windscreen reads as a thin flat panel in the inspected view despite its source curvature. The current light and intake features are material regions on one surface, which cannot establish the recessed pockets visible in the R1 references. The lower fairing remains a large flat mass and conceals most engine structure. Source comments and dimensions in `sportGeometry.ts` explicitly derive from the earlier BMW S 1000 RR reference; retain useful tire construction but do not treat that old styling as accepted for this target.

@@ -13,11 +13,11 @@ declare global {
   }
 }
 
-test('the actual ride selects three different engine voices, reacts to throttle and silences on pause', async ({
+test('the actual ride selects four different engine voices, reacts to throttle and silences on pause', async ({
   page,
 }) => {
   const errors: string[] = [],
-    peaks: number[] = [];
+    peaks: Record<string, number> = {};
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => {
     window.audioProbe = null;
@@ -61,14 +61,14 @@ test('the actual ride selects three different engine voices, reacts to throttle 
     });
   });
   const player = newPlayer();
-  player.ownedItems.push('bike:450', 'bike:701');
+  player.ownedItems.push('bike:scooter', 'bike:450', 'bike:701');
   player.settings.muted = false;
   player.settings.tutorialSeen = true;
   await page.addInitScript((p) => {
     p.bike = new URL(location.href).searchParams.get('sound-bike') ?? '125';
     localStorage.setItem('pfusch:player:v1', JSON.stringify(p));
   }, player);
-  for (const bike of ['125', '450', '701']) {
+  for (const bike of ['125', 'scooter', '450', '701']) {
     await page.goto(`/?sound-bike=${bike}`);
     await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
     await expect(page.getByTestId('ride-screen')).toHaveAttribute(
@@ -112,7 +112,7 @@ test('the actual ride selects three different engine voices, reacts to throttle 
     await page.waitForTimeout(400);
     const before = await level();
     console.log(bike, before);
-    peaks.push(before.peak);
+    peaks[bike] = before.peak;
     expect(before.db).toBeGreaterThan(-65);
     await page.keyboard.down('s');
     await page.waitForTimeout(650);
@@ -141,8 +141,12 @@ test('the actual ride selects three different engine voices, reacts to throttle 
     await page.waitForTimeout(550);
     expect((await level()).rms).toBeLessThan(0.001);
   }
-  expect(peaks[1]).toBeLessThan(peaks[0] * 0.65);
-  expect(peaks[2]).toBeGreaterThan(peaks[0] * 1.7);
+  expect(peaks['450']).toBeLessThan(peaks['125'] * 0.65);
+  expect(peaks['701']).toBeGreaterThan(peaks['125'] * 1.7);
+  // The scooter fires once per revolution in its CVT power band, distinct
+  // from both the low single-cylinder pulse and the inline-four's high pitch.
+  expect(peaks.scooter).toBeGreaterThan(peaks['450'] * 1.4);
+  expect(peaks.scooter).toBeLessThan(peaks['701'] * 0.6);
   expect(errors).toEqual([]);
   writeFileSync(
     'outputs/engine-audio-qa.json',

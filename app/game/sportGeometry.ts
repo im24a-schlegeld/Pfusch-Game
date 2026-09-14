@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 
-// BMW S 1000 RR 2021 technical data; dimensions are metres, before display scale.
+// Yamaha R1 2024 factory wheelbase/tire sizes; metres before display scale.
 export const SPORT_GEOMETRY = Object.freeze({
   frontAxle: -0.72,
-  rearAxle: 0.721,
+  rearAxle: 0.685,
   rimRadius: (17 * 0.0254) / 2,
   frontRadius: (17 * 0.0254) / 2 + 0.12 * 0.7,
   rearRadius: (17 * 0.0254) / 2 + 0.19 * 0.55,
@@ -23,9 +23,13 @@ export function sportTireGeometry(rear: boolean) {
   );
 }
 
-export function roadTireGeometry(radius: number, width: number) {
+export function roadTireGeometry(
+  radius: number,
+  width: number,
+  beadRadius = SPORT_GEOMETRY.rimRadius,
+) {
   const half = width / 2;
-  const bead = SPORT_GEOMETRY.rimRadius;
+  const bead = beadRadius;
   const profile = new THREE.SplineCurve([
     new THREE.Vector2(bead - 0.003, -half * 0.68),
     new THREE.Vector2(bead + 0.012, -half * 0.93),

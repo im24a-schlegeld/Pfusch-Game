@@ -84,6 +84,14 @@ test('rider joints react independently, retain contacts and freeze while paused'
         hip: garment.parent!.position.toArray(),
         joints,
         geometries: [...geometries],
+        beam: {
+          origin: (
+            scene.getObjectByName('road-headlight') as THREE.SpotLight
+          ).position.toArray(),
+          target: (
+            scene.getObjectByName('road-headlight') as THREE.SpotLight
+          ).target.position.toArray(),
+        },
       };
     });
   const before = await pose();
@@ -103,6 +111,9 @@ test('rider joints react independently, retain contacts and freeze while paused'
   const wheelie = await pose();
   expect(wheelie.joints).not.toEqual(before.joints);
   expect(wheelie.geometries).toEqual(before.geometries);
+  expect(before.beam.target[1]).toBeLessThan(before.beam.origin[1]);
+  expect(wheelie.beam.origin[1]).toBeGreaterThan(before.beam.origin[1] + 0.015);
+  expect(wheelie.beam.target[1] - wheelie.beam.origin[1]).toBeGreaterThan(0);
   await page.keyboard.press('Escape');
   await expect(ride).toHaveAttribute('data-phase', 'paused');
   const paused = await pose();

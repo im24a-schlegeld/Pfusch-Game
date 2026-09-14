@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { LANE } from './engine';
 import { WORLD_LOOK_BEHIND, type World, type WorldSegment } from './world';
+import {
+  makeTunnelBermGeometry,
+  makeTunnelMountainGeometry,
+  writeTunnelBermMatrix,
+} from './worldTerrain';
 
 export const WORLD_VIEW = Object.freeze({
   cellLength: 12,
@@ -52,7 +57,7 @@ const COLORS = {
   signGreen: '#447765',
 } as const;
 type Finish = keyof typeof COLORS;
-type Form = 'box' | 'round' | 'canopy' | 'cone' | 'arch';
+type Form = 'box' | 'round' | 'canopy' | 'cone' | 'arch' | 'mountain' | 'berm';
 interface Batch {
   readonly mesh: THREE.InstancedMesh;
   used: number;
@@ -101,13 +106,15 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     canopy: new THREE.IcosahedronGeometry(1, low ? 0 : 1),
     cone: new THREE.ConeGeometry(1, 1, low ? 7 : 10),
     arch: tunnelArch(),
+    mountain: makeTunnelMountainGeometry(),
+    berm: makeTunnelBermGeometry(),
   };
   const materials = {} as Record<Finish, THREE.MeshStandardMaterial>;
   const batches = new Map<string, Batch>();
-  function allocate(form: Form, finish: Finish) {
+  function allocate(form: Form, finish: Finish, material = materials[finish]) {
     const mesh = new THREE.InstancedMesh(
       geometries[form],
-      materials[finish],
+      material,
       WORLD_VIEW.instancesPerBatch,
     );
     mesh.name = `world-${form}-${finish}`;
@@ -136,6 +143,15 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   for (const finish of ['foliage', 'foliageLight', 'soil', 'grass'] as const)
     allocate('canopy', finish);
   allocate('cone', 'foliage');
+  // Shared only by terrain: baked rock beds leave other soil batches unchanged.
+  // Flat derivative normals also support the berm's pooled shear transform.
+  const terrainMaterial = materials.soil.clone();
+  terrainMaterial.color.set('#ffffff');
+  terrainMaterial.vertexColors = true;
+  terrainMaterial.flatShading = true;
+  terrainMaterial.roughness = 1;
+  allocate('mountain', 'soil', terrainMaterial);
+  allocate('berm', 'soil', terrainMaterial);
   for (const finish of [
     'tunnelModern',
     'tunnelWeathered',
@@ -244,6 +260,20 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       );
       box('curb', 0.18, 0.26, length, side * 4.85, raised ? 0.045 : -0.02, mid);
     }
+    if (raised)
+      // Grates follow the same world-space cadence across cells. They sit on
+      // the sidewalk outside the asphalt, with no extra obstacle or RNG state.
+      for (let z = Math.ceil((start - 6) / 24) * 24 + 6; z < end; z += 24) {
+        const depth = Math.min(0.72, (z - start) * 2, (end - z) * 2);
+        if (depth < 0.3) continue;
+        for (const side of [-1, 1]) {
+          box('dark', 0.3, 0.01, depth, side * 5.14, 0.146, z);
+          for (const offset of [-0.2, 0, 0.2]) {
+            if (Math.abs(offset) + 0.018 > depth / 2) continue;
+            box('steel', 0.28, 0.014, 0.025, side * 5.14, 0.153, z + offset);
+          }
+        }
+      }
   }
   function rail(x: number, start: number, end: number, height = 1.15) {
     const mid = (start + end) / 2,
@@ -501,6 +531,8 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         );
       box('white', 0.13, 0.75, 0.13, side * 5.5, 0.375, mid);
       box('dark', 0.15, 0.15, 0.15, side * 5.5, 0.6, mid);
+      for (const face of [-1, 1])
+        box('white', 0.08, 0.055, 0.018, side * 5.5, 0.61, mid + face * 0.082);
       if (segment.variant > 1 && cell % 3 === 0) {
         put('round', 'trunk', 0.12, 7, 0.12, side * 8, 3.5, mid);
         box('dark', 1.5, 0.12, 0.1, side * 8, 6.65, mid);
@@ -560,7 +592,9 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       mid = (start + end) / 2,
       modern = segment.tunnel?.style === 'modern',
       finish = modern ? 'tunnelModern' : 'tunnelWeathered';
-    // The roof and structural walls use exactly the same clipped interval.
+    // Mountain, roof and walls share the exact clipped interval. The mountain
+    // has a genuine open mouth fitted around the existing portal exterior.
+    put('mountain', 'soil', 1, 1, length, 0, 0, mid);
     put('arch', finish, 1, 1, length, 0, 0, mid);
     for (const side of [-1, 1]) {
       box(finish, 0.8, 4, length, side * 6.5, 2, mid);
@@ -693,7 +727,13 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       near = approach ? progress : 1 - progress;
     sidewalk(start, end);
     if (segment.kind.startsWith('tunnel')) {
-      for (const side of [-1, 1]) {
+      const total = segment.end - segment.start;
+      const progressStart = (start - segment.start) / total;
+      const progressEnd = (end - segment.start) / total;
+      const nearStart = approach ? progressStart : 1 - progressStart;
+      const nearEnd = approach ? progressEnd : 1 - progressEnd;
+      const berm = batches.get('berm:soil')!;
+      for (const side of [-1, 1] as const) {
         box(
           'concrete',
           0.6,
@@ -703,17 +743,20 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
           (1.5 + near * 3) / 2,
           mid,
         );
-        put(
-          'canopy',
-          'soil',
-          19,
-          4 + near * 9,
-          length * 0.5,
-          side * 22,
-          1,
-          mid,
+        if (berm.used === WORLD_VIEW.instancesPerBatch)
+          throw new RangeError('World instance pool exhausted: berm:soil');
+        writeTunnelBermMatrix(
+          matrix,
+          side,
+          start,
+          end,
+          nearStart,
+          nearEnd,
+          anchor,
         );
+        berm.mesh.setMatrixAt(berm.used++, matrix);
         box('dark', 0.16, 0.3, Math.min(0.2, length), side * 6.56, 0.9, mid);
+        box('white', 0.025, 0.1, Math.min(0.1, length), side * 6.472, 0.9, mid);
       }
     } else {
       const bank = 9 + (1 - near) * 24;

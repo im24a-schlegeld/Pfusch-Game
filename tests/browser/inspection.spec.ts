@@ -24,6 +24,7 @@ test('all bike inspection views render, and repeating a preset restores it after
   await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
   for (const [name, id] of [
     ['Töffli', '125'],
+    ['Roller', 'scooter'],
     ['Supermoto', '450'],
     ['Sport', '701'],
   ]) {
@@ -38,39 +39,124 @@ test('all bike inspection views render, and repeating a preset restores it after
       await page
         .getByRole('button', { name: 'Asphalt paint', exact: true })
         .click();
+    await expect(page.getByTestId('garage-model')).toHaveAttribute(
+      'data-bike',
+      id,
+    );
+    // Appearance changes rebuild the vehicle on the next renderer frame.
+    // Inspect the requested model only after that replacement has completed.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const scene = window.garageScenes
+            .filter((s) => s.getObjectByName('full-face-helmet'))
+            .at(-1);
+          if (scene?.getObjectByName('scooter-chassis')) return 'scooter';
+          if (scene?.getObjectByName('moped-drive-belt')) return '125';
+          if (scene?.getObjectByName('sport-belly-pan')) return '701';
+          if (scene?.getObjectByName('supermoto-fuel-tank')) return '450';
+          return null;
+        }),
+      )
+      .toBe(id);
     const drive = await page.evaluate(() => {
-      const scene = window.garageScenes.filter((s) => s.getObjectByName('full-face-helmet')).at(-1)!;
+      const scene = window.garageScenes
+        .filter((s) => s.getObjectByName('full-face-helmet'))
+        .at(-1)!;
       scene.updateMatrixWorld(true);
       const rearWheel = scene.getObjectByName('rear-wheel')!;
       const body = rearWheel.parent!;
       const inverse = body.matrixWorld.clone().invert();
-      const bounds = (object: THREE.Object3D) => {
+      const bounds = (object: THREE.Object3D, axis: 'x' | 'y' | 'z' = 'x') => {
         const mesh = object as THREE.Mesh;
         const positions = mesh.geometry.getAttribute('position');
         const point = body.position.clone();
         const instance = body.matrix.clone();
-        let min = Infinity, max = -Infinity;
-        const count = (mesh as THREE.InstancedMesh).isInstancedMesh ? (mesh as THREE.InstancedMesh).count : 1;
+        let min = Infinity,
+          max = -Infinity;
+        const count = (mesh as THREE.InstancedMesh).isInstancedMesh
+          ? (mesh as THREE.InstancedMesh).count
+          : 1;
         for (let item = 0; item < count; item++) {
-          if ((mesh as THREE.InstancedMesh).isInstancedMesh) (mesh as THREE.InstancedMesh).getMatrixAt(item, instance);
+          if ((mesh as THREE.InstancedMesh).isInstancedMesh)
+            (mesh as THREE.InstancedMesh).getMatrixAt(item, instance);
           else instance.identity();
           for (let i = 0; i < positions.count; i++) {
-            point.fromBufferAttribute(positions, i).applyMatrix4(instance).applyMatrix4(mesh.matrixWorld).applyMatrix4(inverse);
-            min = Math.min(min, point.x); max = Math.max(max, point.x);
+            point
+              .fromBufferAttribute(positions, i)
+              .applyMatrix4(instance)
+              .applyMatrix4(mesh.matrixWorld)
+              .applyMatrix4(inverse);
+            min = Math.min(min, point[axis]);
+            max = Math.max(max, point[axis]);
           }
         }
         return { min, max };
       };
       const tire = bounds(rearWheel.getObjectByName('tire')!);
       const belt = scene.getObjectByName('moped-drive-belt');
-      if (belt) return { belt: bounds(belt), tire, chain: null, swingarm: null, pulleys: body.getObjectsByProperty('name', 'smooth-belt-pulley').length };
-      const chain = bounds(scene.getObjectByName('left-drive-chain')!);
-      const arm = body.getObjectsByProperty('name', 'box-section-swingarm').find((o) => o.position.x < 0)!;
-      return { belt: null, tire, chain, swingarm: bounds(arm), pulleys: 0 };
+      const exposedChain = scene.getObjectByName('left-drive-chain');
+      const pulleys = body.getObjectsByProperty(
+        'name',
+        'smooth-belt-pulley',
+      ).length;
+      const driveCase = scene.getObjectByName('scooter-drive-case');
+      if (driveCase) {
+        const cover = scene.getObjectByName('scooter-transmission-cover');
+        return {
+          belt: belt ? bounds(belt) : null,
+          tire,
+          chain: exposedChain ? bounds(exposedChain) : null,
+          swingarm: null,
+          pulleys,
+          cvt: {
+            case: bounds(driveCase),
+            length: bounds(driveCase, 'z'),
+            cover: cover ? bounds(cover) : null,
+            rearAxle: rearWheel.position.z,
+            attached: driveCase.parent === body && cover?.parent === body,
+          },
+        };
+      }
+      if (belt)
+        return {
+          belt: bounds(belt),
+          tire,
+          chain: null,
+          swingarm: null,
+          pulleys,
+          cvt: null,
+        };
+      const chain = bounds(exposedChain!);
+      const arm = body
+        .getObjectsByProperty('name', 'box-section-swingarm')
+        .find((o) => o.position.x < 0)!;
+      return {
+        belt: null,
+        tire,
+        chain,
+        swingarm: bounds(arm),
+        pulleys: 0,
+        cvt: null,
+      };
     });
     if (id === '125') {
       expect(drive.belt!.max).toBeLessThan(drive.tire.min - 0.015);
       expect(drive.pulleys).toBe(2);
+    } else if (id === 'scooter') {
+      expect(drive.belt).toBeNull();
+      expect(drive.chain).toBeNull();
+      expect(drive.pulleys).toBe(0);
+      expect(drive.cvt).not.toBeNull();
+      const cvt = drive.cvt!;
+      expect(cvt.attached).toBe(true);
+      expect(cvt.case.max - cvt.case.min).toBeGreaterThan(0.04);
+      expect(cvt.case.max).toBeLessThan(drive.tire.min - 0.01);
+      expect(cvt.length.min).toBeLessThan(cvt.rearAxle - 0.25);
+      expect(cvt.length.max).toBeGreaterThan(cvt.rearAxle);
+      expect(cvt.cover).not.toBeNull();
+      expect(cvt.cover!.max - cvt.cover!.min).toBeGreaterThan(0.005);
+      expect(cvt.cover!.max).toBeLessThan(cvt.case.max);
     } else {
       expect(drive.chain!.min).toBeGreaterThan(drive.swingarm!.max + 0.006);
       expect(drive.chain!.max).toBeLessThan(drive.tire.min - 0.02);

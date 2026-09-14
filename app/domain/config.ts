@@ -13,6 +13,18 @@ export const BIKES: Bike[] = [
     color: '#e7e7df',
   },
   {
+    id: 'scooter',
+    name: 'Roller',
+    tag: 'SMALL WHEELS. BIG CITY.',
+    price: 250,
+    level: 2,
+    acceleration: 0.215,
+    handling: 14,
+    stability: 1.06,
+    maxSpeed: 42,
+    color: '#627dac',
+  },
+  {
     id: '450',
     name: 'Supermoto',
     tag: 'MADE FOR THE STREETS',

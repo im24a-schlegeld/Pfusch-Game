@@ -433,9 +433,11 @@ export default function Garage({
                     <div className="bike-info">
                       <h3>{b.name}</h3>
                       <p>
-                        {i === 0
+                        {b.id === '125'
                           ? 'Light frame. Easy upright riding.'
-                          : i === 1
+                          : b.id === 'scooter'
+                            ? 'Small wheels. Open floorboard. City riding.'
+                          : b.id === '450'
                             ? 'Tall stance. Road tires. Street attitude.'
                             : 'Full fairings. Low bars. Tucked posture.'}
                       </p>

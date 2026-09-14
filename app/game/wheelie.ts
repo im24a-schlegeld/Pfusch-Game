@@ -22,6 +22,16 @@ export const BALANCE: Record<string, BalanceProfile> = {
     damping: 1.5,
     crashAngle: 1.25,
   },
+  scooter: {
+    balancePoint: 0.75,
+    balanceWidth: 0.2,
+    throttleTorque: 2.75,
+    launchTorque: 4.5,
+    forwardWeightTorque: 3.65,
+    gravity: 3.1,
+    damping: 1.65,
+    crashAngle: 1.27,
+  },
   '450': {
     balancePoint: 0.8,
     balanceWidth: 0.24,

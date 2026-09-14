@@ -34,7 +34,7 @@ export function createKeepUpInkGlow(
   texture.colorSpace = THREE.NoColorSpace;
   texture.anisotropy = 2;
   material.emissiveMap = texture;
-  material.emissive.set('#668bff');
+  material.emissive.set('#1d6bff');
   material.emissiveIntensity = 0;
   glowMaterials.add(material);
   let disposed = false;
@@ -90,7 +90,7 @@ export function createGarmentGlowUpdater(root: THREE.Object3D) {
     const darkness = Number.isFinite(darkAmount)
       ? THREE.MathUtils.clamp(darkAmount, 0, 1)
       : 0;
-    const intensity = THREE.MathUtils.smoothstep(darkness, 0.15, 0.85) * 0.22;
+    const intensity = THREE.MathUtils.smoothstep(darkness, 0.15, 0.85) * 0.95;
     if (intensity === previousIntensity) return;
     previousIntensity = intensity;
     for (const material of materials)

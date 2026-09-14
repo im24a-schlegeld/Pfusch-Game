@@ -17,6 +17,7 @@ interface Props {
   products: Product[];
   audio: GameAudio;
   onFinish: (r: RunStats) => void;
+  onResultsReady: (runId: string) => void;
   onMute: () => void;
 }
 export default function Ride({
@@ -24,6 +25,7 @@ export default function Ride({
   products,
   audio,
   onFinish,
+  onResultsReady,
   onMute,
 }: Props) {
   const engine = useMemo(
@@ -37,12 +39,15 @@ export default function Ride({
   const [tick, setTick] = useState(0);
   const [ready, setReady] = useState(false);
   const [countdown, setCountdown] = useState(3);
-  const done = useRef(false);
+  const settled = useRef<RunStats | null>(null);
+  const revealed = useRef(false);
   const lastEvent = useRef(0);
   const eventTime = useRef(0);
   const gesture = useRef<{ x: number; y: number } | null>(null);
   const finish = useRef(onFinish);
   finish.current = onFinish;
+  const resultsReady = useRef(onResultsReady);
+  resultsReady.current = onResultsReady;
   useEffect(() => {
     if (!ready) return;
     const timer = window.setInterval(() => {
@@ -123,6 +128,18 @@ export default function Ride({
       audio.update(0, false, false);
     };
   }, [engine, audio]);
+  function settle(e: Engine) {
+    if (e.phase !== 'crashed' || settled.current) return;
+    const run = e.stats();
+    settled.current = run;
+    finish.current(run);
+  }
+  function revealResults() {
+    settle(engine);
+    if (!settled.current || revealed.current) return;
+    revealed.current = true;
+    resultsReady.current(settled.current.id);
+  }
   function frame(e: Engine) {
     audio.update(
       e.speed,
@@ -138,9 +155,9 @@ export default function Ride({
       audio.cue(e.phase === 'crashed');
     }
     setTick((n) => n + 1);
-    if (e.phase === 'crashed' && !done.current) {
-      done.current = true;
-      finish.current(e.stats());
+    if (e.phase === 'crashed') {
+      settle(e);
+      if (settled.current?.cause === 'Ride ended') revealResults();
     }
   }
   const eventVisible =
@@ -172,6 +189,7 @@ export default function Ride({
         engine={engine}
         onFrame={frame}
         onReady={() => setReady(true)}
+        onCrashComplete={revealResults}
       />
       <div
         className="gesture-zone"
@@ -210,6 +228,7 @@ export default function Ride({
           <button
             className="icon-button"
             aria-label="Pause ride"
+            disabled={engine.phase === 'crashed'}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
               e.preventDefault();
@@ -255,7 +274,7 @@ export default function Ride({
           <p>Dodge traffic. Balance the front wheel.</p>
         </div>
       )}
-      {engine.elapsed < 9 && countdown === 0 && (
+      {engine.elapsed < 9 && countdown === 0 && engine.phase !== 'crashed' && (
         <div className="ride-tip">
           <span className="desktop-control-tip">
             S / ↓ RAISE · W / ↑ CORRECT
@@ -266,29 +285,31 @@ export default function Ride({
           {' · SWIPE TO DODGE'}
         </div>
       )}
-      <div className="ride-controls">
-        <div className="steer-controls">
-          <button
-            aria-label="Dodge left"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              engine.move(-1);
-            }}
-          >
-            <ArrowLeft />
-          </button>
-          <button
-            aria-label="Dodge right"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              engine.move(1);
-            }}
-          >
-            <ArrowRight />
-          </button>
+      {engine.phase !== 'crashed' && (
+        <div className="ride-controls">
+          <div className="steer-controls">
+            <button
+              aria-label="Dodge left"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                engine.move(-1);
+              }}
+            >
+              <ArrowLeft />
+            </button>
+            <button
+              aria-label="Dodge right"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                engine.move(1);
+              }}
+            >
+              <ArrowRight />
+            </button>
+          </div>
+          <WeightControl engine={engine} />
         </div>
-        <WeightControl engine={engine} />
-      </div>
+      )}
       <Dialog
         open={engine.phase === 'paused'}
         disablePointerDismissal

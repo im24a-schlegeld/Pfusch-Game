@@ -58,6 +58,10 @@ export default function GameApp() {
     reward: RunReward;
   } | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const activeRun = useRef(0);
+  const pendingResult = useRef<{ run: RunStats; reward: RunReward } | null>(
+    null,
+  );
   useEffect(() => {
     let alive = true;
     void Promise.all([
@@ -125,17 +129,25 @@ export default function GameApp() {
       setTutorial(true);
       return;
     }
-    setRunKey((n) => n + 1);
+    activeRun.current += 1;
+    pendingResult.current = null;
+    setResult(null);
+    setRunKey(activeRun.current);
     setScreen('ride');
     services.analytics.track('run_started');
   }
-  function finish(run: RunStats) {
-    if (!current.current) return;
+  function finish(run: RunStats, generation: number) {
+    if (
+      !current.current ||
+      generation !== activeRun.current ||
+      pendingResult.current?.run.id === run.id
+    )
+      return;
     const outcome = services.rewards.settle(current.current, run);
     if (!outcome) return;
     update(outcome.player);
-    setResult({ run, reward: outcome.reward });
-    setScreen('results');
+    pendingResult.current = { run, reward: outcome.reward };
+    setResult(pendingResult.current);
     services.analytics.track('run_finished', {
       score: run.score,
       distance: run.distance,
@@ -147,6 +159,14 @@ export default function GameApp() {
     outcome.reward.challengeIds.forEach((id) =>
       services.analytics.track('challenge_completed', { id }),
     );
+  }
+  function revealResults(runId: string, generation: number) {
+    if (
+      generation !== activeRun.current ||
+      pendingResult.current?.run.id !== runId
+    )
+      return;
+    setScreen('results');
   }
   const mute = () => {
     if (current.current) {
@@ -189,7 +209,8 @@ export default function GameApp() {
         player={player}
         products={products}
         audio={audio}
-        onFinish={finish}
+        onFinish={(run) => finish(run, runKey)}
+        onResultsReady={(runId) => revealResults(runId, runKey)}
         onMute={mute}
       />
     );
@@ -261,7 +282,8 @@ export default function GameApp() {
             <span className="eyebrow">YOUR CURRENT SETUP</span>
             <strong>{equippedBike.name}</strong>
             <span>
-              SUPERMOTO / {player.paint === '#e7e7df' ? 'CHALK' : 'CUSTOM'}
+              {equippedBike.name.toUpperCase()} /{' '}
+              {player.paint === '#e7e7df' ? 'CHALK' : 'CUSTOM'}
             </span>
           </div>
           <div className="menu-bottom">
@@ -469,10 +491,7 @@ export default function GameApp() {
                 settings: { ...player.settings, tutorialSeen: true },
               });
               setTutorial(false);
-              audio.unlock();
-              setRunKey((n) => n + 1);
-              setScreen('ride');
-              services.analytics.track('run_started');
+              start();
             }}
           >
             GOT IT. LET’S RIDE <ArrowRight />

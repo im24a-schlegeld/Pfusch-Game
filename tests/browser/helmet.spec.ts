@@ -11,6 +11,8 @@ declare global {
 test('helmet styles and colors preview freely and only Equip persists them', async ({
   page,
 }) => {
+  // Four complete vehicle rebuilds, preview/discard, persistence and a ride.
+  test.setTimeout(300000);
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript((player) => {
@@ -60,7 +62,7 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
     .getByRole('button', { name: 'DISCARD PREVIEW', exact: true })
     .click();
   await expect(model).toHaveAttribute('data-helmet', 'fullface');
-  for (const bike of ['Töffli', 'Supermoto', 'Sport']) {
+  for (const bike of ['Töffli', 'Roller', 'Supermoto', 'Sport']) {
     await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
     await page
       .getByRole('button', { name: `Preview ${bike}`, exact: true })

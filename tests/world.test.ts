@@ -70,8 +70,9 @@ describe('seeded road segments', () => {
     );
   });
   it('is independent of advance frequency and read-only renderer lookups', () => {
-    const regular = new World(175, BIKES[1]);
-    const fastForward = new World(175, BIKES[1]);
+    const sumo = BIKES.find((bike) => bike.id === '450')!;
+    const regular = new World(175, sumo);
+    const fastForward = new World(175, sumo);
     for (let distance = 0; distance <= 60000; distance += 20) {
       regular.advance(distance);
       for (let ahead = -48; ahead < 240; ahead += 12)
@@ -81,10 +82,11 @@ describe('seeded road segments', () => {
     expect(regular.segments).toEqual(fastForward.segments);
   });
   it('keeps contiguous logical transitions and bounded visible coverage over ten hours', () => {
-    const world = new World(419, BIKES[2]);
+    const sport = BIKES.find((bike) => bike.id === '701')!;
+    const world = new World(419, sport);
     const kinds = new Set<string>();
     for (let time = 0; time <= 36000; time += 2) {
-      const distance = distanceAtTime(time, BIKES[2]);
+      const distance = distanceAtTime(time, sport);
       world.advance(distance);
       const segments = world.segments;
       expect(segments.length).toBeLessThanOrEqual(WORLD_MAX_SEGMENTS);

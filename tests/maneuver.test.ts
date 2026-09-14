@@ -190,16 +190,20 @@ describe('motorcycle weight and road-edge handling', () => {
       },
     );
   }
-  it('has distinct lift response: tuned moped < single < sport', () => {
-    const angles = BIKES.map((bike) => {
-      const e = ride(bike);
-      e.hold(true);
-      steps(e, 45);
-      return e.wheelieAngle;
-    });
-    expect(angles[0]).toBeGreaterThan(0);
-    expect(angles[1]).toBeGreaterThan(angles[0] * 1.5);
-    expect(angles[2]).toBeGreaterThan(angles[1] * 1.5);
+  it('has distinct lift response: tuned moped < scooter < single < sport', () => {
+    const angles = Object.fromEntries(
+      BIKES.map((bike) => {
+        const e = ride(bike);
+        e.hold(true);
+        steps(e, 45);
+        return [bike.id, e.wheelieAngle];
+      }),
+    );
+    expect(angles['125']).toBeGreaterThan(0);
+    expect(angles.scooter).toBeGreaterThan(angles['125']);
+    expect(angles.scooter).toBeLessThan(angles['450']);
+    expect(angles['450']).toBeGreaterThan(angles['125'] * 1.5);
+    expect(angles['701']).toBeGreaterThan(angles['450'] * 1.5);
   });
   it('freezes angle and velocity on pause and clears both inputs', () => {
     const e = ride();

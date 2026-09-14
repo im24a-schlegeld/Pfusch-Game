@@ -6,6 +6,9 @@ test('locked previews combine freely, never change a zero-coin save, and reset',
   page,
   request,
 }) => {
+  // This catalog-wide flow visits 43 colors, each rebuilding the full 3D setup.
+  // Budget the complete scenario, without extending individual click timeouts.
+  test.setTimeout(300000);
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (e) => {
@@ -27,6 +30,7 @@ test('locked previews combine freely, never change a zero-coin save, and reset',
   await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
   for (const [name, id] of [
     ['Töffli', '125'],
+    ['Roller', 'scooter'],
     ['Supermoto', '450'],
     ['Sport', '701'],
   ]) {
@@ -38,27 +42,7 @@ test('locked previews combine freely, never change a zero-coin save, and reset',
       id,
     );
     await page.locator('canvas').waitFor();
-    await page
-      .getByRole('button', { name: 'Inspect FRONT ¾', exact: true })
-      .click();
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: `outputs/bike-${id}.png` });
-    await page
-      .getByRole('button', { name: 'Inspect SIDE', exact: true })
-      .click();
-    await page.waitForTimeout(250);
-    await page.screenshot({ path: `outputs/bike-${id}-side.png` });
-    for (const angle of ['REAR ¾', 'FRONT']) {
-      await page
-        .getByRole('button', { name: `Inspect ${angle}`, exact: true })
-        .click();
-      await page.waitForTimeout(300);
-      await page
-        .getByTestId('garage-model')
-        .screenshot({
-          path: `outputs/bike-${id}-${angle === 'FRONT' ? 'front' : 'rear'}.png`,
-        });
-    }
+    // Preset rendering and screenshots are covered in inspection.spec.ts.
   }
   await page
     .getByRole('button', { name: 'Asphalt paint', exact: true })

@@ -6,6 +6,7 @@ export function torsoDrape(
   geometry: THREE.BufferGeometry,
   hem: number,
   outerwear: boolean,
+  knittedHem = false,
 ) {
   const positions = geometry.getAttribute('position');
   for (let i = 0; i < positions.count; i++) {
@@ -28,7 +29,14 @@ export function torsoDrape(
       (0.006 * side +
         0.017 * Math.max(0, z / 0.15) -
         0.004 * Math.max(0, -z / 0.15));
-    positions.setXYZ(i, x, y - hemDrop, z + Math.sign(z) * folds);
+    const band = 1 - THREE.MathUtils.smoothstep(y - hem, 0.035, 0.054);
+    const gather = knittedHem ? 1 - 0.034 * band : 1;
+    positions.setXYZ(
+      i,
+      x * gather,
+      y - hemDrop,
+      (z + Math.sign(z) * folds) * gather,
+    );
   }
   geometry.computeVertexNormals();
 }

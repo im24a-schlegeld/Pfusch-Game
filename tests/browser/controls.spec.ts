@@ -59,7 +59,7 @@ async function expectWeight(page: Page, throttle: number, forward: number) {
     .toEqual([throttle.toFixed(3), forward.toFixed(3)]);
 }
 
-for (const bike of ['125', '450', '701']) {
+for (const bike of ['125', 'scooter', '450', '701']) {
   test(`${bike} gives a finite initial tug with keyboard and touch`, async ({
     page,
     context,
