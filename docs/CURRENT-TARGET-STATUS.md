@@ -1,6 +1,6 @@
 # PFUSCH current target — 14 September 2026
 
-The required implementation is complete. Final browser validation and publication are in progress; do not claim a completed deployment until the checks below have passed.
+The required implementation is complete. Final local validation and live acceptance have passed on 14 September 2026. The release uses the existing GitHub `main` branch and Vercel project.
 
 Authoritative scope: `C:/Users/dario/.codex/attachments/9fe43898-1d4b-462e-872b-323d835aefc8/pasted-text.txt`, with the control/clothing/animation block in `C:/Users/dario/.codex/attachments/a9eab8c1-d200-47f9-9f26-ab97f25bf53c/pasted-text.txt` inserted first. Later user corrections, drivetrain/scoring additions, helmet options and the existing GitHub/Vercel deployment instruction are included. Earlier checkpoint details remain in Git history and the linked audit documents.
 
@@ -29,21 +29,22 @@ Authoritative scope: `C:/Users/dario/.codex/attachments/9fe43898-1d4b-462e-872b-
 
 Typecheck, lint, all 124 unit tests in 14 files and production build passed on 14 September. The long ten-hour world test has an explicit 15-second budget for its roughly 200,000 assertions; its checks are retained.
 
-Passing targeted browser checks include all-bike mechanical/visor inspection, animated rider contacts and pause freeze, and actual city/industrial/construction/open/waterfront/tunnel/bridge/night rendering. New environment-effect and helmet cases are being finalized before a single complete browser-suite run.
+The final complete production browser suite passed all 29 tests in 6.9 minutes, with zero skipped, unexpected or flaky cases. Coverage includes all-bike mechanical/visor inspection, animated rider contacts and pause freeze, actual city/industrial/construction/open/waterfront/tunnel/bridge/night rendering, all five environment-effect cases, the complete helmet preview/equip/persistence flow, four control/feedback sizes, locked combined previews, save/reward/restart/navigation and mobile gameplay. The number test reports actual garment draw values and allows ten seconds for the asynchronous 3D update; its 23/32/37 cases also passed three repeated focused runs. Real Merriweather loading and glyph descent assertions remain intact. Results: ignored `outputs/release-browser-report.json` and `outputs/font-repeat-report.json`.
 
 Visual evidence in ignored `outputs/`: `close-*` bike side/front/front-three-quarter/rear-three-quarter/opposite-side views; `world-*` environment views; `garment-*` all nine tops and Racing sleeves; cap/bag views; 23/32/37 number textures; four responsive control/feedback sizes (320×568, 390×844, 820×1180, 667×360); wheelie/lane-response and suspension captures. Inspect actual images, not HTTP status alone.
 
 Limits of acceptance: mobile checks use Edge touch/viewport emulation, not physical iOS/Android hardware. Audio output and identity are measured and recorded; a subjective human listening comparison is not claimed. The optional chase event was not required and was not added.
 
-## Remaining release steps
+## Release and remaining work
 
-1. Finish helmet/environment browser checks and inspect their images; repair any regression.
-2. Run the complete browser suite on the final production build, plus final typecheck/lint/unit/build validation as needed after fixes.
-3. Confirm production preview at `http://127.0.0.1:5190/` and inspect Git status.
-4. Commit only intended project changes and push existing `main` to `https://github.com/im24a-schlegeld/Pfusch-Game.git`.
-5. Wait for the existing `dario-schlegels-projects/pfusch-game` Vercel integration to report success for the exact pushed commit.
-6. Verify `https://pfusch-game.vercel.app/`: newest bundle/options, menu, Garage, gameplay, assets and console. Report full commit hash, branch, push/deployment result and live URL.
+No required implementation items remain. Physical-device playtesting and subjective human audio listening are acceptance limits, not claimed as completed work. The optional chase event remains excluded.
 
-The latest actual usage check showed 99% remaining in the primary window and 51% weekly. The <=5% checkpoint rule has not triggered. No usage reset was redeemed. Continue the existing goal through release without creating another repository, branch or Vercel project.
+The final production preview at `http://127.0.0.1:5190/` passed typecheck, lint, all 124 unit tests, all 29 browser tests and production build. Vite reports the existing non-blocking Three.js chunk-size advisory.
 
-Changed-file manifest: `CURRENT-CHANGED-FILES.txt` (refresh after final edits).
+Implementation commit `cd5b2052d059f6532eae1ab4a2e1b8aea967f7cc` is on existing `main` at `https://github.com/im24a-schlegeld/Pfusch-Game.git`. Its existing `dario-schlegels-projects/pfusch-game` Vercel status is successful. Live Edge checks at `https://pfusch-game.vercel.app/` confirmed the exact tested bundle `/assets/index-CN9xumHK.js`, menu, Garage, motocross/Signal preview and Equip, gameplay, S/W weight controls and all 16 main catalog images. No console errors, page errors or failed HTTP responses occurred. The actual live menu, Garage and gameplay screenshots were visually inspected.
+
+This final documentation checkpoint preserves that implementation and bundle. The same GitHub-to-Vercel workflow publishes the documentation commit; the final reported release hash and exact-commit deployment status identify it. `outputs/live-verification.json` records the checked release hash and asset results; `outputs/live-menu.png`, `outputs/live-garage.png` and `outputs/live-gameplay.png` hold the visual evidence. These generated artifacts are intentionally ignored by Git.
+
+The latest actual usage check reported 0% remaining in the primary window and 36% weekly. The user's <=5% rule has triggered: finish validation and release this checkpoint, then stop. No usage reset was redeemed. No new repository, branch or Vercel project is needed.
+
+Changed-file manifest: `CURRENT-CHANGED-FILES.txt` (cumulative target changes since `c1f31cc`).

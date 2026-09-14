@@ -47,6 +47,7 @@ tests/browser/garment-visual.spec.ts
 tests/browser/helmet.spec.ts
 tests/browser/inspection.spec.ts
 tests/browser/motion.spec.ts
+tests/browser/number-font.spec.ts
 tests/browser/smoke.spec.ts
 tests/browser/world.spec.ts
 tests/domain.test.ts
