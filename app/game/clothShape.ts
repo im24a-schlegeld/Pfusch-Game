@@ -23,7 +23,11 @@ export function torsoDrape(
       (outerwear ? 1.2 : 1);
     const hang = gaussian((y - hem) / 0.07);
     // Side seams hang slightly lower; front compresses over the seated hip.
-    const hemDrop = hang * (0.009 * side - 0.004 * Math.max(0, -z / 0.15));
+    const hemDrop =
+      hang *
+      (0.006 * side +
+        0.017 * Math.max(0, z / 0.15) -
+        0.004 * Math.max(0, -z / 0.15));
     positions.setXYZ(i, x, y - hemDrop, z + Math.sign(z) * folds);
   }
   geometry.computeVertexNormals();

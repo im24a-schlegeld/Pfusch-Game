@@ -1,0 +1,121 @@
+[
+  {
+    "file": "01-defect-toeffli-steering-join.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-2fc1c3d7-59b8-49ac-bac3-49b0ec0a33a7.png",
+    "description": "Töffli steering/fork connection defect",
+    "sha256": "B018D10F0D17337784B8C0393FBDA028373B5FC319DCA80936A7164CB3E75FBF",
+    "bytes": 6982
+  },
+  {
+    "file": "02-defect-rider-seat-transition.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-a46ba40a-70be-405d-b8a3-78799cfeceee.png",
+    "description": "Rider rear torso/seat transition defect",
+    "sha256": "5F7D285629A0DE26DB016010FDCF85C7CACEFFD641C14A53EF08F3DDE3AFF874",
+    "bytes": 7549
+  },
+  {
+    "file": "03-defect-garment-rear-seat.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-786a9b81-2588-4a7c-a9af-2e6c1dec977d.png",
+    "description": "Garment rear hem and seat contact defect",
+    "sha256": "37A60F437383AA7466AEF15DC1BB41DC467AB03023232E89C0B7983025575355",
+    "bytes": 10470
+  },
+  {
+    "file": "04-supermoto-husqvarna-front-quarter.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-4a26f127-6cad-4bab-a2e2-3cd58f622089.png",
+    "description": "Husqvarna supermoto front three-quarter reference",
+    "sha256": "59D725701B7FC6506CD3E8B0DE757AA2AB7C7B6923054869C44985C896CAAC0A",
+    "bytes": 302736
+  },
+  {
+    "file": "05-supermoto-ktm-front-quarter.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-494a7b56-ad13-4b58-9118-20389081f9c9.png",
+    "description": "KTM supermoto front three-quarter reference",
+    "sha256": "2B2F86183E1654A9576693DC65ABDEBD59BCA7409A86BB874FA79C4CB724FBC8",
+    "bytes": 563857
+  },
+  {
+    "file": "06-sport-yamaha-r1-front-quarter-dark.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-4df15f9b-c5a0-42cb-b2ed-070e560654a7.png",
+    "description": "Dark Yamaha R1 front three-quarter reference",
+    "sha256": "161FC5A42C97AB7100A84AA71BE29F21424B83630BB2182E555323FE82F500DA",
+    "bytes": 476315
+  },
+  {
+    "file": "07-sport-yamaha-r1-front-quarter-blue.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-8fdd9e0f-c963-4e75-9410-10ad458d182a.png",
+    "description": "Blue Yamaha R1 front three-quarter reference",
+    "sha256": "25E7AB248DFA28D7985D43DE8C45CB3FE489CDCF05AFEA61A61070AC463EA378",
+    "bytes": 344500
+  },
+  {
+    "file": "08-sport-yamaha-r1-side.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-3a10e70e-87aa-4899-bb45-123b15418725.png",
+    "description": "Yamaha R1 side silhouette reference",
+    "sha256": "946A6AB9679C30B743CCC2DA5CBBC4CC995081FC281FD61BE1AEC4E97DCA4E83",
+    "bytes": 187239
+  },
+  {
+    "file": "09-scooter-front-quarter-gray.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-17b6d29e-c6ea-4dd6-9e4f-d53073628d62.png",
+    "description": "Sporty step-through scooter front three-quarter reference",
+    "sha256": "880ED139098ADD3C8B4F3254F6E551CAB36EFFA3F346DE9D0658EB37D11C995A",
+    "bytes": 192973
+  },
+  {
+    "file": "10-scooter-side-blue.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-b307ddff-86ce-4cd8-954c-da16e4cc73b3.png",
+    "description": "Sporty step-through scooter side reference",
+    "sha256": "3CDD7C53251F0FC535D685AC095E7D975DDAB862960938E13F3DCFE2F153AFB1",
+    "bytes": 306739
+  },
+  {
+    "file": "11-scooter-front-quarter-graphics.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-fee11bc0-c37a-4e20-9ba8-a27f9346e6f9.png",
+    "description": "Sporty step-through scooter body and wheel reference",
+    "sha256": "2420FAA2420F3BCA45C13C2CBA40796C163A54887038D5259F4EC46E1C03675C",
+    "bytes": 192821
+  },
+  {
+    "file": "12-cross-helmet-airoh-side-right.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-b96fd6cb-5644-4c67-9ac4-8b8bb7ca9107.png",
+    "description": "Airoh motocross shell right three-quarter reference",
+    "sha256": "3FBA68A0788A275206FF20F41A699898750DE794DBA8ED2E74307D490B5ED9D3",
+    "bytes": 106419
+  },
+  {
+    "file": "13-cross-helmet-airoh-side-left.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-f04311d2-986e-4f7b-a04f-7acf281694ee.png",
+    "description": "Airoh motocross shell left three-quarter reference",
+    "sha256": "2357DD951811A56C911777FD43A872D7BEFF972FA781D79E8D6E9452355F01F3",
+    "bytes": 103839
+  },
+  {
+    "file": "14-cross-helmet-airoh-front.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-3b79f34b-90cd-4bd8-88d2-d22f38b445da.png",
+    "description": "Airoh motocross shell front reference",
+    "sha256": "7685B1C8792A2FDF9F7BA53FC247D87288408F0345729F799968343FB3E1F8D6",
+    "bytes": 158649
+  },
+  {
+    "file": "15-cross-helmet-worn-blue-goggles.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-db9f393f-5106-493f-8935-6b2fbf397b20.png",
+    "description": "Worn motocross helmet and separate blue goggles reference",
+    "sha256": "EBF087F9CC9AEC23ECDB33508543726EFA04096EB2C7ED2B227484114FED00DE",
+    "bytes": 416982
+  },
+  {
+    "file": "16-cross-helmet-side-gold-goggles.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-14aa8b20-2b01-4ad8-80e7-be6c4cd5b8a7.png",
+    "description": "Side helmet, amber goggles and strap fit reference",
+    "sha256": "F41A3686EF9B288458A6C166325131012DC4BA3C9074D5FEFA4ABF63DBEA2907",
+    "bytes": 273455
+  },
+  {
+    "file": "17-cross-helmet-worn-orange-goggles.png",
+    "original": "C:/Users/dario/AppData/Local/Temp/codex-clipboard-3bc1c500-ccee-49b4-bbed-2842be1be930.png",
+    "description": "Worn helmet chin projection and orange goggle strap reference",
+    "sha256": "6364F4B663B9975F797C31AAC1DD9ABDA072EBF1D446954D60937CF9E3F1EE80",
+    "bytes": 76600
+  }
+]

@@ -1,5 +1,42 @@
 import * as THREE from 'three';
 
+/** The zip follows the draped front, including chest taper and hip compression. */
+export function addGarmentZip(
+  parent: THREE.Group,
+  torso: THREE.Mesh,
+  material: THREE.Material,
+) {
+  const surface = new THREE.Mesh(torso.geometry, torso.material);
+  surface.updateMatrixWorld(true);
+  const position = torso.geometry.getAttribute('position');
+  const uv = torso.geometry.getAttribute('uv');
+  let hem = Infinity;
+  for (let i = 0; i < position.count; i++)
+    if (uv.getY(i) < 0.001 && position.getZ(i) < 0)
+      hem = Math.min(hem, position.getY(i));
+  const ray = new THREE.Raycaster();
+  const points = Array.from({ length: 49 }, (_, i) => {
+    const y = THREE.MathUtils.lerp(hem + 0.012, 0.588, i / 48);
+    ray.set(new THREE.Vector3(0, y, -1), new THREE.Vector3(0, 0, 1));
+    const hit = ray.intersectObject(surface, false)[0];
+    if (!hit) throw new Error('Garment zipper must follow the front surface');
+    return hit.point.add(new THREE.Vector3(0, 0, -0.0012));
+  });
+  const zip = new THREE.Mesh(
+    new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3(points),
+      96,
+      0.0015,
+      6,
+      false,
+    ),
+    material,
+  );
+  zip.name = 'surface-fitted-garment-zip';
+  parent.add(zip);
+  return zip;
+}
+
 /** Turn the actual open garment edge inward, with no second belt-shaped shell. */
 export function foldGarmentHem(
   parent: THREE.Group,
@@ -214,8 +251,8 @@ export function addWindbreakerDetails(
   // The horizontal yoke is a thin sewn panel, split by the existing front zip.
   // Its UVs come from the torso so fabric and photographed print stay continuous.
   for (const side of [-1, 1]) {
-    const left = side < 0 ? -0.232 : 0.006,
-      right = side < 0 ? -0.006 : 0.232;
+    const left = side < 0 ? -0.21 : 0.006,
+      right = side < 0 ? -0.006 : 0.21;
     panel(
       4,
       32,
