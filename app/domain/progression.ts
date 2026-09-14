@@ -1,4 +1,5 @@
 import { DAILY_CHALLENGES, LEVELS } from './config';
+import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const dayKey = (date = new Date()) => date.toISOString().slice(0, 10);
 export const levelForXp = (xp: number) =>
@@ -38,6 +39,8 @@ export function newPlayer(): Player {
     bike: '125',
     paint: '#e7e7df',
     rims: '#a6acb0',
+    helmet: DEFAULT_HELMET,
+    helmetColor: DEFAULT_HELMET_COLOR,
     challenges: { date: dayKey(), values: {}, claimed: [] },
     redeemedRewards: [],
     processedRuns: [],

@@ -95,6 +95,7 @@ export interface ChallengeProgress {
   values: Record<string, number>;
   claimed: string[];
 }
+export type Helmet = 'fullface' | 'motocross';
 export interface Player {
   version: 1;
   id: string;
@@ -115,6 +116,8 @@ export interface Player {
   bike: string;
   paint: string;
   rims: string;
+  helmet: Helmet;
+  helmetColor: string;
   challenges: ChallengeProgress;
   redeemedRewards: string[];
   processedRuns: string[];

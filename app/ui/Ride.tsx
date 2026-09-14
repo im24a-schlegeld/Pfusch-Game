@@ -129,7 +129,7 @@ export default function Ride({
       e.throttleInput > 0,
       e.phase === 'playing',
       e.bike.id,
-      0,
+      e.world.tunnelExposure(e.distance),
       e.forwardInput > 0,
     );
     if (e.event.serial !== lastEvent.current) {
@@ -159,6 +159,9 @@ export default function Ride({
       data-angular-velocity={engine.wheelieAngularVelocity.toFixed(3)}
       data-balance={engine.balanceQuality.toFixed(3)}
       data-distance={engine.distance.toFixed(2)}
+      data-environment={engine.environment.kind}
+      data-lighting={engine.environment.lighting}
+      data-tunnel={engine.world.tunnelExposure(engine.distance).toFixed(3)}
       data-wheelie={engine.wheelie}
       data-frame={tick}
     >
@@ -319,8 +322,11 @@ export default function Ride({
             shift forward. Slide down to raise again; release for neutral. Use
             short throttle inputs to raise the front. Release below the balance
             marker; hold forward weight to catch an overrotation. Steady balance
-            earns more than holding throttle. Dodge traffic, or clear a low road
-            edge with the front already raised.
+            earns more than holding throttle. A controlled higher angle earns
+            more points. Dodge traffic, potholes and raised road edges, or lift
+            the front before the edge. Lower the front on wet asphalt and
+            gravel; hold forward over rough patches for a smoother line. A clear
+            lane always remains available.
           </p>
           <button
             className="button primary"

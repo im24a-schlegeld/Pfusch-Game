@@ -49,7 +49,16 @@ test('rider joints react independently, retain contacts and freeze while paused'
   await page.goto('/');
   await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
   await page.getByRole('button', { name: 'GOT IT. LET’S RIDE' }).click();
-  await page.locator('canvas').waitFor();
+  // A paused browser clock must also advance React's lazy-scene reveal timer.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(100);
+        return page.locator('canvas').count();
+      },
+      { timeout: 20000 },
+    )
+    .toBe(1);
   await page.clock.runFor(2200);
   const ride = page.getByTestId('ride-screen');
   await expect(ride).toHaveAttribute('data-phase', 'playing', {
@@ -79,10 +88,12 @@ test('rider joints react independently, retain contacts and freeze while paused'
     });
   const before = await pose();
   await page.keyboard.down('s');
-  await expect.poll(async () => {
-    await page.clock.runFor(100);
-    return ride.getAttribute('data-wheelie');
-  }).toBe('true');
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(100);
+      return ride.getAttribute('data-wheelie');
+    })
+    .toBe('true');
   await expect
     .poll(async () => {
       await page.clock.runFor(100);
@@ -117,10 +128,12 @@ test('rider joints react independently, retain contacts and freeze while paused'
   await page.clock.runFor(250);
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await page.keyboard.press('ArrowRight');
-  await expect.poll(async () => {
-    await page.clock.runFor(100);
-    return (await pose()).hip[0];
-  }).toBeGreaterThan(0.0005);
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(100);
+      return (await pose()).hip[0];
+    })
+    .toBeGreaterThan(0.0005);
   await page.keyboard.press('Escape');
   await capture('outputs/rider-lane-response.png');
   expect(errors).toEqual([]);

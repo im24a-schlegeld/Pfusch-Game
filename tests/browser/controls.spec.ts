@@ -10,7 +10,16 @@ async function start(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
   await page.getByRole('button', { name: 'GOT IT. LET’S RIDE' }).click();
-  await page.locator('canvas').waitFor();
+  // A paused browser clock must also advance React's lazy-scene reveal timer.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(100);
+        return page.locator('canvas').count();
+      },
+      { timeout: 20000 },
+    )
+    .toBe(1);
   await page.clock.runFor(2200);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',

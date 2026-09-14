@@ -3,8 +3,12 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
-import { box, disposeUnique, makeTraffic, sign } from './models';
+import { box, disposeUnique, makeTraffic } from './models';
 import { makeBike } from './vehicle';
+import { ROAD_EVENT_KINDS } from './roadEvents';
+import { makeWorldView } from './worldView';
+import { makeWorldLighting } from './worldLighting';
+import { createGarmentGlowUpdater } from './garmentGlow';
 
 interface Props {
   player: Player;
@@ -38,6 +42,8 @@ export default function SceneView({
       player.bike,
       player.paint,
       player.rims,
+      player.helmet,
+      player.helmetColor,
       player.equipped,
       player.variants,
       player.customizations,
@@ -93,7 +99,8 @@ export default function SceneView({
       0.1,
       190,
     );
-    scene.add(new THREE.HemisphereLight('#e3f0f2', '#343a2f', 1.4));
+    const hemisphere = new THREE.HemisphereLight('#e3f0f2', '#343a2f', 1.4);
+    scene.add(hemisphere);
     const sunlight = new THREE.DirectionalLight('#fff5e6', 3.4);
     sunlight.position.set(-3, 7, 4);
     sunlight.castShadow = mode !== 'ride';
@@ -116,8 +123,12 @@ export default function SceneView({
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;
     scene.add(bike.root);
-    const scenery: THREE.Group[] = [];
-    const roadMarks: THREE.Mesh[] = [];
+    let updateGlow = createGarmentGlowUpdater(bike.root);
+    const updateLighting =
+      mode === 'ride'
+        ? makeWorldLighting(scene, renderer, hemisphere, sunlight, fill)
+        : null;
+    let worldView: ReturnType<typeof makeWorldView> | undefined;
     const traffic: THREE.Group[] = [];
     const templates = new Map<string, THREE.Group>();
     let appliedAngle = inspection.current.inspectionAngle,
@@ -131,79 +142,14 @@ export default function SceneView({
     let suspension = 0,
       previousSpeed = engine?.speed ?? 22;
     if (mode === 'ride') {
-      box(scene, 260, 0.15, 360, 0, -0.23, -75, '#626e65');
-      box(scene, 9.6, 0.16, 340, 0, -0.09, -75, '#3b4448');
-      for (const x of [-5.3, 5.3]) {
-        box(scene, 1.1, 0.28, 340, x, 0.02, -75, '#9aa299');
-        box(scene, 0.08, 0.01, 340, x < 0 ? -4.5 : 4.5, 0.012, -75, '#ccd0bd');
-      }
-      for (let i = 0; i < 28; i++)
-        for (const x of [-LANE / 2, LANE / 2])
-          roadMarks.push(
-            box(scene, 0.09, 0.012, 3.8, x, 0.012, -i * 7, '#dddccc'),
-          );
-      for (let i = 0; i < 18; i++) {
-        const group = new THREE.Group();
-        group.position.z = -i * 12;
-        scene.add(group);
-        scenery.push(group);
-        for (const side of [-1, 1]) {
-          const h = 4 + ((i * 7) % 11);
-          box(
-            group,
-            4 + (i % 3),
-            h,
-            9,
-            side * (11 + (i % 3)),
-            h / 2,
-            -1,
-            i % 3 === 0 ? '#606c6c' : i % 3 === 1 ? '#4c595c' : '#7d8780',
-          );
-          if (!low)
-            for (let k = 0; k < 3; k++)
-              box(
-                group,
-                0.025,
-                0.7,
-                1.2,
-                side * (8.8 + (i % 3)),
-                2 + k * 2,
-                -1,
-                '#b5b8a1',
-              );
-          box(group, 0.1, 5.6, 0.1, side * 6.1, 2.8, 0, '#303a3d');
-          box(
-            group,
-            side < 0 ? 1.7 : 1.7,
-            0.11,
-            0.22,
-            side * 5.35,
-            5.55,
-            0,
-            '#d4d6c3',
-          );
-          if (i % 3 === 0)
-            box(group, 0.32, 0.7, 0.4, side * 5.6, 0.42, 4, '#d9d5b2');
-        }
-        if (i === 5 || i === 14) {
-          box(group, 13, 0.7, 6, 0, 6.9, 0, '#505c5d');
-          for (const side of [-1, 1])
-            box(group, 0.7, 7, 6, side * 6.2, 3.5, 0, '#505c5d');
-        }
-        if (i === 8 || i === 17) {
-          const board = sign('PFUSCH');
-          board.position.set(-10, 4, 2);
-          board.rotation.y = 0.25;
-          group.add(board);
-        }
-      }
+      worldView = makeWorldView(scene, low);
       for (let i = 0; i < 32; i++) {
         const group = new THREE.Group();
         group.visible = false;
         scene.add(group);
         traffic.push(group);
       }
-      for (const kind of ['car', 'van', 'barrier'])
+      for (const kind of ['car', 'van', ...ROAD_EVENT_KINDS])
         for (let color = 0; color < 4; color++)
           templates.set(`${kind}:${color}`, makeTraffic(kind, color));
     } else {
@@ -300,6 +246,7 @@ export default function SceneView({
         disposeVehicle(bike.root);
         bike = makeBike(nextAppearance.player, nextAppearance.products);
         scene.add(bike.root);
+        updateGlow = createGarmentGlowUpdater(bike.root);
         vehicleKey = nextAppearance.key;
         vehicleProducts = nextAppearance.products;
       }
@@ -316,6 +263,8 @@ export default function SceneView({
         engine.advance(dt);
         const moving = engine.phase === 'playing';
         const distance = engine.distance;
+        worldView!.update(engine.world, distance);
+        updateGlow(updateLighting!(engine.world, distance, engine.x));
         bike.root.position.set(engine.x, engine.height, 0);
         if (moving) {
           if (engine.landingSerial !== landingSerial) {
@@ -332,8 +281,9 @@ export default function SceneView({
           previousSpeed = engine.speed;
           const road = appearance.current.player.settings.reducedMotion
             ? 0
-            : Math.sin(distance * 1.7) * 0.65 +
-              Math.sin(distance * 0.57) * 0.35;
+            : Math.sin(distance * 1.7) * 0.45 +
+              Math.sin(distance * 0.57) * 0.25 +
+              Math.sin(distance * 8) * engine.roadRoughness * 0.3;
           const load = THREE.MathUtils.clamp(
             acceleration * 0.35 +
               engine.throttleLoad * 0.3 -
@@ -364,7 +314,8 @@ export default function SceneView({
             landing * 0.022 +
             engine.forwardLoad * 0.003 -
             launch * 0.006 +
-            road * 0.002;
+            road * 0.002 +
+            engine.roadRoughness * 0.014;
           suspension += (compression - suspension) * (1 - Math.exp(-dt * 18));
           bike.root.rotation.z = THREE.MathUtils.lerp(
             bike.root.rotation.z,
@@ -376,18 +327,11 @@ export default function SceneView({
         if (moving)
           for (const wheel of bike.wheels)
             wheel.rotation.x -= (engine.speed * dt) / 0.47;
-        roadMarks.forEach((m, i) => {
-          m.position.z =
-            10 - ((((Math.floor(i / 2) * 7 - distance) % 196) + 196) % 196);
-        });
-        scenery.forEach((group, i) => {
-          group.position.z = 16 - ((((i * 12 - distance) % 216) + 216) % 216);
-        });
         engine.obstacles.forEach((o, i) => {
           const group = traffic[i];
           group.visible = o.active;
           if (!o.active) return;
-          group.position.set(o.lane * LANE, 0, -o.z);
+          group.position.set(o.lane * LANE + o.offsetX, 0, -o.z);
           const key = `${o.kind}:${o.color}`;
           if (group.userData.key !== key) {
             group.clear();
@@ -460,7 +404,12 @@ export default function SceneView({
       });
       templates.forEach((t) =>
         t.traverse((o) => {
-          if (o instanceof THREE.Mesh) geometries.add(o.geometry);
+          if (o instanceof THREE.Mesh) {
+            geometries.add(o.geometry);
+            (Array.isArray(o.material) ? o.material : [o.material]).forEach(
+              (m) => mats.add(m),
+            );
+          }
         }),
       );
       geometries.forEach((g) => g.dispose());

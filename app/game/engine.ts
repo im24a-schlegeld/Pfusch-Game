@@ -1,5 +1,12 @@
 import type { Bike, RunStats } from '../domain/types';
-import { roadSection } from './roadSections';
+import { World, distanceAtTime, speedAtTime } from './world';
+import {
+  ROAD_EVENTS,
+  TRAFFIC_ENVIRONMENTS,
+  isRoadEvent,
+  roadResponse,
+  type RoadEventKind,
+} from './roadEvents';
 import {
   BALANCE,
   advanceBalance,
@@ -8,16 +15,19 @@ import {
 } from './wheelie';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
-export type ObstacleKind = 'car' | 'van' | 'barrier';
+export type ObstacleKind = 'car' | 'van' | RoadEventKind;
 export interface Obstacle {
   active: boolean;
   kind: ObstacleKind;
   lane: number;
+  offsetX: number;
   z: number;
   passed: boolean;
   closest: number;
   color: number;
   cleared: boolean;
+  rewardPoints: number;
+  rewardText: string;
 }
 export interface GameEvent {
   text: string;
@@ -37,6 +47,8 @@ export class Engine {
   airLaneChangeUsed = false;
   landingSerial = 0;
   landingSpeed = 0;
+  roadRoughness = 0;
+  surfaceGrip = 1;
   wheelie = false;
   wheelieHeld = false;
   forwardHeld = false;
@@ -61,12 +73,16 @@ export class Engine {
     active: false,
     kind: 'car',
     lane: 0,
+    offsetX: 0,
     z: 0,
     passed: false,
     closest: Infinity,
     color: 0,
     cleared: false,
+    rewardPoints: 0,
+    rewardText: '',
   }));
+  readonly world: World;
   private rng: number;
   private spawnIn = 40;
   private nextSafe = 0;
@@ -78,6 +94,7 @@ export class Engine {
     seed = 5489,
   ) {
     this.rng = seed >>> 0;
+    this.world = new World(seed, bike);
     this.id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${seed}`;
   }
   random() {
@@ -97,6 +114,9 @@ export class Engine {
   }
   get balanceProfile() {
     return BALANCE[this.bike.id] ?? BALANCE['450'];
+  }
+  get environment() {
+    return this.world.at(this.distance)!;
   }
   hold(value: boolean) {
     this.wheelieHeld = value && this.phase === 'playing';
@@ -154,50 +174,67 @@ export class Engine {
   private spawnWave() {
     const change = this.random() < 0.7 ? (this.random() < 0.5 ? -1 : 1) : 0;
     this.nextSafe = Math.max(-1, Math.min(1, this.nextSafe + change));
+    const section = this.world.at(this.distance + 145)!.kind;
+    const environment = TRAFFIC_ENVIRONMENTS[section];
+    this.spawnIn = Math.max(
+      environment.minimumSpacing,
+      environment.initialSpacing - this.elapsed * 0.22,
+    );
+    // One offset vehicle leaves the center as an optional near pass and the
+    // opposite outer lane completely clear. Never make the narrow route mandatory.
+    if (this.elapsed > 20 && this.random() < 0.12) {
+      const side =
+        this.nextSafe === 0 ? (this.random() < 0.5 ? -1 : 1) : -this.nextSafe;
+      this.spawn('car', side, 145, -side * 1.12);
+      return;
+    }
     const candidates = [-1, 0, 1].filter((l) => l !== this.nextSafe);
-    const count = this.elapsed > 20 && this.random() < 0.55 ? 2 : 1;
+    const count =
+      this.elapsed > 20 && this.random() < environment.doubleChance ? 2 : 1;
     if (this.random() < 0.5) candidates.reverse();
-    const section = roadSection(this.distance + 145);
     for (let i = 0; i < count; i++) {
-      const roll = this.random();
-      const kind: ObstacleKind =
-        section === 'industrial' && roll >= 0.65
-          ? 'barrier'
-          : roll < 0.65
-            ? 'car'
-            : 'van';
+      const kind =
+        environment.kinds[Math.floor(this.random() * environment.kinds.length)];
       this.spawn(kind, candidates[i], 145);
     }
-    this.spawnIn = Math.max(54, 78 - this.elapsed * 0.22);
   }
-  spawn(kind: ObstacleKind, lane: number, z: number) {
+  spawn(kind: ObstacleKind, lane: number, z: number, offsetX = 0) {
     const o = this.obstacles.find((x) => !x.active);
     if (o)
       Object.assign(o, {
         active: true,
         kind,
         lane,
+        offsetX,
         z,
         passed: false,
         closest: Infinity,
         color: Math.floor(this.random() * 4),
         cleared: false,
+        rewardPoints: 0,
+        rewardText: '',
       });
     return o;
   }
   private tick(dt: number) {
+    const previousElapsed = this.elapsed;
     this.elapsed += dt;
-    this.speed = Math.min(
-      this.bike.maxSpeed,
-      22 + this.elapsed * this.bike.acceleration,
-    );
+    this.speed = speedAtTime(this.elapsed, this.bike);
     this.maxSpeed = Math.max(this.maxSpeed, this.speed);
-    const travel = this.speed * dt;
+    const travel =
+      distanceAtTime(this.elapsed, this.bike) -
+      distanceAtTime(previousElapsed, this.bike);
     this.distance += travel;
+    this.world.advance(this.distance);
+    this.roadRoughness *= Math.exp(-dt * 7);
+    this.surfaceGrip += (1 - this.surfaceGrip) * (1 - Math.exp(-dt * 1.8));
     this.score += travel * (1 + this.speed / 60) * this.combo;
     this.x +=
       (this.lane * LANE - this.x) *
-      Math.min(1, dt * this.bike.handling * (this.wheelie ? 0.78 : 1));
+      Math.min(
+        1,
+        dt * this.bike.handling * this.surfaceGrip * (this.wheelie ? 0.78 : 1),
+      );
     if (this.height > 0 || this.velocityY > 0) {
       this.velocityY -= 21 * dt;
       this.height += this.velocityY * dt;
@@ -252,28 +289,42 @@ export class Engine {
     this.comboTime -= dt;
     if (this.comboTime <= 0) this.combo = 1;
     this.spawnIn -= travel;
-    if (this.spawnIn <= 0) this.spawnWave();
     for (const o of this.obstacles) {
       if (!o.active) continue;
       const prev = o.z;
       o.z -= travel;
-      const dx = Math.abs(this.x - o.lane * LANE);
-      const length = o.kind === 'van' ? 3.3 : o.kind === 'car' ? 3 : 1.6;
+      const dx = Math.abs(this.x - (o.lane * LANE + o.offsetX));
+      const road = isRoadEvent(o.kind) ? ROAD_EVENTS[o.kind] : undefined;
+      const length = road?.contactHalfLength ?? (o.kind === 'van' ? 3.3 : 3);
       {
         const overlap = o.z < length && prev > -length;
-        const top =
-          o.kind === 'barrier' ? 0.16 : o.kind === 'van' ? 2.55 : 2.05;
+        const top = road?.height ?? (o.kind === 'van' ? 2.55 : 2.05);
         if (overlap && this.height < top) {
-          const gap = dx - (o.kind === 'barrier' ? 1.12 : 1.16);
+          const gap = dx - (road?.contactHalfWidth ?? 1.16);
           if (gap < 0) {
-            if (o.kind === 'barrier' && (o.cleared || this.wheelieAngle > 0.17))
-              o.cleared = true;
-            else {
-              this.crash(
-                o.kind === 'barrier'
-                  ? 'Caught the raised road edge'
-                  : 'Traffic collision',
-              );
+            if (isRoadEvent(o.kind)) {
+              if (!o.cleared) {
+                const response = roadResponse(
+                  o.kind,
+                  this.bike.id,
+                  this.wheelieAngle,
+                  this.forwardLoad,
+                );
+                if (response.crash) {
+                  this.crash(response.crash);
+                  break;
+                }
+                o.cleared = true;
+                o.rewardPoints = response.rewardPoints;
+                o.rewardText = response.rewardText;
+                this.roadRoughness = Math.max(
+                  this.roadRoughness,
+                  response.roughness,
+                );
+                this.surfaceGrip = Math.min(this.surfaceGrip, response.grip);
+              }
+            } else {
+              this.crash('Traffic collision');
               break;
             }
           }
@@ -281,8 +332,9 @@ export class Engine {
         }
         if (!o.passed && o.z < -length) {
           o.passed = true;
-          if (o.cleared) this.skill('CLEAN LIFT', 90);
-          else if (o.closest < 0.6) {
+          if (o.cleared && o.rewardPoints > 0)
+            this.skill(o.rewardText, o.rewardPoints);
+          else if ((!road || o.kind === 'barrier') && o.closest < 0.6) {
             this.nearMisses++;
             this.skill('NEAR MISS', 150);
           }
@@ -290,6 +342,9 @@ export class Engine {
       }
       if (o.z < -18) o.active = false;
     }
+    // Spawn after existing objects move so distance + z is the precise segment
+    // used for both the upcoming environment and the newly rendered road event.
+    if (this.phase === 'playing' && this.spawnIn <= 0) this.spawnWave();
   }
   stats(): RunStats {
     return {

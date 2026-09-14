@@ -1,103 +1,49 @@
-# Current target checkpoint — 11 September 2026
+# PFUSCH current target — 14 September 2026
 
-This remains a partial checkpoint of the full requested target. The authoritative brief is `C:/Users/dario/.codex/attachments/9fe43898-1d4b-462e-872b-323d835aefc8/pasted-text.txt`. The goal stays active; do not treat a runnable checkpoint as full completion.
+The required implementation is complete. Final browser validation and publication are in progress; do not claim a completed deployment until the checks below have passed.
 
-## New highest priorities — user instruction, 11 September
+Authoritative scope: `C:/Users/dario/.codex/attachments/9fe43898-1d4b-462e-872b-323d835aefc8/pasted-text.txt`, with the control/clothing/animation block in `C:/Users/dario/.codex/attachments/a9eab8c1-d200-47f9-9f26-ab97f25bf53c/pasted-text.txt` inserted first. Later user corrections, drivetrain/scoring additions, helmet options and the existing GitHub/Vercel deployment instruction are included. Earlier checkpoint details remain in Git history and the linked audit documents.
 
-The additional brief `C:/Users/dario/.codex/attachments/a9eab8c1-d200-47f9-9f26-ab97f25bf53c/pasted-text.txt` is inserted ABOVE the existing work, without replacing it. Required order: (1) easier mobile controls and continuous wheelie input, (2) stronger initial pull-up then existing balance, (3) clean layered top/pants transition, (4) remove unjustified sleeve line, (5) baggier lower-leg pants, (6) relocate feedback beside HUD rather than the scene center, (7) motion for start/balance/forward correction/steering/load/landing/road, (8) desktop and multiple mobile viewport visual QA, (9) tests/build, then remaining previous target. Preserve accepted sleeve reflection, shallow visor, all fixed bone lengths and validated features.
+## Completed implementation
 
-New-priority progress: the mobile buttons are now one connected, larger captured-pointer control. Holding raises; sliding up continuously reduces throttle, crosses neutral and applies forward correction; sliding down increases rearward input. Release/cancel/pause returns touch input to zero. Keyboard input remains independent, and an unrelated canceled swipe no longer releases held controls. Native Edge touch tests cover 320×568, 390×844, 820×1180 and 667×360, half-throttle, neutral, forward correction, a simultaneous second-thumb lane change and cancellation. All four layouts were visually inspected. These are emulated viewports, not physical-device acceptance.
+- Mobile: one large captured-pointer weight control. Hold to raise; slide continuously through partial throttle and neutral into forward correction. A second thumb can steer or pause. Release, cancel, blur and pause clear controls. Keyboard S/Down raises, W/Up corrects; Space and vertical swipes do not launch a jump.
+- Wheelie: finite bike-specific initial tug, unstable balance and overrotation, forward recovery and controlled-angle scoring. A farther rearward controlled angle earns progressively more points; rapid runaway rotation does not. Genuine physical airborne states retain one accepted lane switch and reset on landing; no generic gameplay jump or launching ramps remain.
+- Rider: one immutable adult skeleton and fixed-length arm/leg IK on all three bikes. Motion covers launch, balance, forward load, steering, road response and front return. Telescoping suspension preserves the physics-driven wheel centers and ground contacts.
+- Clothing: natural draped shoulder/torso, garment-specific sleeves, localized folds, thin inward-fold hem over concealed waistband and looser lower trouser legs. The unjustified upper sleeve loop is removed. Source-derived fabric wash, surface-fitted hoodie/zipper pockets, windbreaker panel/welt-pocket seams and subtle ribbed cuffs/hems are integrated.
+- Racing sleeve: exact supplied `tribal-racing.png` (SHA256 `1700D3D4773351D7B789DD93C7B41FE8D148CD82B77C975E99595D9B3D10D9AE`). Accepted horizontal-axis reflection is preserved on both curved sleeve UVs. No hovering graphic plane.
+- Numbers: real loaded Merriweather oldstyle proportional numerals remain integrated into the 3D garment texture. The browser verifies 23/32/37 and the deeper descender of 3 against 2.
+- Helmet: preserved fuller rear, shared 6.5% scale correction, slight downward orientation and shallow convex visor (2.5mm center crown; no inward dent). Added a motocross option with projecting chin, curved peak and goggle strap, using the same head scale. Four stock colors are free to preview. Only EQUIP HELMET saves these two fields; additive schema-1 migration retains old saves and the original stock appearance.
+- Töffli: accepted 120mm-forward front axle/fender and fork rake remain. Two smooth V-groove pulleys and a closed rubber belt replace chain hardware; thin belt guard and adjusted left stay/casing leave clearance.
+- Supermoto/Sport: chain sits between the rear tire and left swingarm, with aligned sprockets, carrier and axle. Actual assembled meshes verify clearance. Supermoto retains shaped 17-inch road tires, perforated rotors, stationary calipers, frame/cradle/shock and one exhaust. Sport retains 1441mm wheelbase, independent 120/70 and 190/55 tire profiles, twin front discs and short concentric fender. Localized cowl/windscreen curvature and separate lower-fairing/belly structure replace the flatter front and broad lower slab. Reference detail: `SPORT-REFERENCE-AUDIT.md`.
+- Caps/bag: source artwork on curved materials, accepted rearward/downward hip cap orientation and rearward bag/strap attachment. No registration plates.
+- Road events: readable potholes, raised steel edges, rough asphalt, gravel and wet patches with motorcycle-specific response. Forward control helps roughness/slip recovery. Optional offset-vehicle risk lines award near misses while preserving a clear alternative. No road event introduces a generic launch.
+- World: separately seeded authored city, industrial, construction, open, waterfront, tunnel and bridge sequences; logical approaches/exits and traffic selected for the actual upcoming environment. Exact capped-speed integration defines continuously variable 5–60 second tunnels. World descriptors and GPU batches stay bounded; render geometry clips to exact segment boundaries.
+- Tunnels/bridges: actual vaulted roof, walls, portals, fixtures and two finishes; continuous bridge deck/body/rails over water, with land transitions and multiple structural variants. A waterfront clipping gap discovered during review was repaired.
+- Lighting: distance-driven day, golden, night and dawn palettes blend across segment boundaries. Real tunnel exposure drives lighting and restrained audio reflections. Headlight/near-rider fill preserve road readability.
+- Audio: distinct procedural tuned 50cc two-stroke, four-stroke single and high-revving inline-four combustion/harmonic/noise voices. Actual output tests cover firing identity, throttle, pause silence and tunnel reflection while preserving firing frequency at equal speed/load.
+- Keep Up: only product IDs 10237102096713 (zipper), 10237099737417 (tee) and 10237061759305 (hoodie) receive an ink-only blue emission map made from their actual source artwork at the exact diffuse placement. Washed fabric and custom numbers are excluded; daylight intensity is zero and full darkness is restrained at 0.22.
+- Branding: neutral PFUSCH game branding retained. Remaining Keep Up matches are the three products' names, catalog descriptions, artwork metadata, product-specific implementation/tests and their audit documentation. No generic menu/HUD/challenge/road-sign slogan.
+- Preserved: source imagery/catalog identities, free locked preview, explicit Equip, save version 1, cumulative XP, idempotent run settlement, bounded traffic, polling watcher and disabled HMR.
 
-The initial lift now adds one rapidly decaying, bike-specific torque pulse from the grounded pose; angular velocity remains continuous and the existing unstable balance simulation takes over. Unit coverage proves identical keyboard/touch response, a finite early rise, no re-trigger from pumping during an existing wheelie, recovery and overrotation across all three bikes. Further dedicated rider/suspension start animation belongs to the still-open animation step.
+## Validation and evidence
 
-The clothing priority now uses the torso's actual open lower edge with a thin inward fold instead of a separate belt-shaped shell. Only hidden trouser cloth narrows at the hip; lower calf/ankle fabric is wider. The unjustified upper-sleeve stitch loop is removed; cuff stitching and accepted artwork remain. Front/back/side Garage captures and garment, all-bike inspection and motion browser cases pass. No bone dimensions changed.
+Typecheck, lint, all 124 unit tests in 14 files and production build passed on 14 September. The long ten-hour world test has an explicit 15-second budget for its roughly 200,000 assertions; its checks are retained.
 
-Feedback now sits directly below the left distance/speed HUD with responsive sizing. Additional bounded rider motion covers launch, balance correction, acceleration/forward load, stronger lane response and road movement. The front suspension has a telescoping fork and a shared wheel/caliper/low-fender assembly. Visual compression changes chassis posture while preserving the physics-driven axle positions. Tests caught and corrected its initial reversed compression direction.
+Passing targeted browser checks include all-bike mechanical/visor inspection, animated rider contacts and pause freeze, and actual city/industrial/construction/open/waterfront/tunnel/bridge/night rendering. New environment-effect and helmet cases are being finalized before a single complete browser-suite run.
 
-Priority-block validation: typecheck, lint, 58 unit tests and production build pass. The complete browser run passed 21/22 cases; its sole failure was the number-texture observation's five-second wait while a separate browser capture ran concurrently. The identical number test passed untouched in isolation, verifying actual Merriweather 23/32/37 and their descenders. All cases therefore have passing coverage for this build, but a single clean full-suite run is still required for final release. All four feedback screenshots were recaptured with a real WebGL frame after resize and visually inspected. Native touch test timing was repaired after a trace proved Chromium delivered a captured pointer move after the last throttled HUD update under the paused test clock. The real pause regression was fixed by disabling outside-pointer dismissal of the pause dialog, including a second-thumb pause.
+Visual evidence in ignored `outputs/`: `close-*` bike side/front/front-three-quarter/rear-three-quarter/opposite-side views; `world-*` environment views; `garment-*` all nine tops and Racing sleeves; cap/bag views; 23/32/37 number textures; four responsive control/feedback sizes (320×568, 390×844, 820×1180, 667×360); wheelie/lane-response and suspension captures. Inspect actual images, not HTTP status alone.
 
-**Resume next:** remaining clothing construction, then mechanical acceptance/repair and the existing target below. New user additions on 12 September: place the Supermoto/Sport chain inboard of the rear swingarm, add a belt drive to the Töffli, and award greater wheelie points for a farther rearward controlled angle. The scoring helper is implemented and its nine new cases pass; engine integration awaits the next build/browser checkpoint. Preserve all prior control and geometry acceptance.
+Limits of acceptance: mobile checks use Edge touch/viewport emulation, not physical iOS/Android hardware. Audio output and identity are measured and recorded; a subjective human listening comparison is not claimed. The optional chase event was not required and was not added.
 
-Usage checks are only at milestones. The latest actual read on 12 September shows 97% remaining in the five-hour window and 68% remaining weekly. No reset was redeemed by this agent. Continue the active goal; the <=5% checkpoint rule has not triggered.
+## Remaining release steps
 
-## Final deployment instruction — latest user instruction
+1. Finish helmet/environment browser checks and inspect their images; repair any regression.
+2. Run the complete browser suite on the final production build, plus final typecheck/lint/unit/build validation as needed after fixes.
+3. Confirm production preview at `http://127.0.0.1:5190/` and inspect Git status.
+4. Commit only intended project changes and push existing `main` to `https://github.com/im24a-schlegeld/Pfusch-Game.git`.
+5. Wait for the existing `dario-schlegels-projects/pfusch-game` Vercel integration to report success for the exact pushed commit.
+6. Verify `https://pfusch-game.vercel.app/`: newest bundle/options, menu, Garage, gameplay, assets and console. Report full commit hash, branch, push/deployment result and live URL.
 
-When the FULL active target is complete, run typecheck, lint, full unit tests, full browser tests and production build, then verify local production preview. Inspect git status, commit all intended changes and push the existing GitHub deployment branch: current checkout `main`, origin `https://github.com/im24a-schlegeld/Pfusch-Game.git`. Update the existing Vercel project for `https://pfusch-game.vercel.app/`; do not create a new repository, branch or Vercel project. Verify the actual live app, Garage, ride, assets and console, and report commit/branch/push/deployment/live URL. The final requested deployment provider is now Vercel, superseding the earlier Sites publication route. Do not claim this final release is complete while the goal is partial. Continue automatically until the goal is complete or remaining capacity is too low to work safely.
+The latest actual usage check showed 99% remaining in the primary window and 51% weekly. The <=5% checkpoint rule has not triggered. No usage reset was redeemed. Continue the existing goal through release without creating another repository, branch or Vercel project.
 
-The user also authorizes the same commit → existing GitHub branch → existing Vercel → live verification sequence for a stable partial checkpoint when actual remaining usable capacity is known to be 5% or below, then stop. Above 5%, continue the existing priorities. GitHub authentication is available for `im24a-schlegeld`; the existing Vercel Git integration reports successful deployment of the prior `main` commit to project `dario-schlegels-projects/pfusch-game`. No new remote, branch or Vercel project is needed.
-
-## Completed visual repairs, retained from c1f31cc
-
-- Töffli front axle moved forward 120 mm with wheel and fender together. Correct rake, existing tire size and concentric clearance retained.
-- Sport: true 17-inch rims, independent 120/70 front and 190/55 rear tire profiles, 1441 mm axle spacing, corrected fork/wheel placement and shorter concentric fender. Upper nose and side fairings share a curved boundary; distinct lower panel, belly pan and radiator. BMW internet references and dimensions: `SPORT-REFERENCE-AUDIT.md`.
-- Full-face helmet: fuller rear, shared 6.5% scale increase and slight downward orientation across all bikes. The visor now uses a separate shallow convex section instead of inheriting the inward-dipping shell profile. Its center sits only 2.5 mm outside the chord between its edges. The actual rendered mesh is checked for no inward dip and less than 3 mm outward crown on all three bikes.
-- Clothing: localized directional folds at armpit/hip/elbow/cuff, less inflated sleeve starts, loose short sleeves and thin layered hems over a concealed waistband. No body dimension changes.
-- Racing Zipper: exact supplied `tribal-racing.png`, SHA-256 `1700D3D4773351D7B789DD93C7B41FE8D148CD82B77C975E99595D9B3D10D9AE`. Integrated into mirrored outer-sleeve UVs. The user clarified that the required correction is reflection about the source artwork's horizontal axis (top/bottom swap), not a 180-degree turn. Restored the original lengthwise placement and applied that reflection to both sleeves. Curved sleeves, no floating artwork planes.
-- Preserved: one immutable adult skeleton, fixed-length IK, real Merriweather oldstyle 23/32/37, integrated torso artwork, persistent Garage, free locked preview and explicit Equip, no registration plates.
-
-## New mechanical and accessory work
-
-- Supermoto road tires now use shaped 17-inch profiles, 120 mm front / 160 mm rear. Raked fork and guards align with the front axle; rear swingarm sections follow the rear wheel center.
-- Supermoto single 310 mm front disc and 220 mm rear disc have perforated annular geometry and stationary calipers. Sport retains twin 320 mm front / smaller rear discs. Removed duplicate solid Supermoto front discs.
-- Both motorcycles have a left-side drive with front/rear toothed sprockets, carrier/hub, external tangent chain runs and links around the sprockets. Chain instances are bounded and do not allocate per frame. A geometric regression checks tangency, closure and sprocket clearance.
-- All three caps retain the original hip location, with curved crown/brim directed rearward, sideways and down. Actual source artwork is integrated in their curved materials. The grey P-Zero variant uses its source charcoal grey.
-- Bag sits rearward against the torso/hip, with front and rear strap routing and its actual source graphic.
-- Hoodies now have surface-fitted kangaroo pockets; Racing/Keep Up Zippers have split pockets. Pocket vertices and UVs are sampled directly from the draped torso, preserving the original material. Subtle opening/stitch edges and dropped-shoulder/sleeve-hem seams follow the existing skinned sleeves. Garment and motion browser checks pass.
-- Fabric now uses unprinted samples from each selected product color's actual front photograph. Mirrored sample edges tile continuously; bounded luminance variation preserves the catalog base color. Wash is stronger on the Signs Hoodie and zippers, restrained on plain hoodies and the windbreaker. Torso, sleeves, hood and hem share the source-derived material; original print and number composition is applied afterward. Visually checked all nine tops front/back, both Racing sleeves, Signs wash and the 23/32/37 number textures. All catalog color previews also pass without console errors.
-
-## Branding correction
-
-The menu heading and road sign now read PFUSCH, the final rank is STREET LEGEND, and the ranking kicker is LOCAL LEADERBOARD. Browser title and Sites title are PFUSCH Street Run; generic metadata no longer contains a clothing slogan. The historical catalog brand paragraph was corrected too. Remaining phrase matches are actual product names/descriptions/artwork metadata in `public/catalog/products.json` and `garment-textures.json`, plus product-specific research/QA descriptions in `CATALOG.md`, `GARMENT-VISUAL-REVIEW.md`, `COMPLETION-PASS.md` and this checkpoint. Product-specific nighttime treatment remains open below.
-
-## New balance gameplay
-
-- Removed timed lift, cooldown, heat/lock behavior, vertical-swipe launch and arbitrary launching ramps, including their renderer template.
-- S / Down and the mobile wheelie button apply throttle/rearward weight. W / Up and the new hold-forward button shift forward to lower the front or recover.
-- Explicit angle, angular velocity, input loads, bike-specific torque, unstable balance point, gravity, damping and speed response. Töffli raises slowly, Supermoto has a broader balance region, Sport raises aggressively.
-- Holding throttle can overrotate and crash. Forward correction and neutral release recover. The HUD shows the actual angle and balance-point marker, with updated tutorial/settings/pause hints.
-- Bonus scoring depends on balance accuracy, angular steadiness, duration, speed and risk. Sustained active input builds combos; holding throttle is not a perfect automatic wheelie.
-- Fixed-length rider IK responds to rearward/forward inputs, steering and front-wheel touchdown without rebuilding meshes. Pause freezes simulation/pose and releases both controls.
-- Normal lane changes remain available with a rear wheel on the road. The one-air-lane allowance remains tested through an external physical-flight fixture, including boundary input and landing reset. There is currently no gameplay event that launches the motorcycle. Legacy `jumps` save fields remain for schema-1 compatibility and stay zero in current gameplay.
-- Existing low striped road edges require actual front clearance; cars/vans require avoidance.
-
-## Audio: implemented, audible acceptance still partial
-
-Three procedural WebAudio voices use different combustion pulse rates, harmonic envelopes, mechanical partials and intake noise: tuned 50cc two-stroke, four-stroke single, and 1000cc inline-four. Ride selects its actual equipped bike. RPM/load responds to speed, rearward throttle and forward input; pause/mute silences output.
-
-The browser captures actual output, verifies nonzero audio at the combustion frequency, throttle response, distinct firing rates and pause silence. Near the initial running speed, measured fundamentals are approximately 108 Hz, 57 Hz and 299 Hz. Recordings: `outputs/engine-125.webm`, `engine-450.webm`, `engine-701.webm`; measurements: `outputs/engine-audio-qa.json`.
-
-The current model/tool session cannot listen to returned audio input, so a human audible realism comparison is **not claimed**. A restrained reflection bus exists but is not connected to a real tunnel environment yet. Tunnel acoustics remain unverified.
-
-## Visual and interaction evidence
-
-Garage: all bikes side/front/front-three-quarter/rear-three-quarter; all nine garments front/back; Racing Zipper and Keep Up tee/hoodie additional side/front/rear-three-quarter. All caps and bag inspected from side/front-three-quarter/rear-three-quarter with real product photos and unchanged saved equipment.
-
-Current evidence includes `outputs/final-*-*.png`, `garment-*.png`, `accessory-*.png`, `rider-wheelie-side.png`, `rider-lane-response.png`, and `balance-mobile.png`. Actual running browser verifies S and Down, W and Up correction, mobile hold/release, no Space/vertical-swipe launch, lane controls and pause. Touch QA uses Edge emulation, not physical iOS/Android devices.
-
-## Exact remaining work, in priority order
-
-1. Clothing construction remains partial: windbreaker pocket seams, ribbed cuff/hem material and final waist layering through more poses. Source-derived washed fabric, kangaroo/split pockets and shoulder/sleeve seams are implemented and visually checked. Preserve sleeve artwork and skeleton.
-2. Finish close mechanical visual acceptance of Supermoto frame/shock/chain/brakes and Sport tank/cockpit/fairing detail; preserve corrected dimensions, axle positions and short fender.
-3. Audible realism acceptance of all three engine voices; later verify tunnel identity.
-4. Further riding pose/skill-feel QA at sustained balance, active forward correction and overrotation on all three bikes.
-5. Motorcycle-specific potholes/rough surfaces/roadwork/wet or gravel events and optional risk lines, with readable viable paths and sufficient reaction time.
-6. Replace repeating rendered road with a bounded, deterministic-seed authored segment generator. Normal runs must compose different logical sequences; environment-dependent traffic.
-7. Actual tunnels: entrance, roof, walls, lights, exit and unpredictable 5–60 second lengths. Current renderer still has repeating buildings/overhead structures, not this system.
-8. Continuous bridges over water, visible water on both sides, rails/body and land transitions.
-9. Day, golden hour, night and dawn variation; restrained tunnel audio connected to actual environment state.
-10. Subtle blue emissive mask from real ink only on exact Keep Up tee/hoodie/zipper in dark environments; daylight remains true to source. No floating planes.
-11. Global branding cleanup is complete; retain it during future work. Product-specific names, artwork, catalog data and their QA documentation remain legitimate.
-12. Full visual/world/gameplay/audio QA, commands and owner-private publication after the remaining systems. Optional chase events only after required core is stable.
-13. **Added by the user on 11 September, at the bottom of the list:** a motocross helmet option and helmet color selection. Preserve immutable head scale, temporary preview and explicit Equip. Not yet implemented.
-
-## Validation state
-
-Typecheck, lint, 44 unit tests in eight files and production build pass for the new balance implementation. The four targeted browser cases for audio, keyboard, mobile balance and rider motion passed, followed by all 14 cases in the complete browser regression (6.4 minutes). After the final horizontal-axis sleeve reflection, build/typecheck and lint passed. The garment browser regression passed for all nine tops, including an opposite-side Racing Zipper view; both arms were visually checked. Its first run encountered connection refusals during a local preview restart; the fresh run passed without console errors. Preview remains `http://127.0.0.1:5190`. Preserve polling watcher/HMR settings.
-
-This validated source is ready for owner-private publication. The Windows Sites build helper has an established npm-shim issue; the project command `npm run build` succeeds. Packaging uses the supplied Sites helper via Git Bash with /c paths.
-
-Following the pocket/seam and shallow-visor changes: typecheck, lint, 44 unit tests and build passed. The garment, all-bike inspection (including measured visor convexity) and rider-motion browser cases passed together (2.1 minutes). Viewed hoodie and zipper fronts, tee shoulder/cuff side and helmet side/front-three-quarter; the earlier full 14-case regression remains the broader gameplay checkpoint.
-
-Final stabilization checkpoint: source-derived fabric passes the four garment, font and preview cases (2.6 minutes), including every catalog color preview. After the neutral-branding correction, typecheck, lint, all 44 unit tests and the production build pass again; the other ten browser cases pass (3.0 minutes), covering accessories, actual WebAudio output, keyboard/mobile controls, all-bike visor inspection, animated rider contacts, narrow screens, pause, crash/rewards, restart and persistence. Thus all 14 browser cases have passed for the final changes in two targeted batches. No blocking runtime errors were observed. The build retains its existing non-blocking Three.js chunk-size warning. Source and output are ready for private publication; no new world features were started during this stabilization phase.
-
-Changed-file manifest: `CURRENT-CHANGED-FILES.txt`. Earlier visual evidence is retained in `SPORT-REFERENCE-AUDIT.md` and prior checkpoint documentation.
+Changed-file manifest: `CURRENT-CHANGED-FILES.txt` (refresh after final edits).

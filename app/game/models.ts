@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { isRoadEvent, ROAD_EVENTS } from './roadEvents';
 
 const materials = new Map<string, THREE.MeshStandardMaterial>();
 function mat(color: string, metal = 0, rough = 0.75) {
@@ -99,6 +100,103 @@ export function makeTraffic(kind: string, colorIndex: number) {
         '#303635',
       );
       stripe.rotation.z = -0.4;
+    }
+    return group;
+  }
+  if (isRoadEvent(kind)) {
+    const { width, length, height } = ROAD_EVENTS[kind];
+    group.name = `road-event-${kind}`;
+    const patch = new THREE.Shape();
+    for (let i = 0; i < 32; i++) {
+      const angle = (i / 32) * Math.PI * 2;
+      const edge = 0.92 + 0.08 * Math.sin(i * 2.7) ** 2;
+      const x = Math.cos(angle) * width * 0.5 * edge;
+      const y = Math.sin(angle) * length * 0.5 * edge;
+      if (i === 0) patch.moveTo(x, y);
+      else patch.lineTo(x, y);
+    }
+    patch.closePath();
+    const surface = new THREE.Mesh(
+      new THREE.ShapeGeometry(patch),
+      new THREE.MeshStandardMaterial({
+        color:
+          kind === 'wet'
+            ? '#344d5a'
+            : kind === 'pothole'
+              ? '#111719'
+              : kind === 'gravel'
+                ? '#9b917c'
+                : '#747775',
+        roughness: kind === 'wet' ? 0.12 : 0.94,
+        metalness: kind === 'wet' ? 0.45 : 0,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      }),
+    );
+    surface.rotation.x = -Math.PI / 2;
+    surface.position.y = 0.022;
+    group.add(surface);
+    if (kind === 'pothole') {
+      const rim = new THREE.BufferGeometry();
+      const vertices: number[] = [];
+      for (let i = 0; i <= 32; i++) {
+        const a = ((i % 32) / 32) * Math.PI * 2;
+        const r = 0.92 + 0.08 * Math.sin((i % 32) * 2.7) ** 2;
+        for (const edge of [0.82, 1])
+          vertices.push(
+            ((Math.cos(a) * width) / 2) * r * edge,
+            edge === 1 ? height : 0.023,
+            ((Math.sin(a) * length) / 2) * r * edge,
+          );
+      }
+      const indices: number[] = [];
+      for (let i = 0; i < 32; i++) {
+        const a = i * 2;
+        indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+      }
+      rim.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(vertices, 3),
+      );
+      rim.setIndex(indices);
+      rim.computeVertexNormals();
+      group.add(new THREE.Mesh(rim, mat('#727975')));
+    } else if (kind === 'rough' || kind === 'gravel') {
+      const stones = new THREE.InstancedMesh(
+        boxGeometry,
+        mat(kind === 'gravel' ? '#c1b7a0' : '#444b4b'),
+        40,
+      );
+      const transform = new THREE.Object3D();
+      for (let i = 0; i < 40; i++) {
+        const x = (((i * 0.6180339) % 1) - 0.5) * width * 0.78;
+        const z = (((i * 0.4142135) % 1) - 0.5) * length * 0.8;
+        transform.position.set(x, height - 0.007, z);
+        transform.rotation.y = i * 1.7;
+        transform.scale.set(
+          kind === 'rough' ? 0.21 : 0.075,
+          0.014,
+          kind === 'rough' ? 0.045 : 0.08,
+        );
+        transform.updateMatrix();
+        stones.setMatrixAt(i, transform.matrix);
+      }
+      group.add(stones);
+    } else {
+      for (let i = 0; i < 3; i++) {
+        const glint = box(
+          group,
+          0.6 - i * 0.12,
+          0.003,
+          0.035,
+          (i - 1) * 0.32,
+          0.025,
+          (i - 1) * 0.7,
+          '#8aabb7',
+        );
+        glint.rotation.y = -0.3;
+      }
     }
     return group;
   }

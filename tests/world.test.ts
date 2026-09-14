@@ -118,7 +118,7 @@ describe('seeded road segments', () => {
     expect(world.at(NaN)).toBeUndefined();
     expect(() => world.advance(0)).toThrow(RangeError);
     expect(() => world.advance(Infinity)).toThrow(RangeError);
-  });
+  }, 15000); // Ten simulated hours include ~200,000 assertions in the full worker pool.
   for (const bike of BIKES) {
     it(`${bike.name}: tunnels have continuously variable 5–60 second traversals in all duration bands`, () => {
       const tunnels = sequence(523, 15000, bike).filter(

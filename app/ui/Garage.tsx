@@ -5,6 +5,7 @@ import type { Player, Product, ProductConfiguration } from '../domain/types';
 import type { Services } from '../services';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
 import { digitalPrice, ownership, unlock } from '../domain/progression';
+import { HELMETS, HELMET_COLORS, equipHelmet } from '../domain/helmet';
 import {
   equipConfiguration,
   equippable,
@@ -44,7 +45,8 @@ export default function Garage({
   const [filter, setFilter] = useState('all');
   const [draft, setDraft] = useState<Player | null>(null);
   const [selected, setSelected] = useState<Product | null>(null);
-  const [configuration,setConfiguration]=useState<ProductConfiguration|null>(null);
+  const [configuration, setConfiguration] =
+    useState<ProductConfiguration | null>(null);
   const [angle, setAngle] = useState(2.35);
   const [inspectionRevision, setInspectionRevision] = useState(0);
   const appearance = draft ?? player;
@@ -74,6 +76,23 @@ export default function Garage({
   ) {
     setDraft({ ...appearance, ...values });
   }
+  function previewHelmet(
+    values: Partial<Pick<Player, 'helmet' | 'helmetColor'>>,
+  ) {
+    setDraft({ ...appearance, ...values });
+  }
+  function saveHelmet() {
+    const next = equipHelmet(player, appearance);
+    if (!next) return;
+    update(next);
+    setDraft(null);
+    setSelected(null);
+    setConfiguration(null);
+    notify('Helmet equipped and saved.');
+  }
+  const helmetChanged =
+    appearance.helmet !== player.helmet ||
+    appearance.helmetColor !== player.helmetColor;
   const bikeSetupOwned =
     owned(`bike:${appearance.bike}`) &&
     owned(`paint:${appearance.paint}`) &&
@@ -90,23 +109,19 @@ export default function Garage({
     notify(`${bike.name} setup equipped.`);
   }
   const visible = products.filter(
-    (p) =>
-      (filter === 'all' || p.category === filter),
+    (p) => filter === 'all' || p.category === filter,
   );
   const openProduct = (p: Product) => {
-    const config=initialConfiguration(appearance,p);setConfiguration(config);setDraft(previewLoadout(appearance,p,config));setSelected(p);
+    const config = initialConfiguration(appearance, p);
+    setConfiguration(config);
+    setDraft(previewLoadout(appearance, p, config));
+    setSelected(p);
     services.analytics.track('product_viewed', { id: p.id });
   };
   const grid = (
     <>
       <div className="category-filter" aria-label="Product categories">
-        {[
-          'all',
-          'upper',
-          'head',
-          'accessory',
-          'collectible',
-        ].map((f) => (
+        {['all', 'upper', 'head', 'accessory', 'collectible'].map((f) => (
           <button
             key={f}
             aria-pressed={filter === f}
@@ -195,7 +210,13 @@ export default function Garage({
               {draft ? 'FREE SETUP PREVIEW' : 'EQUIPPED SETUP'}
             </span>
             {draft && (
-              <button className="reset-preview" onClick={() => {setDraft(null);setSelected(null);}}>
+              <button
+                className="reset-preview"
+                onClick={() => {
+                  setDraft(null);
+                  setSelected(null);
+                }}
+              >
                 RETURN TO EQUIPPED
               </button>
             )}
@@ -205,15 +226,23 @@ export default function Garage({
             data-testid="garage-model"
             data-bike={appearance.bike}
             data-paint={appearance.paint}
-            data-rims={appearance.rims} data-variant={configuration?.variantId??""} data-product={selected?.id??appearance.equipped.upper??""} data-number={appearance.customizations[appearance.equipped.upper??""]?.customNumber??""}
+            data-rims={appearance.rims}
+            data-variant={configuration?.variantId ?? ''}
+            data-product={selected?.id ?? appearance.equipped.upper ?? ''}
+            data-number={
+              appearance.customizations[appearance.equipped.upper ?? '']
+                ?.customNumber ?? ''
+            }
+            data-helmet={appearance.helmet}
+            data-helmet-color={appearance.helmetColor}
           >
             <Preview
-                player={appearance}
-                products={products}
-                mode="garage"
-                inspectionAngle={angle}
-                inspectionRevision={inspectionRevision}
-              />
+              player={appearance}
+              products={products}
+              mode="garage"
+              inspectionAngle={angle}
+              inspectionRevision={inspectionRevision}
+            />
           </div>
           <div className="preview-bottom">
             <div className="garage-angles">
@@ -295,7 +324,96 @@ export default function Garage({
                   </div>
                 ))}
               </div>
-              {selected&&configuration?<ProductPreview key={selected.id} product={selected} products={products} player={player} configuration={configuration} onConfiguration={c=>{setConfiguration(c);setDraft(previewLoadout(appearance,selected,c));}} onClose={()=>{setSelected(null);setDraft(null);}} onKeep={()=>setSelected(null)} onEquip={equipProduct} onUnlock={unlockProduct} onLink={()=>services.analytics.track('product_link_clicked',{id:selected.id})} onSelect={openProduct} onInspect={value=>{setAngle(value);setInspectionRevision(r=>r+1);}}/>:grid}
+              <section aria-label="Helmet options">
+                <h3 className="custom-label">HELMET</h3>
+                <div className="category-filter" aria-label="Helmet style">
+                  {HELMETS.map((helmet) => (
+                    <button
+                      key={helmet.id}
+                      aria-label={`Preview ${helmet.name} helmet`}
+                      aria-pressed={appearance.helmet === helmet.id}
+                      className={
+                        appearance.helmet === helmet.id ? 'active' : ''
+                      }
+                      onClick={() => previewHelmet({ helmet: helmet.id })}
+                    >
+                      {helmet.name.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <div className="swatches" aria-label="Helmet color">
+                  {HELMET_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      aria-label={`${color.name} helmet color`}
+                      aria-pressed={appearance.helmetColor === color.value}
+                      className={
+                        appearance.helmetColor === color.value ? 'selected' : ''
+                      }
+                      onClick={() =>
+                        previewHelmet({ helmetColor: color.value })
+                      }
+                    >
+                      <i style={{ background: color.value }} />
+                      <b>{color.name}</b>
+                      <span>FREE</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="bike-confirm">
+                  <button
+                    className="button small primary"
+                    disabled={!helmetChanged}
+                    onClick={saveHelmet}
+                  >
+                    <Check size={14} /> EQUIP HELMET
+                  </button>
+                  {helmetChanged && (
+                    <button
+                      className="button small"
+                      onClick={() => {
+                        setDraft(null);
+                        setSelected(null);
+                        setConfiguration(null);
+                      }}
+                    >
+                      DISCARD PREVIEW
+                    </button>
+                  )}
+                </div>
+              </section>
+              {selected && configuration ? (
+                <ProductPreview
+                  key={selected.id}
+                  product={selected}
+                  products={products}
+                  player={player}
+                  configuration={configuration}
+                  onConfiguration={(c) => {
+                    setConfiguration(c);
+                    setDraft(previewLoadout(appearance, selected, c));
+                  }}
+                  onClose={() => {
+                    setSelected(null);
+                    setDraft(null);
+                  }}
+                  onKeep={() => setSelected(null)}
+                  onEquip={equipProduct}
+                  onUnlock={unlockProduct}
+                  onLink={() =>
+                    services.analytics.track('product_link_clicked', {
+                      id: selected.id,
+                    })
+                  }
+                  onSelect={openProduct}
+                  onInspect={(value) => {
+                    setAngle(value);
+                    setInspectionRevision((r) => r + 1);
+                  }}
+                />
+              ) : (
+                grid
+              )}
             </TabsContent>
             <TabsContent value="bike">
               <div className="section-intro">
@@ -445,7 +563,13 @@ export default function Garage({
                 >
                   <Check size={16} /> EQUIP BIKE SETUP
                 </button>
-                <button className="button" onClick={() => {setDraft(null);setSelected(null);}}>
+                <button
+                  className="button"
+                  onClick={() => {
+                    setDraft(null);
+                    setSelected(null);
+                  }}
+                >
                   RESET PREVIEW
                 </button>
               </div>
@@ -456,7 +580,6 @@ export default function Garage({
           </Tabs>
         </section>
       </div>
-
     </main>
   );
 }

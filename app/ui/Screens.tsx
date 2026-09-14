@@ -381,8 +381,10 @@ export function SettingsScreen({
           Raise the front with short throttle inputs. Release below the balance
           marker and hold forward weight to recover. Holding throttle too long
           can overrotate the bike. Steady balance, duration and speed build
-          score. Close lateral dodges earn near misses. Dodge traffic or clear a
-          low road edge with the front already raised.
+          score; a controlled higher angle earns more. Close lateral dodges earn
+          near misses. Dodge traffic, potholes and raised edges, or lift the
+          front before the edge. Lower the front on wet asphalt and gravel; hold
+          forward over rough patches. A clear lane remains available.
         </p>
       </section>
       <footer className="settings-section">

@@ -66,13 +66,15 @@ test('real Merriweather oldstyle numbers reach the garment texture and Garage pr
   for (const number of ['23', '32', '37']) {
     await page.getByRole('textbox', { name: 'Zipper number' }).fill(number);
     await expect
-      .poll(() =>
-        page.evaluate(
-          (n) => window.numberDraws.some((d) => d.number === n),
-          number,
-        ),
+      .poll(
+        () =>
+          page.evaluate(() => window.numberDraws.map((draw) => draw.number)),
+        {
+          message: `The actual garment texture must draw ${number}`,
+          timeout: 10000,
+        },
       )
-      .toBe(true);
+      .toContain(number);
     const draw = await page.evaluate(
       (n) => window.numberDraws.findLast((d) => d.number === n)!,
       number,

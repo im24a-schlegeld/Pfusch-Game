@@ -458,7 +458,8 @@ export default function GameApp() {
           <p className="muted">
             A / D or arrows to dodge. S / ↓ raises the front; release and use W
             / ↑ to shift forward and recover. Holding throttle too long can flip
-            the bike. Steady balance earns more. Dodge cars and vans.
+            the bike. A controlled higher angle earns more. Dodge traffic and
+            potholes; keep the front low on wet asphalt and gravel.
           </p>
           <button
             className="button primary"

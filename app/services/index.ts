@@ -12,6 +12,7 @@ import {
   refreshDaily,
 } from '../domain/progression';
 import { BIKES, REWARDS } from '../domain/config';
+import { isHelmet, isHelmetColor } from '../domain/helmet';
 
 export interface AuthService {
   getUser(): Promise<{ id: string; kind: 'guest' | 'customer' }>;
@@ -96,9 +97,13 @@ export function decodePlayer(raw: string): Player {
   for (const field of ['paint', 'rims'] as const)
     if (typeof v[field] === 'string' && /^#[0-9a-f]{6}$/i.test(v[field]))
       p[field] = v[field];
+  // Additive v1 migration: older saves keep the original full-face chalk helmet.
+  // Invalid optional helmet values recover independently without losing progress.
+  if (isHelmet(v.helmet)) p.helmet = v.helmet;
+  if (isHelmetColor(v.helmetColor)) p.helmetColor = v.helmetColor;
   // Additive v1 migration: obsolete vehicle registration customization is discarded.
-  p.ownedItems=p.ownedItems.filter(id=>!id.startsWith("decal:"));
-  p.redeemedRewards=p.redeemedRewards.filter(id=>id!=="crew-decal");
+  p.ownedItems = p.ownedItems.filter((id) => !id.startsWith('decal:'));
+  p.redeemedRewards = p.redeemedRewards.filter((id) => id !== 'crew-decal');
   if (isRecord(v.equipped))
     for (const slot of [
       'upper',

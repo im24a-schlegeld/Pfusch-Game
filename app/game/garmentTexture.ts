@@ -3,6 +3,7 @@ import type { Player, Product } from '../domain/types';
 import audit from '../../public/catalog/garment-textures.json';
 import fabricAudit from '../../public/catalog/fabric-samples.json';
 import { loadNumberFont } from './numberFont';
+import { createKeepUpInkGlow } from './garmentGlow';
 type Placement = { center: number[]; width: number; height: number };
 type Side = {
   crop: number[];
@@ -126,7 +127,12 @@ export function fabricMaterial(
   return m;
 }
 /** Extract exact photographed ink, with the sampled fabric removed and soft edge margins. */
-function printedCrop(img: HTMLImageElement, crop: number[], maskImage = img) {
+function printedCrop(
+  img: HTMLImageElement,
+  crop: number[],
+  maskImage = img,
+  emissionInkOnly = false,
+) {
   const [x, y, w, h] = crop,
     canvas = document.createElement('canvas');
   canvas.width = w;
@@ -154,8 +160,18 @@ function printedCrop(img: HTMLImageElement, crop: number[], maskImage = img) {
       const k = (j * w + i) * 4,
         dist = Math.hypot(...base.map((b, c) => mask.data[k + c] - b)),
         edge = Math.min(i, j, w - 1 - i, h - 1 - j) / 4;
+      // Keep Up's photographed silver ink is brighter than its black fabric.
+      // Washed-fabric variation survives the soft diffuse mask, but must not glow.
+      const ink = emissionInkOnly
+        ? THREE.MathUtils.smoothstep(
+            base.reduce((sum, b, c) => sum + mask.data[k + c] - b, 0) / 3,
+            40,
+            72,
+          )
+        : 1;
       pixels.data[k + 3] = Math.round(
         pixels.data[k + 3] *
+          ink *
           Math.min(1, edge) *
           THREE.MathUtils.clamp((dist - 9) / 30, 0, 1),
       );
@@ -182,6 +198,7 @@ export function garmentMaterial(
     map: texture,
     roughness: 0.96,
   });
+  const inkGlow = createKeepUpInkGlow(m, product?.id, 1024);
   let disposed = false;
   m.addEventListener('dispose', () => {
     disposed = true;
@@ -230,12 +247,16 @@ export function garmentMaterial(
             centerY = ((0.63 - y) / 0.675) * 1024,
             width = p.width * panelWidth,
             height = ((p.height * 0.59) / 0.675) * 1024;
-          ctx.drawImage(
-            cropped,
+          const destination = [
             centerX - width / 2,
             centerY - height / 2,
             width,
             height,
+          ] as const;
+          ctx.drawImage(cropped, ...destination);
+          inkGlow?.paint(
+            printedCrop(img, spec.crop, maskImage, true),
+            ...destination,
           );
           texture.needsUpdate = true;
         }),

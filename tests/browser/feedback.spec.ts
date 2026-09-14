@@ -15,7 +15,16 @@ test('earned feedback sits below metrics without covering controls at four sizes
   await page.goto('/');
   await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
   await page.getByRole('button', { name: 'GOT IT. LET’S RIDE' }).click();
-  await page.locator('canvas').waitFor();
+  // A paused browser clock must also advance React's lazy-scene reveal timer.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(100);
+        return page.locator('canvas').count();
+      },
+      { timeout: 20000 },
+    )
+    .toBe(1);
   await page.clock.runFor(2200);
   const ride = page.getByTestId('ride-screen');
   for (

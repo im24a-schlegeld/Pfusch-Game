@@ -419,15 +419,21 @@ function makeSportFender(
   fender.name = 'sport-front-fender';
   fender.userData.tireClearance = 0.027;
 }
-function makeHelmet(parent: THREE.Object3D, center: Point) {
-  const shell = material('#d7dbd7', 0.14, 0.31),
+function makeHelmet(
+  parent: THREE.Object3D,
+  center: Point,
+  style: Player['helmet'],
+  color: string,
+) {
+  const motocross = style === 'motocross';
+  const shell = material(color, 0.14, 0.31),
     glass = material('#122027', 0.44, 0.14),
     trim = material('#202727', 0.1, 0.65);
   const profile = new THREE.CatmullRomCurve3(
     [
-      [-0.145, 0.079, 0.128],
-      [-0.115, 0.101, 0.173],
-      [-0.067, 0.12, 0.164],
+      [-0.145, 0.079, motocross ? 0.157 : 0.128],
+      [-0.115, 0.101, motocross ? 0.218 : 0.173],
+      [-0.067, 0.12, motocross ? 0.198 : 0.164],
       [0, 0.127, 0.143],
       [0.055, 0.123, 0.145],
       [0.11, 0.1, 0.103],
@@ -557,10 +563,76 @@ function makeHelmet(parent: THREE.Object3D, center: Point) {
   helmet.position.set(...center);
   helmet.scale.setScalar(1.065);
   helmet.rotation.x = -0.07;
-  helmet.name = 'full-face-helmet';
+  helmet.name = motocross ? 'motocross-helmet' : 'full-face-helmet';
+  helmet.userData.helmetStyle = style;
   helmet.castShadow = true;
   helmet.receiveShadow = true;
   parent.add(helmet);
+  if (motocross) {
+    // A thin curved peak and extended ventilated chin share the same adult
+    // head shell and scale; this is equipment, never different rider anatomy.
+    const peakPositions: number[] = [],
+      peakIndices: number[] = [];
+    const rows = 18,
+      cols = 20,
+      layerSize = (rows + 1) * (cols + 1);
+    for (const layer of [-1, 1])
+      for (let i = 0; i <= rows; i++)
+        for (let j = 0; j <= cols; j++) {
+          const t = i / rows,
+            u = (j / cols) * 2 - 1;
+          peakPositions.push(
+            u * (0.14 - 0.032 * t * t),
+            0.128 +
+              0.032 * Math.sin(t * Math.PI * 0.75) -
+              0.025 * u * u +
+              layer * 0.002,
+            -0.047 - 0.253 * t + 0.032 * u * u * t,
+          );
+        }
+    for (let layer = 0; layer < 2; layer++)
+      for (let i = 0; i < rows; i++)
+        for (let j = 0; j < cols; j++) {
+          const a = layer * layerSize + i * (cols + 1) + j,
+            b = a + cols + 1;
+          if (layer) peakIndices.push(a, a + 1, b, b, a + 1, b + 1);
+          else peakIndices.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+    const boundary = [
+      ...Array.from({ length: cols + 1 }, (_, j) => j),
+      ...Array.from({ length: rows }, (_, i) => (i + 1) * (cols + 1) + cols),
+      ...Array.from(
+        { length: cols },
+        (_, j) => rows * (cols + 1) + cols - 1 - j,
+      ),
+      ...Array.from(
+        { length: rows - 1 },
+        (_, i) => (rows - 1 - i) * (cols + 1),
+      ),
+    ];
+    for (let i = 0; i < boundary.length; i++) {
+      const a = boundary[i],
+        b = boundary[(i + 1) % boundary.length];
+      peakIndices.push(a, b, a + layerSize, b, b + layerSize, a + layerSize);
+    }
+    const peakGeometry = new THREE.BufferGeometry();
+    peakGeometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(peakPositions, 3),
+    );
+    peakGeometry.setIndex(peakIndices);
+    const peakFinish = shell.clone();
+    peakFinish.side = THREE.DoubleSide;
+    mesh(helmet, peakGeometry, peakFinish).name = 'motocross-peak';
+    // Goggle strap follows the rear of the shell, without a floating decal plane.
+    const strap: Point[] = [];
+    for (let i = 0; i <= 36; i++) {
+      const a = -1.7 + (i / 36) * 3.4;
+      strap.push([Math.sin(a) * 0.129, 0.005, Math.cos(a) * 0.155 + 0.009]);
+    }
+    tube(helmet, strap, [0.006, 0.006, 0.006], trim, 40, 8).name =
+      'goggle-strap';
+  }
   return helmet;
 }
 export function makeBike(player: Player, products: Product[]) {
@@ -1281,16 +1353,45 @@ export function makeBike(player: Player, products: Product[]) {
         body,
         s,
         [
-          [0.19, 0.76, -0.55],
-          [0.245, 0.745, -0.27],
-          [0.24, 0.64, 0.07],
-          [0.145, 0.38, 0.25],
-          [0.155, 0.3, 0.12],
-          [0.17, 0.31, -0.29],
-          [0.18, 0.43, -0.39],
+          [0.19, 0.755, -0.53],
+          [0.245, 0.73, -0.27],
+          [0.235, 0.67, -0.12],
+          [0.21, 0.59, -0.035],
+          [0.19, 0.51, 0.06],
+          [0.155, 0.44, 0.18],
+          [0.145, 0.34, 0.1],
+          [0.165, 0.335, -0.27],
+          [0.18, 0.44, -0.4],
         ],
         dark,
         0.014,
+      );
+      // Separate folded belly skin and a narrow painted rib leave the engine
+      // relief visible instead of presenting one rectangular black side slab.
+      sidePanel(
+        body,
+        s,
+        [
+          [0.193, 0.698, -0.48],
+          [0.249, 0.689, -0.3],
+          [0.223, 0.56, -0.14],
+          [0.177, 0.367, -0.25],
+          [0.187, 0.455, -0.37],
+        ],
+        paint,
+        0.008,
+      );
+      sidePanel(
+        body,
+        s,
+        [
+          [0.17, 0.333, -0.28],
+          [0.149, 0.337, 0.1],
+          [0.125, 0.29, 0.055],
+          [0.14, 0.292, -0.245],
+        ],
+        material('#344047', 0.2, 0.5),
+        0.008,
       );
       // The side intake follows the fairing's actual curved shoulder.
       sidePanel(
@@ -1377,8 +1478,14 @@ export function makeBike(player: Player, products: Product[]) {
           w = 0.09 + 0.165 * Math.sin((t * Math.PI) / 2);
         cowlVertices.push(
           u * w,
-          0.835 + t * 0.225 - 0.012 * u * u,
-          -0.946 + t * 0.172 + u * u * 0.062,
+          0.835 +
+            t * 0.225 -
+            0.012 * u * u +
+            (1 - u * u) * Math.sin(t * Math.PI) * 0.012,
+          -0.946 +
+            t * 0.172 +
+            u * u * 0.062 -
+            (1 - u * u) * Math.sin(t * Math.PI) * 0.042,
         );
       }
     for (let i = 0; i < cowlRows; i++)
@@ -1406,7 +1513,7 @@ export function makeBike(player: Player, products: Product[]) {
     cowlGeometry.computeVertexNormals();
     const cowlFinish = paint.clone();
     cowlFinish.side = THREE.DoubleSide;
-    const lens = material('#bbc9c8', 0.1, 0.23);
+    const lens = material('#647d88', 0.26, 0.19);
     lens.side = THREE.DoubleSide;
     const cowl = new THREE.Mesh(cowlGeometry, [cowlFinish, lens, dark]);
     cowl.castShadow = true;
@@ -1417,8 +1524,9 @@ export function makeBike(player: Player, products: Product[]) {
       body,
       [
         [-0.76, 0.239, 0.033, 1.046],
-        [-0.61, 0.228, 0.055, 1.022],
-        [-0.485, 0.185, 0.056, 1.015],
+        [-0.66, 0.228, 0.041, 1.061],
+        [-0.56, 0.2, 0.045, 1.038],
+        [-0.485, 0.165, 0.035, 1.015],
       ],
       paint,
       'z',
@@ -1433,9 +1541,9 @@ export function makeBike(player: Player, products: Product[]) {
         const t = i / rows,
           u = (j / cols) * 2 - 1;
         vertices.push(
-          u * (0.152 + 0.02 * Math.sin(t * Math.PI) - 0.016 * t),
-          1.017 + 0.258 * t - 0.022 * u * u,
-          -0.824 + 0.375 * t + 0.077 * u * u,
+          u * (0.15 + 0.018 * Math.sin(t * Math.PI) - 0.052 * t * t),
+          1.04 + 0.245 * t - (0.02 + 0.032 * t) * u * u,
+          -0.813 + 0.347 * t - 0.045 * Math.sin(t * Math.PI) + 0.064 * u * u,
         );
       }
     for (let i = 0; i < rows; i++)
@@ -1871,7 +1979,12 @@ function makeRider(
     12,
     20,
   );
-  const helmet = makeHelmet(rider, pose.head);
+  const helmet = makeHelmet(
+    rider,
+    pose.head,
+    player.helmet,
+    player.helmetColor,
+  );
   const accessory = products.find((p) => p.id === player.equipped.accessory);
   if (accessory?.handle === 'logo-crossbody-tasche') {
     tube(
