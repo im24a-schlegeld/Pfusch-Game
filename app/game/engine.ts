@@ -132,9 +132,6 @@ export class Engine {
   private towCarrier: Obstacle | null = null;
   private towRoadVelocity = 0;
   private towDeckTime = 0;
-  private departingTow: Obstacle | null = null;
-  private departureTime = 0;
-  private departureVelocity = 0;
   private towSafeObstacles = new Set<Obstacle>();
   private scrapeMeters = 0;
   private signSequence = 0;
@@ -172,9 +169,7 @@ export class Engine {
     this.laneChangeSerial++;
     this.lane = next;
     if (this.towCarrier) {
-      this.departingTow = this.towCarrier;
-      this.departureTime = 0.35;
-      this.departureVelocity = this.towRoadVelocity;
+      this.towCarrier.velocity = this.towRoadVelocity;
       this.towCarrier = null;
       this.velocityY = TOW_RAMP.launchVelocity;
       this.towJumpActive = true;
@@ -245,8 +240,6 @@ export class Engine {
     this.scrapeMaterial = null;
     this.towJumpActive = false;
     this.towCarrier = null;
-    if (this.departingTow) this.departingTow.velocity = this.departureVelocity;
-    this.departingTow = null;
     this.towSafeObstacles.clear();
     this.event = { text: cause, kind: 'crash', serial: this.event.serial + 1 };
   }
@@ -414,13 +407,6 @@ export class Engine {
     this.surfaceGrip += (1 - this.surfaceGrip) * (1 - Math.exp(-dt * 1.8));
     // Travel is only a small participation score; technique supplies the points.
     this.score += travel * 0.12;
-    if (this.departingTow) {
-      this.departureTime -= dt;
-      if (this.departureTime <= 0 || !this.departingTow.active) {
-        this.departingTow.velocity = this.departureVelocity;
-        this.departingTow = null;
-      }
-    }
     this.laneChangeAge = Math.min(1, this.laneChangeAge + dt);
     const steeringLead =
       this.height > 0 || this.wheelie
@@ -436,15 +422,10 @@ export class Engine {
           (this.wheelie ? 0.78 : 1) *
           steeringLead,
       );
+    let queuedTowLane: number | null = null;
     if (!this.towCarrier && this.height === 0) {
       const ramp = this.obstacles.find((o) => {
-        if (
-          !o.active ||
-          o.kind !== 'towtruck' ||
-          o.rampUsed ||
-          o.lane !== this.lane
-        )
-          return false;
+        if (!o.active || o.kind !== 'towtruck' || o.rampUsed) return false;
         const center = o.lane * LANE + o.offsetX;
         const entryWidth = TRAFFIC_SHAPES.towtruck.contactHalfWidth;
         // Rear entry is a supported surface, including ordinary straight riding.
@@ -461,6 +442,9 @@ export class Engine {
         return true;
       });
       if (ramp) {
+        // Actual tire contact can precede an already requested side exit.
+        if (this.lane !== ramp.lane) queuedTowLane = this.lane;
+        this.lane = ramp.lane;
         ramp.rampUsed = true;
         this.towCarrier = ramp;
         this.towRoadVelocity = ramp.velocity;
@@ -493,6 +477,7 @@ export class Engine {
       this.height = pose.height;
       this.towPitch = pose.pitch;
       this.velocityY = 0;
+      if (queuedTowLane !== null) this.move(queuedTowLane - this.lane);
     } else this.towPitch *= Math.exp(-dt * 8);
     let landedTowJump = false;
     if (!this.towCarrier && (this.height > 0 || this.velocityY > 0)) {
@@ -582,8 +567,7 @@ export class Engine {
     for (const o of this.obstacles) {
       if (!o.active) continue;
       const prev = o.z;
-      if (o === this.departingTow) o.velocity = travel / dt;
-      else o.z -= travel - o.velocity * dt;
+      o.z -= travel - o.velocity * dt;
       const dx = Math.abs(this.x - (o.lane * LANE + o.offsetX));
       const road = isRoadEvent(o.kind) ? ROAD_EVENTS[o.kind] : undefined;
       const traffic = !isRoadEvent(o.kind) ? TRAFFIC_SHAPES[o.kind] : undefined;

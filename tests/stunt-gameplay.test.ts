@@ -34,6 +34,25 @@ function board(engine: Engine, velocity = 0) {
 
 describe('ride onto the tow truck, then swipe to jump', () => {
   it.each(BIKES)(
+    '$name remembers an outward swipe just before the front tire reaches the ramp',
+    (bike) => {
+      for (const elapsed of [25, 10000])
+        for (const velocity of [0, 6])
+          for (const direction of [-1, 1]) {
+            const engine = ride(bike);
+            engine.elapsed = elapsed;
+            engine.spawn('towtruck', 0, 10, 0, velocity);
+            engine.move(direction);
+            steps(engine, 100);
+            expect(engine.phase).toBe('playing');
+            expect(engine.launchSerial).toBe(1);
+            expect(engine.jumps).toBe(1);
+            expect(engine.lane).toBe(direction);
+            expect(engine.x).toBeCloseTo(direction * LANE, 3);
+          }
+    },
+  );
+  it.each(BIKES)(
     '$name boards without input and lands in the chosen adjacent lane',
     (bike) => {
       for (const elapsed of [25, 10000])
@@ -51,13 +70,23 @@ describe('ride onto the tow truck, then swipe to jump', () => {
               expect(engine.jumps).toBe(0);
               expect(engine.lane).toBe(source);
               const before = engine.score;
+              const departureZ = tow.z;
+              const departureDistance = engine.distance;
               engine.move(direction);
+              expect(tow.velocity).toBe(velocity);
               expect(engine.onTowTruck).toBe(false);
               expect(engine.launchSerial).toBe(1);
               expect(engine.airLaneChangeUsed).toBe(true);
               engine.move(direction);
               expect(engine.lane).toBe(source + direction);
-              steps(engine, 90);
+              steps(engine, 1);
+              expect(tow.z).toBeCloseTo(
+                departureZ -
+                  (engine.distance - departureDistance) +
+                  velocity * STEP,
+                8,
+              );
+              steps(engine, 89);
               expect(engine.phase).toBe('playing');
               expect(engine.height).toBe(0);
               expect(engine.jumps).toBe(1);
