@@ -53,16 +53,9 @@ async function install(page: Page, reducedMotion = false, tutorialSeen = true) {
 }
 
 async function waitForPlaying(page: Page) {
-  // React's lazy scene reveal and the countdown both use the paused test clock.
-  await expect
-    .poll(
-      async () => {
-        await page.clock.runFor(100);
-        return page.locator('canvas').count();
-      },
-      { timeout: 20000 },
-    )
-    .toBe(1);
+  // Wait for DOM mount separately from the potentially costly first GPU frame.
+  await expect(page.locator('canvas')).toHaveCount(1, { timeout: 60000 });
+  await page.clock.runFor(100);
   await page.clock.runFor(2200);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',

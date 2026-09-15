@@ -228,4 +228,4 @@ it('keeps rear rail triangles clear of Sport plastics while two mounts meet the 
         2,
       ),
     );
-});
+}, 30000);

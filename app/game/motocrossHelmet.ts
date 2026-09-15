@@ -193,8 +193,8 @@ function addPeak(
     [-0.158, 0.108, 0.122],
     [-0.19, 0.12, 0.115],
     [-0.224, 0.123, 0.11],
-    [-0.248, 0.119, 0.105],
-    [-0.266, 0.104, 0.097],
+    [-0.248, 0.114, 0.105],
+    [-0.266, 0.096, 0.097],
   ];
   const columns = [
     -1, -0.87, -0.68, -0.56, -0.4, -0.26, -0.12, 0, 0.12, 0.26, 0.4, 0.56, 0.68,
@@ -203,16 +203,28 @@ function addPeak(
   const pointAt = (row: number, u: number): Point => {
     const [z, width, height] = sections[row];
     const progress = row / (sections.length - 1);
+    const across = Math.abs(u);
     const spine =
-      0.0045 *
-      Math.max(0, 1 - Math.abs(u) / 0.32) *
+      0.01 *
+      Math.max(0, 1 - across / 0.26) *
+      Math.sin(progress * Math.PI * 0.9);
+    const channel =
+      0.0032 *
+      Math.max(0, 1 - Math.abs(across - 0.56) / 0.2) *
       Math.sin(progress * Math.PI);
+    // A shallow central edge meets swept, clipped corners. Separate shoulder
+    // planes and a molded center rib keep the upper surface from reading flat.
+    const corner =
+      across <= 0.68
+        ? (0.006 * across) / 0.68
+        : 0.006 + (0.026 * (across - 0.68)) / 0.32;
     return [
       width * u,
       height +
         spine -
+        channel -
         (0.0012 + 0.0048 * Math.sin((progress * Math.PI) / 2)) * u * u,
-      z + 0.026 * u * u * progress * progress,
+      z + corner * progress * progress,
     ];
   };
   const outer: Point[] = [],
@@ -246,7 +258,10 @@ function addPeak(
     const tab: Point[] = [
       shellPoint(0.089, side * 1.13),
       shellPoint(0.111, side * 1.13),
-      pointAt(3, side * 0.75),
+      // Follow the exact outer grid edge, with no diagonal cutting through
+      // the top panel or leaving a slit between the peak and its side mount.
+      pointAt(2, side),
+      pointAt(3, side),
       pointAt(4, side),
       pointAt(5, side),
       [side * 0.111, 0.093, -0.151],
@@ -276,8 +291,60 @@ function addPeak(
   }
 }
 
+function addRearRidge(
+  parent: THREE.Object3D,
+  finishes: THREE.MeshStandardMaterial[],
+) {
+  // The rear shell has a molded trailing edge, tapering into both temples.
+  // Both roots lie on the existing cranium; only the equipment lip projects.
+  const columns = 20,
+    outer: Point[] = [],
+    inner: Point[] = [],
+    faces: number[] = [];
+  const ray = new THREE.Raycaster();
+  for (let row = 0; row < 3; row++)
+    for (let column = 0; column <= columns; column++) {
+      const u = column / columns,
+        angle = 1.94 + u * (Math.PI * 2 - 3.88),
+        taper = Math.sin(u * Math.PI);
+      const center = 0.097 + 0.016 * taper,
+        height = 0.12 + 0.88 * taper;
+      const y =
+        row === 0
+          ? center + 0.011 * height
+          : row === 1
+            ? center
+            : center - 0.014 * height;
+      const p = vector(shellPoint(y, angle));
+      const normal = new THREE.Vector3(p.x, 0, p.z - 0.006).normalize();
+      // Match the actual triangulated shell, including its crown facets.
+      ray.set(p.clone().addScaledVector(normal, 0.04), normal.clone().negate());
+      const shell = ray.intersectObject(parent, false)[0];
+      if (shell) p.copy(shell.point);
+      const projection = row === 1 ? 0.018 * taper : -0.003;
+      outer.push(
+        p.clone().addScaledVector(normal, projection).toArray() as Point,
+      );
+      inner.push(p.addScaledVector(normal, -0.004).toArray() as Point);
+    }
+  for (let row = 0; row < 2; row++)
+    for (let column = 0; column < columns; column++) {
+      const a = row * (columns + 1) + column,
+        b = a + columns + 1;
+      faces.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+  addMesh(
+    parent,
+    thickGeometry(outer, faces, inner),
+    finishes,
+    'motocross-rear-ridge',
+  );
+}
+
+// Recess the complete goggle assembly into the eye aperture. Moving the lens
+// alone would leave the frame and strap brackets floating in front of it.
 const lensZ = (x: number, y: number) =>
-  -0.164 + 0.054 * (x / 0.1) ** 2 - 0.0015 * (1 - (y / 0.05) ** 2);
+  -0.152 + 0.054 * (x / 0.1) ** 2 - 0.0015 * (1 - (y / 0.05) ** 2);
 
 function frameGeometry(innerLoop: Point[], offset: number, depth: number) {
   const outerLoop = innerLoop.map((p, i): Point => {
@@ -400,12 +467,12 @@ function addStrap(
     faces: number[] = [];
   const steps = 64;
   for (let i = 0; i <= steps; i++)
-    for (const y of [-0.016, 0.018]) {
+    for (const y of [-0.022, 0.024]) {
       const angle = 1.13 + (i / steps) * (Math.PI * 2 - 2.26);
       const p = vector(shellPoint(y, angle));
       const normal = new THREE.Vector3(p.x, 0, p.z - 0.003).normalize();
-      inner.push(p.clone().addScaledVector(normal, 0.002).toArray() as Point);
-      outer.push(p.addScaledVector(normal, 0.0035).toArray() as Point);
+      inner.push(p.clone().addScaledVector(normal, 0.0025).toArray() as Point);
+      outer.push(p.addScaledVector(normal, 0.005).toArray() as Point);
     }
   for (let i = 0; i < steps; i++) {
     const a = i * 2,
@@ -422,12 +489,12 @@ function addStrap(
     const temple = vector(shellPoint(0.002, side * 1.13));
     temple.addScaledVector(
       new THREE.Vector3(temple.x, 0, temple.z).normalize(),
-      0.003,
+      0.0035,
     );
-    const front = new THREE.Vector3(side * 0.103, 0.003, -0.108);
+    const front = new THREE.Vector3(side * 0.103, 0.003, -0.096);
     const direction = temple.clone().sub(front);
     const bracket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.01, 0.031, direction.length() + 0.008),
+      new THREE.BoxGeometry(0.012, 0.042, direction.length() + 0.008),
       trim,
     );
     bracket.position.copy(front).add(temple).multiplyScalar(0.5);
@@ -452,6 +519,7 @@ export function createMotocrossHelmet(color: string): HelmetMesh {
   helmet.userData.helmetStyle = 'motocross';
   helmet.castShadow = helmet.receiveShadow = true;
   addPeak(helmet, [shell, foam, trim]);
+  addRearRidge(helmet, [shell, foam, trim]);
   addGoggles(helmet, trim, foam);
   addStrap(helmet, trim, foam);
   return helmet;

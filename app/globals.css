@@ -1313,6 +1313,10 @@ p {
   max-width: 480px;
   padding: 35px;
   gap: 16px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 .game-dialog [data-slot='dialog-title'] {
   font-family: 'Barlow Condensed', Impact, sans-serif;
@@ -1499,6 +1503,33 @@ p {
   pointer-events: none;
   z-index: 2;
 }
+.sign-progress {
+  text-align: right;
+  padding: 10px;
+  align-self: flex-start;
+  background: #182229c9;
+  pointer-events: none;
+}
+.sign-progress .eyebrow { font-size: 8px; }
+.sign-progress > div { display: flex; gap: 5px; margin-top: 5px; }
+.sign-progress b { font-size: 17px; color: #9fa9a6; opacity: .45; }
+.sign-progress b.collected { color: #e0f59b; opacity: 1; text-shadow: 0 0 9px #b1da7366; }
+.sign-progress small { font-size: 9px; }
+.ride-metrics, .combo-display, .skill-event, .countdown { pointer-events: none; }
+.ride-balance {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  width: 142px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+  background: #182229bb;
+  padding: 8px 12px;
+}
+.ride-balance > small { font-size: 8px; letter-spacing: .14em; }
+.ride-balance .balance-meter { margin-top: 5px; }
+.ride-screen .ride-tip { bottom: max(86px, calc(env(safe-area-inset-bottom) + 64px)); padding: 0 16px; }
 .score-display {
   display: flex;
   flex-direction: column;

@@ -107,9 +107,9 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
   await expect
     .poll(async () => Number(await ride.getAttribute('data-distance')))
     .toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Dodge left', exact: true }).click();
+  await page.keyboard.press('ArrowLeft');
   await expect(ride).toHaveAttribute('data-lane', '-1');
-  await page.getByRole('button', { name: 'Pause ride', exact: true }).click();
+  await page.keyboard.press('p');
   await expect(ride).toHaveAttribute('data-phase', 'paused');
   expect(await saved()).toEqual(equipped);
   expect(errors).toEqual([]);

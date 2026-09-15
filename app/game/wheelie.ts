@@ -1,3 +1,4 @@
+import { TAIL_CONTACT, TAIL_RECOVERY_ANGLE } from './tailContact';
 export interface BalanceProfile {
   balancePoint: number;
   balanceWidth: number;
@@ -20,7 +21,7 @@ export const BALANCE: Record<string, BalanceProfile> = {
     forwardWeightTorque: 3.1,
     gravity: 3,
     damping: 1.5,
-    crashAngle: 1.25,
+    crashAngle: TAIL_CONTACT['125'].angle + TAIL_RECOVERY_ANGLE,
   },
   scooter: {
     balancePoint: 0.75,
@@ -30,7 +31,7 @@ export const BALANCE: Record<string, BalanceProfile> = {
     forwardWeightTorque: 3.65,
     gravity: 3.1,
     damping: 1.65,
-    crashAngle: 1.27,
+    crashAngle: TAIL_CONTACT.scooter.angle + TAIL_RECOVERY_ANGLE,
   },
   '450': {
     balancePoint: 0.8,
@@ -40,7 +41,7 @@ export const BALANCE: Record<string, BalanceProfile> = {
     forwardWeightTorque: 4.1,
     gravity: 3.2,
     damping: 1.6,
-    crashAngle: 1.3,
+    crashAngle: TAIL_CONTACT['450'].angle + TAIL_RECOVERY_ANGLE,
   },
   '701': {
     balancePoint: 0.7,
@@ -50,7 +51,7 @@ export const BALANCE: Record<string, BalanceProfile> = {
     forwardWeightTorque: 5.2,
     gravity: 4,
     damping: 1.3,
-    crashAngle: 1.24,
+    crashAngle: TAIL_CONTACT['701'].angle + TAIL_RECOVERY_ANGLE,
   },
 };
 export interface BalanceState {
@@ -60,6 +61,23 @@ export interface BalanceState {
   forwardLoad: number;
   liftPull: number;
   liftArmed: boolean;
+}
+/** Actual tail contact precedes a short, manually recoverable loop-out band. */
+export function tailScrape(
+  bikeId: string,
+  angle: number,
+  profile: BalanceProfile,
+) {
+  const startAngle = profile.crashAngle - TAIL_RECOVERY_ANGLE;
+  const intensity =
+    Number.isFinite(angle) && angle < profile.crashAngle
+      ? Math.max(0, Math.min(1, (angle - startAngle) / TAIL_RECOVERY_ANGLE))
+      : 0;
+  return {
+    material: bikeId === '125' ? ('metal' as const) : ('plastic' as const),
+    intensity,
+    startAngle,
+  };
 }
 export function advanceBalance(
   state: BalanceState,

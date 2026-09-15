@@ -35,7 +35,7 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
     page.evaluate(() => JSON.parse(localStorage.getItem('pfusch:player:v1')!));
   const before = await saved();
   await page.getByRole('button', { name: 'Preview Motocross helmet' }).click();
-  await page.getByRole('button', { name: 'Black helmet color' }).click();
+  await page.getByRole('button', { name: 'Cobalt helmet color' }).click();
   await expect(model).toHaveAttribute('data-helmet', 'motocross');
   await expect
     .poll(() =>
@@ -51,11 +51,17 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
                 helmet.material as THREE.MeshStandardMaterial[]
               )[0].color.getHexString(),
               peak: !!helmet.getObjectByName('motocross-peak'),
+              rearRidge: !!helmet.getObjectByName('motocross-rear-ridge'),
             }
           : null;
       }),
     )
-    .toEqual({ scale: [1.065, 1.065, 1.065], color: '202324', peak: true });
+    .toEqual({
+      scale: [1.065, 1.065, 1.065],
+      color: '366bc0',
+      peak: true,
+      rearRidge: true,
+    });
   expect(await saved()).toEqual(before);
   await page
     .getByRole('region', { name: 'Helmet options' })
@@ -97,7 +103,8 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
   await expect(model).toHaveAttribute('data-helmet-color', '#b8ce47');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Preview Full-face helmet' }).click();
-  await page.getByRole('button', { name: 'Slate helmet color' }).click();
+  await page.getByRole('button', { name: 'Burnt orange helmet color' }).click();
+  await expect(model).toHaveAttribute('data-helmet-color', '#dc632e');
   await page.waitForTimeout(160);
   await model.screenshot({ path: 'outputs/helmet-mobile-fullface.png' });
   expect(await saved()).toEqual(equipped);

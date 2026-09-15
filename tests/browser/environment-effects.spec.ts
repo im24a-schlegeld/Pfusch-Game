@@ -80,17 +80,9 @@ async function installProbe(page: Page, player = newPlayer()) {
 async function startRide(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
-  // React's lazy-scene reveal also uses timers. Advance the paused test clock
-  // while waiting so a cold bundle load cannot strand its Suspense fallback.
-  await expect
-    .poll(
-      async () => {
-        await page.clock.runFor(100);
-        return page.locator('canvas').count();
-      },
-      { timeout: 20000 },
-    )
-    .toBe(1);
+  // Wait for DOM mount separately from the potentially costly first GPU frame.
+  await expect(page.locator('canvas')).toHaveCount(1, { timeout: 60000 });
+  await page.clock.runFor(100);
   await page.clock.runFor(2200);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',

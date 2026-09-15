@@ -87,8 +87,9 @@ it.each([
       CHAIN_DRIVE.leftSwingarmX + CHAIN_DRIVE.maxSwingarmHalfWidth;
     for (const name of ['left-drive-chain', 'chain-rollers']) {
       const bounds = vertexBounds(body.getObjectByName(name) as Mesh);
-      expect(bounds.min.x - beamInnerX).toBeGreaterThan(0.009);
-      expect(tireBounds.min.x - bounds.max.x).toBeGreaterThan(0.023);
+      expect(bounds.min.x - beamInnerX).toBeGreaterThan(0.007);
+      expect(tireBounds.min.x - bounds.max.x).toBeGreaterThan(0.005);
+      expect(tireBounds.min.x - bounds.max.x).toBeLessThan(0.03);
       expect(bounds.min.x).toBeGreaterThanOrEqual(
         CHAIN_DRIVE.planeX - CHAIN_DRIVE.chainHalfWidth - 1e-8,
       );

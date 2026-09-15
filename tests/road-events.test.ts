@@ -10,6 +10,7 @@ import {
   type RoadEventKind,
 } from '../app/game/roadEvents';
 import { distanceAtTime, type WorldKind } from '../app/game/world';
+import { TRAFFIC_SHAPES } from '../app/game/trafficDomain';
 
 function ride(bike = BIKES[0], seed = 539) {
   const engine = new Engine(bike, seed);
@@ -24,7 +25,7 @@ function clearance(obstacle: Obstacle, lane: number) {
     Math.abs(lane * LANE - (obstacle.lane * LANE + obstacle.offsetX)) -
     (isRoadEvent(obstacle.kind)
       ? ROAD_EVENTS[obstacle.kind].contactHalfWidth
-      : 1.16)
+      : TRAFFIC_SHAPES[obstacle.kind].contactHalfWidth)
   );
 }
 
@@ -146,7 +147,7 @@ describe('bike-specific road contacts', () => {
     for (const engine of [slippery, dry]) {
       steps(engine, 1);
       engine.move(1);
-      steps(engine, 1);
+      steps(engine, 6);
     }
     expect(slippery.x).toBeLessThan(dry.x);
     const grip = slippery.surfaceGrip;
@@ -287,7 +288,7 @@ describe('world integration and readable traffic', () => {
               expect(wave).toHaveLength(1);
               const car = wave[0];
               expect(car.kind).toBe('car');
-              expect(clearance(car, 0)).toBeCloseTo(0.52);
+              expect(clearance(car, 0)).toBeCloseTo(0.465);
               expect(clearance(car, -car.lane)).toBeGreaterThan(2);
             }
             lastSpawnDistance = engine.distance;
@@ -303,7 +304,12 @@ describe('world integration and readable traffic', () => {
       }
     expect(waves).toBeGreaterThan(2000);
     expect(riskWaves).toBeGreaterThan(100);
-    expect(observedKinds.size).toBe(7);
+    expect([...observedKinds].sort()).toEqual([
+      'car',
+      'construction',
+      'towtruck',
+      'van',
+    ]);
     expect(observedEnvironments.size).toBeGreaterThanOrEqual(9);
   }, 30000);
   it('makes the center risk line optional and awards its actual offset near miss once', () => {

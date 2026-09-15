@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Pause, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, Volume2, VolumeX } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,8 @@ import { BIKES } from '../domain/config';
 import { Engine } from '../game/engine';
 import { GameAudio } from '../game/audio';
 import { Preview, fmt } from './shared';
-import { WeightControl } from './WeightControl';
+import { RideGestures } from './rideGestures';
+import { SIGN_IDS } from '../game/signCollectibles';
 interface Props {
   player: Player;
   products: Product[];
@@ -43,7 +44,23 @@ export default function Ride({
   const revealed = useRef(false);
   const lastEvent = useRef(0);
   const eventTime = useRef(0);
-  const gesture = useRef<{ x: number; y: number } | null>(null);
+  const suppressClicksUntil = useRef(0);
+  const gestures = useMemo(
+    () =>
+      new RideGestures({
+        weight: (value) => engine.weight(value),
+        move: (direction) => engine.move(direction),
+        togglePause: () => {
+          if (engine.phase === 'playing') engine.pause();
+          else if (engine.phase === 'paused') engine.resume();
+          else return;
+          suppressClicksUntil.current = performance.now() + 400;
+          audio.update(0, false, false);
+          setTick((n) => n + 1);
+        },
+      }),
+    [engine, audio],
+  );
   const finish = useRef(onFinish);
   finish.current = onFinish;
   const resultsReady = useRef(onResultsReady);
@@ -62,11 +79,61 @@ export default function Ride({
     }, 650);
     return () => clearInterval(timer);
   }, [engine, ready]);
-  const pause = () => {
-    engine.pause();
-    setTick((n) => n + 1);
-    audio.update(0, false, false);
-  };
+  useEffect(() => {
+    const down = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const surface = target?.closest('.gesture-zone');
+      const pausedDialog =
+        engine.phase === 'paused' && target?.closest('[role="dialog"]');
+      if (
+        (!surface && !pausedDialog) ||
+        (event.pointerType === 'mouse' && event.button !== 0)
+      )
+        return;
+      if (surface) {
+        event.preventDefault();
+        surface.setPointerCapture(event.pointerId);
+      }
+      gestures.down(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+        event.timeStamp,
+      );
+    };
+    const move = (event: PointerEvent) =>
+      gestures.move(event.pointerId, event.clientX, event.clientY);
+    const up = (event: PointerEvent) =>
+      gestures.up(event.pointerId, event.timeStamp);
+    const cancel = (event: PointerEvent) => gestures.cancel(event.pointerId);
+    const click = (event: MouseEvent) => {
+      if (performance.now() < suppressClicksUntil.current) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('pointerdown', down, {
+      capture: true,
+      passive: false,
+    });
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', cancel, true);
+    window.addEventListener('lostpointercapture', cancel, true);
+    window.addEventListener('click', click, true);
+    return () => {
+      gestures.cancel();
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', cancel, true);
+      window.removeEventListener('lostpointercapture', cancel, true);
+      window.removeEventListener('click', click, true);
+    };
+  }, [engine, gestures]);
+  useEffect(() => {
+    if (engine.phase !== 'playing') gestures.cancel();
+  }, [engine.phase, gestures]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
       if (
@@ -92,6 +159,7 @@ export default function Ride({
         e.preventDefault();
       if (e.repeat) return;
       if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+        gestures.cancel();
         if (engine.phase === 'playing') engine.pause();
         else engine.resume();
         setTick((n) => n + 1);
@@ -111,6 +179,7 @@ export default function Ride({
         engine.hold(false);
     };
     const blur = () => {
+      gestures.cancel();
       engine.pause();
       engine.clearInput();
       audio.update(0, false, false);
@@ -127,7 +196,7 @@ export default function Ride({
       document.removeEventListener('visibilitychange', blur);
       audio.update(0, false, false);
     };
-  }, [engine, audio]);
+  }, [engine, audio, gestures]);
   function settle(e: Engine) {
     if (e.phase !== 'crashed' || settled.current) return;
     const run = e.stats();
@@ -180,6 +249,8 @@ export default function Ride({
       data-lighting={engine.environment.lighting}
       data-tunnel={engine.world.tunnelExposure(engine.distance).toFixed(3)}
       data-wheelie={engine.wheelie}
+      data-sign-mask={engine.collectedSigns}
+      data-sign-sets={engine.signSetCount}
       data-frame={tick}
     >
       <Preview
@@ -193,23 +264,8 @@ export default function Ride({
       />
       <div
         className="gesture-zone"
-        aria-label="Swipe left or right to dodge"
-        onPointerDown={(e) => {
-          gesture.current = { x: e.clientX, y: e.clientY };
-          e.currentTarget.setPointerCapture(e.pointerId);
-        }}
-        onPointerUp={(e) => {
-          const start = gesture.current;
-          gesture.current = null;
-          if (!start) return;
-          const dx = e.clientX - start.x,
-            dy = e.clientY - start.y;
-          if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
-          if (Math.abs(dx) > Math.abs(dy)) engine.move(dx < 0 ? -1 : 1);
-        }}
-        onPointerCancel={() => {
-          gesture.current = null;
-        }}
+        aria-label="Ride gestures: swipe to steer, slide down to raise, up to correct; two-finger tap to pause"
+        onContextMenu={(e) => e.preventDefault()}
       />
       <div className="ride-top">
         <div className="score-display">
@@ -217,29 +273,24 @@ export default function Ride({
           <strong>{fmt(engine.score).padStart(6, '0')}</strong>
           <small>BEST {fmt(player.highScore)}</small>
         </div>
-        <div className="ride-actions">
-          <button
-            className="icon-button"
-            aria-label={player.settings.muted ? 'Unmute' : 'Mute'}
-            onClick={onMute}
-          >
-            {player.settings.muted ? <VolumeX /> : <Volume2 />}
-          </button>
-          <button
-            className="icon-button"
-            aria-label="Pause ride"
-            disabled={engine.phase === 'crashed'}
-            onPointerDown={(e) => {
-              if (e.button !== 0) return;
-              e.preventDefault();
-              pause();
-            }}
-            onClick={(e) => {
-              if (e.detail === 0) pause();
-            }}
-          >
-            <Pause />
-          </button>
+        <div
+          className="sign-progress"
+          aria-label={`PFUSCH signs: ${SIGN_IDS.filter((_, i) => engine.collectedSigns & (1 << i)).join(', ') || 'none'}; ${engine.signSetCount} sets complete`}
+        >
+          <span className="eyebrow">COLLECT THE SET</span>
+          <div>
+            {SIGN_IDS.map((id, index) => (
+              <b
+                key={id}
+                className={
+                  engine.collectedSigns & (1 << index) ? 'collected' : ''
+                }
+              >
+                {id}
+              </b>
+            ))}
+          </div>
+          {engine.signSetCount > 0 && <small>SETS {engine.signSetCount}</small>}
         </div>
       </div>
       <div className="ride-metrics">
@@ -280,34 +331,26 @@ export default function Ride({
             S / ↓ RAISE · W / ↑ CORRECT
           </span>
           <span className="touch-control-tip">
-            HOLD WHEELIE · SLIDE UP TO CORRECT
+            SLIDE ↓ RAISE · ↑ CORRECT · TWO-FINGER TAP PAUSES
           </span>
           {' · SWIPE TO DODGE'}
         </div>
       )}
-      {engine.phase !== 'crashed' && (
-        <div className="ride-controls">
-          <div className="steer-controls">
-            <button
-              aria-label="Dodge left"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                engine.move(-1);
+      {engine.phase === 'playing' && (
+        <div className="ride-balance" aria-label="Wheelie angle">
+          <small>BALANCE</small>
+          <div className="balance-meter">
+            <b
+              style={{
+                left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
               }}
-            >
-              <ArrowLeft />
-            </button>
-            <button
-              aria-label="Dodge right"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                engine.move(1);
+            />
+            <i
+              style={{
+                width: `${Math.min(100, (engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100)}%`,
               }}
-            >
-              <ArrowRight />
-            </button>
+            />
           </div>
-          <WeightControl engine={engine} />
         </div>
       )}
       <Dialog
@@ -323,7 +366,9 @@ export default function Ride({
         <DialogContent className="game-dialog" showCloseButton={false}>
           <p className="eyebrow">TAKE A BREATHER</p>
           <DialogTitle>RIDE PAUSED.</DialogTitle>
-          <DialogDescription>Your line will be right here.</DialogDescription>
+          <DialogDescription>
+            Two-finger tap to resume. Your line will be right here.
+          </DialogDescription>
           <div className="control-guide">
             <span>
               ← → / A D <b>Dodge</b>
@@ -339,16 +384,21 @@ export default function Ride({
             </span>
           </div>
           <p className="muted">
-            On touch, hold WHEELIE and slide that thumb up to reduce throttle or
-            shift forward. Slide down to raise again; release for neutral. Use
-            short throttle inputs to raise the front. Release below the balance
-            marker; hold forward weight to catch an overrotation. Steady balance
-            earns more than holding throttle. A controlled higher angle earns
-            more points. Dodge traffic, potholes and raised road edges, or lift
-            the front before the edge. Lower the front on wet asphalt and
-            gravel; hold forward over rough patches for a smoother line. A clear
-            lane always remains available.
+            Touch anywhere on the road and slide down to raise the front, up to
+            shift forward. Your starting position is neutral; release for
+            neutral. Swipe sideways with the same finger to steer while
+            balancing. A tap does not raise the front. Two-finger tap pauses or
+            resumes. Keep correcting: holding full rear weight can flip the
+            bike. Wheelies, near misses and stunts earn most points. Dodge
+            traffic and construction barriers. Enter a tow truck&apos;s rear ramp
+            from the adjacent lane to jump, then use your one airborne lane
+            change to exit before the cab. Collect P F U S C H for a set bonus.
+            A clear lane remains available.
           </p>
+          <button className="button" onClick={onMute}>
+            {player.settings.muted ? <VolumeX /> : <Volume2 />}
+            {player.settings.muted ? 'UNMUTE' : 'MUTE'}
+          </button>
           <button
             className="button primary"
             onClick={() => {

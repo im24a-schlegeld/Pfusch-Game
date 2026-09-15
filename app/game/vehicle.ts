@@ -1040,7 +1040,7 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          [s * 0.055, 1.01, -0.44],
+          [s * 0.018, 1.01, forkAxisAt(1.01)[2] + 0.026],
           [s * 0.13, 0.82, -0.23],
           [s * 0.13, 0.51, 0.13],
         ],
@@ -1052,7 +1052,7 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          [s * 0.035, 0.98, -0.45],
+          [s * 0.014, 0.98, forkAxisAt(0.98)[2] + 0.024],
           [s * 0.11, 0.6, -0.33],
           [s * 0.12, 0.38, -0.2],
           [s * 0.13, 0.37, 0.1],
@@ -1067,21 +1067,21 @@ export function makeBike(player: Player, products: Product[]) {
         body,
         [
           [s * 0.13, 0.51, 0.13],
-          [s * 0.115, 0.84, 0.48],
-          [s * 0.074, 1.009, 0.85],
+          [s * 0.081, 0.82, 0.48],
+          [s * 0.037, 0.974, 0.82],
         ],
         [0.022, 0.022, 0.018],
         subframeFinish,
         20,
         12,
-      );
+      ).name = 'supermoto-rear-subframe';
       rod(
         body,
-        [s * 0.12, 0.88, 0.12],
-        [s * 0.074, 1.009, 0.85],
-        0.021,
+        [s * 0.085, 0.884, 0.12],
+        [s * 0.037, 0.974, 0.82],
+        0.018,
         subframeFinish,
-      );
+      ).name = 'supermoto-upper-subframe';
       const swingarm = loft(
         body,
         [
@@ -1094,9 +1094,11 @@ export function makeBike(player: Player, products: Product[]) {
         'z',
         16,
       );
-      swingarm.position.x = s < 0 ? CHAIN_DRIVE.leftSwingarmX : 0.14;
+      swingarm.geometry.scale(0.84, 1, 1);
+      swingarm.position.x =
+        s < 0 ? CHAIN_DRIVE.leftSwingarmX : CHAIN_DRIVE.rightSwingarmX;
       swingarm.name = 'box-section-swingarm';
-      rod(
+      const forkGuard = rod(
         frontAssembly,
         [
           s * 0.08,
@@ -1119,6 +1121,25 @@ export function makeBike(player: Player, products: Product[]) {
         0.043,
         paint,
       );
+      // A moulded U-section shields the front and sides of the slider. The
+      // rear stays open, as on a real fork protector; no end caps seal it.
+      const guardLength = (forkGuard.geometry as THREE.CylinderGeometry)
+        .parameters.height;
+      forkGuard.geometry.dispose();
+      forkGuard.geometry = new THREE.CylinderGeometry(
+        0.043,
+        0.039,
+        guardLength,
+        28,
+        1,
+        true,
+        Math.PI * 0.35,
+        Math.PI * 1.3,
+      );
+      const guardMaterial = paint.clone();
+      guardMaterial.side = THREE.DoubleSide;
+      forkGuard.material = guardMaterial;
+      forkGuard.name = 'open-back-fork-guard';
       const shroud = sidePanel(
         body,
         s,
@@ -1436,7 +1457,7 @@ export function makeBike(player: Player, products: Product[]) {
     rod(
       body,
       [CHAIN_DRIVE.leftSwingarmX, 0.414, 0.43],
-      [0.14, 0.414, 0.43],
+      [CHAIN_DRIVE.rightSwingarmX, 0.414, 0.43],
       0.022,
       alloy,
     ).name = 'swingarm-crossmember';
@@ -1475,20 +1496,20 @@ export function makeBike(player: Player, products: Product[]) {
     loft(
       body,
       [
-        [-0.415, 0.076, 0.035, 0.943],
-        [-0.26, 0.131, 0.1, 0.888],
+        [-0.415, 0.076, 0.042, 0.962],
+        [-0.26, 0.131, 0.114, 0.902],
         [-0.045, 0.115, 0.106, 0.876],
         [0.16, 0.096, 0.049, 0.912],
       ],
-      seat,
+      paint,
       'z',
     ).name = 'supermoto-fuel-tank';
-    rod(body, [0, 0.983, -0.299], [0, 0.997, -0.299], 0.027, dark).name =
+    rod(body, [0, 1.01, -0.299], [0, 1.024, -0.299], 0.027, dark).name =
       'fuel-cap';
     loft(
       body,
       [
-        [-0.28, 0.067, 0.02, 0.978],
+        [-0.19, 0.067, 0.02, 0.997],
         [0.04, 0.1, 0.029, 0.977],
         [0.43, 0.093, 0.029, 0.983],
         [0.68, 0.067, 0.02, 1.012],
@@ -1503,7 +1524,9 @@ export function makeBike(player: Player, products: Product[]) {
         [-1.06, 0.057, 0.013, 0.805],
         [-0.94, 0.096, 0.024, 0.846],
         [-0.67, 0.102, 0.026, 0.853],
-        [-0.49, 0.055, 0.011, 0.82],
+        [-0.52, 0.082, 0.019, 0.827],
+        [-0.445, 0.071, 0.015, 0.765],
+        [-0.425, 0.052, 0.009, 0.694],
       ],
       paint,
       'z',
@@ -1548,7 +1571,51 @@ export function makeBike(player: Player, products: Product[]) {
       ],
       material('#1c272a', 0.1, 0.2),
       'y',
+    ).name = 'supermoto-headlight-bezel';
+    const reflector = loft(
+      body,
+      [
+        [0.952, 0.052, 0.009, -0.648],
+        [0.99, 0.058, 0.012, -0.64],
+        [1.026, 0.051, 0.009, -0.628],
+      ],
+      material('#c7ced0', 0.78, 0.2),
+      'y',
+      40,
     );
+    reflector.name = 'supermoto-headlight-reflector';
+    const glass = new THREE.MeshPhysicalMaterial({
+      color: '#eef7ff',
+      transparent: true,
+      opacity: 0.24,
+      roughness: 0.08,
+      metalness: 0,
+      clearcoat: 1,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    loft(
+      body,
+      [
+        [0.951, 0.053, 0.003, -0.66],
+        [0.99, 0.06, 0.006, -0.656],
+        [1.027, 0.052, 0.003, -0.64],
+      ],
+      glass,
+      'y',
+      40,
+    ).name = 'supermoto-headlight-glass';
+    oval(
+      body,
+      [0, 0.988, -0.651],
+      [0.014, 0.016, 0.007],
+      new THREE.MeshStandardMaterial({
+        color: '#f7fcff',
+        emissive: '#d2e9ff',
+        emissiveIntensity: 0.28,
+        roughness: 0.15,
+      }),
+    ).name = 'supermoto-headlight-bulb';
     tube(
       body,
       [
@@ -1670,14 +1737,14 @@ export function makeBike(player: Player, products: Product[]) {
     const tank = loft(
       body,
       [
-        [-0.385, 0.084, 0.073, 0.925],
-        [-0.3, 0.128, 0.084, 0.94],
-        [-0.205, 0.179, 0.111, 0.951],
-        [-0.11, 0.195, 0.117, 0.951],
-        [-0.015, 0.191, 0.111, 0.943],
-        [0.07, 0.168, 0.088, 0.923],
-        [0.135, 0.143, 0.066, 0.892],
-        [0.195, 0.119, 0.044, 0.865],
+        [-0.385, 0.084, 0.055, 0.92],
+        [-0.3, 0.126, 0.078, 0.928],
+        [-0.205, 0.169, 0.092, 0.928],
+        [-0.11, 0.178, 0.093, 0.925],
+        [-0.015, 0.168, 0.086, 0.916],
+        [0.07, 0.151, 0.071, 0.9],
+        [0.135, 0.134, 0.053, 0.875],
+        [0.195, 0.118, 0.04, 0.86],
         [0.25, 0.11, 0.043, 0.845],
       ],
       paint,
@@ -1715,9 +1782,11 @@ export function makeBike(player: Player, products: Product[]) {
     const tailShell = loft(
       body,
       [
-        [0.38, 0.139, 0.047, 0.823],
-        [0.59, 0.12, 0.046, 0.918],
-        [0.82, 0.041, 0.019, 0.989],
+        [0.38, 0.153, 0.047, 0.823],
+        [0.52, 0.174, 0.05, 0.885],
+        [0.66, 0.155, 0.044, 0.946],
+        [0.8, 0.093, 0.023, 0.986],
+        [0.855, 0.048, 0.012, 0.991],
       ],
       paint,
       'z',
@@ -1888,7 +1957,9 @@ export function makeBike(player: Player, products: Product[]) {
         'z',
         16,
       );
-      swingarm.position.x = s < 0 ? CHAIN_DRIVE.leftSwingarmX : 0.14;
+      swingarm.geometry.scale(0.84, 1, 1);
+      swingarm.position.x =
+        s < 0 ? CHAIN_DRIVE.leftSwingarmX : CHAIN_DRIVE.rightSwingarmX;
       swingarm.name = 'box-section-swingarm';
 
       rod(
@@ -1899,7 +1970,7 @@ export function makeBike(player: Player, products: Product[]) {
         dark,
       );
     }
-    makeSportBodywork(body, paint);
+    makeSportBodywork(body, paint, tank);
     makeSportFender(frontAssembly, radius, front, paint);
     const rearLamp = loft(
       body,
@@ -1931,11 +2002,11 @@ export function makeBike(player: Player, products: Product[]) {
     );
   } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
-  const exhaustX = moped ? 0.15 : sport ? 0.23 : 0.165;
-  const exhaustY = moped ? 0.22 : sport ? 0.48 : 0.676;
-  const mufflerStartZ = moped || sport ? 0.38 : 0.415;
-  const mufflerEndZ = moped || sport ? 0.76 : 0.785;
-  const mufflerRise = moped ? 0.025 : sport ? 0.13 : 0.133;
+  const exhaustX = moped ? 0.15 : sport ? 0.215 : 0.165;
+  const exhaustY = moped ? 0.22 : sport ? 0.34 : 0.676;
+  const mufflerStartZ = moped ? 0.38 : sport ? 0.55 : 0.415;
+  const mufflerEndZ = moped ? 0.76 : sport ? 0.82 : 0.785;
+  const mufflerRise = moped ? 0.025 : sport ? 0.155 : 0.133;
   const mufflerY = (z: number) =>
     exhaustY +
     ((z - mufflerStartZ) / (mufflerEndZ - mufflerStartZ)) * mufflerRise;
@@ -1952,8 +2023,9 @@ export function makeBike(player: Player, products: Product[]) {
         ? [
             [0.16, 0.355, -0.15],
             [0.2, 0.33, -0.02],
-            [exhaustX, 0.39, 0.25],
-            [exhaustX, mufflerY(0.56), 0.56],
+            [exhaustX, 0.304, 0.3],
+            [exhaustX, 0.328, 0.52],
+            [exhaustX, mufflerY(0.6), 0.6],
           ]
         : [
             [0.045, 0.724, -0.234],
@@ -1969,9 +2041,9 @@ export function makeBike(player: Player, products: Product[]) {
     moped
       ? [0.016, 0.019, 0.022, 0.025]
       : sport
-        ? [0.022, 0.024, 0.027, 0.03]
+        ? [0.022, 0.024, 0.025, 0.027, 0.03]
         : [0.019, 0.022, 0.023, 0.022, 0.02, 0.02, 0.021, 0.025, 0.029],
-    alloy,
+    sport ? material('#596166', 0.72, 0.42) : alloy,
     24,
     14,
   ).name = 'connected-exhaust-pipe';
@@ -1979,18 +2051,18 @@ export function makeBike(player: Player, products: Product[]) {
     body,
     [exhaustX, exhaustY, mufflerStartZ],
     [exhaustX, mufflerY(mufflerEndZ), mufflerEndZ],
-    moped ? 0.032 : sport ? 0.073 : 0.047,
+    moped ? 0.032 : sport ? 0.06 : 0.047,
     alloy,
   );
   muffler.name = 'single-exhaust';
-  if (!moped && !sport) {
+  if (!moped) {
     // A short formed oval can, with tapered inlet/outlet caps. Retaining its
     // longitudinal CylinderGeometry datum keeps connection checks meaningful.
     const length = (muffler.geometry as THREE.CylinderGeometry).parameters
       .height;
     const silencer = new THREE.CylinderGeometry(
-      0.052,
-      0.052,
+      sport ? 0.06 : 0.052,
+      sport ? 0.06 : 0.052,
       length,
       8,
       20,
@@ -2018,9 +2090,9 @@ export function makeBike(player: Player, products: Product[]) {
       const taper = THREE.MathUtils.lerp(left[1], right[1], blend);
       positions.setXYZ(
         i,
-        positions.getX(i) * taper * 0.85,
+        positions.getX(i) * taper * (sport ? 0.94 : 0.85),
         positions.getY(i),
-        positions.getZ(i) * taper * 1.16,
+        positions.getZ(i) * taper * (sport ? 1 : 1.16),
       );
     }
     silencer.clearGroups();
@@ -2043,15 +2115,15 @@ export function makeBike(player: Player, products: Product[]) {
     body,
     [
       exhaustX,
-      mufflerY(moped || sport ? 0.58 : 0.56),
-      moped || sport ? 0.58 : 0.56,
+      mufflerY(moped ? 0.58 : sport ? 0.68 : 0.56),
+      moped ? 0.58 : sport ? 0.68 : 0.56,
     ],
     [
       exhaustX,
-      mufflerY(moped || sport ? 0.602 : 0.582),
-      moped || sport ? 0.602 : 0.582,
+      mufflerY(moped ? 0.602 : sport ? 0.702 : 0.582),
+      moped ? 0.602 : sport ? 0.702 : 0.582,
     ],
-    moped ? 0.034 : sport ? 0.075 : 0.054,
+    moped ? 0.034 : sport ? 0.06 : 0.054,
     dark,
   );
   exhaustBand.name = 'exhaust-mount-band';
@@ -2073,8 +2145,8 @@ export function makeBike(player: Player, products: Product[]) {
   if (moped || sport)
     rod(
       body,
-      [moped ? 0.105 : 0.11, moped ? 0.337 : 0.875, moped ? 0.55 : 0.57],
-      [exhaustX, mufflerY(0.591), 0.591],
+      [moped ? 0.105 : 0.075, moped ? 0.337 : 0.85, moped ? 0.55 : 0.58],
+      [exhaustX, mufflerY(moped ? 0.591 : 0.691), moped ? 0.591 : 0.691],
       moped ? 0.009 : 0.012,
       dark,
     ).name = 'exhaust-frame-hanger';
@@ -2468,6 +2540,7 @@ function makeRider(
       20,
     );
     foot.position.x = side * pose.peg[0];
+    foot.name = 'rider-boot';
   }
   const neck = tube(
     rider,

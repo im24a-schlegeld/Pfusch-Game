@@ -81,8 +81,9 @@ describe('animated immutable rider', () => {
     for (const base of Object.values(POSES)) {
       const neutral = riderMotionPose(base, rest);
       const launch = riderMotionPose(base, { ...rest, launch: 1 });
-      expect(launch.hip[2] - neutral.hip[2]).toBeCloseTo(0.008, 10);
-      expect(launch.lean - neutral.lean).toBeCloseTo(0.012, 10);
+      expect(launch.hip[2] - neutral.hip[2]).toBeCloseTo(0.004, 10);
+      expect(launch.shoulder[2]).toBeGreaterThan(neutral.shoulder[2]);
+      expect(launch.lean).toBeLessThan(neutral.lean);
       for (const sign of [-1, 1]) {
         const balance = riderMotionPose(base, { ...rest, balance: sign });
         expect(balance.hip).toEqual(neutral.hip);

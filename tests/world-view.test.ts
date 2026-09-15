@@ -133,6 +133,44 @@ function terrainRoadIntersections(rendered: ReturnType<typeof render>) {
 }
 
 describe('streamed world geometry', () => {
+  it.each([false, true])(
+    'keeps complete tree crowns clear of buildings, props and the road (low=%s)',
+    (low) => {
+      const world = new World(seed, pace);
+      const view = makeWorldView(new Scene(), low);
+      let crownCount = 0;
+      const collisions: string[] = [];
+      for (let distance = 0; distance <= 9000; distance += 132) {
+        world.advance(distance);
+        view.update(world, distance);
+        view.root.updateMatrixWorld(true);
+        const meshes = view.root.children as InstancedMesh[];
+        const crowns = meshes
+          .filter((mesh) => /world-(canopy|cone)-foliage/.test(mesh.name))
+          .flatMap(instanceBounds);
+        const props = meshes
+          .filter(
+            (mesh) =>
+              /^world-(box|round|arch|mountain|berm)-/.test(mesh.name) &&
+              mesh.name !== 'world-round-trunk',
+          )
+          .flatMap(instanceBounds)
+          .filter((box) => box.max.y > 0.35);
+        crownCount += crowns.length;
+        for (const crown of crowns) {
+          if (!(crown.max.x < -4.8 || crown.min.x > 4.8))
+            collisions.push(`road:${distance}`);
+          if (props.some((prop) => prop.intersectsBox(crown)))
+            collisions.push(`prop:${distance}`);
+        }
+      }
+      // Clearance must not be implemented by removing all roadside vegetation.
+      expect(crownCount).toBeGreaterThan(150);
+      expect(collisions).toEqual([]);
+    },
+    15000,
+  );
+
   it.each(
     (['modern', 'weathered'] as const).flatMap((style) =>
       [false, true].map((low) => ({ style, low })),

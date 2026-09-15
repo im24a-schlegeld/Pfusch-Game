@@ -24,7 +24,8 @@ export function motorcycleRim(
     72,
   );
   barrel.rotateZ(Math.PI / 2);
-  const rim = new THREE.Mesh(barrel, finish);
+  // Polished alloy bed remains visible inside the colored outer lips.
+  const rim = new THREE.Mesh(barrel, sport ? finish : metal);
   rim.name = 'formed-rim-barrel';
   rim.castShadow = rim.receiveShadow = true;
   wheel.add(rim);

@@ -46,15 +46,15 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
     base.hip[2] +
       0.035 * wheelie -
       0.025 * forward +
-      0.008 * launch +
+      0.004 * launch +
       0.004 * load,
   ];
-  const lean =
+  let lean =
     base.torsoLean +
     0.06 * wheelie +
     0.04 * landing +
     0.09 * forward +
-    0.012 * launch +
+    -0.045 * launch +
     0.012 * balance +
     0.008 * load +
     0.003 * road;
@@ -62,6 +62,28 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
   const orientation = new Quaternion().setFromEuler(new Euler(-lean, 0, roll));
   const onTorso = (p: Point) =>
     point(vector(p).applyQuaternion(orientation).add(vector(hip)));
+  // Rearward weight transfer stops where the fixed arms reach their grips.
+  // Solve a contact-limited torso angle, never lengthen the rider's bones.
+  const reachesGrips = () =>
+    [-1, 1].every(
+      (side) =>
+        vector(onTorso([side * d.shoulderHalf, d.torsoLength, 0])).distanceTo(
+          new Vector3(side * base.wrist[0], base.wrist[1], base.wrist[2]),
+        ) <
+        d.upperArm + d.forearm - 0.001,
+    );
+  if (!reachesGrips()) {
+    let low = lean,
+      high = lean + 0.25;
+    for (let i = 0; i < 12; i++) {
+      const candidate = (low + high) / 2;
+      orientation.setFromEuler(new Euler(-candidate, 0, roll));
+      if (reachesGrips()) high = candidate;
+      else low = candidate;
+    }
+    lean = high;
+    orientation.setFromEuler(new Euler(-lean, 0, roll));
+  }
   const shoulder = onTorso([0, d.torsoLength, 0]);
   const head: Point = [
     shoulder[0],

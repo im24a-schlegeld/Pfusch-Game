@@ -2,12 +2,13 @@ import * as THREE from 'three';
 
 /** Shared lateral envelope: the complete chain sits between tire and left beam. */
 export const CHAIN_DRIVE = Object.freeze({
-  planeX: -0.132,
+  planeX: -0.113,
   chainHalfWidth: 0.0105,
   frontRadius: 0.04,
   rearRadius: 0.12,
-  leftSwingarmX: -0.19,
-  maxSwingarmHalfWidth: 0.038,
+  leftSwingarmX: -0.164,
+  rightSwingarmX: 0.164,
+  maxSwingarmHalfWidth: 0.032,
   maxRearTireHalfWidth: 0.096,
   hubFaceX: -0.06,
 });

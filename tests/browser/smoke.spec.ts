@@ -1,9 +1,47 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function waitForFirstSimulation(page: Page, errors: string[]) {
+  try {
+    await expect
+      .poll(
+        async () => {
+          expect(errors, 'startup console/runtime errors').toEqual([]);
+          return Number(
+            await page.getByTestId('ride-screen').getAttribute('data-frame'),
+          );
+        },
+        { timeout: 60000 },
+      )
+      .toBeGreaterThan(0);
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      focused: document.hasFocus(),
+      visibility: document.visibilityState,
+      readyState: document.readyState,
+      canvasCount: document.querySelectorAll('canvas').length,
+      ride: Object.fromEntries(
+        ['frame', 'phase', 'distance', 'lane'].map((key) => [
+          key,
+          document
+            .querySelector('[data-testid="ride-screen"]')
+            ?.getAttribute(`data-${key}`),
+        ]),
+      ),
+    }));
+    throw new Error(
+      `First simulation frame did not arrive: ${JSON.stringify({ state, errors })}`,
+      { cause: error },
+    );
+  }
+}
 test('desktop complete ride, reward, save, garage and all screens', async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
   await page.goto('/');
   await expect(
     page.getByRole('button', { name: 'LET’S RIDE', exact: true }),
@@ -16,6 +54,7 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
     'data-phase',
     'playing',
   );
+  await waitForFirstSimulation(page, errors);
   await page.keyboard.press('ArrowLeft');
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-lane',
@@ -39,7 +78,7 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
   await page.keyboard.press('Escape');
   await expect(page.getByText('RIDE PAUSED.')).toBeVisible();
   await page.getByRole('button', { name: 'BACK TO THE STREETS' }).click();
-  await page.getByRole('button', { name: 'Pause ride' }).click();
+  await page.keyboard.press('p');
   await page.getByRole('button', { name: 'END RIDE & COLLECT' }).click();
   await expect(page.getByRole('button', { name: 'RIDE AGAIN' })).toBeVisible();
   await page.screenshot({ path: 'outputs/results-desktop.png' });
@@ -105,6 +144,11 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
     deviceScaleFactor: 1,
   });
   const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
   await page.goto('/');
   await expect(
     page.getByRole('button', { name: 'LET’S RIDE', exact: true }),
@@ -122,14 +166,13 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
     'data-phase',
     'playing',
   );
-  await page.getByRole('button', { name: 'Dodge left', exact: true }).tap();
+  await waitForFirstSimulation(page, errors);
+  await page.keyboard.press('ArrowLeft');
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-lane',
     '-1',
   );
-  await page
-    .getByRole('button', { name: 'Hold forward weight', exact: true })
-    .tap();
+  await page.keyboard.press('w');
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-height',
     '0.00',
@@ -160,7 +203,8 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
     'data-phase',
     'playing',
   );
-  await page.getByRole('button', { name: 'Pause ride' }).tap();
+  await waitForFirstSimulation(page, errors);
+  await page.keyboard.press('p');
   await page.getByRole('button', { name: 'END RIDE & COLLECT' }).tap();
   await page.getByRole('button', { name: 'BACK TO GARAGE' }).tap();
   await page.getByRole('tab', { name: 'RIDER' }).tap();
@@ -171,5 +215,6 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  expect(errors).toEqual([]);
   await context.close();
 });

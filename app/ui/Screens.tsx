@@ -368,23 +368,24 @@ export function SettingsScreen({
             SWIPE ← → / A D <b>Dodge</b>
           </span>
           <span>
-            HOLD FORWARD / W / ↑ <b>Weight forward / correct</b>
+            SLIDE UP / W / ↑ <b>Weight forward / correct</b>
           </span>
           <span>
-            WHEELIE / S / ↓ <b>Throttle / weight back</b>
+            SLIDE DOWN / S / ↓ <b>Throttle / weight back</b>
           </span>
           <span>
-            ESC / P <b>Pause</b>
+            TWO-FINGER TAP / ESC / P <b>Pause</b>
           </span>
         </div>
         <p>
-          Raise the front with short throttle inputs. Release below the balance
-          marker and hold forward weight to recover. Holding throttle too long
-          can overrotate the bike. Steady balance, duration and speed build
-          score; a controlled higher angle earns more. Close lateral dodges earn
-          near misses. Dodge traffic, potholes and raised edges, or lift the
-          front before the edge. Lower the front on wet asphalt and gravel; hold
-          forward over rough patches. A clear lane remains available.
+          On touch, start anywhere and slide down to move weight back, up to
+          correct. Your starting point is neutral; tapping never raises the front.
+          Swipe sideways with the same finger while balancing. Release for neutral.
+          A two-finger tap pauses or resumes. Holding rear weight can overrotate
+          the bike; keep correcting. Wheelies, near misses and stunts earn most
+          points. Dodge traffic and construction barriers. Enter a tow truck&apos;s
+          rear ramp from the side to jump, then steer out once in the air before
+          the cab. Collect all six PFUSCH signs for an extra set bonus.
         </p>
       </section>
       <footer className="settings-section">

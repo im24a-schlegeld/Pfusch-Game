@@ -471,17 +471,20 @@ export default function GameApp() {
               SWIPE ← → <b>Dodge traffic</b>
             </span>
             <span>
-              HOLD FORWARD <b>Correct your balance</b>
+              SLIDE UP <b>Weight forward / correct</b>
             </span>
             <span>
-              WHEELIE <b>Throttle / weight back</b>
+              SLIDE DOWN <b>Throttle / weight back</b>
             </span>
           </div>
           <p className="muted">
-            A / D or arrows to dodge. S / ↓ raises the front; release and use W
-            / ↑ to shift forward and recover. Holding throttle too long can flip
-            the bike. A controlled higher angle earns more. Dodge traffic and
-            potholes; keep the front low on wet asphalt and gravel.
+            Touch anywhere: slide down to raise, up to correct, sideways to dodge.
+            The same finger steers while balancing. Release for neutral; tapping
+            does not lift. Two-finger tap pauses. Keyboard: A / D or arrows dodge,
+            S / ↓ raises, W / ↑ corrects. Holding rear weight can flip the bike.
+            Wheelies and stunts earn most points. Enter a tow truck&apos;s rear ramp
+            from the side, then steer out once in the air. Collect P F U S C H
+            for a set bonus. Dodge traffic and construction barriers.
           </p>
           <button
             className="button primary"

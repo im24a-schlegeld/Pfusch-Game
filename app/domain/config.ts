@@ -122,11 +122,18 @@ export const PAINTS = [
   { name: 'Signal', value: '#d9f365', price: 120 },
   { name: 'Burnt orange', value: '#dc632e', price: 120 },
   { name: 'Cobalt', value: '#627dac', price: 120 },
+  { name: 'Racing red', value: '#b83232', price: 120 },
+  { name: 'Ice blue', value: '#8ab9cf', price: 120 },
+  { name: 'Pine', value: '#3e5c52', price: 120 },
+  { name: 'Sand', value: '#b6a083', price: 120 },
+  { name: 'Violet', value: '#7461a5', price: 120 },
 ];
 export const RIMS = [
   { name: 'Silver', value: '#a6acb0', price: 0 },
   { name: 'Black', value: '#24282b', price: 60 },
   { name: 'Signal', value: '#d9f365', price: 100 },
+  { name: 'Bronze', value: '#967847', price: 100 },
+  { name: 'Cobalt', value: '#627dac', price: 100 },
 ];
 export const REWARDS = [
   {

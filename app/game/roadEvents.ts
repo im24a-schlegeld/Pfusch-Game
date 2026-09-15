@@ -1,4 +1,5 @@
 import type { WorldKind } from './world';
+import type { TrafficKind } from './trafficDomain';
 
 export type RoadEventKind = 'barrier' | 'pothole' | 'rough' | 'gravel' | 'wet';
 export interface RoadEventShape {
@@ -135,31 +136,31 @@ export interface TrafficEnvironment {
   readonly doubleChance: number;
   readonly minimumSpacing: number;
   readonly initialSpacing: number;
-  readonly kinds: readonly ('car' | 'van' | RoadEventKind)[];
+  readonly kinds: readonly TrafficKind[];
 }
 const city: TrafficEnvironment = {
   doubleChance: 0.58,
   minimumSpacing: 56,
   initialSpacing: 78,
-  kinds: ['car', 'car', 'car', 'van', 'pothole', 'wet'],
+  kinds: ['car', 'car', 'car', 'van', 'towtruck'],
 };
 const industrial: TrafficEnvironment = {
   doubleChance: 0.52,
   minimumSpacing: 60,
   initialSpacing: 86,
-  kinds: ['van', 'van', 'car', 'barrier', 'rough', 'gravel'],
+  kinds: ['van', 'van', 'car', 'towtruck'],
 };
 const open: TrafficEnvironment = {
   doubleChance: 0.25,
   minimumSpacing: 80,
   initialSpacing: 110,
-  kinds: ['car', 'car', 'van', 'rough', 'gravel'],
+  kinds: ['car', 'car', 'van', 'towtruck'],
 };
 const tunnel: TrafficEnvironment = {
   doubleChance: 0.38,
   minimumSpacing: 66,
   initialSpacing: 92,
-  kinds: ['car', 'car', 'van', 'rough'],
+  kinds: ['car', 'car', 'van'],
 };
 export const TRAFFIC_ENVIRONMENTS: Readonly<
   Record<WorldKind, TrafficEnvironment>
@@ -170,19 +171,19 @@ export const TRAFFIC_ENVIRONMENTS: Readonly<
     doubleChance: 0.48,
     minimumSpacing: 64,
     initialSpacing: 90,
-    kinds: ['barrier', 'barrier', 'rough', 'gravel', 'van'],
+    kinds: ['construction', 'construction', 'construction', 'van'],
   },
   open,
   waterfront: {
     doubleChance: 0.3,
     minimumSpacing: 74,
     initialSpacing: 100,
-    kinds: ['car', 'van', 'wet', 'wet', 'pothole'],
+    kinds: ['car', 'car', 'van', 'towtruck'],
   },
   'tunnel-approach': tunnel,
   tunnel,
   'tunnel-exit': tunnel,
   'bridge-approach': open,
-  bridge: { ...open, kinds: ['car', 'car', 'van', 'wet'] },
+  bridge: { ...open, kinds: ['car', 'car', 'van'] },
   'bridge-exit': open,
 };

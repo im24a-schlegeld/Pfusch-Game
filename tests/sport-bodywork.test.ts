@@ -62,5 +62,11 @@ describe('new sculpted Sport front', () => {
     expect(
       screen.geometry.boundingBox!.max.z - screen.geometry.boundingBox!.min.z,
     ).toBeGreaterThan(0.16);
+    // The lower screen continues rearward with the cowl, not vertically
+    // against it. Inspect the actual central surface row before edge returns.
+    const points = screen.geometry.getAttribute('position');
+    const root = new Vector3().fromBufferAttribute(points, 12);
+    const next = new Vector3().fromBufferAttribute(points, 25 + 12);
+    expect((next.z - root.z) / (next.y - root.y)).toBeGreaterThan(1.2);
   });
 });

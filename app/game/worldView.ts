@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LANE } from './engine';
 import { WORLD_LOOK_BEHIND, type World, type WorldSegment } from './world';
+import { addWorldSurfaceDetail } from './worldSurface';
 import {
   makeTunnelBermGeometry,
   makeTunnelMountainGeometry,
@@ -97,6 +98,7 @@ function variation(cell: number, variant: number, salt: number) {
 
 /** All GPU objects are allocated here once; update only writes pooled transforms. */
 export function makeWorldView(scene: THREE.Scene, low: boolean) {
+  const surfaceOrigin = { value: 0 };
   const root = new THREE.Group();
   root.name = 'streamed-world';
   scene.add(root);
@@ -136,6 +138,10 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       emissive: light || finish === 'glassLit' ? COLORS[finish] : '#000000',
       emissiveIntensity: light ? 2.6 : finish === 'glassLit' ? 0.12 : 0,
     });
+    if (finish === 'asphalt')
+      addWorldSurfaceDetail(materials[finish], surfaceOrigin, 'asphalt', low);
+    if (finish === 'grass' || finish === 'soil' || finish === 'sand')
+      addWorldSurfaceDetail(materials[finish], surfaceOrigin, 'ground', low);
     allocate('box', finish);
   }
   for (const finish of ['concrete', 'steel', 'trunk', 'white', 'dark'] as const)
@@ -150,6 +156,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   terrainMaterial.vertexColors = true;
   terrainMaterial.flatShading = true;
   terrainMaterial.roughness = 1;
+  addWorldSurfaceDetail(terrainMaterial, surfaceOrigin, 'rock', low);
   allocate('mountain', 'soil', terrainMaterial);
   allocate('berm', 'soil', terrainMaterial);
   for (const finish of [
@@ -167,6 +174,41 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     direction = new THREE.Vector3(),
     up = new THREE.Vector3(0, 1, 0),
     euler = new THREE.Euler();
+  const clearanceBox = new THREE.Box3();
+  // Candidate crowns are checked after every visible cell and landmark exists,
+  // including the neighboring environment at a clipped cell boundary.
+  const clearances = new Float32Array(8192 * 6);
+  // A 12 m cell can contain up to three spans long enough for 3.5 m details.
+  const candidates = Array.from({ length: WORLD_VIEW.cellCount * 12 }, () => ({
+    x: 0,
+    z: 0,
+    height: 0,
+    pine: false,
+  }));
+  let clearanceCount = 0,
+    treeCount = 0,
+    drawingTrees = false;
+  for (const geometry of Object.values(geometries))
+    geometry.computeBoundingBox();
+  function reserve(geometry: THREE.BufferGeometry) {
+    if (drawingTrees) return;
+    clearanceBox.copy(geometry.boundingBox!).applyMatrix4(matrix);
+    if (clearanceBox.max.y < 0.35) return;
+    if (clearanceCount >= clearances.length / 6)
+      throw new RangeError('World clearance pool exhausted');
+    const i = clearanceCount++ * 6;
+    clearances.set(
+      [
+        clearanceBox.min.x,
+        clearanceBox.min.y,
+        clearanceBox.min.z,
+        clearanceBox.max.x,
+        clearanceBox.max.y,
+        clearanceBox.max.z,
+      ],
+      i,
+    );
+  }
   let anchor = 0;
 
   function put(
@@ -188,6 +230,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     quaternion.setFromEuler(euler.set(0, 0, rotateZ));
     matrix.compose(position, quaternion, scale);
     batch.mesh.setMatrixAt(batch.used++, matrix);
+    reserve(geometries[form]);
   }
   function box(
     finish: Finish,
@@ -221,6 +264,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     if (batch.used === WORLD_VIEW.instancesPerBatch)
       throw new RangeError('World rod pool exhausted');
     batch.mesh.setMatrixAt(batch.used++, matrix);
+    reserve(geometries.round);
   }
 
   function road(start: number, end: number) {
@@ -289,6 +333,11 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     box('lampCool', modern ? 0.9 : 0.65, 0.055, 0.25, side * 5.05, 6.28, z);
   }
   function tree(x: number, z: number, height: number, pine: boolean) {
+    if (treeCount === candidates.length)
+      throw new RangeError('World tree candidate pool exhausted');
+    Object.assign(candidates[treeCount++], { x, z, height, pine });
+  }
+  function drawTree(x: number, z: number, height: number, pine: boolean) {
     put('round', 'trunk', 0.18, height * 0.7, 0.18, x, height * 0.35, z);
     if (pine) {
       put(
@@ -336,6 +385,46 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     }
   }
 
+  function plantClearTrees() {
+    drawingTrees = true;
+    for (let candidate = 0; candidate < treeCount; candidate++) {
+      const { x, z, height, pine } = candidates[candidate];
+      const radius = height * (pine ? 0.27 : 0.36);
+      const halfDepth = height * (pine ? 0.27 : 0.28);
+      const minX = x - radius - 0.12;
+      const maxX =
+        x + Math.max(radius, pine || low ? 0 : 0.9 + height * 0.23) + 0.12;
+      const minZ =
+        anchor -
+        z -
+        Math.max(halfDepth, pine || low ? 0 : 0.4 + height * 0.23) -
+        0.12;
+      const maxZ = anchor - z + halfDepth + 0.12;
+      const top = height * (pine ? 1.17 : 1.14);
+      if (minX < 4.95 && maxX > -4.95) continue;
+      let clear = true;
+      for (let i = 0; i < clearanceCount * 6; i += 6) {
+        if (
+          maxX > clearances[i] &&
+          minX < clearances[i + 3] &&
+          top > clearances[i + 1] &&
+          clearances[i + 4] > 0 &&
+          maxZ > clearances[i + 2] &&
+          minZ < clearances[i + 5]
+        ) {
+          clear = false;
+          break;
+        }
+      }
+      if (!clear) continue;
+      drawTree(x, z, height, pine);
+      if (clearanceCount >= clearances.length / 6)
+        throw new RangeError('World tree clearance pool exhausted');
+      clearances.set([minX, 0, minZ, maxX, top, maxZ], clearanceCount++ * 6);
+    }
+    drawingTrees = false;
+  }
+
   function city(
     segment: WorldSegment,
     start: number,
@@ -349,8 +438,9 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       const v = variation(cell, segment.variant, side + 3),
         height = 6 + (v % 5) * 2.8,
         width = 5.8 + (v % 3) * 0.7,
-        x = side * (8.15 + width / 2),
-        facade = side * 8.12;
+        setback = v % 3 === 0 ? 2.2 : 0,
+        x = side * (8.15 + setback + width / 2),
+        facade = side * (8.12 + setback);
       box(
         `city${(v >>> 3) % 4}` as Finish,
         width,
@@ -368,7 +458,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         1.2,
         0.13,
         depth * 0.75,
-        side * 7.62,
+        side * (7.62 + setback),
         2.65,
         mid,
       );
@@ -396,7 +486,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         8,
         height + 4,
         depth * 0.85,
-        side * 20,
+        side * (20 + setback),
         (height + 4) / 2,
         mid,
       );
@@ -556,15 +646,32 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     // buildings, street furniture and boats need enough room for a full detail.
     if (length < 3.5) return;
     const depth = Math.min(8.8, length - 0.5);
-    box(`shed${segment.variant}` as Finish, 7, 4.5, depth, -12, 2.25, mid);
-    box('dark', 7.3, 0.23, depth, -12, 4.65, mid);
+    const warehouseX = cell % 2 === 0 ? -14.2 : -12;
+    box(
+      `shed${segment.variant}` as Finish,
+      7,
+      4.5,
+      depth,
+      warehouseX,
+      2.25,
+      mid,
+    );
+    box('dark', 7.3, 0.23, depth, warehouseX, 4.65, mid);
     for (let z = start + 1; z < end; z += 4)
-      box('glass', 0.035, 1.35, 1.8, -8.48, 2.6, Math.min(end - 1, z));
+      box(
+        'glass',
+        0.035,
+        1.35,
+        1.8,
+        warehouseX + 3.52,
+        2.6,
+        Math.min(end - 1, z),
+      );
     if (cell % 2 === 0) {
       streetLamp(1, mid, true);
       box('trunk', 1.4, 0.14, 0.4, 5.9, 0.5, mid + 2);
       box('trunk', 1.4, 0.5, 0.09, 6.1, 0.73, mid + 2.2);
-      tree(-7, mid, 5, false);
+      tree(-7.3, mid, 5, false);
     }
     if ((cell + segment.variant) % 3 === 0) {
       box('trunk', 10, 0.3, Math.min(2.7, length * 0.3), 12, -0.5, mid);
@@ -755,6 +862,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
           anchor,
         );
         berm.mesh.setMatrixAt(berm.used++, matrix);
+        reserve(geometries.berm);
         box('dark', 0.16, 0.3, Math.min(0.2, length), side * 6.56, 0.9, mid);
         box('white', 0.025, 0.1, Math.min(0.1, length), side * 6.472, 0.9, mid);
       }
@@ -901,9 +1009,12 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       previousWorld = world;
       previousCell = cell;
       anchor = cell * WORLD_VIEW.cellLength;
+      surfaceOrigin.value = anchor;
       const start = anchor - WORLD_VIEW.lookBehind,
         end = start + WORLD_VIEW.cellCount * WORLD_VIEW.cellLength;
       for (const batch of batches.values()) batch.used = 0;
+      clearanceCount = 0;
+      treeCount = 0;
       for (let i = 0; i < WORLD_VIEW.cellCount; i++) {
         const a = start + i * WORLD_VIEW.cellLength,
           b = a + WORLD_VIEW.cellLength;
@@ -921,6 +1032,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         }
       }
       for (const segment of world.segments) landmarks(segment, start, end);
+      plantClearTrees();
       for (const batch of batches.values()) {
         batch.mesh.count = batch.used;
         batch.mesh.visible = batch.used > 0;

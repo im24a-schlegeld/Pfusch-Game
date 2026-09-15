@@ -11,6 +11,12 @@ import { makeWorldLighting } from './worldLighting';
 import { createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
 import { createGarmentGlowUpdater } from './garmentGlow';
+import { TRAFFIC_KINDS } from './trafficDomain';
+import { animateTraffic } from './trafficModels';
+import { createRideParticles, particleAnchors } from './rideParticles';
+import { createCrashTravel } from './crashTravel';
+import { makeSignCollectibleView } from './signCollectibleView';
+import { TAIL_CONTACT } from './tailContact';
 
 // Match makeBike's body selection, including its default Supermoto geometry.
 const headlightModel = (id: string) =>
@@ -156,6 +162,16 @@ export default function SceneView({
     let previousXPosition = engine?.x ?? 0,
       previousLateralSpeed = 0;
     let crash: ReturnType<typeof createCrashAnimation> | undefined;
+    let crashTravel: ReturnType<typeof createCrashTravel> | undefined;
+    let launchSerial = 0,
+      launchPulse = 0;
+    let anchors = particleAnchors(bike.body, player.bike);
+    const exhaustPosition = new THREE.Vector3(),
+      tailPosition = new THREE.Vector3();
+    const particles = mode === 'ride' ? createRideParticles(scene, low) : null;
+    const signs =
+      mode === 'ride' ? makeSignCollectibleView(8, LANE, low) : null;
+    if (signs) scene.add(signs.root);
     let crashNotified = false;
     let crashReported = false;
     if (mode === 'ride') {
@@ -166,7 +182,7 @@ export default function SceneView({
         scene.add(group);
         traffic.push(group);
       }
-      for (const kind of ['car', 'van', ...ROAD_EVENT_KINDS])
+      for (const kind of [...TRAFFIC_KINDS, ...ROAD_EVENT_KINDS])
         for (let color = 0; color < 4; color++)
           templates.set(`${kind}:${color}`, makeTraffic(kind, color));
     } else {
@@ -281,6 +297,8 @@ export default function SceneView({
         bike = makeBike(nextAppearance.player, nextAppearance.products);
         bike.root.name = 'player-bike';
         crash = undefined;
+        crashTravel = undefined;
+        anchors = particleAnchors(bike.body, nextAppearance.player.bike);
         scene.add(bike.root);
         updateGlow = createGarmentGlowUpdater(bike.root);
         headlightRig = createBikeHeadlightRig(
@@ -306,7 +324,14 @@ export default function SceneView({
         const crashActive = focused && visible;
         let longitudinalAcceleration = 0,
           lateralAcceleration = 0;
-        const distance = engine.distance;
+        if (crashed && !crashTravel)
+          crashTravel = createCrashTravel(
+            engine.speed,
+            /collision/i.test(engine.event.text),
+            appearance.current.player.settings.reducedMotion,
+          );
+        crashTravel?.advance(dt, crashed && crashActive);
+        const distance = engine.distance + (crashTravel?.distance ?? 0);
         worldView!.update(engine.world, distance);
         updateGlow(
           lighting!.update(
@@ -326,8 +351,17 @@ export default function SceneView({
             1,
             engine.wheelieAngle / engine.balanceProfile.balancePoint,
           );
-          tilt = engine.wheelieAngle;
-          const launch = engine.liftPull * engine.throttleInput;
+          tilt = Math.min(
+            engine.wheelieAngle,
+            TAIL_CONTACT[appearance.current.player.bike].angle,
+          );
+          if (launchSerial !== engine.wheelieLaunchSerial) {
+            launchSerial = engine.wheelieLaunchSerial;
+            launchPulse = 1;
+          } else launchPulse *= Math.exp(-dt * 10);
+          const launch = appearance.current.player.settings.reducedMotion
+            ? 0
+            : launchPulse;
           const acceleration = dt > 0 ? (engine.speed - previousSpeed) / dt : 0;
           longitudinalAcceleration = Number.isFinite(acceleration)
             ? acceleration
@@ -358,11 +392,21 @@ export default function SceneView({
             -1,
             1,
           );
+          const steering = (engine.lane * LANE - engine.x) / LANE;
+          const balancing = engine.wheelie
+            ? Math.sin(engine.elapsed * 3.5) * 0.045 * frontLift +
+              steering * 0.28
+            : steering;
+          const drift =
+            !engine.wheelie && engine.height === 0
+              ? engine.laneChangeDirection *
+                Math.sin(Math.min(1, engine.laneChangeAge / 0.32) * Math.PI)
+              : 0;
           bike.animateRider(
             {
               wheelie: frontLift,
               forward: engine.forwardLoad,
-              steer: (engine.lane * LANE - engine.x) / LANE,
+              steer: balancing,
               landing,
               launch,
               balance,
@@ -380,15 +424,24 @@ export default function SceneView({
           suspension += (compression - suspension) * (1 - Math.exp(-dt * 18));
           bike.root.rotation.z = THREE.MathUtils.lerp(
             bike.root.rotation.z,
-            (engine.lane * LANE - engine.x) * -0.09,
+            appearance.current.player.settings.reducedMotion
+              ? 0
+              : -balancing * 0.16 - drift * 0.026,
             1 - Math.exp(-dt * 12),
           );
+          bike.root.rotation.y = appearance.current.player.settings
+            .reducedMotion
+            ? 0
+            : drift * 0.105;
         }
         if (!moving) previousLateralSpeed = 0;
         previousXPosition = engine.x;
         if (crashed) {
           if (!crash) {
-            tilt = engine.wheelieAngle;
+            tilt = Math.min(
+              engine.wheelieAngle,
+              TAIL_CONTACT[appearance.current.player.bike].angle,
+            );
             bike.animateSuspension(tilt, suspension);
             crash = createCrashAnimation(bike, {
               cause: engine.event.text,
@@ -415,20 +468,48 @@ export default function SceneView({
           crashed && !crashActive ? 0 : dt,
         );
         headlightRig.copyPose(bike.body, lighting!.headlights);
-        if (moving)
+        anchors.copy(exhaustPosition, tailPosition);
+        particles?.update(
+          dt,
+          crashActive && (moving || crashed),
+          moving,
+          crashTravel?.speed ?? engine.speed,
+          appearance.current.player.bike,
+          exhaustPosition,
+          tailPosition,
+          engine.scrapeIntensity,
+          engine.scrapeMaterial,
+          appearance.current.player.paint,
+          appearance.current.player.settings.reducedMotion,
+        );
+        signs?.update(engine.signs, engine.elapsed);
+        if (signs) signs.root.position.z = crashTravel?.distance ?? 0;
+        if (moving || (crashed && crashActive))
           for (const wheel of bike.wheels)
-            wheel.rotation.x -= (engine.speed * dt) / 0.47;
+            wheel.rotation.x -=
+              ((crashTravel?.speed ?? engine.speed) * dt) / 0.47;
         engine.obstacles.forEach((o, i) => {
           const group = traffic[i];
           group.visible = o.active;
           if (!o.active) return;
-          group.position.set(o.lane * LANE + o.offsetX, 0, -o.z);
+          group.position.set(
+            o.lane * LANE + o.offsetX,
+            0,
+            -o.z +
+              (crashTravel?.distance ?? 0) -
+              o.velocity * (crashTravel?.elapsed ?? 0),
+          );
           const key = `${o.kind}:${o.color}`;
           if (group.userData.key !== key) {
             group.clear();
             group.add(templates.get(key)!.clone(true));
             group.userData.key = key;
           }
+          animateTraffic(
+            group,
+            o.velocity,
+            moving || (crashed && crashActive) ? dt : 0,
+          );
         });
         const shake =
           appearance.current.player.settings.reducedMotion || !moving
@@ -506,6 +587,8 @@ export default function SceneView({
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       disposeUnique(scene);
       disposeSkeletons(scene);
+      particles?.dispose();
+      signs?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse((o) => {

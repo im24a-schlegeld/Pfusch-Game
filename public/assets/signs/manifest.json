@@ -1,0 +1,56 @@
+[
+  {
+    "id": "P",
+    "file": "p-parking.png",
+    "source": "codex-clipboard-383c92d3-652e-46d5-8979-e5e70c461876.png",
+    "sha256": "44fc2b65b4f60b8866d8eaf9b7588b0e275deb2dd1c13a5527a8b42e24165e03",
+    "bytes": 28951,
+    "width": 450,
+    "height": 450
+  },
+  {
+    "id": "F",
+    "file": "f-fire.png",
+    "source": "codex-clipboard-7b1e78c7-4879-4824-8076-5864c3212a77.png",
+    "sha256": "d3bc4330f8b0a9fd7ddcaa263d760d5ccd6443a809f8b86ed5875a93d0fffa14",
+    "bytes": 42081,
+    "width": 600,
+    "height": 600
+  },
+  {
+    "id": "U",
+    "file": "u-turn.png",
+    "source": "png-clipart-u-turn-traffic-sign-mandatory-sign-others-miscellaneous-blue-Photoroom.png",
+    "sha256": "4fcca6a99bf781d1e3f53b8bc53ac24747776ca58a5bbad3090c33fd3a2d910c",
+    "bytes": 42179,
+    "width": 900,
+    "height": 640
+  },
+  {
+    "id": "S",
+    "file": "s-bends.png",
+    "source": "png-transparent-road-signs-in-switzerland-and-liechtenstein-traffic-road-sign-s-angle-text-trademark-Photoroom.png",
+    "sha256": "3311fb94e57083cf8b858d1e38389b38ae23b053ce9fa619fd37a17796b75159",
+    "bytes": 56489,
+    "width": 920,
+    "height": 768
+  },
+  {
+    "id": "C",
+    "file": "c-turn.png",
+    "source": "codex-clipboard-82a1907b-3788-41b4-8a7a-e500285cfd1e.png",
+    "sha256": "37ec8fe2f39e06941c8012d3e3a1f490c181d54c52a2786e1dcf687e64797ec1",
+    "bytes": 123221,
+    "width": 510,
+    "height": 510
+  },
+  {
+    "id": "H",
+    "file": "h-hospital.png",
+    "source": "codex-clipboard-890a23ae-92be-4b5f-9e83-e273cfb20316.png",
+    "sha256": "1aab988915509c9962f9297a1ad35ce2019f158e602938c09fc931b2e05ee699",
+    "bytes": 294103,
+    "width": 3840,
+    "height": 3840
+  }
+]

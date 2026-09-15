@@ -84,6 +84,7 @@ function curve(points: Point[]) {
 export function makeSportBodywork(
   parent: THREE.Object3D,
   paint: THREE.MeshStandardMaterial,
+  tank?: THREE.Mesh,
 ) {
   const front = new THREE.Group();
   front.name = 'sport-front-assembly';
@@ -116,7 +117,7 @@ export function makeSportBodywork(
   });
   const hood: Surface = (u, v) => {
     const x = u * 2 - 1,
-      width = 0.081 + 0.074 * Math.sin((v * Math.PI) / 2);
+      width = 0.064 + 0.091 * Math.sin((v * Math.PI) / 2);
     return new THREE.Vector3(
       x * width,
       0.824 +
@@ -292,13 +293,13 @@ export function makeSportBodywork(
       const bottom = lower.getPoint(v);
       const p = top.lerp(bottom, u);
       const crown =
-        Math.sin(u * Math.PI) * (0.027 + 0.024 * Math.sin(v * Math.PI));
+        Math.sin(u * Math.PI) * (0.017 + 0.014 * Math.sin(v * Math.PI));
       p.x += crown;
       p.z -= 0.022 * Math.sin(u * Math.PI) * Math.sin(v * Math.PI);
       p.x *= side;
       return p;
     };
-    panel(
+    const sideShell = panel(
       parent,
       'sport-continuous-side-shell',
       (u, v) => outerSkin(u * 0.68, v),
@@ -310,9 +311,72 @@ export function makeSportBodywork(
       (u, v) => outerSkin(0.68 + u * 0.32, v),
       graphite,
     );
+    if (tank) {
+      // Join the real tank equator to the existing fairing edge. Sampling both
+      // boundaries keeps the knee recess closed when the tank profile changes.
+      const positions = tank.geometry.getAttribute('position');
+      const fairingPositions = sideShell.geometry.getAttribute('position');
+      const tankEdge: THREE.Vector3[] = [];
+      for (let row = 0; row < positions.count / 33; row++)
+        tankEdge.push(
+          new THREE.Vector3().fromBufferAttribute(
+            positions,
+            row * 33 + (side > 0 ? 16 : 0),
+          ),
+        );
+      const flankRows = Array.from({ length: 25 }, (_, row) => {
+        const edgeRow = (0.24 + 0.76 * (0.38 + (row / 24) * 0.39)) * 24;
+        const edgeIndex = Math.floor(edgeRow);
+        const bottom = new THREE.Vector3()
+          .fromBufferAttribute(fairingPositions, edgeIndex * 25)
+          .lerp(
+            new THREE.Vector3().fromBufferAttribute(
+              fairingPositions,
+              (edgeIndex + 1) * 25,
+            ),
+            edgeRow - edgeIndex,
+          );
+        const index = Math.max(
+          1,
+          tankEdge.findIndex((p) => p.z >= bottom.z),
+        );
+        const before = tankEdge[index - 1],
+          after = tankEdge[index];
+        const top = before
+          .clone()
+          .lerp(
+            after,
+            THREE.MathUtils.clamp(
+              (bottom.z - before.z) / (after.z - before.z),
+              0,
+              1,
+            ),
+          );
+        return { top, bottom };
+      });
+      panel(
+        parent,
+        'sport-tank-fairing-flank',
+        (u, v) => {
+          const row = Math.min(23, Math.floor(v * 24)),
+            blend = v * 24 - row;
+          const top = flankRows[row].top
+            .clone()
+            .lerp(flankRows[row + 1].top, blend);
+          const bottom = flankRows[row].bottom
+            .clone()
+            .lerp(flankRows[row + 1].bottom, blend);
+          const p = top.lerp(bottom, u);
+          p.x += side * 0.003 * Math.sin(u * Math.PI);
+          return p;
+        },
+        finish,
+        0.004,
+      );
+    }
     // A formed air scoop with a recessed throat sits within the fairing surface.
     const scoopEdge = (u: number, v: number) =>
-      outerSkin(0.2 + u * 0.19, 0.4 + v * 0.25);
+      outerSkin(0.19 + u * 0.22, 0.36 + v * 0.3 + u * 0.12);
     panel(
       parent,
       'sport-side-scoop',
@@ -356,16 +420,17 @@ export function makeSportBodywork(
       graphite,
     );
   }
-  // Smoked polycarbonate retains some visibility through the curved bubble.
+  // Continue the cowl's rearward tangent into a low smoked screen. Its lower
+  // edge must not kick upright against the flowing nose/shoulder silhouette.
   const screen: Surface = (u, v) => {
     const x = u * 2 - 1;
     return new THREE.Vector3(
-      x * (0.12 + 0.018 * Math.sin(v * Math.PI) - 0.02 * v),
-      1.002 + 0.22 * v - 0.034 * x * x * v - 0.008 * x * x,
+      x * (0.12 + 0.011 * Math.sin(v * Math.PI) - 0.018 * v),
+      1.002 + 0.18 * v - 0.024 * x * x * v - 0.008 * x * x,
       -0.708 +
-        0.205 * v +
-        (0.025 + 0.022 * v) * x * x -
-        0.05 * Math.sin(v * Math.PI),
+        0.3 * v +
+        (0.025 + 0.015 * v) * x * x +
+        0.025 * Math.sin(v * Math.PI),
     );
   };
   panel(
