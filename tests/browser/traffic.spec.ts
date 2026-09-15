@@ -187,12 +187,15 @@ test('tunnel entry keeps lighting shaders warm and ordinary daylight blue', asyn
     engine.phase = 'ready';
     for (const obstacle of engine.obstacles) obstacle.active = false;
     let tunnel = engine.world.segments.find(
-      (segment) => segment.kind === 'tunnel',
+      (segment) =>
+        segment.kind === 'tunnel' && segment.start > engine.distance + 10,
     );
-    for (let i = 0; !tunnel && i < 100; i++) {
-      engine.world.advance(engine.world.segments.at(-1)!.end - 1);
+    for (let i = 0; !tunnel && i < 1000; i++) {
+      engine.distance += 40;
+      engine.world.advance(engine.distance);
       tunnel = engine.world.segments.find(
-        (segment) => segment.kind === 'tunnel',
+        (segment) =>
+          segment.kind === 'tunnel' && segment.start > engine.distance + 10,
       );
     }
     if (!tunnel) throw new Error('No tunnel in the seeded road');
