@@ -5,7 +5,11 @@ import type { Engine } from '../../app/game/engine';
 
 declare global {
   interface Window {
-    trafficProbe: { scene?: THREE.Scene; engine?: Engine };
+    trafficProbe: {
+      scene?: THREE.Scene;
+      engine?: Engine;
+      camera?: THREE.PerspectiveCamera;
+    };
   }
 }
 
@@ -33,8 +37,10 @@ async function start(page: Page, low: boolean) {
       const render = item.render.bind(item);
       item.render = (scene: THREE.Scene, camera: THREE.Camera) => {
         render(scene, camera);
-        if (scene.getObjectByName('streamed-world'))
+        if (scene.getObjectByName('streamed-world')) {
           window.trafficProbe.scene = scene;
+          window.trafficProbe.camera = camera as THREE.PerspectiveCamera;
+        }
       };
     });
   }, player);
@@ -124,13 +130,51 @@ for (const low of [false, true]) {
       path: testInfo.outputPath('traffic-scale-and-ramp.png'),
     });
 
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 320, height: 568 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.clock.runFor(100);
+      const edges = await page.evaluate(() => {
+        const camera = window.trafficProbe.camera!;
+        const Vector = camera.position.constructor as typeof THREE.Vector3;
+        return [-4.5, 4.5].flatMap((x) =>
+          [0, 1.5].map((z) => {
+            const point = new Vector(x, 0, z).project(camera);
+            return { x: point.x, y: point.y };
+          }),
+        );
+      });
+      expect(
+        edges.every((point) => Math.abs(point.x) < 1 && Math.abs(point.y) < 1),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`all-lanes-${viewport.width}.png`),
+      });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+
     await page.evaluate(() => {
       const engine = window.trafficProbe.engine!;
       for (const obstacle of engine.obstacles) obstacle.active = false;
-      engine.spawn('towtruck', 1, 5.4, 0, 6);
+      engine.elapsed = 25;
+      engine.spawn('towtruck', 1, 10, 0, 6);
       engine.phase = 'playing';
     });
-    await page.keyboard.press('ArrowRight');
+    const touch = await page.context().newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ id: 1, x: 160, y: 440 }],
+    });
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ id: 1, x: 218, y: 440 }],
+    });
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
     // Drive bounded simulated time explicitly. expect.poll's wall-time backoff
     // otherwise permits only a handful of 17ms frames before its 5s deadline,
     // shorter than the deliberate grounded steering lead on a busy GPU host.

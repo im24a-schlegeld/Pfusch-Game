@@ -49,7 +49,7 @@ const colors = Object.fromEntries(
     { sky: new THREE.Color(p.sky), sun: new THREE.Color(p.sun) },
   ]),
 ) as Record<WorldLighting, { sky: THREE.Color; sun: THREE.Color }>;
-const tunnelSky = new THREE.Color('#252d33');
+const tunnelSky = new THREE.Color('#101720');
 const tunnelSun = new THREE.Color('#cbd5d8');
 
 /** Distance-driven light and real tunnel acoustics share the same domain segment. */
@@ -101,17 +101,17 @@ export function makeWorldLighting(
       .copy(colors[from].sun)
       .lerp(colors[to].sun, blend)
       .lerp(tunnelSun, tunnel);
-    hemisphere.intensity = THREE.MathUtils.lerp(mix('ambient'), 0.42, tunnel);
-    sun.intensity = THREE.MathUtils.lerp(mix('direct'), 0.08, tunnel);
-    fill.intensity = THREE.MathUtils.lerp(mix('fill'), 0.85, tunnel);
+    hemisphere.intensity = THREE.MathUtils.lerp(mix('ambient'), 0.2, tunnel);
+    sun.intensity = THREE.MathUtils.lerp(mix('direct'), 0.035, tunnel);
+    fill.intensity = THREE.MathUtils.lerp(mix('fill'), 0.24, tunnel);
     scene.environmentIntensity = THREE.MathUtils.lerp(
       mix('environment'),
-      0.25,
+      0.1,
       tunnel,
     );
     renderer.toneMappingExposure = THREE.MathUtils.lerp(
       mix('exposure'),
-      1.25,
+      1.05,
       tunnel,
     );
     const dark = Math.max(mix('dark'), tunnel);
@@ -120,7 +120,7 @@ export function makeWorldLighting(
       headlights[i].visible = active && dark > 0;
       headlights[i].intensity = active ? (dark * 55) / headlightCount : 0;
     }
-    riderLight.intensity = dark * 8;
+    riderLight.intensity = dark * THREE.MathUtils.lerp(8, 4, tunnel);
     riderLight.position.set(x - 2, 4.5, 2);
     return dark;
   };

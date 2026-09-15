@@ -20,6 +20,7 @@ import {
   distanceDifficulty,
   towRampHeight,
   towRampLaunchHeight,
+  RAMP_FRONT_CONTACT,
   type TrafficKind,
 } from './trafficDomain';
 import { SIGN_IDS, type SignId } from './signCollectibles';
@@ -126,7 +127,6 @@ export class Engine {
   private nextSafe = 0;
   private wheelieChain = 0;
   private accumulator = 0;
-  private rampApproach = 0;
   private scrapeMeters = 0;
   private signSequence = 0;
   private id: string;
@@ -155,7 +155,6 @@ export class Engine {
     this.laneChangeSerial++;
     this.lane = next;
     if (airborne) this.airLaneChangeUsed = true;
-    else this.rampApproach = 0.6;
   }
   get balanceProfile() {
     return BALANCE[this.bike.id] ?? BALANCE['450'];
@@ -393,7 +392,12 @@ export class Engine {
           (this.wheelie ? 0.78 : 1) *
           steeringLead,
       );
-    if (this.rampApproach > 0 && this.height === 0 && this.wheelieAngle < 0.3) {
+    if (
+      this.height === 0 &&
+      this.wheelieAngle < 0.3 &&
+      this.laneChangeAge < 0.4
+    ) {
+      let launchHeight = 0;
       const ramp = this.obstacles.find((o) => {
         if (
           !o.active ||
@@ -404,25 +408,31 @@ export class Engine {
           return false;
         const center = o.lane * LANE + o.offsetX;
         const entryWidth = TRAFFIC_SHAPES.towtruck.contactHalfWidth;
-        return (
-          o.z >= TOW_RAMP.frontZ + 0.2 &&
-          o.z <= TOW_RAMP.rearZ &&
-          Math.abs(previousX - center) > entryWidth &&
-          Math.abs(this.x - center) <= entryWidth
-        );
+        // Use the same next-step position as collision. Keep a short window
+        // while still moving sideways; settled straight riding never launches.
+        const localZ = o.z - (travel - o.velocity * dt);
+        const front =
+          RAMP_FRONT_CONTACT[this.bike.id] ?? RAMP_FRONT_CONTACT['450'];
+        if (
+          localZ < TOW_RAMP.frontZ + 0.2 ||
+          localZ + front.axle - front.radius > TOW_RAMP.rearZ ||
+          Math.abs(this.x - center) > entryWidth ||
+          Math.abs(previousX - center) < 0.3 ||
+          Math.abs(this.x - center) >= Math.abs(previousX - center)
+        )
+          return false;
+        const relativeSpeed = this.speed - o.velocity;
+        const height = towRampLaunchHeight(this.bike.id, localZ, relativeSpeed);
+        launchHeight = height;
+        return true;
       });
       if (ramp) {
         ramp.rampUsed = true;
-        this.height = towRampLaunchHeight(
-          this.bike.id,
-          ramp.z - (travel - ramp.velocity * dt),
-          this.speed - ramp.velocity,
-        );
+        this.height = launchHeight;
         this.velocityY = TOW_RAMP.launchVelocity;
         this.airLaneChangeUsed = false;
         this.towJumpActive = true;
         this.launchSerial++;
-        this.rampApproach = 0;
         this.event = {
           text: 'RAMP TRANSFER',
           kind: 'skill',
@@ -430,7 +440,6 @@ export class Engine {
         };
       }
     }
-    this.rampApproach = Math.max(0, this.rampApproach - dt);
     let landedTowJump = false;
     if (this.height > 0 || this.velocityY > 0) {
       this.velocityY -= TOW_RAMP.gravity * dt;
@@ -516,7 +525,9 @@ export class Engine {
       const traffic = !isRoadEvent(o.kind) ? TRAFFIC_SHAPES[o.kind] : undefined;
       const length = road?.contactHalfLength ?? traffic!.contactHalfLength;
       {
-        const overlap = o.z < length && prev > -length;
+        const rearContact = traffic ? traffic.rearZ + 1 : length;
+        const frontContact = traffic ? traffic.frontZ - 1 : -length;
+        const overlap = o.z < rearContact && prev > frontContact;
         const top =
           o.kind === 'towtruck' && o.z > TOW_RAMP.cabRearZ
             ? o.z > TOW_RAMP.frontZ
@@ -559,7 +570,7 @@ export class Engine {
           }
           if (gap >= 0) o.closest = Math.min(o.closest, gap);
         }
-        if (!o.passed && o.z < -length) {
+        if (!o.passed && o.z < frontContact) {
           o.passed = true;
           if (o.cleared && o.rewardPoints > 0)
             this.skill(o.rewardText, o.rewardPoints);

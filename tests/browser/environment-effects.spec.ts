@@ -282,7 +282,7 @@ for (const item of keepUp) {
     for (const lighting of ['day', 'tunnel', 'night', 'day'] as const) {
       await positionInWorld(page, lighting);
       expect((await garmentState(page)).intensity).toBe(
-        lighting === 'day' ? 0 : 0.95,
+        lighting === 'day' ? 0 : 2.6,
       );
       if (lighting === 'tunnel')
         await page.screenshot({

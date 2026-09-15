@@ -34,7 +34,7 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
     vertexShader: `attribute float particleSize; attribute float particleOpacity; attribute float particleKind;
       varying vec3 tint; varying float fade; varying float kind;
       void main(){vec4 p=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*p;
-      gl_PointSize=clamp(particleSize*340./max(1.,-p.z),1.,48.);
+      gl_PointSize=clamp(particleSize*(particleKind>.5?850.:340.)/max(1.,-p.z),1.,48.);
       tint=color; fade=particleOpacity; kind=particleKind;}`,
     fragmentShader: `varying vec3 tint; varying float fade; varying float kind;
       void main(){vec2 p=gl_PointCoord*2.-1.; float edge;
@@ -58,6 +58,7 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
     return rng / 4294967296;
   };
   const paint = new THREE.Color();
+  const white = new THREE.Color('#ffffff');
   const spawn = (origin: THREE.Vector3, kind: number, paintColor: string) => {
     const i = index;
     index = (index + 1) % count;
@@ -65,16 +66,17 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
     positions[offset] = origin.x + (random() - 0.5) * 0.025;
     positions[offset + 1] = Math.max(0.03, origin.y);
     positions[offset + 2] = origin.z;
-    velocities[offset] = (random() - 0.5) * (kind ? 2.2 : 0.17);
+    velocities[offset] = (random() - 0.5) * (kind ? 3.4 : 0.17);
     velocities[offset + 1] = kind
-      ? 0.7 + random() * 1.1
+      ? 0.9 + random() * 1.4
       : 0.12 + random() * 0.17;
-    velocities[offset + 2] = kind ? 3 + random() * 4 : 0.3 + random() * 0.4;
+    velocities[offset + 2] = kind ? 4 + random() * 5 : 0.3 + random() * 0.4;
     ages[i] = 0;
-    lives[i] = kind ? 0.25 + random() * 0.35 : 0.6 + random() * 0.5;
+    lives[i] = kind ? 0.4 + random() * 0.3 : 0.6 + random() * 0.5;
     kinds[i] = kind;
-    sizes[i] = kind ? 0.045 + random() * 0.045 : 0.09;
-    paint.set(kind === 0 ? '#87949b' : kind === 1 ? '#ffbb56' : paintColor);
+    sizes[i] = kind ? 0.1 + random() * (kind === 1 ? 0.08 : 0.045) : 0.09;
+    paint.set(kind === 0 ? '#87949b' : kind === 1 ? '#ffe4a0' : paintColor);
+    if (kind === 2) paint.lerp(white, 0.22);
     colors[offset] = paint.r;
     colors[offset + 1] = paint.g;
     colors[offset + 2] = paint.b;
@@ -102,7 +104,8 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
           spawn(exhaust, 0, paintColor);
           smokeCarry--;
         }
-        scrapeCarry += step * scrape * (low ? 24 : 44);
+        scrapeCarry +=
+          step * (scrape > 0 ? 0.4 + scrape * 0.6 : 0) * (low ? 56 : 90);
         while (scrapeCarry >= 1) {
           spawn(tail, scrapeMaterial === 'metal' ? 1 : 2, paintColor);
           scrapeCarry--;
@@ -125,7 +128,8 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
           velocities[at + 1] *= -0.18;
         }
         if (smoke) sizes[i] += step * 0.18;
-        opacity[i] = (1 - ages[i] / lives[i]) * (smoke ? 0.18 : 0.9);
+        const remaining = 1 - ages[i] / lives[i];
+        opacity[i] = smoke ? remaining * 0.18 : Math.sqrt(remaining);
       }
       Object.values(attributes).forEach((attribute) => {
         attribute.needsUpdate = true;

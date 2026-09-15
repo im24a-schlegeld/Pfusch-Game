@@ -31,6 +31,38 @@ function takeoff(engine: Engine, velocity = 0, direction = 1) {
 }
 
 describe('automatic side ramp transfers', () => {
+  it.each([25, 90])(
+    'accepts a real-speed side approach at %ss, then a safe airborne exit',
+    (elapsed) => {
+      const engine = ride(BIKES[2]);
+      engine.elapsed = elapsed;
+      engine.spawn('towtruck', 1, elapsed === 90 ? 8 : 10, 0, 6);
+      engine.move(1);
+      for (
+        let frame = 0;
+        frame < 24 && !engine.launchSerial && engine.phase === 'playing';
+        frame++
+      )
+        steps(engine, 1);
+      expect(engine.phase).toBe('playing');
+      expect(engine.launchSerial).toBe(1);
+      engine.move(-1);
+      steps(engine, 100);
+      expect(engine.phase).toBe('playing');
+      expect(engine.jumps).toBe(1);
+    },
+  );
+
+  it('does not turn a completed early lane change into a straight ramp jump', () => {
+    const engine = ride();
+    engine.move(1);
+    steps(engine, 45);
+    engine.spawn('towtruck', 1, 12, 0, 6);
+    steps(engine, 80);
+    expect(engine.launchSerial).toBe(0);
+    expect(engine.phase).toBe('crashed');
+  });
+
   it.each([-1, 1])(
     'accepts the complete collision width when entering from side %s',
     (direction) => {
@@ -270,7 +302,8 @@ describe('stunt scoring and recoverable tail contact', () => {
     expect(construction.event.text).toBe('Construction barrier collision');
     expect(construction.obstacles[0].velocity).toBe(0);
     expect(TRAFFIC_SHAPES.construction.height).toBeGreaterThan(1);
-    expect(TOW_RAMP.rearZ).toBe(TRAFFIC_SHAPES.towtruck.length / 2);
+    expect(TOW_RAMP.rearZ).toBeCloseTo(TRAFFIC_SHAPES.towtruck.rearZ);
+    expect(TOW_RAMP.rearZ - TOW_RAMP.frontZ).toBeGreaterThan(4.8);
   });
 });
 

@@ -4,27 +4,36 @@ export interface TrafficShape {
   readonly width: number;
   readonly length: number;
   readonly height: number;
+  readonly frontZ: number;
+  readonly rearZ: number;
   readonly contactHalfWidth: number;
   readonly contactHalfLength: number;
 }
-function shape(width: number, length: number, height: number): TrafficShape {
+function shape(
+  width: number,
+  length: number,
+  height: number,
+  centerZ = 0,
+): TrafficShape {
   return Object.freeze({
     width,
     length,
     height,
+    frontZ: centerZ - length / 2,
+    rearZ: centerZ + length / 2,
     contactHalfWidth: width / 2 + 0.3,
-    contactHalfLength: length / 2 + 1,
+    contactHalfLength: length / 2 + Math.abs(centerZ) + 1,
   });
 }
 export const TRAFFIC_SHAPES: Readonly<Record<TrafficKind, TrafficShape>> = {
   car: shape(2.35, 5.8, 1.98),
   van: shape(2.4, 6.5, 3),
-  towtruck: shape(2.5, 8.2, 3.05),
+  towtruck: shape(2.5, 10.9, 3.05, 1.35),
   construction: shape(2.3, 0.75, 1.25),
 };
 export const TRAFFIC_KINDS = Object.keys(TRAFFIC_SHAPES) as TrafficKind[];
 export const TOW_RAMP = Object.freeze({
-  rearZ: 4.1,
+  rearZ: 6.8,
   frontZ: 1.92,
   rearHeight: 0.18,
   frontHeight: 1.05,

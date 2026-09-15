@@ -90,7 +90,7 @@ export function createGarmentGlowUpdater(root: THREE.Object3D) {
     const darkness = Number.isFinite(darkAmount)
       ? THREE.MathUtils.clamp(darkAmount, 0, 1)
       : 0;
-    const intensity = THREE.MathUtils.smoothstep(darkness, 0.15, 0.85) * 0.95;
+    const intensity = THREE.MathUtils.smoothstep(darkness, 0.15, 0.85) * 2.6;
     if (intensity === previousIntensity) return;
     previousIntensity = intensity;
     for (const material of materials)

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { TRAFFIC_SHAPES, TOW_RAMP } from './trafficDomain';
+import { TRAFFIC_SHAPES, TOW_RAMP, towRampHeight } from './trafficDomain';
 
 type Point = readonly [number, number, number];
 type Ring = readonly [
@@ -431,7 +431,7 @@ export function makeDetailedTraffic(
   } else {
     const tow = kind === 'towtruck';
     const dimensions = TRAFFIC_SHAPES[kind];
-    const front = -dimensions.length / 2;
+    const front = dimensions.frontZ;
     const cabinBack = tow ? -1.2 : 0.15;
     const frontAxle = front + 0.91;
     const rearAxle = tow ? 1.18 : 2.09;
@@ -626,10 +626,26 @@ export function makeDetailedTraffic(
         panel(
           'ramp-side-chevron',
           [
-            [side * 1.251, 0.2, 3.95],
-            [side * 1.251, 0.235, 3.8],
-            [side * 1.251, 0.255, 3.8],
-            [side * 1.251, 0.22, 3.95],
+            [
+              side * 1.251,
+              towRampHeight(ramp.rearZ - 0.15) - 0.045,
+              ramp.rearZ - 0.15,
+            ],
+            [
+              side * 1.251,
+              towRampHeight(ramp.rearZ - 0.4) - 0.045,
+              ramp.rearZ - 0.4,
+            ],
+            [
+              side * 1.251,
+              towRampHeight(ramp.rearZ - 0.4) - 0.02,
+              ramp.rearZ - 0.4,
+            ],
+            [
+              side * 1.251,
+              towRampHeight(ramp.rearZ - 0.15) - 0.02,
+              ramp.rearZ - 0.15,
+            ],
           ],
           white,
         );
@@ -722,6 +738,8 @@ export function makeDetailedTraffic(
   shadow.name = 'traffic-contact-shadow';
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.011;
+  shadow.position.z =
+    (TRAFFIC_SHAPES[kind].frontZ + TRAFFIC_SHAPES[kind].rearZ) / 2;
   root.add(shadow);
   root.userData.kind = kind;
   root.userData.shape = TRAFFIC_SHAPES[kind];

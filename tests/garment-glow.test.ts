@@ -78,9 +78,9 @@ describe('Keep Up ink emission', () => {
     const update = createGarmentGlowUpdater(root);
     update(0.5);
     expect(material.emissiveIntensity).toBeGreaterThan(0);
-    expect(material.emissiveIntensity).toBeLessThan(0.95);
+    expect(material.emissiveIntensity).toBeLessThan(2.6);
     update(1);
-    expect(material.emissiveIntensity).toBeCloseTo(0.95);
+    expect(material.emissiveIntensity).toBeCloseTo(2.6);
     update(0);
     expect(material.emissiveIntensity).toBe(0);
     update(Number.NaN);

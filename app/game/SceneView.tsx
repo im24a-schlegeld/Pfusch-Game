@@ -515,10 +515,12 @@ export default function SceneView({
           appearance.current.player.settings.reducedMotion || !moving
             ? 0
             : Math.sin(clock * 23) * 0.016;
+        const portraitRide = camera.aspect < 0.8;
+        const chaseZ = portraitRide ? 13.4 : 8.4;
         camera.position.set(
           engine.x * 0.27 + shake,
           4.4 + engine.height * 0.13,
-          8.4,
+          chaseZ,
         );
         camera.lookAt(engine.x * 0.38, 1.4, -12);
         if (crash) {
@@ -526,7 +528,7 @@ export default function SceneView({
           camera.position.set(
             THREE.MathUtils.lerp(engine.x * 0.27, crash.focus.x, blend),
             THREE.MathUtils.lerp(4.4 + engine.height * 0.13, 3.5, blend),
-            THREE.MathUtils.lerp(8.4, 7.2, blend),
+            THREE.MathUtils.lerp(chaseZ, 7.2, blend),
           );
           camera.lookAt(
             THREE.MathUtils.lerp(engine.x * 0.38, crash.focus.x, blend),
@@ -534,7 +536,19 @@ export default function SceneView({
             THREE.MathUtils.lerp(-12, crash.focus.z, blend),
           );
         }
-        const fov = 61 + (engine.speed - 22) * 0.22;
+        const speedFov = 61 + (engine.speed - 22) * 0.22;
+        // Keep both outer lanes in view on a narrow phone, including beside the rider.
+        const fov = portraitRide
+          ? Math.max(
+              speedFov,
+              THREE.MathUtils.radToDeg(
+                2 *
+                  Math.atan(
+                    Math.tan(THREE.MathUtils.degToRad(25)) / camera.aspect,
+                  ),
+              ),
+            )
+          : speedFov;
         if (Math.abs(camera.fov - fov) > 0.05) {
           camera.fov = fov;
           camera.updateProjectionMatrix();
