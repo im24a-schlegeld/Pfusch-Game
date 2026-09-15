@@ -516,7 +516,7 @@ export default function SceneView({
             ? 0
             : Math.sin(clock * 23) * 0.016;
         const portraitRide = camera.aspect < 0.8;
-        const chaseZ = portraitRide ? 13.4 : 8.4;
+        const chaseZ = portraitRide ? 10.4 : 8.4;
         camera.position.set(
           engine.x * 0.27 + shake,
           4.4 + engine.height * 0.13,
@@ -537,7 +537,7 @@ export default function SceneView({
           );
         }
         const speedFov = 61 + (engine.speed - 22) * 0.22;
-        // Keep both outer lanes in view on a narrow phone, including beside the rider.
+        // Keep the rider visible on either outer lane without a distant phone camera.
         const fov = portraitRide
           ? Math.max(
               speedFov,

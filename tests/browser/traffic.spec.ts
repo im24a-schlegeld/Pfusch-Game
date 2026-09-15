@@ -135,28 +135,44 @@ for (const low of [false, true]) {
       { width: 320, height: 568 },
     ]) {
       await page.setViewportSize(viewport);
-      await page.clock.runFor(100);
-      const edges = await page.evaluate(() => {
-        const camera = window.trafficProbe.camera!;
-        const Vector = camera.position.constructor as typeof THREE.Vector3;
-        return [-4.5, 4.5].flatMap((x) =>
-          [0, 1.5].map((z) => {
-            const point = new Vector(x, 0, z).project(camera);
-            return { x: point.x, y: point.y };
-          }),
-        );
-      });
-      expect(
-        edges.every((point) => Math.abs(point.x) < 1 && Math.abs(point.y) < 1),
-      ).toBe(true);
-      await page.screenshot({
-        path: testInfo.outputPath(`all-lanes-${viewport.width}.png`),
-      });
+      for (const lane of [-1, 0, 1]) {
+        await page.evaluate((lane) => {
+          const engine = window.trafficProbe.engine!;
+          engine.lane = lane;
+          engine.x = lane * 2.8;
+        }, lane);
+        await page.clock.runFor(100);
+        const riderBounds = await page.evaluate(() => {
+          const camera = window.trafficProbe.camera!;
+          const Vector = camera.position.constructor as typeof THREE.Vector3;
+          const x = window.trafficProbe.engine!.x;
+          // Conservative whole rider/bike envelope: the closer framing must
+          // retain the player on both outside lanes, not distant road corners.
+          return [-0.9, 0.9].flatMap((dx) =>
+            [0, 3.5].flatMap((y) =>
+              [-1.8, 1.8].map((z) => {
+                const point = new Vector(x + dx, y, z).project(camera);
+                return { x: point.x, y: point.y };
+              }),
+            ),
+          );
+        });
+        expect(
+          riderBounds.every(
+            (point) => Math.abs(point.x) < 1 && Math.abs(point.y) < 1,
+          ),
+        ).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath(`rider-${viewport.width}-lane-${lane}.png`),
+        });
+      }
     }
     await page.setViewportSize({ width: 390, height: 844 });
 
     await page.evaluate(() => {
       const engine = window.trafficProbe.engine!;
+      engine.lane = 0;
+      engine.x = 0;
       for (const obstacle of engine.obstacles) obstacle.active = false;
       engine.elapsed = 25;
       engine.spawn('towtruck', 1, 10, 0, 6);
