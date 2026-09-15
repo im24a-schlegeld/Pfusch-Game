@@ -43,10 +43,11 @@ describe('progression and storage', () => {
       250,
       2,
     ]);
-    for (const stat of ['acceleration', 'handling', 'maxSpeed'] as const) {
+    for (const stat of ['acceleration', 'handling'] as const) {
       expect(scooter[stat]).toBeGreaterThan(moped[stat]);
       expect(scooter[stat]).toBeLessThan(sumo[stat]);
     }
+    for (const bike of BIKES) expect(bike.maxSpeed * 3.6).toBeCloseTo(140, 10);
   });
   it('checks Roller price and level and never equips as a side effect of purchase', async () => {
     const bike = BIKES.find((entry) => entry.id === 'scooter')!;

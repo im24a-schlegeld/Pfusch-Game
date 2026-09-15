@@ -228,6 +228,7 @@ describe('assembled motorcycle headlights and the world light pool', () => {
       route.set(palette, tunnel);
       for (const count of [2, 1] as const) {
         const dark = lighting.update(route.world, 100, 0.4, count);
+        expect(pooled[0].visible).toBe(true);
         expect(dark).toBeCloseTo(expectedDark, 12);
         expect(pooled[0].intensity + pooled[1].intensity).toBeCloseTo(
           55 * dark,
@@ -236,7 +237,7 @@ describe('assembled motorcycle headlights and the world light pool', () => {
         expect(pooled[0].intensity).toBeCloseTo((55 * dark) / count, 12);
         if (count === 2) {
           expect(pooled[1].intensity).toBeCloseTo(pooled[0].intensity, 12);
-          if (dark > 0) expect(pooled[1].visible).toBe(true);
+          expect(pooled[1].visible).toBe(true);
         } else {
           expect(pooled[1].intensity).toBe(0);
           expect(pooled[1].visible).toBe(false);

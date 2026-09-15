@@ -7,7 +7,7 @@ import { box, disposeUnique, makeTraffic } from './models';
 import { makeBike } from './vehicle';
 import { ROAD_EVENT_KINDS } from './roadEvents';
 import { makeWorldView } from './worldView';
-import { makeWorldLighting } from './worldLighting';
+import { DAY_SKY, makeWorldLighting } from './worldLighting';
 import { createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
 import { createGarmentGlowUpdater } from './garmentGlow';
@@ -89,7 +89,7 @@ export default function SceneView({
     }
     const low = player.settings.quality === 'low';
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, low ? 1 : 1.6));
-    renderer.setClearColor(mode === 'ride' ? '#8d999b' : '#181d1f');
+    renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#181d1f');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
@@ -105,7 +105,7 @@ export default function SceneView({
     studio.dispose();
     environmentGenerator.dispose();
     scene.fog = new THREE.Fog(
-      mode === 'ride' ? '#8d999b' : '#181d1f',
+      mode === 'ride' ? DAY_SKY : '#181d1f',
       mode === 'ride' ? 55 : 16,
       mode === 'ride' ? 158 : 65,
     );

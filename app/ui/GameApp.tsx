@@ -478,13 +478,14 @@ export default function GameApp() {
             </span>
           </div>
           <p className="muted">
-            Touch anywhere: slide down to raise, up to correct, sideways to dodge.
-            The same finger steers while balancing. Release for neutral; tapping
-            does not lift. Two-finger tap pauses. Keyboard: A / D or arrows dodge,
-            S / ↓ raises, W / ↑ corrects. Holding rear weight can flip the bike.
-            Wheelies and stunts earn most points. Enter a tow truck&apos;s rear ramp
-            from the side, then steer out once in the air. Collect P F U S C H
-            for a set bonus. Dodge traffic and construction barriers.
+            Touch anywhere: slide down to raise, up to correct, sideways to
+            dodge. The same finger steers while balancing. Release for neutral;
+            tapping does not lift. Two-finger tap pauses. Keyboard: A / D or
+            arrows dodge, S / ↓ raises, W / ↑ corrects. Holding rear weight can
+            flip the bike. Wheelies and stunts earn most points. Enter a tow
+            truck&apos;s rear ramp from the side to jump and automatically land
+            back beside it. Collect P F U S C H for a set bonus. Dodge traffic
+            and construction barriers.
           </p>
           <button
             className="button primary"

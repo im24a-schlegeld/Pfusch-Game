@@ -1,3 +1,5 @@
+import { BIKE_MODEL_SCALES } from './vehicleScale';
+
 /** Shared metres for deterministic contacts and the pooled traffic meshes. */
 export type TrafficKind = 'car' | 'van' | 'towtruck' | 'construction';
 export interface TrafficShape {
@@ -49,8 +51,14 @@ export const RAMP_FRONT_CONTACT: Readonly<
 > = {
   '125': { axle: -0.7 * 1.45, radius: 0.305 * 1.45 },
   scooter: { axle: -0.65 * 1.45, radius: 0.224 * 1.45 },
-  '450': { axle: -0.77 * 1.12 * 1.45, radius: 0.2999 * 1.05 * 1.12 * 1.45 },
-  '701': { axle: -0.72 * 1.12 * 1.45, radius: 0.2999 * 1.12 * 1.45 },
+  '450': {
+    axle: -0.77 * BIKE_MODEL_SCALES['450'] * 1.45,
+    radius: 0.2999 * 1.05 * BIKE_MODEL_SCALES['450'] * 1.45,
+  },
+  '701': {
+    axle: -0.72 * BIKE_MODEL_SCALES['701'] * 1.45,
+    radius: 0.2999 * BIKE_MODEL_SCALES['701'] * 1.45,
+  },
 };
 /** Vehicle-local +Z is the rear, matching the rendered ramp. */
 export function towRampHeight(localZ: number) {

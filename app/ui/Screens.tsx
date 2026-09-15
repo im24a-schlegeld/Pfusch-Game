@@ -379,13 +379,14 @@ export function SettingsScreen({
         </div>
         <p>
           On touch, start anywhere and slide down to move weight back, up to
-          correct. Your starting point is neutral; tapping never raises the front.
-          Swipe sideways with the same finger while balancing. Release for neutral.
-          A two-finger tap pauses or resumes. Holding rear weight can overrotate
-          the bike; keep correcting. Wheelies, near misses and stunts earn most
-          points. Dodge traffic and construction barriers. Enter a tow truck&apos;s
-          rear ramp from the side to jump, then steer out once in the air before
-          the cab. Collect all six PFUSCH signs for an extra set bonus.
+          correct. Your starting point is neutral; tapping never raises the
+          front. Swipe sideways with the same finger while balancing. Release
+          for neutral. A two-finger tap pauses or resumes. Holding rear weight
+          can overrotate the bike; keep correcting. Wheelies, near misses and
+          stunts earn most points. Dodge traffic and construction barriers.
+          Enter a tow truck&apos;s rear ramp from the side to jump and
+          automatically land back beside it. Collect all six PFUSCH signs for an
+          extra set bonus.
         </p>
       </section>
       <footer className="settings-section">

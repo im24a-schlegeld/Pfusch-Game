@@ -127,6 +127,8 @@ export class Engine {
   private nextSafe = 0;
   private wheelieChain = 0;
   private accumulator = 0;
+  private towReturnLane: number | null = null;
+  private towReturnDelay = 0;
   private scrapeMeters = 0;
   private signSequence = 0;
   private id: string;
@@ -154,7 +156,10 @@ export class Engine {
     this.laneChangeAge = 0;
     this.laneChangeSerial++;
     this.lane = next;
-    if (airborne) this.airLaneChangeUsed = true;
+    if (airborne) {
+      this.airLaneChangeUsed = true;
+      this.towReturnLane = null;
+    }
   }
   get balanceProfile() {
     return BALANCE[this.bike.id] ?? BALANCE['450'];
@@ -211,6 +216,7 @@ export class Engine {
     this.scrapeIntensity = 0;
     this.scrapeMaterial = null;
     this.towJumpActive = false;
+    this.towReturnLane = null;
     this.event = { text: cause, kind: 'crash', serial: this.event.serial + 1 };
   }
   advance(dt: number) {
@@ -377,6 +383,16 @@ export class Engine {
     // Travel is only a small participation score; technique supplies the points.
     this.score += travel * 0.12;
     const previousX = this.x;
+    if (this.towReturnLane !== null) {
+      this.towReturnDelay -= dt;
+      if (this.towReturnDelay <= 0) {
+        this.laneChangeDirection = this.towReturnLane - this.lane;
+        this.lane = this.towReturnLane;
+        this.towReturnLane = null;
+        this.laneChangeAge = 0;
+        this.laneChangeSerial++;
+      }
+    }
     this.laneChangeAge = Math.min(1, this.laneChangeAge + dt);
     const steeringLead =
       this.height > 0 || this.wheelie
@@ -394,7 +410,7 @@ export class Engine {
       );
     if (
       this.height === 0 &&
-      this.wheelieAngle < 0.3 &&
+      this.wheelieAngle < this.balanceProfile.crashAngle - 0.08 &&
       this.laneChangeAge < 0.4
     ) {
       let launchHeight = 0;
@@ -414,7 +430,7 @@ export class Engine {
         const front =
           RAMP_FRONT_CONTACT[this.bike.id] ?? RAMP_FRONT_CONTACT['450'];
         if (
-          localZ < TOW_RAMP.frontZ + 0.2 ||
+          localZ < TOW_RAMP.frontZ - 0.5 ||
           localZ + front.axle - front.radius > TOW_RAMP.rearZ ||
           Math.abs(this.x - center) > entryWidth ||
           Math.abs(previousX - center) < 0.3 ||
@@ -432,6 +448,17 @@ export class Engine {
         this.velocityY = TOW_RAMP.launchVelocity;
         this.airLaneChangeUsed = false;
         this.towJumpActive = true;
+        // One side swipe completes the stunt. Touch the tray, then spring
+        // back to the incoming lane before the cab arrives. Manual air input
+        // may still override this return once, but is never required to survive.
+        this.towReturnLane = Math.max(
+          -1,
+          Math.min(1, this.lane - this.laneChangeDirection),
+        );
+        this.towReturnDelay = 0.025;
+        this.liftPull = 0;
+        this.throttleLoad = 0;
+        this.wheelieAngularVelocity = Math.min(0, this.wheelieAngularVelocity);
         this.launchSerial++;
         this.event = {
           text: 'RAMP TRANSFER',
@@ -450,6 +477,7 @@ export class Engine {
         this.height = 0;
         this.velocityY = 0;
         this.airLaneChangeUsed = false;
+        this.towReturnLane = null;
         if (this.towJumpActive) {
           this.towJumpActive = false;
           landedTowJump = true;
@@ -462,7 +490,7 @@ export class Engine {
       this.balanceProfile,
       this.speed,
       this.height === 0 ? this.throttleInput : 0,
-      this.forwardInput,
+      Math.max(this.forwardInput, this.towJumpActive ? 0.55 : 0),
       dt,
     );
     if (wasArmed && !this.liftArmed) this.wheelieLaunchSerial++;

@@ -390,10 +390,10 @@ export default function Ride({
             balancing. A tap does not raise the front. Two-finger tap pauses or
             resumes. Keep correcting: holding full rear weight can flip the
             bike. Wheelies, near misses and stunts earn most points. Dodge
-            traffic and construction barriers. Enter a tow truck&apos;s rear ramp
-            from the adjacent lane to jump, then use your one airborne lane
-            change to exit before the cab. Collect P F U S C H for a set bonus.
-            A clear lane remains available.
+            traffic and construction barriers. Enter a tow truck&apos;s rear
+            ramp from the adjacent lane to jump and automatically land back
+            beside it. Collect P F U S C H for a set bonus. A clear lane remains
+            available.
           </p>
           <button className="button" onClick={onMute}>
             {player.settings.muted ? <VolumeX /> : <Volume2 />}

@@ -34,7 +34,7 @@ const fixtures: readonly Fixture[] = [
   },
   {
     model: '450',
-    scale: 1.12,
+    scale: 1.06,
     rear: 0.76,
     front: -0.77,
     radius: 0.3119 * 1.05,

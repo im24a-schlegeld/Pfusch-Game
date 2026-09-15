@@ -1,4 +1,5 @@
 import type { Bike, ChallengeDefinition } from './types';
+export const MAX_RIDE_SPEED = 140 / 3.6;
 export const BIKES: Bike[] = [
   {
     id: '125',
@@ -9,7 +10,7 @@ export const BIKES: Bike[] = [
     acceleration: 0.19,
     handling: 13,
     stability: 1,
-    maxSpeed: 41,
+    maxSpeed: MAX_RIDE_SPEED,
     color: '#e7e7df',
   },
   {
@@ -21,7 +22,7 @@ export const BIKES: Bike[] = [
     acceleration: 0.215,
     handling: 14,
     stability: 1.06,
-    maxSpeed: 42,
+    maxSpeed: MAX_RIDE_SPEED,
     color: '#627dac',
   },
   {
@@ -33,7 +34,7 @@ export const BIKES: Bike[] = [
     acceleration: 0.24,
     handling: 15,
     stability: 0.93,
-    maxSpeed: 43,
+    maxSpeed: MAX_RIDE_SPEED,
     color: '#dc632e',
   },
   {
@@ -45,7 +46,7 @@ export const BIKES: Bike[] = [
     acceleration: 0.28,
     handling: 13.8,
     stability: 1.18,
-    maxSpeed: 46,
+    maxSpeed: MAX_RIDE_SPEED,
     color: '#d9f365',
   },
 ];

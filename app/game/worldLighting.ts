@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import type { World, WorldLighting } from './world';
 
+export const DAY_SKY = '#79b9ed';
+
 const palettes = {
   day: {
-    sky: '#8d999b',
+    sky: DAY_SKY,
     sun: '#fff5e6',
     ambient: 1.4,
     direct: 3.4,
@@ -117,7 +119,9 @@ export function makeWorldLighting(
     const dark = Math.max(mix('dark'), tunnel);
     for (let i = 0; i < headlights.length; i++) {
       const active = i < headlightCount;
-      headlights[i].visible = active && dark > 0;
+      // Keep the light count stable so entering a tunnel does not recompile
+      // every lit material. Daylight switches intensity off, not the light.
+      headlights[i].visible = active;
       headlights[i].intensity = active ? (dark * 55) / headlightCount : 0;
     }
     riderLight.intensity = dark * THREE.MathUtils.lerp(8, 4, tunnel);

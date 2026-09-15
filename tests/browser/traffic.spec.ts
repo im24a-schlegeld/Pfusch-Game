@@ -9,6 +9,7 @@ declare global {
       scene?: THREE.Scene;
       engine?: Engine;
       camera?: THREE.PerspectiveCamera;
+      renderer?: THREE.WebGLRenderer;
     };
   }
 }
@@ -34,6 +35,7 @@ async function start(page: Page, low: boolean) {
     window.__THREE_DEVTOOLS__.addEventListener('observe', (event) => {
       const item = (event as CustomEvent).detail;
       if (!item.isWebGLRenderer) return;
+      window.trafficProbe.renderer = item;
       const render = item.render.bind(item);
       item.render = (scene: THREE.Scene, camera: THREE.Camera) => {
         render(scene, camera);
@@ -87,6 +89,151 @@ async function start(page: Page, low: boolean) {
   });
   return errors;
 }
+
+test('a single side swipe from a wheelie completes the ramp and returns beside the truck', async ({
+  page,
+}, info) => {
+  const errors = await start(page, false);
+  await page.evaluate(() => {
+    const engine = window.trafficProbe.engine!;
+    engine.elapsed = 25;
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+  });
+  const touch = await page.context().newCDPSession(page);
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ id: 1, x: 200, y: 380 }],
+  });
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ id: 1, x: 200, y: 445 }],
+  });
+  for (let frame = 0; frame < 24; frame++) {
+    await page.clock.runFor(50);
+    if (
+      await page.evaluate(() => window.trafficProbe.engine!.wheelieAngle > 0.4)
+    )
+      break;
+  }
+  expect(
+    await page.evaluate(() => window.trafficProbe.engine!.wheelieAngle),
+  ).toBeGreaterThan(0.4);
+  const before = await page.evaluate(() => {
+    const engine = window.trafficProbe.engine!;
+    engine.spawn('towtruck', -1, 8, 0, 6);
+    return { jumps: engine.jumps, score: engine.score };
+  });
+  await page.clock.runFor(17);
+  await page.screenshot({ path: info.outputPath('before-side-swipe.png') });
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ id: 1, x: 140, y: 445 }],
+  });
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+  await page.clock.runFor(220);
+  const air = await page.evaluate(() => {
+    const engine = window.trafficProbe.engine!;
+    return {
+      phase: engine.phase,
+      height: engine.height,
+      lane: engine.lane,
+      airUsed: engine.airLaneChangeUsed,
+    };
+  });
+  expect(air.phase).toBe('playing');
+  expect(air.height).toBeGreaterThan(0.3);
+  expect(air.lane).toBe(0);
+  expect(air.airUsed).toBe(false);
+  await page.screenshot({ path: info.outputPath('automatic-side-return.png') });
+  // No second swipe or keyboard correction between takeoff and touchdown.
+  await page.clock.runFor(1500);
+  const landed = await page.evaluate(() => {
+    const engine = window.trafficProbe.engine!;
+    return {
+      phase: engine.phase,
+      height: engine.height,
+      lane: engine.lane,
+      x: engine.x,
+      jumps: engine.jumps,
+      score: engine.score,
+    };
+  });
+  expect(landed.phase).toBe('playing');
+  expect(landed.height).toBe(0);
+  expect(landed.lane).toBe(0);
+  expect(Math.abs(landed.x)).toBeLessThan(0.02);
+  expect(landed.jumps).toBe(before.jumps + 1);
+  expect(landed.score).toBeGreaterThan(before.score + 500);
+  expect(errors).toEqual([]);
+  await page.screenshot({
+    path: info.outputPath('landed-without-second-input.png'),
+  });
+});
+
+test('tunnel entry keeps lighting shaders warm and ordinary daylight blue', async ({
+  page,
+}, info) => {
+  const errors = await start(page, false);
+  const daySky = await page.evaluate(() =>
+    (window.trafficProbe.scene!.fog as THREE.Fog).color.getHexString(),
+  );
+  expect(daySky).toBe('79b9ed');
+  const entrance = await page.evaluate(() => {
+    const engine = window.trafficProbe.engine!;
+    engine.clearInput();
+    engine.phase = 'ready';
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    let tunnel = engine.world.segments.find(
+      (segment) => segment.kind === 'tunnel',
+    );
+    for (let i = 0; !tunnel && i < 100; i++) {
+      engine.world.advance(engine.world.segments.at(-1)!.end - 1);
+      tunnel = engine.world.segments.find(
+        (segment) => segment.kind === 'tunnel',
+      );
+    }
+    if (!tunnel) throw new Error('No tunnel in the seeded road');
+    engine.distance = tunnel.start - 10;
+    engine.world.advance(engine.distance);
+    return tunnel.start;
+  });
+  await page.clock.runFor(100);
+  const before = await page.evaluate(() => ({
+    programs: window.trafficProbe.renderer!.info.programs!.length,
+    headlight: (
+      window.trafficProbe.scene!.getObjectByName(
+        'road-headlight',
+      ) as THREE.SpotLight
+    ).intensity,
+  }));
+  expect(before.headlight).toBe(0);
+  await page.screenshot({
+    path: info.outputPath('blue-sky-before-tunnel.png'),
+  });
+  await page.evaluate((entrance) => {
+    const engine = window.trafficProbe.engine!;
+    engine.distance = entrance + 18;
+    engine.world.advance(engine.distance);
+  }, entrance);
+  await page.clock.runFor(100);
+  const inside = await page.evaluate(() => ({
+    programs: window.trafficProbe.renderer!.info.programs!.length,
+    headlight: (
+      window.trafficProbe.scene!.getObjectByName(
+        'road-headlight',
+      ) as THREE.SpotLight
+    ).intensity,
+    sky: (window.trafficProbe.scene!.fog as THREE.Fog).color.getHexString(),
+  }));
+  expect(inside.programs).toBe(before.programs);
+  expect(inside.headlight).toBe(55);
+  expect(inside.sky).toBe('101720');
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: info.outputPath('dark-tunnel.png') });
+});
 
 for (const low of [false, true]) {
   test(`rendered moving tow ramp accepts a side transfer and resets after landing (${low ? 'low' : 'normal'})`, async ({

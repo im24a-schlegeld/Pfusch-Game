@@ -31,6 +31,33 @@ function takeoff(engine: Engine, velocity = 0, direction = 1) {
 }
 
 describe('automatic side ramp transfers', () => {
+  it.each(BIKES)(
+    '$name: one side swipe returns safely beside real-speed traffic, including controlled wheelies',
+    (bike) => {
+      for (const elapsed of [25, 90])
+        for (const direction of [-1, 1])
+          for (const velocity of [0, 6])
+            for (const angle of [0, 0.35, 0.8]) {
+              const engine = ride(bike);
+              engine.elapsed = elapsed;
+              engine.wheelieAngle = angle;
+              engine.wheelie = angle > 0.12;
+              engine.weight(angle > 0 ? 0.35 : 0);
+              engine.spawn('towtruck', direction, 8, 0, velocity);
+              engine.move(direction);
+              // No second input, no deleted collisions, no cab exemption.
+              steps(engine, 100);
+              expect(engine.phase).toBe('playing');
+              expect(engine.launchSerial).toBe(1);
+              expect(engine.jumps).toBe(1);
+              expect(engine.lane).toBe(0);
+              expect(Math.abs(engine.x)).toBeLessThan(0.02);
+              expect(engine.height).toBe(0);
+              expect(engine.airLaneChangeUsed).toBe(false);
+            }
+    },
+  );
+
   it.each([25, 90])(
     'accepts a real-speed side approach at %ss, then a safe airborne exit',
     (elapsed) => {
@@ -147,8 +174,9 @@ describe('automatic side ramp transfers', () => {
 
   it('keeps the cab solid and withholds the landing reward after an unsafe transfer', () => {
     const engine = ride();
-    takeoff(engine);
-    steps(engine, 80);
+    engine.spawn('towtruck', 1, -2);
+    engine.move(1);
+    steps(engine, 20);
     expect(engine.phase).toBe('crashed');
     expect(engine.event.text).toBe('Traffic collision');
     expect(engine.jumps).toBe(0);
@@ -156,7 +184,7 @@ describe('automatic side ramp transfers', () => {
     expect(engine.score).toBeLessThan(100);
   });
 
-  it('does not use the ramp from the cab side, while already airborne, or during a high wheelie', () => {
+  it('does not use the ramp from the cab side, while already airborne, or after overrotation', () => {
     for (const mode of ['cab', 'air', 'wheelie'] as const) {
       const engine = ride();
       engine.spawn('towtruck', 1, mode === 'cab' ? -2 : 6.2);
@@ -164,7 +192,8 @@ describe('automatic side ramp transfers', () => {
         engine.height = 3.2;
         engine.velocityY = 2;
       }
-      if (mode === 'wheelie') engine.wheelieAngle = 0.6;
+      if (mode === 'wheelie')
+        engine.wheelieAngle = engine.balanceProfile.crashAngle;
       engine.move(1);
       steps(engine, 20);
       expect(engine.launchSerial).toBe(0);
