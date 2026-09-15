@@ -108,7 +108,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     expect(engine.jumps).toBe(0);
     expect(engine.launchSerial).toBe(0);
   });
-  it('keeps the cab, ordinary cars and blocked landing lanes solid', () => {
+  it('keeps direct cab and ordinary car collisions solid', () => {
     for (const kind of ['towtruck', 'car'] as const) {
       const engine = ride();
       engine.spawn(kind, 0, kind === 'towtruck' ? -2 : 6);
@@ -116,16 +116,38 @@ describe('ride onto the tow truck, then swipe to jump', () => {
       expect(engine.phase).toBe('crashed');
       expect(engine.jumps).toBe(0);
     }
+  });
+  it('protects a timely side jump through landing overlap, then restores collisions', () => {
     const engine = ride();
     board(engine);
     engine.move(1);
     steps(engine, 12);
     engine.height = 0.01;
     engine.velocityY = -3;
-    engine.spawn('construction', 1, 0);
+    const obstacle = engine.spawn('construction', 1, 0)!;
+    steps(engine, 1);
+    expect(engine.phase).toBe('playing');
+    expect(engine.jumps).toBe(1);
+    steps(engine, 2);
+    expect(engine.phase).toBe('playing');
+    // Recycled obstacles do not retain protection from the previous transfer.
+    obstacle.active = false;
+    expect(engine.spawn('car', 1, 0)).toBe(obstacle);
     steps(engine, 1);
     expect(engine.phase).toBe('crashed');
-    expect(engine.jumps).toBe(0);
+    expect(engine.jumps).toBe(1);
+  });
+  it('accepts the last timely swipe but rejects a swipe after the deck deadline', () => {
+    for (const delay of [82, 83]) {
+      const engine = ride(BIKES[2]);
+      engine.elapsed = 10000;
+      board(engine);
+      steps(engine, delay);
+      engine.move(1);
+      steps(engine, 90);
+      expect(engine.phase).toBe(delay === 82 ? 'playing' : 'crashed');
+      expect(engine.jumps).toBe(delay === 82 ? 1 : 0);
+    }
   });
   it('replays boarding and a later swipe identically at 30, 60 and 120 Hz', () => {
     const results = [30, 60, 120].map((fps) => {

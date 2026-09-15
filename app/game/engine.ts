@@ -135,6 +135,7 @@ export class Engine {
   private departingTow: Obstacle | null = null;
   private departureTime = 0;
   private departureVelocity = 0;
+  private towSafeObstacles = new Set<Obstacle>();
   private scrapeMeters = 0;
   private signSequence = 0;
   private id: string;
@@ -162,6 +163,10 @@ export class Engine {
       !this.onTowTruck && (this.height > 0 || this.velocityY !== 0);
     const next = Math.max(-1, Math.min(1, this.lane + Math.sign(direction)));
     if (next === this.lane || (airborne && this.airLaneChangeUsed)) return;
+    if (this.towCarrier && this.towDeckTime >= 1.4 - 1e-9) {
+      this.crash('Missed the side jump');
+      return;
+    }
     this.laneChangeDirection = next - this.lane;
     this.laneChangeAge = 0;
     this.laneChangeSerial++;
@@ -242,6 +247,7 @@ export class Engine {
     this.towCarrier = null;
     if (this.departingTow) this.departingTow.velocity = this.departureVelocity;
     this.departingTow = null;
+    this.towSafeObstacles.clear();
     this.event = { text: cause, kind: 'crash', serial: this.event.serial + 1 };
   }
   advance(dt: number) {
@@ -369,6 +375,7 @@ export class Engine {
     velocity = 0,
   ) {
     const o = this.obstacles.find((x) => !x.active);
+    if (o) this.towSafeObstacles.delete(o);
     if (o)
       Object.assign(o, {
         active: true,
@@ -429,11 +436,7 @@ export class Engine {
           (this.wheelie ? 0.78 : 1) *
           steeringLead,
       );
-    if (
-      !this.towCarrier &&
-      this.height === 0 &&
-      this.wheelieAngle < this.balanceProfile.crashAngle - 0.08
-    ) {
+    if (!this.towCarrier && this.height === 0) {
       const ramp = this.obstacles.find((o) => {
         if (
           !o.active ||
@@ -466,7 +469,8 @@ export class Engine {
         this.airLaneChangeUsed = false;
         this.liftPull = 0;
         this.throttleLoad = 0;
-        this.wheelieAngularVelocity = Math.min(0, this.wheelieAngularVelocity);
+        this.wheelieAngle = 0;
+        this.wheelieAngularVelocity = 0;
         this.event = {
           text: 'ON THE TRUCK · SWIPE SIDEWAYS',
           kind: 'skill',
@@ -524,7 +528,12 @@ export class Engine {
       this.landingSerial++;
       this.landingSpeed = touchdown * 2;
     }
-    if (this.wheelieAngle >= this.balanceProfile.crashAngle) {
+    const safeTowTransfer =
+      this.onTowTruck || this.towJumpActive || landedTowJump;
+    if (
+      !safeTowTransfer &&
+      this.wheelieAngle >= this.balanceProfile.crashAngle
+    ) {
       this.crash('Overrotated the wheelie');
       return;
     }
@@ -592,13 +601,19 @@ export class Engine {
         const rearContact = traffic ? traffic.rearZ + 1 : length;
         const frontContact = traffic ? traffic.frontZ - 1 : -length;
         const overlap = o.z < rearContact && prev > frontContact;
+        const contactWidth =
+          road?.contactHalfWidth ?? traffic!.contactHalfWidth;
+        // A timely tow jump succeeds through touchdown. Keep only obstacles
+        // still overlapping that transfer exempt until the rider clears them.
+        if (!overlap || dx >= contactWidth) this.towSafeObstacles.delete(o);
+        else if (safeTowTransfer) this.towSafeObstacles.add(o);
         const top =
           o.kind === 'towtruck' && o.z > TOW_RAMP.cabRearZ
             ? o.z > TOW_RAMP.frontZ
               ? towRampHeight(o.z)
               : TOW_RAMP.frontHeight
             : (road?.height ?? traffic!.height);
-        if (overlap && this.height < top) {
+        if (overlap && this.height < top && !this.towSafeObstacles.has(o)) {
           const gap =
             dx - (road?.contactHalfWidth ?? traffic!.contactHalfWidth);
           if (gap < 0) {
