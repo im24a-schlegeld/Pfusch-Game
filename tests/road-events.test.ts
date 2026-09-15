@@ -247,8 +247,7 @@ describe('world integration and readable traffic', () => {
   it('leaves a clean adjacent route and sufficient reaction time through many generated waves', () => {
     const observedKinds = new Set<string>(),
       observedEnvironments = new Set<WorldKind>();
-    let waves = 0,
-      riskWaves = 0;
+    let waves = 0;
     for (const bike of BIKES)
       for (let seed = 1; seed <= 16; seed++) {
         const engine = ride(bike, seed);
@@ -278,18 +277,12 @@ describe('world integration and readable traffic', () => {
             for (const o of wave) {
               observedKinds.add(o.kind);
               expect(o.z).toBeGreaterThan(143);
-              if (o.offsetX === 0)
-                expect(TRAFFIC_ENVIRONMENTS[environment].kinds).toContain(
-                  o.kind,
-                );
-            }
-            if (wave.some((o) => o.offsetX !== 0)) {
-              riskWaves++;
-              expect(wave).toHaveLength(1);
-              const car = wave[0];
-              expect(car.kind).toBe('car');
-              expect(clearance(car, 0)).toBeCloseTo(0.465);
-              expect(clearance(car, -car.lane)).toBeGreaterThan(2);
+              expect(o.offsetX).toBe(0);
+              // The occasional single-car wave is allowed in every environment.
+              expect([
+                ...TRAFFIC_ENVIRONMENTS[environment].kinds,
+                'car',
+              ]).toContain(o.kind);
             }
             lastSpawnDistance = engine.distance;
             waves++;
@@ -303,7 +296,6 @@ describe('world integration and readable traffic', () => {
         expect(engine.obstacles).toHaveLength(32);
       }
     expect(waves).toBeGreaterThan(2000);
-    expect(riskWaves).toBeGreaterThan(100);
     expect([...observedKinds].sort()).toEqual([
       'car',
       'construction',

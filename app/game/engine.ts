@@ -279,12 +279,11 @@ export class Engine {
       environment.initialSpacing +
       (environment.minimumSpacing - environment.initialSpacing) *
         this.difficulty;
-    // One offset vehicle leaves the center as an optional near pass and the
-    // opposite outer lane completely clear. Never make the narrow route mandatory.
+    // Occasional single cars stay centered, leaving the other lanes clear.
     if (this.elapsed > 20 && this.random() < 0.12) {
       const side =
         this.nextSafe === 0 ? (this.random() < 0.5 ? -1 : 1) : -this.nextSafe;
-      this.spawn('car', side, 145, -side * 0.86, velocity);
+      this.spawn('car', side, 145, 0, velocity);
       this.spawnWaveSign();
       return;
     }
