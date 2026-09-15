@@ -60,6 +60,20 @@ export const RAMP_FRONT_CONTACT: Readonly<
     radius: 0.2999 * BIKE_MODEL_SCALES['701'] * 1.45,
   },
 };
+const RAMP_REAR_CONTACT: Readonly<
+  Record<string, { axle: number; radius: number }>
+> = {
+  '125': { axle: 0.55 * 1.45, radius: 0.305 * 1.45 },
+  scooter: { axle: 0.64 * 1.45, radius: 0.231 * 1.45 },
+  '450': {
+    axle: 0.76 * BIKE_MODEL_SCALES['450'] * 1.45,
+    radius: 0.3119 * 1.05 * BIKE_MODEL_SCALES['450'] * 1.45,
+  },
+  '701': {
+    axle: 0.685 * BIKE_MODEL_SCALES['701'] * 1.45,
+    radius: 0.3204 * BIKE_MODEL_SCALES['701'] * 1.45,
+  },
+};
 /** Vehicle-local +Z is the rear, matching the rendered ramp. */
 export function towRampHeight(localZ: number) {
   const progress = Math.max(
@@ -71,29 +85,92 @@ export function towRampHeight(localZ: number) {
     (TOW_RAMP.frontHeight - TOW_RAMP.rearHeight) * progress
   );
 }
-/** Keep the leading tire above the slope until it has passed onto the flat tray. */
-export function towRampLaunchHeight(
-  bikeId: string,
-  localZ: number,
-  relativeSpeed: number,
+const rampSlope =
+  (TOW_RAMP.frontHeight - TOW_RAMP.rearHeight) /
+  (TOW_RAMP.rearZ - TOW_RAMP.frontZ);
+
+/** Highest axle required by any point of the tire over a finite support plane. */
+function tireSupport(
+  center: number,
+  radius: number,
+  start: number,
+  end: number,
+  slope: number,
+  intercept: number,
 ) {
-  const front = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
-  const slope =
-    (TOW_RAMP.frontHeight - TOW_RAMP.rearHeight) /
-    (TOW_RAMP.rearZ - TOW_RAMP.frontZ);
-  const surface = towRampHeight(localZ + front.axle);
-  const tireClearance = front.radius * (Math.sqrt(1 + slope * slope) - 1);
-  const untilFlat = Math.max(
-    0,
-    (localZ + front.axle - TOW_RAMP.frontZ) / Math.max(1, relativeSpeed),
+  const lo = Math.max(start, center - radius),
+    hi = Math.min(end, center + radius);
+  if (hi < lo) return 0;
+  const contact = Math.max(
+    lo,
+    Math.min(hi, center - (slope * radius) / Math.sqrt(1 + slope ** 2)),
   );
-  // The clearance over a linear incline is concave during takeoff, so checking
-  // its two ends covers the entire interval before the front wheel reaches the tray.
-  const flatRequired =
-    TOW_RAMP.frontHeight -
-    TOW_RAMP.launchVelocity * untilFlat +
-    0.5 * TOW_RAMP.gravity * untilFlat ** 2;
-  return Math.max(surface, flatRequired) + tireClearance + 0.015;
+  return (
+    intercept -
+    slope * contact +
+    Math.sqrt(Math.max(0, radius ** 2 - (contact - center) ** 2))
+  );
+}
+function supportedAxle(center: number, radius: number) {
+  return Math.max(
+    radius,
+    tireSupport(
+      center,
+      radius,
+      TOW_RAMP.cabRearZ,
+      TOW_RAMP.frontZ,
+      0,
+      TOW_RAMP.frontHeight,
+    ),
+    tireSupport(
+      center,
+      radius,
+      TOW_RAMP.frontZ,
+      TOW_RAMP.rearZ,
+      rampSlope,
+      TOW_RAMP.rearHeight + rampSlope * TOW_RAMP.rearZ,
+    ),
+  );
+}
+
+/** Root height and rear-axle pitch for animateSuspension(pitch, 0), in metres. */
+export function towRampPose(bikeId: string, localZ: number) {
+  const front = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
+  const rear = RAMP_REAR_CONTACT[bikeId] ?? RAMP_REAR_CONTACT['450'];
+  const clearance = (pitch: number, leading: boolean) => {
+    const tire = leading ? front : rear;
+    const c = Math.cos(pitch),
+      s = Math.sin(pitch);
+    // suspensionPose retains rear axle Y, but its positive pitch also moves
+    // both axle Z positions. Include both transforms and unequal tire radii.
+    const centerZ = localZ + tire.axle * c + tire.radius * s;
+    const centerY =
+      rear.radius +
+      (tire.radius - rear.radius) * c +
+      (rear.axle - tire.axle) * s;
+    return supportedAxle(centerZ, tire.radius) - centerY;
+  };
+  let low = 0,
+    high = Math.PI / 4;
+  if (clearance(0, true) > clearance(0, false)) {
+    for (let i = 0; i < 28; i++) {
+      const pitch = (low + high) / 2;
+      if (clearance(pitch, true) > clearance(pitch, false)) low = pitch;
+      else high = pitch;
+    }
+  } else high = 0;
+  const pitch = (low + high) / 2;
+  return {
+    height:
+      Math.max(0, clearance(pitch, true), clearance(pitch, false)) + 0.018,
+    pitch,
+  };
+}
+
+/** Hold on the flat tray with a visible gap between the leading tire and cab. */
+export function towDeckPosition(bikeId: string) {
+  const front = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
+  return Math.max(0.5, TOW_RAMP.cabRearZ - front.axle + front.radius + 0.12);
 }
 /** Saturates gradually; traffic always retains its documented minimum spacing. */
 export function distanceDifficulty(distance: number) {

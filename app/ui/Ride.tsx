@@ -391,9 +391,9 @@ export default function Ride({
             resumes. Keep correcting: holding full rear weight can flip the
             bike. Wheelies, near misses and stunts earn most points. Dodge
             traffic and construction barriers. Enter a tow truck&apos;s rear
-            ramp from the adjacent lane to jump and automatically land back
-            beside it. Collect P F U S C H for a set bonus. A clear lane remains
-            available.
+            ramp to ride onto the deck, then swipe sideways to jump into the
+            adjacent lane. Collect P F U S C H for a set bonus. A clear lane
+            remains available.
           </p>
           <button className="button" onClick={onMute}>
             {player.settings.muted ? <VolumeX /> : <Volume2 />}

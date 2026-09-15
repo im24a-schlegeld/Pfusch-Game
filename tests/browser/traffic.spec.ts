@@ -90,66 +90,71 @@ async function start(page: Page, low: boolean) {
   return errors;
 }
 
-test('a single side swipe from a wheelie completes the ramp and returns beside the truck', async ({
+test('rides onto the tow deck without crashing and jumps only after a side swipe', async ({
   page,
 }, info) => {
   const errors = await start(page, false);
-  await page.evaluate(() => {
+  const before = await page.evaluate(() => {
     const engine = window.trafficProbe.engine!;
-    engine.elapsed = 25;
+    engine.elapsed = 10000;
+    engine.clearInput();
     for (const obstacle of engine.obstacles) obstacle.active = false;
+    engine.spawn('towtruck', 0, 14, 0, 6);
+    return engine.jumps;
+  });
+  // Ordinary forward riding, no swipe and no second hidden control.
+  await page.clock.runFor(700);
+  const boarded = await page.evaluate(() => {
+    const engine = window.trafficProbe.engine!;
+    return {
+      phase: engine.phase,
+      onTow: engine.onTowTruck,
+      height: engine.height,
+      verticalSpeed: engine.velocityY,
+      launches: engine.launchSerial,
+      lane: engine.lane,
+    };
+  });
+  expect(boarded.phase).toBe('playing');
+  expect(boarded.onTow).toBe(true);
+  expect(boarded.height).toBeGreaterThan(1);
+  expect(boarded.verticalSpeed).toBe(0);
+  expect(boarded.launches).toBe(0);
+  expect(boarded.lane).toBe(0);
+  await page.screenshot({
+    path: info.outputPath('riding-on-truck-before-swipe.png'),
   });
   const touch = await page.context().newCDPSession(page);
   await touch.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
-    touchPoints: [{ id: 1, x: 200, y: 380 }],
+    touchPoints: [{ id: 1, x: 170, y: 445 }],
   });
   await touch.send('Input.dispatchTouchEvent', {
     type: 'touchMove',
-    touchPoints: [{ id: 1, x: 200, y: 445 }],
-  });
-  for (let frame = 0; frame < 24; frame++) {
-    await page.clock.runFor(50);
-    if (
-      await page.evaluate(() => window.trafficProbe.engine!.wheelieAngle > 0.4)
-    )
-      break;
-  }
-  expect(
-    await page.evaluate(() => window.trafficProbe.engine!.wheelieAngle),
-  ).toBeGreaterThan(0.4);
-  const before = await page.evaluate(() => {
-    const engine = window.trafficProbe.engine!;
-    engine.spawn('towtruck', -1, 8, 0, 6);
-    return { jumps: engine.jumps, score: engine.score };
-  });
-  await page.clock.runFor(17);
-  await page.screenshot({ path: info.outputPath('before-side-swipe.png') });
-  await touch.send('Input.dispatchTouchEvent', {
-    type: 'touchMove',
-    touchPoints: [{ id: 1, x: 140, y: 445 }],
+    touchPoints: [{ id: 1, x: 235, y: 445 }],
   });
   await touch.send('Input.dispatchTouchEvent', {
     type: 'touchEnd',
     touchPoints: [],
   });
-  await page.clock.runFor(220);
+  await page.clock.runFor(200);
   const air = await page.evaluate(() => {
     const engine = window.trafficProbe.engine!;
     return {
       phase: engine.phase,
       height: engine.height,
       lane: engine.lane,
-      airUsed: engine.airLaneChangeUsed,
+      onTow: engine.onTowTruck,
+      launches: engine.launchSerial,
     };
   });
   expect(air.phase).toBe('playing');
-  expect(air.height).toBeGreaterThan(0.3);
-  expect(air.lane).toBe(0);
-  expect(air.airUsed).toBe(false);
-  await page.screenshot({ path: info.outputPath('automatic-side-return.png') });
-  // No second swipe or keyboard correction between takeoff and touchdown.
-  await page.clock.runFor(1500);
+  expect(air.height).toBeGreaterThan(boarded.height);
+  expect(air.lane).toBe(1);
+  expect(air.onTow).toBe(false);
+  expect(air.launches).toBe(1);
+  await page.screenshot({ path: info.outputPath('side-jump-after-swipe.png') });
+  await page.clock.runFor(1100);
   const landed = await page.evaluate(() => {
     const engine = window.trafficProbe.engine!;
     return {
@@ -158,21 +163,18 @@ test('a single side swipe from a wheelie completes the ramp and returns beside t
       lane: engine.lane,
       x: engine.x,
       jumps: engine.jumps,
-      score: engine.score,
     };
   });
   expect(landed.phase).toBe('playing');
   expect(landed.height).toBe(0);
-  expect(landed.lane).toBe(0);
-  expect(Math.abs(landed.x)).toBeLessThan(0.02);
-  expect(landed.jumps).toBe(before.jumps + 1);
-  expect(landed.score).toBeGreaterThan(before.score + 500);
+  expect(landed.lane).toBe(1);
+  expect(landed.x).toBeCloseTo(2.8, 2);
+  expect(landed.jumps).toBe(before + 1);
   expect(errors).toEqual([]);
   await page.screenshot({
-    path: info.outputPath('landed-without-second-input.png'),
+    path: info.outputPath('landed-in-adjacent-lane.png'),
   });
 });
-
 test('tunnel entry keeps lighting shaders warm and ordinary daylight blue', async ({
   page,
 }, info) => {
@@ -356,17 +358,19 @@ for (const low of [false, true]) {
           phase: engine.phase,
           laneChangeAge: engine.laneChangeAge,
           launchSerial: engine.launchSerial,
+          onTowTruck: engine.onTowTruck,
           z: engine.obstacles.find((o) => o.active && o.kind === 'towtruck')?.z,
         };
       });
       approach.push(state);
-      if (state.launchSerial > 0 || state.phase !== 'playing') break;
+      if (state.onTowTruck || state.phase !== 'playing') break;
     }
     await testInfo.attach('tow-approach-steps', {
       body: JSON.stringify(approach, null, 2),
       contentType: 'application/json',
     });
-    expect(approach.at(-1)?.launchSerial).toBe(1);
+    expect(approach.at(-1)?.onTowTruck).toBe(true);
+    expect(approach.at(-1)?.launchSerial).toBe(0);
     const launch = await page.evaluate(() => {
       const engine = window.trafficProbe.engine!;
       const tow = engine.obstacles.find(
@@ -390,7 +394,7 @@ for (const low of [false, true]) {
     expect(launch.height).toBeGreaterThan(0);
     expect(launch.rampUsed).toBe(true);
     expect(launch.airUsed).toBe(false);
-    expect(launch.velocity).toBe(6);
+    expect(launch.velocity).toBeCloseTo(6, 8);
     expect(Math.abs(launch.wheelAngle)).toBeGreaterThan(0.01);
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowLeft');

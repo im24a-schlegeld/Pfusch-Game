@@ -351,10 +351,15 @@ export default function SceneView({
             1,
             engine.wheelieAngle / engine.balanceProfile.balancePoint,
           );
-          tilt = Math.min(
-            engine.wheelieAngle,
-            TAIL_CONTACT[appearance.current.player.bike].angle,
-          );
+          tilt = engine.onTowTruck
+            ? engine.towPitch
+            : Math.max(
+                engine.towPitch,
+                Math.min(
+                  engine.wheelieAngle,
+                  TAIL_CONTACT[appearance.current.player.bike].angle,
+                ),
+              );
           if (launchSerial !== engine.wheelieLaunchSerial) {
             launchSerial = engine.wheelieLaunchSerial;
             launchPulse = 1;
@@ -421,10 +426,13 @@ export default function SceneView({
             launch * 0.006 +
             road * 0.002 +
             engine.roadRoughness * 0.014;
-          suspension += (compression - suspension) * (1 - Math.exp(-dt * 18));
+          if (engine.onTowTruck) suspension = 0;
+          else
+            suspension += (compression - suspension) * (1 - Math.exp(-dt * 18));
           bike.root.rotation.z = THREE.MathUtils.lerp(
             bike.root.rotation.z,
-            appearance.current.player.settings.reducedMotion
+            appearance.current.player.settings.reducedMotion ||
+              engine.onTowTruck
               ? 0
               : -balancing * 0.16 - drift * 0.026,
             1 - Math.exp(-dt * 12),

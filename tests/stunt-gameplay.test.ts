@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { BIKES } from '../app/domain/config';
 import { Engine, LANE, STEP } from '../app/game/engine';
-import { TRAFFIC_SHAPES, TOW_RAMP } from '../app/game/trafficDomain';
+import {
+  TRAFFIC_SHAPES,
+  TOW_RAMP,
+  towDeckPosition,
+} from '../app/game/trafficDomain';
 import { tailScrape } from '../app/game/wheelie';
 
 function ride(bike = BIKES[0], seed = 539) {
@@ -12,233 +16,138 @@ function ride(bike = BIKES[0], seed = 539) {
 function steps(engine: Engine, count: number) {
   for (let step = 0; step < count; step++) engine.advance(STEP);
 }
-function takeoff(engine: Engine, velocity = 0, direction = 1) {
-  const tow = engine.spawn(
-    'towtruck',
-    direction,
-    velocity ? 5.4 : 6.2,
-    0,
-    velocity,
-  )!;
-  engine.move(direction);
-  for (let frame = 0; frame < 25 && engine.launchSerial === 0; frame++)
+function board(engine: Engine, velocity = 0) {
+  const tow = engine.spawn('towtruck', engine.lane, 14, 0, velocity)!;
+  for (
+    let frame = 0;
+    frame < 100 && tow.z > towDeckPosition(engine.bike.id) + 0.001;
+    frame++
+  )
     engine.advance(STEP);
   expect(engine.phase).toBe('playing');
-  expect(engine.launchSerial).toBe(1);
-  expect(tow.rampUsed).toBe(true);
-  expect(engine.height).toBeGreaterThan(0);
+  expect(engine.onTowTruck).toBe(true);
+  expect(engine.launchSerial).toBe(0);
+  expect(engine.height).toBeGreaterThan(1);
+  expect(engine.velocityY).toBe(0);
   return tow;
 }
 
-describe('automatic side ramp transfers', () => {
+describe('ride onto the tow truck, then swipe to jump', () => {
   it.each(BIKES)(
-    '$name: one side swipe returns safely beside real-speed traffic, including controlled wheelies',
+    '$name boards without input and lands in the chosen adjacent lane',
     (bike) => {
-      for (const elapsed of [25, 90])
-        for (const direction of [-1, 1])
-          for (const velocity of [0, 6])
-            for (const angle of [0, 0.35, 0.8]) {
+      for (const elapsed of [25, 10000])
+        for (const velocity of [0, 6])
+          for (const source of [-1, 0, 1]) {
+            const directions = source === 0 ? [-1, 1] : [-source];
+            for (const direction of directions) {
               const engine = ride(bike);
               engine.elapsed = elapsed;
-              engine.wheelieAngle = angle;
-              engine.wheelie = angle > 0.12;
-              engine.weight(angle > 0 ? 0.35 : 0);
-              engine.spawn('towtruck', direction, 8, 0, velocity);
+              engine.lane = source;
+              engine.x = source * LANE;
+              const tow = board(engine, velocity);
+              steps(engine, 30);
+              expect(engine.onTowTruck).toBe(true);
+              expect(engine.jumps).toBe(0);
+              expect(engine.lane).toBe(source);
+              const before = engine.score;
               engine.move(direction);
-              // No second input, no deleted collisions, no cab exemption.
-              steps(engine, 100);
-              expect(engine.phase).toBe('playing');
+              expect(engine.onTowTruck).toBe(false);
               expect(engine.launchSerial).toBe(1);
-              expect(engine.jumps).toBe(1);
-              expect(engine.lane).toBe(0);
-              expect(Math.abs(engine.x)).toBeLessThan(0.02);
+              expect(engine.airLaneChangeUsed).toBe(true);
+              engine.move(direction);
+              expect(engine.lane).toBe(source + direction);
+              steps(engine, 90);
+              expect(engine.phase).toBe('playing');
               expect(engine.height).toBe(0);
-              expect(engine.airLaneChangeUsed).toBe(false);
+              expect(engine.jumps).toBe(1);
+              expect(engine.lane).toBe(source + direction);
+              expect(engine.x).toBeCloseTo((source + direction) * LANE, 3);
+              expect(engine.score).toBeGreaterThan(before + 500);
+              expect(tow.velocity).toBe(velocity);
+              steps(engine, 15);
+              expect(engine.jumps).toBe(1);
             }
+          }
     },
   );
-
-  it.each([25, 90])(
-    'accepts a real-speed side approach at %ss, then a safe airborne exit',
-    (elapsed) => {
-      const engine = ride(BIKES[2]);
-      engine.elapsed = elapsed;
-      engine.spawn('towtruck', 1, elapsed === 90 ? 8 : 10, 0, 6);
-      engine.move(1);
-      for (
-        let frame = 0;
-        frame < 24 && !engine.launchSerial && engine.phase === 'playing';
-        frame++
-      )
-        steps(engine, 1);
-      expect(engine.phase).toBe('playing');
-      expect(engine.launchSerial).toBe(1);
-      engine.move(-1);
-      steps(engine, 100);
-      expect(engine.phase).toBe('playing');
-      expect(engine.jumps).toBe(1);
-    },
-  );
-
-  it('does not turn a completed early lane change into a straight ramp jump', () => {
-    const engine = ride();
+  it('can merge onto the rear ramp before swiping again to leave', () => {
+    const engine = ride(BIKES[2]);
+    engine.elapsed = 25;
+    const tow = engine.spawn('towtruck', 1, 10, 0, 6)!;
     engine.move(1);
-    steps(engine, 45);
-    engine.spawn('towtruck', 1, 12, 0, 6);
-    steps(engine, 80);
+    for (
+      let frame = 0;
+      frame < 60 && tow.z > towDeckPosition(engine.bike.id) + 0.001;
+      frame++
+    )
+      steps(engine, 1);
+    expect(engine.phase).toBe('playing');
+    expect(engine.onTowTruck).toBe(true);
     expect(engine.launchSerial).toBe(0);
-    expect(engine.phase).toBe('crashed');
-  });
-
-  it.each([-1, 1])(
-    'accepts the complete collision width when entering from side %s',
-    (direction) => {
-      const engine = ride();
-      // A partly settled prior lane change reaches the 2 cm interval between the
-      // old ramp trigger and the physical bike/truck collision envelope.
-      engine.x = direction * 0.06;
-      const tow = engine.spawn('towtruck', direction, 6.2)!;
-      engine.move(direction);
-      steps(engine, 7);
-      expect(Math.abs(engine.x - direction * LANE)).toBeLessThan(
-        TRAFFIC_SHAPES.towtruck.contactHalfWidth,
-      );
-      expect(engine.phase).toBe('playing');
-      expect(engine.launchSerial).toBe(1);
-      expect(tow.rampUsed).toBe(true);
-      engine.move(-direction);
-      steps(engine, 100);
-      expect(engine.phase).toBe('playing');
-      expect(engine.jumps).toBe(1);
-    },
-  );
-
-  for (const bike of BIKES)
-    for (const velocity of [0, 6])
-      it(`${bike.name}: ${velocity ? 'moving' : 'parked'} ramp accepts a side transfer and one air correction`, () => {
-        const engine = ride(bike);
-        const tow = takeoff(engine, velocity);
-        expect(engine.airLaneChangeUsed).toBe(false);
-        expect(engine.towJumpActive).toBe(true);
-        expect(engine.jumps).toBe(0);
-        engine.move(-1);
-        expect(engine.lane).toBe(0);
-        expect(engine.airLaneChangeUsed).toBe(true);
-        engine.move(-1);
-        expect(engine.lane).toBe(0);
-        engine.pause();
-        const paused = [
-          engine.height,
-          engine.velocityY,
-          tow.z,
-          engine.launchSerial,
-        ];
-        steps(engine, 60);
-        expect([
-          engine.height,
-          engine.velocityY,
-          tow.z,
-          engine.launchSerial,
-        ]).toEqual(paused);
-        engine.resume();
-        steps(engine, 100);
-        expect(engine.phase).toBe('playing');
-        expect(engine.height).toBe(0);
-        expect(engine.airLaneChangeUsed).toBe(false);
-        expect(engine.towJumpActive).toBe(false);
-        expect(engine.jumps).toBe(1);
-        expect(engine.event.text).toBe('TOW TRUCK TRANSFER');
-        expect(engine.score).toBeGreaterThan(500);
-        const serial = engine.event.serial;
-        steps(engine, 50);
-        expect(engine.jumps).toBe(1);
-        expect(engine.event.serial).toBe(serial);
-        engine.move(-1);
-        engine.move(1);
-        expect(engine.lane).toBe(0);
-      });
-
-  it('works from the other side but never grants a jump from ordinary forward riding', () => {
-    const left = ride();
-    takeoff(left, 6, -1);
-    left.move(1);
-    steps(left, 100);
-    expect(left.jumps).toBe(1);
-    const straight = ride();
-    straight.spawn('towtruck', 0, 6.2);
-    steps(straight, 60);
-    expect(straight.launchSerial).toBe(0);
-    expect(straight.jumps).toBe(0);
-    expect(straight.phase).toBe('crashed');
-  });
-
-  it('keeps the cab solid and withholds the landing reward after an unsafe transfer', () => {
-    const engine = ride();
-    engine.spawn('towtruck', 1, -2);
-    engine.move(1);
-    steps(engine, 20);
-    expect(engine.phase).toBe('crashed');
-    expect(engine.event.text).toBe('Traffic collision');
-    expect(engine.jumps).toBe(0);
-    expect(engine.towJumpActive).toBe(false);
-    expect(engine.score).toBeLessThan(100);
-  });
-
-  it('does not use the ramp from the cab side, while already airborne, or after overrotation', () => {
-    for (const mode of ['cab', 'air', 'wheelie'] as const) {
-      const engine = ride();
-      engine.spawn('towtruck', 1, mode === 'cab' ? -2 : 6.2);
-      if (mode === 'air') {
-        engine.height = 3.2;
-        engine.velocityY = 2;
-      }
-      if (mode === 'wheelie')
-        engine.wheelieAngle = engine.balanceProfile.crashAngle;
-      engine.move(1);
-      steps(engine, 20);
-      expect(engine.launchSerial).toBe(0);
-    }
-  });
-
-  it('does not reward landing inside another obstacle on the same simulation step', () => {
-    const engine = ride();
-    takeoff(engine);
     engine.move(-1);
-    for (const obstacle of engine.obstacles) obstacle.active = false;
-    engine.x = 0;
+    steps(engine, 90);
+    expect(engine.phase).toBe('playing');
+    expect(engine.jumps).toBe(1);
+    expect(engine.lane).toBe(0);
+  });
+  it('pauses on the deck and requires a valid side swipe before the cab', () => {
+    const engine = ride();
+    engine.lane = -1;
+    engine.x = -LANE;
+    const tow = board(engine, 6);
+    engine.move(-1);
+    expect(engine.launchSerial).toBe(0);
+    engine.pause();
+    const snapshot = [engine.height, tow.z, engine.elapsed];
+    steps(engine, 120);
+    expect([engine.height, tow.z, engine.elapsed]).toEqual(snapshot);
+    engine.resume();
+    steps(engine, 150);
+    expect(engine.phase).toBe('crashed');
+    expect(engine.jumps).toBe(0);
+    expect(engine.launchSerial).toBe(0);
+  });
+  it('keeps the cab, ordinary cars and blocked landing lanes solid', () => {
+    for (const kind of ['towtruck', 'car'] as const) {
+      const engine = ride();
+      engine.spawn(kind, 0, kind === 'towtruck' ? -2 : 6);
+      steps(engine, 25);
+      expect(engine.phase).toBe('crashed');
+      expect(engine.jumps).toBe(0);
+    }
+    const engine = ride();
+    board(engine);
+    engine.move(1);
+    steps(engine, 12);
     engine.height = 0.01;
     engine.velocityY = -3;
-    engine.spawn('construction', 0, 0);
+    engine.spawn('construction', 1, 0);
     steps(engine, 1);
     expect(engine.phase).toBe('crashed');
     expect(engine.jumps).toBe(0);
   });
-
-  it('replays a moving side transfer identically at 30, 60, and 120 Hz', () => {
+  it('replays boarding and a later swipe identically at 30, 60 and 120 Hz', () => {
     const results = [30, 60, 120].map((fps) => {
       const engine = ride();
-      engine.spawn('towtruck', 1, 5.4, 0, 6);
-      engine.move(1);
-      for (let frame = 0; frame < fps * 2; frame++) {
-        if (frame === fps / 5) engine.move(-1);
+      engine.spawn('towtruck', 0, 14, 0, 6);
+      for (let frame = 0; frame < fps * 3; frame++) {
+        if (frame === fps) engine.move(1);
         engine.advance(1 / fps);
       }
       return [
-        engine.distance,
-        engine.x,
-        engine.score,
-        engine.height,
-        engine.jumps,
         engine.phase,
-        engine.launchSerial,
-        engine.obstacles,
+        engine.height,
+        engine.x,
+        engine.jumps,
+        engine.score,
+        engine.distance,
       ];
     });
     expect(results[0]).toEqual(results[1]);
     expect(results[1]).toEqual(results[2]);
   });
 });
-
 describe('stunt scoring and recoverable tail contact', () => {
   for (const bike of BIKES) {
     it(`${bike.name}: technique earns far more than straight-line distance`, () => {

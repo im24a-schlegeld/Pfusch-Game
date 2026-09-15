@@ -483,9 +483,9 @@ export default function GameApp() {
             tapping does not lift. Two-finger tap pauses. Keyboard: A / D or
             arrows dodge, S / ↓ raises, W / ↑ corrects. Holding rear weight can
             flip the bike. Wheelies and stunts earn most points. Enter a tow
-            truck&apos;s rear ramp from the side to jump and automatically land
-            back beside it. Collect P F U S C H for a set bonus. Dodge traffic
-            and construction barriers.
+            truck&apos;s rear ramp to ride onto the deck, then swipe sideways to
+            jump into the adjacent lane. Collect P F U S C H for a set bonus.
+            Dodge traffic and construction barriers.
           </p>
           <button
             className="button primary"

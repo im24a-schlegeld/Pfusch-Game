@@ -618,8 +618,8 @@ export function makeDetailedTraffic(
       box('amber-beacon', [0.59, 0.08, 0.14], [0, 2.99, -1.68], amber);
       box(
         'winch',
-        [0.51, 0.24, 0.29],
-        [0, ramp.frontHeight + 0.135, -0.91],
+        [0.36, 0.24, 0.29],
+        [1.02, ramp.frontHeight + 0.135, -0.91],
         trim,
       );
       for (const side of [-1, 1])
