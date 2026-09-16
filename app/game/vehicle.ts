@@ -2279,8 +2279,151 @@ function makeRider(
   const pelvis = new THREE.Group();
   rider.add(pelvis);
   const rest = riderMotionPose(pose, { wheelie: 0, steer: 0, landing: 0 });
+
+  type TorsoSkinPose = {
+    hip: Point;
+    lean: number;
+    roll: number;
+  };
+  type ArmSkinPose = {
+    start: Point;
+    joint: Point;
+    end: Point;
+  };
+
+  const skinGarmentArm = (
+    meshes: THREE.Mesh[],
+    restArm: ArmSkinPose,
+    restTorso: TorsoSkinPose,
+  ) => {
+    const torsoBone = new THREE.Bone();
+    const upperBone = new THREE.Bone();
+    const lowerBone = new THREE.Bone();
+    rider.add(torsoBone);
+    rider.add(upperBone);
+    rider.add(lowerBone);
+
+    const skeleton = new THREE.Skeleton([
+      torsoBone,
+      upperBone,
+      lowerBone,
+    ]);
+    const up = new THREE.Vector3(0, 1, 0);
+    const direction = new THREE.Vector3();
+
+    const update = (arm: ArmSkinPose, torsoPose: TorsoSkinPose) => {
+      torsoBone.position.set(...torsoPose.hip);
+      torsoBone.quaternion.setFromEuler(
+        new THREE.Euler(-torsoPose.lean, 0, torsoPose.roll),
+      );
+
+      const a = V(arm.start);
+      const b = V(arm.joint);
+      const c = V(arm.end);
+
+      upperBone.position.copy(a);
+      upperBone.quaternion.setFromUnitVectors(
+        up,
+        direction.subVectors(b, a).normalize(),
+      );
+
+      lowerBone.position.copy(b);
+      lowerBone.quaternion.setFromUnitVectors(
+        up,
+        direction.subVectors(c, b).normalize(),
+      );
+    };
+
+    update(restArm, restTorso);
+
+    const a = V(restArm.start);
+    const b = V(restArm.joint);
+    const c = V(restArm.end);
+    const upperDirection = b.clone().sub(a).normalize();
+    const segmentA = new THREE.Line3(a.clone(), b.clone());
+    const segmentB = new THREE.Line3(b.clone(), c.clone());
+    const lengthA = a.distanceTo(b);
+    const lengthB = b.distanceTo(c);
+    const sample = new THREE.Vector3();
+    const closestA = new THREE.Vector3();
+    const closestB = new THREE.Vector3();
+
+    for (const original of meshes) {
+      const geometry = original.geometry;
+      const positions = geometry.getAttribute('position');
+      const indices = new Uint16Array(positions.count * 4);
+      const weights = new Float32Array(positions.count * 4);
+
+      for (let i = 0; i < positions.count; i++) {
+        sample.fromBufferAttribute(positions, i);
+
+        // Signed distance along the upper arm. Hidden root vertices are
+        // negative/near zero and therefore stay attached to the torso.
+        const signedFromShoulder = sample
+          .clone()
+          .sub(a)
+          .dot(upperDirection);
+        const torsoWeight =
+          1 -
+          THREE.MathUtils.smoothstep(
+            signedFromShoulder,
+            -0.045,
+            0.135,
+          );
+
+        const tA = segmentA.closestPointToPointParameter(sample, true);
+        const tB = segmentB.closestPointToPointParameter(sample, true);
+        segmentA.at(tA, closestA);
+        segmentB.at(tB, closestB);
+        const along =
+          sample.distanceToSquared(closestA) <
+          sample.distanceToSquared(closestB)
+            ? tA * lengthA
+            : lengthA + tB * lengthB;
+        const lowerBlend = THREE.MathUtils.smoothstep(
+          along,
+          lengthA - 0.055,
+          lengthA + 0.055,
+        );
+        const armWeight = 1 - torsoWeight;
+
+        indices[i * 4] = 0;
+        indices[i * 4 + 1] = 1;
+        indices[i * 4 + 2] = 2;
+        weights[i * 4] = torsoWeight;
+        weights[i * 4 + 1] = armWeight * (1 - lowerBlend);
+        weights[i * 4 + 2] = armWeight * lowerBlend;
+      }
+
+      geometry.setAttribute(
+        'skinIndex',
+        new THREE.Uint16BufferAttribute(indices, 4),
+      );
+      geometry.setAttribute(
+        'skinWeight',
+        new THREE.Float32BufferAttribute(weights, 4),
+      );
+
+      const skinned = new THREE.SkinnedMesh(
+        geometry,
+        original.material,
+      );
+      skinned.name = original.name;
+      skinned.castShadow = true;
+      skinned.receiveShadow = true;
+      skinned.frustumCulled = false;
+
+      rider.remove(original);
+      rider.add(skinned);
+      rider.updateWorldMatrix(true, true);
+      skinned.bind(skeleton);
+    }
+
+    return update;
+  };
+
   const limbs: {
-    arm: ReturnType<typeof skinLimb>;
+    arm: ReturnType<typeof skinGarmentArm>;
     leg: ReturnType<typeof skinLimb>;
   }[] = [];
   const upper = products.find((p) => p.id === player.equipped.upper);
@@ -2309,14 +2452,15 @@ function makeRider(
       [hem, 0.205 * volume, 0.126 * volume, 0.006],
       [0.02, 0.204 * volume, 0.127 * volume, 0.003],
       [0.18, 0.211 * volume, 0.126 * volume, 0],
-      [0.37, 0.223 * volume, 0.133 * volume, 0],
-      [0.46, 0.232 * volume, 0.128 * volume, 0],
-      [0.515, 0.238 * volume, 0.118 * volume, 0],
-      [0.55, 0.234 * volume, 0.105 * volume, 0],
-      [0.575, 0.218 * volume, 0.092 * volume, 0],
-      [0.595, 0.178 * volume, 0.081 * volume, 0],
-      [0.615, 0.112, 0.067, 0],
-      [0.635, 0.074, 0.057, 0],
+      [0.37, 0.224 * volume, 0.133 * volume, 0],
+      [0.455, 0.234 * volume, 0.128 * volume, 0],
+      [0.495, 0.239 * volume, 0.119 * volume, 0],
+      [0.52, 0.239 * volume, 0.111 * volume, 0],
+      [0.545, 0.232 * volume, 0.101 * volume, 0],
+      [0.568, 0.21 * volume, 0.09 * volume, 0],
+      [0.588, 0.169 * volume, 0.079 * volume, 0],
+      [0.607, 0.108, 0.066, 0],
+      [0.631, 0.074, 0.057, 0],
     ],
     garmentMaterial(upper, player, color),
   );
@@ -2420,7 +2564,15 @@ function makeRider(
     const rootRadius = (outerwear ? 0.083 : 0.075) * volume;
     const blendRadius = (outerwear ? 0.086 : 0.078) * volume;
     const armholeRadius = (outerwear ? 0.09 : 0.082) * volume;
-    const shoulderRadius = (outerwear ? 0.098 : 0.09) * volume;
+
+    // Sichtbare Stoff-Schulter tiefer als das anatomische Gelenk:
+    // keine nach oben stehende Spitze, Skelett bleibt unverändert.
+    const garmentShoulder: Point = [
+      shoulder[0] + side * (outerwear ? 0.016 : 0.014),
+      shoulder[1] - (outerwear ? 0.048 : 0.042),
+      shoulder[2] + 0.003,
+    ];
+    const shoulderRadius = (outerwear ? 0.09 : 0.083) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
@@ -2486,6 +2638,52 @@ function makeRider(
       sleeve.geometry.computeBoundingSphere();
     };
 
+    const flattenShoulderTop = (
+      sleeve: THREE.Mesh,
+      rings: number,
+      sides: number,
+    ) => {
+      const positions = sleeve.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const center = new THREE.Vector3();
+      const point = new THREE.Vector3();
+
+      for (let ring = 0; ring <= rings; ring++) {
+        const t = ring / rings;
+        if (t > 0.46) break;
+
+        center.set(0, 0, 0);
+        for (let j = 0; j <= sides; j++)
+          center.add(
+            point.fromBufferAttribute(
+              positions,
+              ring * (sides + 1) + j,
+            ),
+          );
+        center.divideScalar(sides + 1);
+
+        const shoulderBand =
+          Math.exp(-(((t - 0.27) / 0.17) ** 2)) *
+          THREE.MathUtils.smoothstep(t, 0.03, 0.1) *
+          (1 - THREE.MathUtils.smoothstep(t, 0.39, 0.46));
+
+        for (let j = 0; j <= sides; j++) {
+          const index = ring * (sides + 1) + j;
+          point.fromBufferAttribute(positions, index);
+          const dy = point.y - center.y;
+          if (dy > 0) {
+            point.y = center.y + dy * (1 - shoulderBand * 0.45);
+            positions.setY(index, point.y);
+          }
+        }
+      }
+
+      positions.needsUpdate = true;
+      sleeve.geometry.computeVertexNormals();
+      sleeve.geometry.computeBoundingSphere();
+    };
+
     if (tee) {
       const sleeveEnd = V(shoulder).lerp(V(elbow), 0.86).toArray() as Point,
         skinStart = V(shoulder).lerp(V(elbow), 0.73).toArray() as Point;
@@ -2496,8 +2694,8 @@ function makeRider(
             sleeveRoot,
             sleeveBlend,
             sleeveArmhole,
-            shoulder,
-            V(shoulder).lerp(V(elbow), 0.26).toArray() as Point,
+            garmentShoulder,
+            V(garmentShoulder).lerp(V(elbow), 0.26).toArray() as Point,
             sleeveEnd,
           ],
           [
@@ -2539,9 +2737,9 @@ function makeRider(
             sleeveRoot,
             sleeveBlend,
             sleeveArmhole,
-            shoulder,
-            V(shoulder).lerp(V(elbow), 0.38).toArray() as Point,
-            V(shoulder).lerp(V(elbow), 0.72).toArray() as Point,
+            garmentShoulder,
+            V(garmentShoulder).lerp(V(elbow), 0.38).toArray() as Point,
+            V(garmentShoulder).lerp(V(elbow), 0.72).toArray() as Point,
             elbow,
             V(elbow).lerp(V(wrist), 0.4).toArray() as Point,
             wrist,
@@ -2578,6 +2776,11 @@ function makeRider(
       tee ? 24 : 20,
       side as -1 | 1,
       tee ? 0.028 : 0.022,
+    );
+    flattenShoulderTop(
+      armMeshes[0],
+      tee ? 24 : 36,
+      tee ? 24 : 20,
     );
     if (upper) {
       const seams = sleeveSeams(
@@ -2656,7 +2859,15 @@ function makeRider(
     leg.geometry.computeVertexNormals();
     const index = side === -1 ? 0 : 1;
     limbs.push({
-      arm: skinLimb(rider, armMeshes, rest.limbs[index].arm),
+      arm: skinGarmentArm(
+        armMeshes,
+        rest.limbs[index].arm,
+        {
+          hip: rest.hip,
+          lean: rest.lean,
+          roll: rest.roll,
+        },
+      ),
       leg: skinLimb(rider, [leg], rest.limbs[index].leg),
     });
     const foot = loft(
@@ -2883,7 +3094,11 @@ function makeRider(
       motion.steer * 0.055,
     );
     current.limbs.forEach((limb, i) => {
-      limbs[i].arm(limb.arm);
+      limbs[i].arm(limb.arm, {
+        hip: current.hip,
+        lean: current.lean,
+        roll: current.roll,
+      });
       limbs[i].leg(limb.leg);
     });
   };
