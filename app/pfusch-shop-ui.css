@@ -1,675 +1,344 @@
-/* PFUSCH SHOP UI PATCH
-   Visual-only layer: black/white storefront language, compact viewport layout,
-   rectangular controls, minimal copy, no changes to game mechanics. */
-
+/* PFUSCH UI V2 — visual layer only. Game engine and gameplay untouched. */
 :root,
 .dark {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --primary: #0a0a0a;
-  --muted: #f3f3f3;
-  --muted-foreground: #666666;
-  --popover: #ffffff;
-  --input: #dedede;
-  --border: #d4d4d4;
+  --background: #323232;
+  --foreground: #f4f4f2;
+  --primary: #f4f4f2;
+  --primary-foreground: #323232;
+  --muted: #323232;
+  --muted-foreground: #a4a4a0;
+  --popover: #323232;
+  --input: #4a4a4a;
+  --border: #505050;
   --radius: 0rem;
-  color-scheme: light;
+  color-scheme: dark;
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  background: #ffffff;
-}
-
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; min-height: 100%; margin: 0; }
 body {
   overflow: hidden;
-  background: #ffffff;
-  color: #0a0a0a;
-  font-family: Arial, Helvetica, sans-serif;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3,
-.wordmark,
-.result-score,
-.score-display strong,
-.personal-best strong {
-  font-family: Arial, Helvetica, sans-serif;
-  font-weight: 800;
-  font-style: normal;
-  letter-spacing: -0.035em;
+h1, h2, h3, .wordmark, .result-score, .score-display strong, .personal-best strong {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em !important;
 }
 
-.eyebrow {
-  color: #666666;
-  font-family: Arial, Helvetica, sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.muted {
-  color: #666666;
-}
-
-.signal-dot,
-.top-status i,
-.preview-indicator i {
-  background: #0a0a0a;
-  border-radius: 0;
-}
-
-.button,
-.icon-button,
-.level-chip,
-.tag,
-.product-card,
-.challenge-card,
-.reward-card,
-.bike-card,
-.settings-list > div,
-.ranking-list > div,
-.personal-best,
-.daily-teaser {
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-.button {
-  min-height: 44px;
-  border: 1px solid #111111;
-  background: #ffffff;
-  color: #111111;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.button:hover:not(:disabled) {
-  background: #f1f1f1;
-}
-
-.button.primary {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
-}
-
-.button.primary:hover:not(:disabled) {
-  background: #2a2a2a;
-}
-
-.button.equipped {
-  border-color: #111111;
-  background: #eeeeee;
-  color: #111111;
-}
-
-.icon-button {
-  border: 1px solid transparent;
-  background: transparent;
-  color: #111111;
-}
-
-.icon-button:hover {
-  border-color: #111111;
-  background: #f3f3f3;
-}
-
-.coin svg {
-  color: #111111;
-}
-
-.tag {
-  border-color: #111111;
-  background: #ffffff;
-  color: #111111;
-}
+h1 { font-size: clamp(32px, 4vw, 54px) !important; line-height: 1 !important; }
+h2 { font-size: clamp(24px, 2.4vw, 34px) !important; }
+h3 { font-size: 20px !important; }
+.eyebrow { color: #9a9a96 !important; font-family: Arial, Helvetica, sans-serif !important; font-size: 10px !important; letter-spacing: .1em !important; }
+.muted { color: #a4a4a0 !important; }
 
 .app-shell {
-  height: 100dvh;
-  min-height: 100dvh;
-  overflow: hidden;
-  padding-bottom: 0;
-  display: grid;
-  grid-template-rows: 64px minmax(0, 1fr) 58px;
-  background: #ffffff;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-rows: 56px minmax(0, 1fr) 48px !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
 }
 
 .topbar {
-  position: static;
-  z-index: 20;
-  height: 64px;
-  padding: 0 clamp(18px, 3vw, 40px);
-  border-bottom: 1px solid #111111;
-  background: #ffffff;
-  color: #111111;
+  position: relative !important;
+  z-index: 100 !important;
+  isolation: isolate;
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 0 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-bottom: 1px solid #4a4a4a !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
 }
-
-.brand {
-  gap: 14px;
-  color: #111111;
+.brand { position: relative !important; width: 112px !important; height: 36px !important; min-width: 112px !important; flex: 0 0 112px !important; overflow: hidden !important; gap: 0 !important; background: transparent !important; border: 0 !important; color: inherit !important; }
+.brand-logo { position: absolute !important; width: 230px !important; height: 141px !important; max-width: none !important; left: -92px !important; top: -44px !important; display: block !important; object-fit: fill !important; filter: grayscale(1) brightness(1.25); }
+.brand-sub, .top-status { display: none !important; }
+.top-right { margin-left: auto !important; display: flex !important; align-items: center !important; gap: 2px !important; min-width: 0 !important; }
+.top-right .coin { padding: 0 10px !important; color: #d8d8d4 !important; font-size: 12px !important; }
+.top-right .coin svg { color: #d8d8d4 !important; }
+.level-chip, .icon-button {
+  flex: 0 0 auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #d8d8d4 !important;
+  box-shadow: none !important;
 }
-
-.brand-logo {
-  width: 118px;
-  height: 48px;
-  object-fit: contain;
-  object-position: left center;
-  display: block;
-}
-
-.brand-sub {
-  border-left: 1px solid #111111;
-  padding-left: 14px;
-  color: #111111;
-  font-size: 9px;
-  letter-spacing: 0.13em;
-}
-
-.top-status {
-  color: #666666;
-}
-
-.top-right {
-  gap: 8px;
-}
-
-.level-chip {
-  border: 1px solid #111111;
-  background: #ffffff;
-  color: #111111;
-}
+.level-chip { min-height: 34px !important; padding: 0 9px !important; font-size: 10px !important; letter-spacing: .07em !important; }
+.icon-button { width: 36px !important; height: 36px !important; }
+.level-chip:hover, .icon-button:hover { background: #3b3b3b !important; color: #fff !important; }
 
 .bottom-nav {
-  position: static;
-  z-index: 20;
-  height: 58px;
-  grid-row: 3;
-  gap: clamp(16px, 5vw, 72px);
-  padding: 0 16px env(safe-area-inset-bottom);
-  border-top: 1px solid #111111;
-  background: #ffffff;
-  backdrop-filter: none;
+  position: relative !important;
+  z-index: 100 !important;
+  grid-row: 3 !important;
+  height: 48px !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-top: 1px solid #4a4a4a !important;
+  background: #323232 !important;
+  backdrop-filter: none !important;
 }
-
 .bottom-nav button {
-  color: #555555;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  min-width: 0 !important;
+  height: 48px !important;
+  padding: 0 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #8f8f8b !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  letter-spacing: .08em !important;
+  white-space: nowrap !important;
 }
-
-.bottom-nav button.active,
-.bottom-nav button:hover {
-  color: #111111;
-}
-
-.bottom-nav button.active::before {
-  height: 2px;
-  background: #111111;
-}
-
-.save-warning {
-  position: fixed;
-  top: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-}
+.bottom-nav button svg { display: none !important; }
+.bottom-nav button.active, .bottom-nav button:hover { color: #f4f4f2 !important; }
+.bottom-nav button.active::before { top: auto !important; bottom: 0 !important; height: 1px !important; background: #f4f4f2 !important; }
 
 .main-menu {
-  grid-row: 2;
-  min-height: 0;
-  height: auto;
-  max-height: none;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.35fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 18px 36px;
-  padding: clamp(20px, 3vw, 42px) clamp(22px, 4vw, 56px) 22px;
-  background: #ffffff;
+  position: relative !important;
+  z-index: 0 !important;
+  grid-row: 2 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background: #323232 !important;
 }
+.menu-title {
+  position: relative !important;
+  z-index: 2 !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 36px 28px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+  pointer-events: auto !important;
+  border-right: 1px solid #4a4a4a !important;
+}
+.menu-title > .eyebrow, .hero-logo, .input-caption, .bike-caption, .menu-bottom { display: none !important; }
+.intro { max-width: 260px !important; color: #d6d6d2 !important; font-size: 18px !important; line-height: 1.35 !important; }
+.play-button {
+  width: 100% !important;
+  max-width: 260px !important;
+  min-height: 48px !important;
+  margin-top: 28px !important;
+  padding: 0 16px !important;
+  justify-content: space-between !important;
+  border: 1px solid #f4f4f2 !important;
+  background: #f4f4f2 !important;
+  color: #323232 !important;
+  font-size: 12px !important;
+  font-style: normal !important;
+  letter-spacing: .08em !important;
+}
+.play-button:hover { background: #fff !important; }
+.garage-link {
+  margin-top: 9px !important;
+  padding: 10px 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #c3c3bf !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: .08em !important;
+  text-decoration: underline !important;
+  text-underline-offset: 4px !important;
+}
+.garage-link svg { display: none !important; }
 
 .menu-stage {
-  position: relative;
-  inset: auto;
-  grid-column: 2;
-  grid-row: 1 / 3;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  border: 1px solid #111111;
-  background: #f4f4f4;
+  position: relative !important;
+  z-index: 0 !important;
+  inset: auto !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  contain: layout paint !important;
+  border: 0 !important;
+  background: #323232 !important;
 }
+.menu-stage::after { display: none !important; }
+.menu-stage > .scene, .menu-stage .scene { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; }
+.menu-stage canvas { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; display: block !important; }
 
-.menu-stage::after {
-  display: none;
-}
-
-.menu-title {
-  position: relative;
-  z-index: 3;
-  grid-column: 1;
-  grid-row: 1;
-  width: auto;
-  padding: 0;
-  align-self: center;
-  color: #111111;
-}
-
-.hero-logo {
-  display: block;
-  width: min(430px, 82%);
-  max-height: 250px;
-  object-fit: contain;
-  object-position: left center;
-  margin: 8px 0 18px;
-}
-
-.intro {
-  max-width: 370px;
-  color: #222222;
-  font-size: clamp(15px, 1.25vw, 18px);
-  line-height: 1.42;
-}
-
-.play-button {
-  width: min(330px, 100%);
-  min-height: 56px;
-  margin-top: 24px;
-  padding: 13px 18px;
-  font-size: 15px;
-  font-style: normal;
-}
-
-.garage-link {
-  gap: 10px;
-  padding: 13px 0 8px;
-  color: #111111;
-}
-
-.garage-link svg:last-child {
-  margin-left: 26px;
-}
-
-.input-caption {
-  margin-top: 5px;
-  color: #777777;
-}
-
-.bike-caption {
-  right: 18px;
-  bottom: 18px;
-  max-width: 210px;
-  padding: 10px 12px;
-  border: 1px solid #111111;
-  background: rgba(255, 255, 255, 0.94);
-  color: #111111;
-}
-
-.bike-caption strong {
-  color: #111111;
-  font-family: Arial, Helvetica, sans-serif;
-  font-style: normal;
-  letter-spacing: -0.02em;
-}
-
-.bike-caption > span:last-child {
-  color: #666666;
-}
-
-.menu-bottom {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  z-index: 3;
-  grid-column: 1;
-  grid-row: 2;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.personal-best,
-.daily-teaser {
-  width: 100%;
-  min-width: 0;
-  padding: 11px 13px;
-  border: 1px solid #111111;
-  background: #ffffff;
-  color: #111111;
-}
-
-.personal-best {
-  gap: 12px;
-}
-
-.personal-best > svg {
-  color: #111111;
-}
-
-.personal-best strong {
-  font-size: 23px;
-}
-
-.best-divider {
-  margin: 0 5px;
-  background: #cccccc;
-}
-
-.daily-teaser {
-  gap: 12px;
-}
-
-.daily-teaser .eyebrow,
-.personal-best .eyebrow {
-  color: #666666;
-}
-
-.standard-page,
-.garage-page,
-.results-page {
-  grid-row: 2;
-  min-height: 0;
-  height: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
-  background: #ffffff;
-  color: #111111;
-  scrollbar-gutter: stable;
-}
-
-.standard-page,
-.garage-page {
-  max-width: 1440px;
-  width: 100%;
-  padding: 24px clamp(18px, 3.4vw, 48px) 30px;
-}
-
-.standard-page.narrow {
-  max-width: 1040px;
-}
-
-.screen-heading {
-  margin-bottom: 20px;
-}
-
-.screen-heading .icon-button {
-  border-color: #111111;
-}
-
-.page-intro {
-  margin-bottom: 20px;
-  color: #555555;
-}
-
-.section-intro {
-  margin: 18px 0 14px;
-}
-
-.section-intro p {
-  color: #666666;
-}
-
-.challenge-card,
-.reward-card,
-.product-card,
-.bike-card,
-.settings-list > div,
-.ranking-list > div,
-.equipped-slots > div,
-.garage-product-panel,
-.result-card {
-  border-color: #d4d4d4 !important;
-  background: #ffffff !important;
-  color: #111111 !important;
-}
-
-.challenge-card.complete {
-  border-color: #111111 !important;
-}
-
-.challenge-card p,
-.reward-card p,
-.product-body p,
-.bike-info p,
-.catalog-note,
-.settings-section p,
-.preview-source-note,
-.detail-description {
-  color: #666666 !important;
-}
-
-.category-filter button,
-.garage-tabs button,
-.ranking-tabs button,
-.product-view-controls button,
-.garage-angles button,
-.reset-preview,
-.equipped-slots button {
-  color: #555555 !important;
-}
-
-.category-filter button.active,
-.category-filter button[aria-pressed='true'],
-.product-view-controls button[aria-pressed='true'],
-.garage-tabs button[data-state='active'],
-.ranking-tabs button[data-state='active'] {
-  color: #111111 !important;
-  border-color: #111111 !important;
-}
-
-.product-link {
-  color: #111111 !important;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-[data-slot='progress-track'] {
-  background: #dddddd !important;
-}
-
-[data-slot='progress-indicator'] {
-  background: #111111 !important;
-}
-
-input,
-select,
-.variant-select {
+.button {
+  min-height: 42px !important;
+  padding: 10px 14px !important;
+  border: 1px solid #575757 !important;
   border-radius: 0 !important;
-  border-color: #111111 !important;
-  background: #ffffff !important;
-  color: #111111 !important;
+  background: transparent !important;
+  color: #eeeeeb !important;
+  box-shadow: none !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: .07em !important;
 }
+.button:hover:not(:disabled) { background: #3b3b3b !important; border-color: #707070 !important; }
+.button.primary { border-color: #f0f0ed !important; background: #f0f0ed !important; color: #323232 !important; }
+.button.primary:hover:not(:disabled) { background: #fff !important; }
+.button.equipped { background: transparent !important; color: #fff !important; border-color: #777 !important; }
+.button:disabled { opacity: .38 !important; }
 
-.game-dialog {
+.standard-page, .garage-page, .results-page {
+  grid-row: 2 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+}
+.standard-page, .garage-page { width: min(100%, 1400px) !important; max-width: 1400px !important; margin: 0 auto !important; padding: 24px clamp(18px, 3vw, 44px) 34px !important; }
+.standard-page.narrow { max-width: 980px !important; }
+.screen-heading { margin-bottom: 18px !important; }
+.screen-heading .icon-button { border: 0 !important; background: transparent !important; color: #d4d4d0 !important; }
+.page-intro { margin-bottom: 16px !important; color: #a4a4a0 !important; }
+.section-intro { margin: 18px 0 12px !important; }
+.section-intro p { color: #a4a4a0 !important; }
+.tag { border: 1px solid #555 !important; border-radius: 0 !important; background: transparent !important; color: #bbb !important; }
+
+.challenge-grid, .reward-grid, .product-grid { gap: 0 !important; }
+.challenge-card, .reward-card, .product-card, .bike-card, .settings-list > div, .ranking-list > div, .equipped-slots > div, .garage-product-panel, .result-card {
   border-radius: 0 !important;
-  border: 1px solid #111111 !important;
-  background: #ffffff !important;
-  color: #111111 !important;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18) !important;
+  box-shadow: none !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+  border-color: #4b4b4b !important;
 }
+.challenge-card, .reward-card, .product-card, .bike-card { border-width: 1px 0 0 !important; }
+.challenge-card:last-child, .reward-card:last-child, .product-card:last-child, .bike-card:last-child { border-bottom: 1px solid #4b4b4b !important; }
+.challenge-card.complete { border-color: #6a6a6a !important; }
+.challenge-card p, .reward-card p, .product-body p, .bike-info p, .catalog-note, .settings-section p, .preview-source-note, .detail-description { color: #a4a4a0 !important; }
+.product-image { background: #323232 !important; border-color: #4b4b4b !important; }
+.ownership { background: #323232 !important; color: #d0d0cc !important; border-color: #555 !important; }
 
-.toast {
+.garage-layout, .garage-preview, .garage-controls, .garage-product-panel, .product-detail, .reward-art, .authoritative-image, .settings-section, .ranking-list, .ranking-head, .lifetime-stats, .level-list, .completed-challenges, .earned {
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+}
+.garage-preview, .garage-controls { border-color: #4b4b4b !important; }
+.scene-loading, .graphics-error { background: #323232 !important; color: #aaa !important; }
+
+.category-filter, .garage-tabs, .ranking-tabs, .product-view-controls, .garage-angles { background: transparent !important; border-color: #4b4b4b !important; }
+.category-filter button, .garage-tabs button, .ranking-tabs button, .product-view-controls button, .garage-angles button, .reset-preview, .equipped-slots button {
+  border: 0 !important;
+  background: transparent !important;
+  color: #8f8f8b !important;
+  box-shadow: none !important;
+}
+.category-filter button.active, .category-filter button[aria-pressed='true'], .product-view-controls button[aria-pressed='true'], .garage-tabs button[data-state='active'], .ranking-tabs button[data-state='active'] {
+  color: #f4f4f2 !important;
+  border-bottom: 1px solid #f4f4f2 !important;
+}
+.product-link { color: #d8d8d4 !important; text-decoration: underline !important; text-underline-offset: 4px !important; }
+
+.swatches button { background: #323232 !important; color: #d6d6d2 !important; border-color: #505050 !important; border-radius: 0 !important; box-shadow: none !important; }
+.swatches button.selected, .swatches button[aria-pressed='true'] { border-color: #c8c8c4 !important; }
+
+[data-slot='progress-track'] { background: #505050 !important; }
+[data-slot='progress-indicator'] { background: #e7e7e3 !important; }
+input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select-content'], [data-slot='popover-content'] {
   border-radius: 0 !important;
-  border: 1px solid #111111 !important;
-  background: #111111 !important;
-  color: #ffffff !important;
+  border-color: #555 !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+  box-shadow: none !important;
 }
 
-.results-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+.game-dialog, [data-slot='dialog-content'] {
+  border-radius: 0 !important;
+  border: 1px solid #5a5a5a !important;
+  background: #323232 !important;
+  color: #f4f4f2 !important;
+  box-shadow: 0 18px 70px rgba(0,0,0,.35) !important;
+}
+.toast { border-radius: 0 !important; border: 1px solid #606060 !important; background: #323232 !important; color: #f4f4f2 !important; }
+
+.results-page { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr) !important; }
+.results-art, .result-card { background: #323232 !important; }
+.result-card { border-left: 1px solid #4b4b4b !important; }
+.result-score, .result-card h1 { color: #f4f4f2 !important; }
+.earned, .level-up { border-color: #555 !important; background: #323232 !important; color: #f4f4f2 !important; }
+
+/* Gameplay remains visually game-first. Only overlay chrome is neutralized. */
+.ride-screen .eyebrow, .ride-screen .score-display, .ride-screen .ride-metrics, .ride-screen .combo-display, .ride-screen .ride-balance, .ride-screen .ride-tip { color: #f4f4f2 !important; }
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-rows: 52px minmax(0, 1fr) 46px !important; }
+  .topbar { height: 52px !important; min-height: 52px !important; padding: 0 14px !important; }
+  .brand { width: 104px !important; min-width: 104px !important; flex-basis: 104px !important; }
+  .brand-logo { left: -96px !important; }
+  .top-right .coin { display: none !important; }
+  .bottom-nav, .bottom-nav button { height: 46px !important; }
+  .main-menu { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) !important; }
+  .menu-title { padding: 28px 22px !important; }
+  .intro { font-size: 16px !important; }
 }
 
-.result-card {
-  border-left: 1px solid #111111 !important;
+@media (max-width: 640px) {
+  .app-shell { grid-template-rows: 50px minmax(0, 1fr) 44px !important; }
+  .topbar { height: 50px !important; min-height: 50px !important; padding: 0 10px 0 12px !important; }
+  .brand { width: 96px !important; min-width: 96px !important; flex-basis: 96px !important; }
+  .brand-logo { left: -100px !important; }
+  .level-chip { display: none !important; }
+  .icon-button { width: 32px !important; height: 32px !important; }
+  .bottom-nav, .bottom-nav button { height: 44px !important; }
+  .bottom-nav button { padding: 0 3px !important; font-size: 7.5px !important; letter-spacing: .055em !important; }
+  .main-menu { grid-template-columns: 1fr !important; grid-template-rows: minmax(0, 58%) minmax(150px, 42%) !important; }
+  .menu-stage { grid-column: 1 !important; grid-row: 1 !important; border-bottom: 1px solid #4a4a4a !important; }
+  .menu-title { grid-column: 1 !important; grid-row: 2 !important; padding: 18px 16px !important; justify-content: center !important; border-right: 0 !important; }
+  .intro { max-width: none !important; font-size: 15px !important; }
+  .play-button { max-width: none !important; min-height: 44px !important; margin-top: 14px !important; }
+  .garage-link { margin-top: 4px !important; padding: 7px 0 !important; }
+  .standard-page, .garage-page { padding: 16px 14px 24px !important; }
+  .screen-heading { margin-bottom: 12px !important; }
+  .page-intro { margin-bottom: 12px !important; }
+  .results-page { grid-template-columns: 1fr !important; }
+  .results-art { display: none !important; }
+  .result-card { border-left: 0 !important; }
 }
 
-.result-score,
-.result-card h1 {
-  color: #111111;
-}
-
-.earned,
-.level-up {
-  border-color: #111111 !important;
-  background: #f2f2f2 !important;
-  color: #111111 !important;
-}
-
-@media (max-width: 1050px) {
-  .top-status {
-    display: none;
-  }
-
-  .main-menu {
-    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
-    gap: 14px 22px;
-    padding: 20px 24px 18px;
-  }
-
-  .hero-logo {
-    width: min(350px, 80%);
-  }
-
-  .menu-bottom {
-    gap: 6px;
-  }
-
-  .daily-teaser {
-    display: none;
-  }
-}
-
-@media (max-width: 760px) {
-  .app-shell {
-    grid-template-rows: 56px minmax(0, 1fr) 54px;
-  }
-
-  .topbar {
-    height: 56px;
-    padding: 0 12px;
-  }
-
-  .brand-logo {
-    width: 88px;
-    height: 44px;
-  }
-
-  .brand-sub,
-  .top-status {
-    display: none;
-  }
-
-  .top-right {
-    gap: 2px;
-  }
-
-  .top-right .coin {
-    font-size: 12px;
-  }
-
-  .level-chip {
-    min-height: 28px;
-    padding: 4px 6px;
-    font-size: 10px;
-  }
-
-  .icon-button {
-    width: 34px;
-    height: 34px;
-  }
-
-  .bottom-nav {
-    height: 54px;
-    justify-content: space-around;
-    gap: 0;
-    padding-left: 4px;
-    padding-right: 4px;
-  }
-
-  .bottom-nav button {
-    min-width: 54px;
-    justify-content: center;
-    gap: 4px;
-    font-size: 8px;
-  }
-
-  .main-menu {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(170px, 42%) minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
-    overflow: hidden;
-  }
-
-  .menu-stage {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .menu-title {
-    grid-column: 1;
-    grid-row: 2;
-    align-self: start;
-  }
-
-  .menu-title > .eyebrow,
-  .hero-logo,
-  .input-caption,
-  .bike-caption,
-  .menu-bottom {
-    display: none;
-  }
-
-  .intro {
-    font-size: 14px;
-    line-height: 1.35;
-  }
-
-  .play-button {
-    width: 100%;
-    min-height: 48px;
-    margin-top: 12px;
-    font-size: 13px;
-  }
-
-  .garage-link {
-    width: 100%;
-    min-height: 38px;
-    padding: 8px 0;
-  }
-
-  .standard-page,
-  .garage-page {
-    padding: 16px 14px 22px;
-  }
-
-  .screen-heading {
-    margin-bottom: 14px;
-  }
-
-  .page-intro {
-    margin-bottom: 14px;
-  }
-
-  .results-page {
-    grid-template-columns: 1fr;
-  }
-
-  .results-art {
-    display: none;
-  }
-
-  .result-card {
-    border-left: 0 !important;
-  }
+@media (max-width: 360px) {
+  .bottom-nav button { font-size: 7px !important; letter-spacing: .03em !important; }
+  .top-right .icon-button:first-of-type { display: none !important; }
 }
