@@ -23,7 +23,7 @@ import { BIKES, DAILY_CHALLENGES } from '../domain/config';
 import { refreshDaily } from '../domain/progression';
 import { createServices, type Services } from '../services';
 import { GameAudio } from '../game/audio';
-import { Coin, Preview, XpBar, fmt } from './shared';
+import { Coin, Preview, XpBar, fmt, gameText } from './shared';
 import Ride from './Ride';
 import Garage from './Garage';
 import {
@@ -78,7 +78,7 @@ export default function GameApp() {
         }
       })
       .catch((e) => {
-        if (alive) setError(e instanceof Error ? e.message : 'Startup failed');
+        if (alive) setError(e instanceof Error ? e.message : 'Start fehlgeschlagen');
       });
     return () => {
       alive = false;
@@ -229,7 +229,7 @@ export default function GameApp() {
         <div className="top-right">
           <Coin value={player.coins} />
           <button className="level-chip" onClick={() => navigate('progress')}>
-            LVL {String(player.level).padStart(2, '0')}
+            ST. {String(player.level).padStart(2, '0')}
           </button>
           <button
             className="icon-button"
@@ -256,7 +256,19 @@ export default function GameApp() {
       )}
       {screen === 'menu' && (
         <main className="main-menu">
-          <div className="menu-stage">
+          <div
+            className="menu-stage"
+            role="button"
+            tabIndex={0}
+            aria-label="Motorrad in der Garage öffnen"
+            onClick={() => navigate('garage')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate('garage');
+              }
+            }}
+          >
             <Preview player={player} products={products} mode="menu" />
           </div>
           <div className="menu-title">
@@ -278,7 +290,7 @@ export default function GameApp() {
             <strong>{equippedBike.name}</strong>
             <span>
               {equippedBike.name.toUpperCase()} /{' '}
-              {player.paint === '#e7e7df' ? 'STANDARD' : 'CUSTOM'}
+              {player.paint === '#e7e7df' ? 'STANDARD' : 'INDIVIDUELL'}
             </span>
           </div>
           <div className="menu-bottom">
@@ -333,8 +345,8 @@ export default function GameApp() {
           <section className="result-card">
             <p className="eyebrow">
               {result.reward.newRecord
-                ? 'A NEW BESTLEISTUNG'
-                : 'RIDE ERLEDIGT'}{' '}
+                ? 'NEUE BESTLEISTUNG'
+                : 'FAHRT BEENDET'}{' '}
               <Flag size={15} />
             </p>
             <h1>{result.reward.newRecord ? 'NEUE BESTLEISTUNG.' : 'NOCH EINE?'}</h1>
@@ -343,7 +355,7 @@ export default function GameApp() {
               <span>PUNKTE</span>
             </div>
             <p className="muted">
-              {result.run.cause} · {result.run.seconds} Sekunden unterwegs
+              {gameText(result.run.cause)} · {result.run.seconds} Sekunden unterwegs
             </p>
             <div className="result-stats">
               <div>
@@ -380,10 +392,10 @@ export default function GameApp() {
                 {result.reward.challengeIds.map((id) => (
                   <p key={id}>
                     ✓ {DAILY_CHALLENGES.find((c) => c.id === id)?.title} —
-                    complete
+                    erledigt
                   </p>
                 ))}
-                <small>Challenge-Belohnungen sind oben enthalten.</small>
+                <small>Aufgaben-Belohnungen sind oben enthalten.</small>
               </div>
             )}
             <p className="result-best">BESTLEISTUNG {fmt(player.highScore)}</p>
@@ -444,14 +456,14 @@ export default function GameApp() {
           onClick={() => navigate('rewards')}
         >
           <Gift size={18} />
-          <span>BELOHNUNGEN</span>
+          <span>PREISE</span>
         </button>
         <button
           className={screen === 'leaderboard' ? 'active' : ''}
           onClick={() => navigate('leaderboard')}
         >
           <Trophy size={18} />
-          <span>RANGLISTE</span>
+          <span>RANG</span>
         </button>
       </nav>
       <Dialog open={tutorial} onOpenChange={setTutorial}>
@@ -463,13 +475,13 @@ export default function GameApp() {
           </DialogDescription>
           <div className="control-guide">
             <span>
-              SWIPE ← → <b>Verkehr ausweichen</b>
+              WISCHEN ← → <b>Verkehr ausweichen</b>
             </span>
             <span>
-              SLIDE UP <b>Gewicht vor / korrigieren</b>
+              NACH OBEN WISCHEN <b>Gewicht vor / korrigieren</b>
             </span>
             <span>
-              SLIDE DOWN <b>Gas / Gewicht zurück</b>
+              NACH UNTEN WISCHEN <b>Gas / Gewicht zurück</b>
             </span>
           </div>
           <p className="muted">

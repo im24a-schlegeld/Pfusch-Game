@@ -6,11 +6,35 @@ import { levelProgress } from '../domain/progression';
 export const Scene = lazy(() => import('../game/SceneView'));
 export const fmt = (n: number) => Math.floor(n).toLocaleString('en-CH');
 export const money = (n: number) => `CHF ${n.toFixed(2)}`;
+export function gameText(text: string) {
+  const exact: Record<string, string> = {
+    'Ride ended': 'Fahrt beendet',
+    'Missed the side jump': 'Seitensprung verpasst',
+    'Overrotated the wheelie': 'Wheelie überdreht',
+    'Traffic collision': 'Kollision mit Verkehr',
+    'Construction barrier collision': 'Kollision mit Baustellenabsperrung',
+    'Caught the raised road edge': 'Fahrbahnkante getroffen',
+    'Caught the pothole edge': 'Schlaglochkante getroffen',
+    'Lost rear grip on wet asphalt': 'Hinterrad auf nassem Asphalt weggerutscht',
+    'Lost traction on loose gravel': 'Auf losem Kies Traktion verloren',
+    'RAMP TRANSFER': 'RAMPENWECHSEL',
+    'TAIL SCRAPE': 'HECKSCHLEIFER',
+    BALANCED: 'AUSBALANCIERT',
+    'NEAR MISS': 'KNAPP VORBEI',
+    'TOW TRUCK TRANSFER': 'ABSCHLEPPER-SPRUNG',
+    'PFUSCH SET COMPLETE': 'PFUSCH-SATZ KOMPLETT',
+    'CLEAN LIFT': 'SAUBER ANGEHOBEN',
+    'SMOOTH LINE': 'SAUBERE LINIE',
+    'CAUGHT THE SLIP': 'RUTSCHER ABGEFANGEN',
+  };
+  if (text.startsWith('SIGN · ')) return `ZEICHEN · ${text.slice(7)}`;
+  return exact[text] ?? text;
+}
 export function SceneLoading() {
   return (
     <div className="scene-loading">
       <span className="spinner" />
-      <span>LÄDT</span>
+      <span>WIRD GELADEN</span>
     </div>
   );
 }
@@ -34,14 +58,14 @@ export function XpBar({ player }: { player: Player }) {
   return (
     <div className="xp-block">
       <div>
-        <span>LEVEL {p.level.toString().padStart(2, '0')}</span>
+        <span>STUFE {p.level.toString().padStart(2, '0')}</span>
         <span>
           {p.level === 10
-            ? 'MAX LEVEL'
+            ? 'MAX. STUFE'
             : `${fmt(p.current)} / ${fmt(p.needed)} XP`}
         </span>
       </div>
-      <Progress value={p.percent} aria-label="Level progress" />
+      <Progress value={p.percent} aria-label="Stufenfortschritt" />
     </div>
   );
 }
@@ -59,7 +83,7 @@ export function ScreenHeading({
       <button
         className="icon-button"
         onClick={back}
-        aria-label="Back to main menu"
+        aria-label="Zurück zum Hauptmenü"
       >
         <ChevronLeft />
       </button>

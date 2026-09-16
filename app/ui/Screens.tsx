@@ -40,7 +40,7 @@ export function Challenges({
         <p>
           Kurze Aufgaben. Direkte Belohnungen. Fortschritt zählt über alle Fahrten.
         </p>
-        <span className="tag">RESET 00:00 UTC</span>
+        <span className="tag">NEU AB 00:00 UTC</span>
       </div>
       <div className="challenge-grid">
         {DAILY_CHALLENGES.map((c, i) => {
@@ -63,7 +63,7 @@ export function Challenges({
               </div>
               <Progress
                 value={(value / c.target) * 100}
-                aria-label={`${c.title} progress`}
+                aria-label={`${c.title} Fortschritt`}
               />
               <div className="challenge-reward">
                 <span>+{c.xp} XP</span>
@@ -199,7 +199,7 @@ export function Rewards({
                   <Gift size={52} strokeWidth={1} />
                 )}
                 <span className="tag">
-                  {future ? 'SHOP VORSCHAU' : 'DIGITALE BELOHNUNG'}
+                  {future ? 'VORSCHAU' : 'DIGITALE BELOHNUNG'}
                 </span>
               </div>
               <div>
@@ -212,7 +212,7 @@ export function Rewards({
                     const p = services.rewards.redeem(player, r.id);
                     if (p) {
                       update(p);
-                      notify(`${r.title} collected.`);
+                      notify(`${r.title} erhalten.`);
                     }
                   }}
                 >
@@ -230,7 +230,7 @@ export function Rewards({
         })}
       </div>
       <p className="catalog-note">
-        Shop-Vorteile sind in dieser Version nur Vorschau. Es werden keine Gutscheine, Rabatte oder Early-Access-Vorteile ausgegeben.
+        Shop-Vorteile sind in dieser Version nur Vorschau. Es werden keine Gutscheine, Rabatte oder Frühzugang-Vorteile ausgegeben.
       </p>
     </main>
   );
@@ -283,7 +283,7 @@ export function Leaderboard({
         ))}
       </div>
       <p className="catalog-note">
-        Scores werden nicht hochgeladen. Heute und diese Woche basieren nur auf den lokal gespeicherten Fahrten.
+        Punktestände werden nicht hochgeladen. Heute und diese Woche basieren nur auf den lokal gespeicherten Fahrten.
       </p>
     </main>
   );
@@ -362,16 +362,16 @@ export function SettingsScreen({
         <h2>STEUERUNG</h2>
         <div className="control-guide">
           <span>
-            SWIPE ← → / A D <b>Ausweichen</b>
+            WISCHEN ← → / A D <b>Ausweichen</b>
           </span>
           <span>
-            SLIDE UP / W / ↑ <b>Weight forward / correct</b>
+            NACH OBEN / W / ↑ <b>Gewicht vor / korrigieren</b>
           </span>
           <span>
-            SLIDE DOWN / S / ↓ <b>Throttle / weight back</b>
+            NACH UNTEN / S / ↓ <b>Gas / Gewicht zurück</b>
           </span>
           <span>
-            TWO-FINGER TAP / ESC / P <b>Pause</b>
+            ZWEI FINGER / ESC / P <b>Pause</b>
           </span>
         </div>
         <p>
@@ -379,7 +379,7 @@ export function SettingsScreen({
         </p>
       </section>
       <footer className="settings-section">
-        <span className="eyebrow">PFUSCH STREET RUN · V1.0</span>
+        <span className="eyebrow">PFUSCH · V1.0</span>
         <p>Echte Strassen sind keine Rennstrecke. Risiko bleibt im Spiel.</p>
         <a
           className="product-link"

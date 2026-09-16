@@ -10,7 +10,7 @@ import type { Player, Product, RunStats } from '../domain/types';
 import { BIKES } from '../domain/config';
 import { Engine } from '../game/engine';
 import { GameAudio } from '../game/audio';
-import { Preview, fmt } from './shared';
+import { Preview, fmt, gameText } from './shared';
 import { RideGestures } from './rideGestures';
 import { SIGN_IDS } from '../game/signCollectibles';
 interface Props {
@@ -275,7 +275,7 @@ export default function Ride({
         </div>
         <div
           className="sign-progress"
-          aria-label={`PFUSCH signs: ${SIGN_IDS.filter((_, i) => engine.collectedSigns & (1 << i)).join(', ') || 'keine'}; ${engine.signSetCount} Sets komplett`}
+          aria-label={`PFUSCH-Zeichen: ${SIGN_IDS.filter((_, i) => engine.collectedSigns & (1 << i)).join(', ') || 'keine'}; ${engine.signSetCount} Sets komplett`}
         >
           <span className="eyebrow">SAMMLE DAS SET</span>
           <div>
@@ -290,7 +290,7 @@ export default function Ride({
               </b>
             ))}
           </div>
-          {engine.signSetCount > 0 && <small>SETS {engine.signSetCount}</small>}
+          {engine.signSetCount > 0 && <small>SÄTZE {engine.signSetCount}</small>}
         </div>
       </div>
       <div className="ride-metrics">
@@ -315,7 +315,7 @@ export default function Ride({
           key={engine.event.serial}
           className={`skill-event ${engine.event.kind}`}
         >
-          {engine.event.text}
+          {gameText(engine.event.text)}
         </div>
       )}
       {countdown > 0 && (
@@ -331,14 +331,14 @@ export default function Ride({
             S / ↓ ANHEBEN · W / ↑ KORRIGIEREN
           </span>
           <span className="touch-control-tip">
-            SLIDE ↓ ANHEBEN · ↑ KORRIGIEREN · ZWEI FINGER = PAUSE
+            NACH UNTEN = ANHEBEN · ↑ KORRIGIEREN · ZWEI FINGER = PAUSE
           </span>
           {' · WISCHEN = AUSWEICHEN'}
         </div>
       )}
       {engine.phase === 'playing' && (
         <div className="ride-balance" aria-label="Wheelie-Winkel">
-          <small>BALANCE</small>
+          <small>GLEICHGEWICHT</small>
           <div className="balance-meter">
             <b
               style={{

@@ -4,7 +4,7 @@ export const BIKES: Bike[] = [
   {
     id: '125',
     name: 'Töffli',
-    tag: 'DAILY DRIVER',
+    tag: 'ALLTAGSFAHRER',
     price: 0,
     level: 1,
     acceleration: 0.19,
@@ -54,13 +54,13 @@ export const LEVELS = [0, 200, 550, 1050, 1750, 2650, 3750, 5100, 6750, 8750];
 export const LEVEL_NAMES = [
   'NEU DABEI',
   'STAMMFAHRER',
-  'SUMO LEVEL',
+  'SUMO-STUFE',
   'NACHTSCHICHT',
   'LINIENFINDER',
-  'BIG SINGLE',
-  'NACHTSCHICHT II',
+  'EINZYLINDER',
+  'SPÄTSCHICHT',
   'STRASSENPROFI',
-  'PFUSCH CREW',
+  'PFUSCH-CREW',
   'STRASSENLEGENDE',
 ];
 export const DAILY_CHALLENGES: ChallengeDefinition[] = [
@@ -139,21 +139,21 @@ export const RIMS = [
 export const REWARDS = [
   {
     id: 'starter-coins',
-    title: 'Crew Startbonus',
+    title: 'STARTBONUS',
     description: '100 PFUSCH Coins. Einmalig.',
     kind: 'coins',
     level: 1,
   },
   {
     id: 'exclusive-rims',
-    title: 'After-Hours-Felgen',
+    title: 'NACHT-FELGEN',
     description: 'Signal-Felgen für deine Fahrten.',
     kind: 'cosmetic',
     level: 5,
   },
   {
     id: 'early-drop',
-    title: 'Early-Drop-Zugang',
+    title: 'FRÜHZUGANG',
     description: 'Späterer Shop-Vorteil. Nur Vorschau.',
     kind: 'future',
     level: 1,

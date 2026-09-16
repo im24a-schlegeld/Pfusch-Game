@@ -65,7 +65,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 export function decodePlayer(raw: string): Player {
   const v: unknown = JSON.parse(raw);
   if (!isRecord(v) || v.version !== 1)
-    throw new Error('Unsupported save version');
+    throw new Error('Nicht unterstützte Spielstand-Version');
   const base = newPlayer();
   const p = { ...base };
   for (const field of [
@@ -80,7 +80,7 @@ export function decodePlayer(raw: string): Player {
   ] as const) {
     const n = v[field];
     if (typeof n !== 'number' || !Number.isFinite(n) || n < 0)
-      throw new Error('Invalid save');
+      throw new Error('Ungültiger Spielstand');
     p[field] = n;
   }
   for (const field of [
@@ -89,7 +89,7 @@ export function decodePlayer(raw: string): Player {
     'redeemedRewards',
     'processedRuns',
   ] as const) {
-    if (!stringArray(v[field])) throw new Error('Invalid inventory');
+    if (!stringArray(v[field])) throw new Error('Ungültiges Inventar');
     p[field] = v[field];
   }
   if (typeof v.bike === 'string' && BIKES.some((b) => b.id === v.bike))
@@ -175,13 +175,13 @@ export class LocalPlayerRepository implements PlayerRepository {
       } catch {
         this.storage.setItem(`${key}:recovery`, raw);
         this.warning =
-          'Your previous save could not be read. A recovery copy was kept on this device.';
+          'Der bisherige Spielstand konnte nicht gelesen werden. Eine Sicherung wurde auf diesem Gerät behalten.';
         return newPlayer();
       }
     } catch {
       this.writable = false;
       this.warning =
-        'Browser storage is unavailable. This session works, but progress will not survive closing the page.';
+        'Browserspeicher ist nicht verfügbar. Diese Sitzung funktioniert, der Fortschritt geht beim Schliessen verloren.';
       return newPlayer();
     }
   }
@@ -191,7 +191,7 @@ export class LocalPlayerRepository implements PlayerRepository {
       this.storage.setItem(key, JSON.stringify(p));
     } catch {
       this.warning =
-        'Saving failed. Export your progress in Settings before closing.';
+        'Speichern fehlgeschlagen. Exportiere den Spielstand in den Einstellungen, bevor du die Seite schliesst.';
     }
   }
   export(p: Player) {
@@ -202,10 +202,10 @@ export class LocalProductProvider implements ProductProvider {
   async list() {
     const response = await fetch('/catalog/products.json');
     if (!response.ok)
-      throw new Error('The gear catalog could not load. Please reload.');
+      throw new Error('Der Kleidungskatalog konnte nicht geladen werden. Bitte neu laden.');
     const data: unknown = await response.json();
     if (!Array.isArray(data) || data.length === 0)
-      throw new Error('The gear catalog is empty.');
+      throw new Error('Der Kleidungskatalog ist leer.');
     return data as Product[];
   }
 }

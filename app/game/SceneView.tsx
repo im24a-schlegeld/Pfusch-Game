@@ -85,7 +85,7 @@ export default function SceneView({
       });
     } catch {
       setError(
-        '3D graphics could not start. Enable hardware acceleration or try another browser.',
+        '3D-Grafik konnte nicht gestartet werden. Aktiviere Hardwarebeschleunigung oder nutze einen anderen Browser.',
       );
       return;
     }
@@ -258,7 +258,7 @@ export default function SceneView({
       e.preventDefault();
       engine?.pause();
       setError(
-        'Graphics paused. Reload the page to restore the 3D view. Your completed rides are saved.',
+        '3D-Grafik wurde angehalten. Lade die Seite neu. Abgeschlossene Fahrten sind gespeichert.',
       );
     };
     renderer.domElement.addEventListener('webglcontextlost', contextLost);
@@ -647,8 +647,8 @@ export default function SceneView({
       ref={host}
       aria-label={
         mode === 'ride'
-          ? 'Three lane motorcycle road'
-          : 'Interactive rider and motorcycle preview'
+          ? 'Dreispurige Motorradstrecke'
+          : 'Interaktive Fahrer- und Motorrad-Vorschau'
       }
     >
       {!renderReady && !error && (

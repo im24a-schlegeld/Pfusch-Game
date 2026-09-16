@@ -299,7 +299,7 @@ export default function Garage({
                       ? 'AUSRÜSTEN'
                       : isOwned
                         ? 'GEKAUFT'
-                        : 'DIGITAL'}
+                        : 'SPIELITEM'}
                 </span>
               </button>
               <div className="product-body compact-product-body">
@@ -414,7 +414,7 @@ export default function Garage({
         <section className="garage-preview">
           <div className="preview-top">
             <span className="eyebrow">
-              {draft ? 'KOSTENLOSE VORSCHAU' : 'AKTUELLES SETUP'}
+              {draft ? 'VORSCHAU' : 'AKTUELLES SETUP'}
             </span>
             {draft && (
               <button
@@ -480,7 +480,7 @@ export default function Garage({
             </p>
             <XpBar player={player} />
             <button className="button primary" onClick={start}>
-              RIDE AKTUELLES SETUP <ArrowRight />
+              FAHREN <ArrowRight />
             </button>
           </div>
         </section>
@@ -494,7 +494,7 @@ export default function Garage({
           >
             <TabsList className="garage-tabs" variant="line">
               <TabsTrigger value="rider">FAHRER</TabsTrigger>
-              <TabsTrigger value="bike">BIKE</TabsTrigger>
+              <TabsTrigger value="bike">MOTORRAD</TabsTrigger>
               <TabsTrigger value="progress">FORTSCHRITT</TabsTrigger>
             </TabsList>
             <TabsContent value="rider">
@@ -531,7 +531,7 @@ export default function Garage({
                 ))}
               </div>
               <section aria-label="Helmoptionen">
-                <h3 className="custom-label">HELMET</h3>
+                <h3 className="custom-label">HELM</h3>
                 <div className="category-filter" aria-label="Helmtyp">
                   {HELMETS.map((helmet) => (
                     <button
@@ -571,7 +571,7 @@ export default function Garage({
             </TabsContent>
             <TabsContent value="bike">
               <div className="section-intro">
-                <h2>BIKES</h2>
+                <h2>MOTORRÄDER</h2>
               </div>
               <div className="bike-options">
                 {BIKES.map((b, i) => (
@@ -700,7 +700,7 @@ export default function Garage({
                     }
                   }}
                 >
-                  FREISCHALTEN PAINT ·{' '}
+                  FARBE FREISCHALTEN ·{' '}
                   {PAINTS.find((c) => c.value === appearance.paint)?.price}{' '}
                   COINS
                 </button>
@@ -752,7 +752,7 @@ export default function Garage({
                     }
                   }}
                 >
-                  FREISCHALTEN RIMS ·{' '}
+                  FELGEN FREISCHALTEN ·{' '}
                   {RIMS.find((c) => c.value === appearance.rims)?.price} COINS
                 </button>
               )}
