@@ -2366,168 +2366,6 @@ function makeRider(
   );
   trouserSeat.name = 'continuous-trouser-seat';
 
-  const underarmGussets: {
-    side: -1 | 1;
-    index: number;
-    mesh: THREE.Mesh;
-  }[] = [];
-
-  const createUnderarmGusset = (side: -1 | 1, index: number) => {
-    // Five cross-sections, each with a front and rear point.
-    // This creates one continuous fabric strip rather than a fan/wing shape.
-    const sections = 5;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(
-        new Float32Array(sections * 2 * 3),
-        3,
-      ),
-    );
-    geometry.setAttribute(
-      'uv',
-      new THREE.Float32BufferAttribute(
-        Array.from({ length: sections }, (_, i) => {
-          const u = i / (sections - 1);
-          return [u, 0, u, 1];
-        }).flat(),
-        2,
-      ),
-    );
-
-    const indices: number[] = [];
-    for (let i = 0; i < sections - 1; i++) {
-      const a = i * 2,
-        b = a + 2;
-      indices.push(
-        a, b, a + 1,
-        a + 1, b, b + 1,
-      );
-    }
-    // Close both ends so the underarm never reads as a paper-thin open flap.
-    indices.push(0, 1, 2, 2, 1, 3);
-    const last = (sections - 1) * 2;
-    indices.push(last - 2, last - 1, last, last, last - 1, last + 1);
-
-    geometry.setIndex(indices);
-
-    const finish =
-      upper?.handle === 'racing-zipper'
-        ? sleeveMaterial(upper, player, color, side)
-        : cloth.clone();
-    finish.side = THREE.DoubleSide;
-
-    const gusset = new THREE.Mesh(geometry, finish);
-    gusset.name = 'underarm-garment-gusset';
-    gusset.castShadow = true;
-    gusset.receiveShadow = true;
-    gusset.frustumCulled = false;
-    gusset.userData.garmentConnection = 'clean-torso-sleeve-gusset';
-    gusset.userData.gussetVersion = 3;
-    rider.add(gusset);
-    underarmGussets.push({ side, index, mesh: gusset });
-  };
-
-  const updateUnderarmGussets = (
-    current: ReturnType<typeof riderMotionPose>,
-  ) => {
-    const orientation = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(-current.lean, 0, current.roll),
-    );
-    const hip = V(current.hip);
-    const worldDown = new THREE.Vector3(0, -1, 0);
-    const normal = new THREE.Vector3(0, 0, 1)
-      .applyQuaternion(orientation)
-      .normalize();
-
-    const torsoSidePoint = (
-      side: -1 | 1,
-      width: number,
-      y: number,
-    ) =>
-      new THREE.Vector3(side * width, y, 0)
-        .applyQuaternion(orientation)
-        .add(hip);
-
-    for (const gusset of underarmGussets) {
-      const arm = current.limbs[gusset.index].arm;
-      const shoulder = V(arm.start);
-      const elbow = V(arm.joint);
-      const armDirection = elbow.clone().sub(shoulder).normalize();
-
-      // Garment type controls only looseness. The connection exists for every
-      // top, including T-shirts, hoodies, zippers and windbreakers.
-      const outerwear = hoodie || zipper;
-      const sideWidth = (outerwear ? 0.212 : 0.202) * volume;
-      const torsoTop = torsoSidePoint(gusset.side, sideWidth, 0.48);
-      const torsoBottom = torsoSidePoint(
-        gusset.side,
-        sideWidth - 0.008,
-        outerwear ? 0.37 : 0.385,
-      );
-
-      // Sleeve underside points remain close to the existing sleeve tube.
-      // They do not extend far down the arm, which avoids the goofy bat-wing.
-      const sleeveNear = shoulder
-        .clone()
-        .addScaledVector(armDirection, outerwear ? 0.07 : 0.06)
-        .addScaledVector(worldDown, outerwear ? 0.035 : 0.026);
-      const sleeveFar = shoulder
-        .clone()
-        .addScaledVector(armDirection, outerwear ? 0.19 : 0.16)
-        .addScaledVector(worldDown, outerwear ? 0.052 : 0.04);
-
-      // Smooth centreline: torso -> small hanging fold -> sleeve.
-      const c0 = torsoTop;
-      const c1 = torsoBottom
-        .clone()
-        .lerp(sleeveNear, 0.22)
-        .addScaledVector(worldDown, outerwear ? 0.018 : 0.012);
-      const c2 = torsoBottom
-        .clone()
-        .lerp(sleeveNear, 0.55)
-        .addScaledVector(worldDown, outerwear ? 0.032 : 0.022);
-      const c3 = sleeveNear
-        .clone()
-        .lerp(sleeveFar, 0.45)
-        .addScaledVector(worldDown, outerwear ? 0.012 : 0.008);
-      const c4 = sleeveFar;
-
-      const centers = [c0, c1, c2, c3, c4];
-
-      // Match the front/back depth of the torso at the inner end and taper
-      // smoothly into the sleeve. No oversized box volume.
-      const torsoDepth = (outerwear ? 0.116 : 0.108) * volume;
-      const sleeveDepth = (outerwear ? 0.078 : 0.073) * volume;
-      const depths = [
-        torsoDepth,
-        THREE.MathUtils.lerp(torsoDepth, sleeveDepth, 0.25),
-        THREE.MathUtils.lerp(torsoDepth, sleeveDepth, 0.55),
-        THREE.MathUtils.lerp(torsoDepth, sleeveDepth, 0.82),
-        sleeveDepth,
-      ];
-
-      const positions = gusset.mesh.geometry.getAttribute(
-        'position',
-      ) as THREE.BufferAttribute;
-
-      for (let i = 0; i < centers.length; i++) {
-        const front = centers[i]
-          .clone()
-          .addScaledVector(normal, depths[i]);
-        const rear = centers[i]
-          .clone()
-          .addScaledVector(normal, -depths[i]);
-        positions.setXYZ(i * 2, front.x, front.y, front.z);
-        positions.setXYZ(i * 2 + 1, rear.x, rear.y, rear.z);
-      }
-
-      positions.needsUpdate = true;
-      gusset.mesh.geometry.computeVertexNormals();
-      gusset.mesh.geometry.computeBoundingSphere();
-    }
-  };
-
   for (const side of [-1, 1]) {
     const shoulder: Point = [
         side * RIDER_DIMENSIONS.shoulderHalf,
@@ -2536,9 +2374,36 @@ function makeRider(
       ],
       elbow: Point = [side * pose.elbow[0], pose.elbow[1], pose.elbow[2]],
       wrist: Point = [side * pose.wrist[0], pose.wrist[1], pose.wrist[2]];
-    // Sleeve begins inside the shoulder yoke, so its open end is buried in the torso.
-    // The anatomical shoulder and both bone lengths stay unchanged.
-    const yoke: Point = [side * 0.12, shoulder[1] + 0.014, shoulder[2] + 0.012];
+    // Clean garment armhole:
+    // two hidden sleeve-root centres start inside the torso and curve outward
+    // into the anatomical shoulder. This matches the reference silhouette:
+    // a smooth concave underarm line, not a separate hanging flap.
+    const torsoOrientation = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(-pose.torsoLean, 0, 0),
+    );
+    const torsoSleevePoint = (
+      x: number,
+      y: number,
+      z: number,
+    ): Point =>
+      new THREE.Vector3(side * x, y, z)
+        .applyQuaternion(torsoOrientation)
+        .add(V(pose.hip))
+        .toArray() as Point;
+    const outerwear = hoodie || zipper;
+    const sleeveRoot = torsoSleevePoint(
+      outerwear ? 0.132 : 0.128,
+      outerwear ? 0.432 : 0.444,
+      0.008,
+    );
+    const sleeveBlend = torsoSleevePoint(
+      outerwear ? 0.17 : 0.166,
+      outerwear ? 0.482 : 0.488,
+      0.008,
+    );
+    const rootRadius = (outerwear ? 0.104 : 0.094) * volume;
+    const blendRadius = (outerwear ? 0.101 : 0.092) * volume;
+    const shoulderRadius = (outerwear ? 0.094 : 0.086) * volume;
     const armMeshes: THREE.Mesh[] = [];
     if (tee) {
       const sleeveEnd = V(shoulder).lerp(V(elbow), 0.86).toArray() as Point,
@@ -2547,12 +2412,19 @@ function makeRider(
         tube(
           rider,
           [
-            yoke,
+            sleeveRoot,
+            sleeveBlend,
             shoulder,
             V(shoulder).lerp(V(elbow), 0.26).toArray() as Point,
             sleeveEnd,
           ],
-          [0.06, 0.079, 0.089, 0.09],
+          [
+            rootRadius,
+            blendRadius,
+            shoulderRadius,
+            0.089 * volume,
+            0.09 * volume,
+          ],
           cloth,
           24,
           24,
@@ -2581,16 +2453,20 @@ function makeRider(
         tube(
           rider,
           [
-            yoke,
+            sleeveRoot,
+            sleeveBlend,
             shoulder,
+            V(shoulder).lerp(V(elbow), 0.38).toArray() as Point,
             V(shoulder).lerp(V(elbow), 0.72).toArray() as Point,
             elbow,
             V(elbow).lerp(V(wrist), 0.4).toArray() as Point,
             wrist,
           ],
           [
-            0.06 * volume,
-            0.084 * volume,
+            rootRadius,
+            blendRadius,
+            shoulderRadius,
+            0.094 * volume,
             0.09 * volume,
             0.073 * volume,
             0.077 * volume,
@@ -2621,10 +2497,7 @@ function makeRider(
       seams.forEach((seam) => rider.add(seam));
       armMeshes.push(...seams);
     }
-    createUnderarmGusset(
-      side as -1 | 1,
-      side === -1 ? 0 : 1,
-    );
+
     // The cuff overlaps the glove, which curls around the actual grip center.
     tube(
       rider,
@@ -2709,7 +2582,6 @@ function makeRider(
     foot.position.x = side * pose.peg[0];
     foot.name = 'rider-boot';
   }
-  updateUnderarmGussets(rest);
   const neck = tube(
     rider,
     [
@@ -2902,7 +2774,6 @@ function makeRider(
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);
-    updateUnderarmGussets(current);
     pelvis.position.set(
       current.hip[0] - pose.hip[0],
       current.hip[1] - pose.hip[1],
