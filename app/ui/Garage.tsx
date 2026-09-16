@@ -12,6 +12,7 @@ import {
   imagePath,
   previewLoadout,
   initialConfiguration,
+  productColors,
 } from '../domain/preview';
 import {
   Coin,
@@ -92,24 +93,18 @@ export default function Garage({
   ) {
     setDraft({ ...appearance, ...values });
   }
-  function previewHelmet(
+  function equipHelmetNow(
     values: Partial<Pick<Player, 'helmet' | 'helmetColor'>>,
   ) {
-    setDraft({ ...appearance, ...values });
-  }
-  function saveHelmet() {
-    const next = equipHelmet(player, appearance);
+    const next = equipHelmet(player, {
+      helmet: values.helmet ?? player.helmet,
+      helmetColor: values.helmetColor ?? player.helmetColor,
+    });
     if (!next) return;
     update(next);
     setDraft(null);
-    setSelected(null);
-    setConfiguration(null);
-    notify('Helmet ausgerüstet und gespeichert.');
-  }
-  const helmetChanged =
-    appearance.helmet !== player.helmet ||
-    appearance.helmetColor !== player.helmetColor;
-  const bikeSetupOwned =
+    notify('Helm ausgerüstet.');
+  }const bikeSetupOwned =
     owned(`bike:${appearance.bike}`) &&
     owned(`paint:${appearance.paint}`) &&
     owned(`rims:${appearance.rims}`);
@@ -136,6 +131,9 @@ export default function Garage({
   };
   const grid = (
     <>
+      <p className="digital-only-note">
+        Käufe in der Garage sind nur digitale Spielgegenstände. Es wird nichts physisch versendet.
+      </p>
       <div className="category-filter" aria-label="Produktkategorien">
         {['all', 'upper', 'head', 'accessory', 'collectible'].map((f) => (
           <button
@@ -156,73 +154,110 @@ export default function Garage({
           </button>
         ))}
       </div>
-      <div className="product-grid">
-        {visible.map((p) => (
-          <article
-            key={p.id}
-            className="product-card"
-            data-testid="product-card"
-          >
-            <button
-              className="product-image product-open"
-              aria-label={`Vorschau ${p.title}`}
-              onClick={() => openProduct(p)}
+      <div className="product-grid compact-product-grid">
+        {visible.map((p) => {
+          const state = ownership(player, p);
+          const colors = productColors(p);
+          const baseConfig = initialConfiguration(player, p);
+          const variantId = appearance.variants[p.id] ?? baseConfig.variantId;
+          const config: ProductConfiguration = { ...baseConfig, variantId };
+          const isOwned = state !== 'LOCKED';
+          const isEquipped = state === 'EQUIPPED';
+          const canWear = equippable(p);
+          return (
+            <article
+              key={p.id}
+              className="product-card compact-product-card"
+              data-testid="product-card"
             >
-              <img
-                src={imagePath(p.localImage ?? p.image)}
-                alt={p.title}
-                loading="lazy"
-                width="360"
-                height="360"
-              />
-              <span className="ownership">
-                {ownership(player, p) === 'EQUIPPED'
-                  ? 'AUSGERÜSTET'
-                  : ownership(player, p) === 'LOCKED'
-                    ? 'ANPROBIEREN'
-                    : equippable(p)
-                      ? 'AUSRÜSTEN'
-                      : 'FREIGESCHALTET'}
-              </span>
-            </button>
-            <div className="product-body">
-              <p className="eyebrow">{p.type}</p>
-              <h3>{p.title}</h3>
-              <p className="product-price">{money(p.price)}</p>
               <button
-                className="button small primary"
-                disabled={ownership(player, p) === 'EQUIPPED'}
+                className="product-image product-open"
+                aria-label={`${isOwned && canWear ? 'Ausrüsten' : 'Ansehen'} ${p.title}`}
                 onClick={() => {
-                  const state = ownership(player, p);
-                  if (state !== 'LOCKED' && equippable(p)) {
-                    equipProduct(p, initialConfiguration(player, p));
-                  } else {
-                    openProduct(p);
+                  if (isOwned && canWear) {
+                    equipProduct(p, config);
+                  } else if (canWear) {
+                    setDraft(previewLoadout(player, p, config));
+                    services.analytics.track('product_viewed', { id: p.id });
                   }
                 }}
               >
-                {ownership(player, p) === 'EQUIPPED'
-                  ? 'AUSGERÜSTET'
-                  : ownership(player, p) !== 'LOCKED' && equippable(p)
-                    ? 'AUSRÜSTEN'
-                    : equippable(p)
-                      ? 'ANPROBIEREN'
-                      : 'ANSEHEN'}
+                <img
+                  src={imagePath(p.localImage ?? p.image)}
+                  alt={p.title}
+                  loading="lazy"
+                  width="360"
+                  height="360"
+                />
+                <span className="ownership">
+                  {isEquipped
+                    ? 'AUSGERÜSTET'
+                    : isOwned && canWear
+                      ? 'AUSRÜSTEN'
+                      : isOwned
+                        ? 'GEKAUFT'
+                        : 'DIGITAL'}
+                </span>
               </button>
-              <a
-                className="product-link"
-                href={p.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() =>
-                  services.analytics.track('product_link_clicked', { id: p.id })
-                }
-              >
-                PRODUKT IM SHOP <ExternalArrow />
-              </a>
-            </div>
-          </article>
-        ))}
+              <div className="product-body compact-product-body">
+                <h3>{p.title}</h3>
+                <p className="compact-product-description">{p.description}</p>
+                {colors.length > 0 && (
+                  <div className="inline-color-swatches" aria-label={`${p.title} Farben`}>
+                    {colors.map((c) => {
+                      const colorSelected = c.variantIds.includes(config.variantId);
+                      return (
+                        <button
+                          key={c.id}
+                          className={colorSelected ? 'selected' : ''}
+                          aria-label={`Farbe ${c.label}`}
+                          aria-pressed={colorSelected}
+                          title={c.label}
+                          onClick={() => {
+                            const nextConfig: ProductConfiguration = {
+                              ...baseConfig,
+                              variantId: c.variantIds[0] ?? baseConfig.variantId,
+                            };
+                            if (isOwned && canWear) {
+                              equipProduct(p, nextConfig);
+                            } else if (canWear) {
+                              setDraft(previewLoadout(player, p, nextConfig));
+                              services.analytics.track('product_viewed', { id: p.id });
+                            }
+                          }}
+                        >
+                          <i style={{ background: c.baseColor }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <button
+                  className="button small primary compact-buy-button"
+                  disabled={
+                    isEquipped ||
+                    (state === 'LOCKED' && player.coins < digitalPrice(p))
+                  }
+                  onClick={() => {
+                    if (state === 'LOCKED') {
+                      unlockProduct(p, config);
+                    } else if (canWear && !isEquipped) {
+                      equipProduct(p, config);
+                    }
+                  }}
+                >
+                  {isEquipped
+                    ? 'AUSGERÜSTET'
+                    : state === 'LOCKED'
+                      ? `KAUFEN · ${digitalPrice(p)} COINS`
+                      : canWear
+                        ? 'AUSRÜSTEN'
+                        : 'GEKAUFT'}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </>
   );
@@ -360,11 +395,11 @@ export default function Garage({
                     <button
                       key={helmet.id}
                       aria-label={`Vorschau ${helmet.name} Helm`}
-                      aria-pressed={appearance.helmet === helmet.id}
+                      aria-pressed={player.helmet === helmet.id}
                       className={
-                        appearance.helmet === helmet.id ? 'active' : ''
+                        player.helmet === helmet.id ? 'active' : ''
                       }
-                      onClick={() => previewHelmet({ helmet: helmet.id })}
+                      onClick={() => equipHelmetNow({ helmet: helmet.id })}
                     >
                       {helmet.name.toUpperCase()}
                     </button>
@@ -375,12 +410,12 @@ export default function Garage({
                     <button
                       key={color.value}
                       aria-label={`${color.name} helmet color`}
-                      aria-pressed={appearance.helmetColor === color.value}
+                      aria-pressed={player.helmetColor === color.value}
                       className={
-                        appearance.helmetColor === color.value ? 'selected' : ''
+                        player.helmetColor === color.value ? 'selected' : ''
                       }
                       onClick={() =>
-                        previewHelmet({ helmetColor: color.value })
+                        equipHelmetNow({ helmetColor: color.value })
                       }
                     >
                       <i style={{ background: color.value }} />
@@ -389,60 +424,8 @@ export default function Garage({
                     </button>
                   ))}
                 </div>
-                <div className="bike-confirm">
-                  <button
-                    className="button small primary"
-                    disabled={!helmetChanged}
-                    onClick={saveHelmet}
-                  >
-                    <Check size={14} /> HELM AUSRÜSTEN
-                  </button>
-                  {helmetChanged && (
-                    <button
-                      className="button small"
-                      onClick={() => {
-                        setDraft(null);
-                        setSelected(null);
-                        setConfiguration(null);
-                      }}
-                    >
-                      VORSCHAU VERWERFEN
-                    </button>
-                  )}
-                </div>
               </section>
-              {selected && configuration ? (
-                <ProductPreview
-                  key={selected.id}
-                  product={selected}
-                  products={products}
-                  player={player}
-                  configuration={configuration}
-                  onConfiguration={(c) => {
-                    setConfiguration(c);
-                    setDraft(previewLoadout(appearance, selected, c));
-                  }}
-                  onClose={() => {
-                    setSelected(null);
-                    setDraft(null);
-                  }}
-                  onKeep={() => setSelected(null)}
-                  onEquip={equipProduct}
-                  onUnlock={unlockProduct}
-                  onLink={() =>
-                    services.analytics.track('product_link_clicked', {
-                      id: selected.id,
-                    })
-                  }
-                  onSelect={openProduct}
-                  onInspect={(value) => {
-                    setAngle(value);
-                    setInspectionRevision((r) => r + 1);
-                  }}
-                />
-              ) : (
-                grid
-              )}
+              {grid}
             </TabsContent>
             <TabsContent value="bike">
               <div className="section-intro">
@@ -631,24 +614,6 @@ export default function Garage({
                   {RIMS.find((c) => c.value === appearance.rims)?.price} COINS
                 </button>
               )}
-              <div className="bike-confirm">
-                <button
-                  className="button primary"
-                  disabled={!bikeSetupOwned || player.level < bike.level}
-                  onClick={equipBike}
-                >
-                  <Check size={16} /> BIKE-SETUP AUSRÜSTEN
-                </button>
-                <button
-                  className="button"
-                  onClick={() => {
-                    setDraft(null);
-                    setSelected(null);
-                  }}
-                >
-                  RESET VORSCHAU
-                </button>
-              </div>
             </TabsContent>
             <TabsContent value="progress">
               <ProgressContent player={player} />

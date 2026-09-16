@@ -263,7 +263,6 @@ export default function GameApp() {
             <p className="eyebrow">
               <span className="signal-dot" /> PFUSCH CLOTHING
             </p>
-            <img className="hero-logo" src="/branding/pfusch-logo.png" alt="Pfusch" />
             
             <button className="button primary play-button" onClick={start}>
               <span>LOSFAHREN</span>

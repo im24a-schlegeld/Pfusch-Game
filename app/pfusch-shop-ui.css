@@ -476,3 +476,192 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
     height: 540px !important;
   }
 }
+
+/* PFUSCH UI V4 OVERRIDES */
+
+/* Logo exakt mittig im Header. */
+.topbar {
+  position: relative !important;
+  justify-content: flex-end !important;
+}
+.brand {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 122px !important;
+  min-width: 122px !important;
+  height: 48px !important;
+  flex: none !important;
+  overflow: visible !important;
+  z-index: 2 !important;
+}
+.brand-logo {
+  position: static !important;
+  width: 118px !important;
+  max-width: 118px !important;
+  height: 46px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  filter: none !important;
+  transform: none !important;
+}
+.hero-logo {
+  display: none !important;
+}
+
+/* Startseite: nur Aktionen, kein zweites Logo. */
+.menu-title {
+  justify-content: center !important;
+}
+.menu-title > .eyebrow,
+.menu-title > .intro {
+  display: none !important;
+}
+
+/* Helm ist sofort aktiv; keine Bestätigungsleiste nötig. */
+.garage-controls section[aria-label='Helmoptionen'] > .bike-confirm {
+  display: none !important;
+}
+
+/* Digitale Kauf-Info. */
+.digital-only-note {
+  margin: 16px 0 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid #505050 !important;
+  color: #bcbcb8 !important;
+  background: #323232 !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+
+/* Kleidung bleibt direkt im Grid; kompakte Produktsteuerung unter dem Produkt. */
+.compact-product-grid {
+  gap: 12px !important;
+}
+.compact-product-card {
+  border: 1px solid #4b4b4b !important;
+}
+.compact-product-card:last-child {
+  border-bottom: 1px solid #4b4b4b !important;
+}
+.compact-product-card .product-image {
+  aspect-ratio: 1 / 1 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #4b4b4b !important;
+}
+.compact-product-body {
+  padding: 12px !important;
+  gap: 9px !important;
+}
+.compact-product-body h3 {
+  margin: 0 !important;
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+}
+.compact-product-description {
+  margin: 0 !important;
+  color: #b2b2ae !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  min-height: 31px !important;
+}
+.inline-color-swatches {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+  min-height: 30px !important;
+}
+.inline-color-swatches button {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  padding: 3px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid #5e5e5e !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.inline-color-swatches button.selected {
+  border-color: #f0f0ed !important;
+}
+.inline-color-swatches button i {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255,255,255,.24) !important;
+}
+.compact-buy-button {
+  width: 100% !important;
+  margin-top: 1px !important;
+}
+.compact-buy-button:disabled {
+  background: transparent !important;
+  color: #8e8e8a !important;
+  border-color: #555 !important;
+}
+
+/* Kein externer Shop-Link und kein separater Produktdetail-Bereich im Grid. */
+.compact-product-card .product-link,
+.garage-product-panel {
+  display: none !important;
+}
+
+/* Vorschau-Bestätigungsbuttons sind nach Direct-Equip nicht mehr nötig. */
+.bike-confirm {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .brand {
+    width: 108px !important;
+    min-width: 108px !important;
+  }
+  .brand-logo {
+    width: 104px !important;
+    max-width: 104px !important;
+  }
+}
+@media (max-width: 640px) {
+  .brand {
+    width: 92px !important;
+    min-width: 92px !important;
+  }
+  .brand-logo {
+    width: 88px !important;
+    max-width: 88px !important;
+    height: 42px !important;
+  }
+  .compact-product-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .compact-product-body {
+    padding: 9px !important;
+  }
+  .compact-product-body h3 {
+    font-size: 14px !important;
+  }
+  .compact-product-description {
+    font-size: 10px !important;
+  }
+  .inline-color-swatches button {
+    width: 25px !important;
+    height: 25px !important;
+    min-width: 25px !important;
+    min-height: 25px !important;
+  }
+  .inline-color-swatches button i {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
