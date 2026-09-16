@@ -184,13 +184,13 @@ export default function GameApp() {
     return (
       <main className="startup">
         <strong className="wordmark">PFUSCH.</strong>
-        <h1>NOCH EIN VERSUCH.</h1>
+        <h1>LET’S TRY THAT AGAIN.</h1>
         <p role="alert">{error}</p>
         <button
           className="button primary"
           onClick={() => window.location.reload()}
         >
-          NEU LADEN
+          RELOAD
         </button>
       </main>
     );
@@ -199,7 +199,7 @@ export default function GameApp() {
       <main className="startup">
         <strong className="wordmark">PFUSCH.</strong>
         <span className="spinner" />
-        <p className="eyebrow">GARAGE WIRD GELADEN</p>
+        <p className="eyebrow">OPENING THE GARAGE</p>
       </main>
     );
   if (screen === 'ride')
@@ -219,12 +219,12 @@ export default function GameApp() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <button className="brand" aria-label="PFUSCH Hauptmenü" onClick={back}>
-          <img className="brand-logo" src="/branding/pfusch-logo.png" alt="Pfusch" />
-          <span className="brand-sub">STREET RUN</span>
+        <button className="brand" aria-label="PFUSCH main menu" onClick={back}>
+          <span className="wordmark">PFUSCH.</span>
+          <span className="brand-sub">STREET RUN / 01</span>
         </button>
         <span className="top-status">
-          <i /> PFUSCH STREET RUN
+          <i /> OFF THE CLOCK. ON THE STREETS.
         </span>
         <div className="top-right">
           <Coin value={player.coins} />
@@ -233,7 +233,7 @@ export default function GameApp() {
           </button>
           <button
             className="icon-button"
-            aria-label={player.settings.muted ? 'Ton an' : 'Ton aus'}
+            aria-label={player.settings.muted ? 'Unmute' : 'Mute'}
             onClick={mute}
           >
             {player.settings.muted ? (
@@ -244,7 +244,7 @@ export default function GameApp() {
           </button>
           <button
             className="icon-button"
-            aria-label="Einstellungen"
+            aria-label="Settings"
             onClick={() => navigate('settings')}
           >
             <SettingsIcon size={19} />
@@ -261,41 +261,41 @@ export default function GameApp() {
           </div>
           <div className="menu-title">
             <p className="eyebrow">
-              <span className="signal-dot" /> PFUSCH CLOTHING
+              <span className="signal-dot" /> PFUSCH CLOTHING PRESENTS
             </p>
-            <img className="hero-logo" src="/branding/pfusch-logo.png" alt="Pfusch" />
+            <h1>PFUSCH</h1>
             <p className="intro">
-              Drei Spuren. Ein Rad.
+              Three lanes. One wheel.
               <br />
-              Fahr deine Linie.
+              Make the streets yours.
             </p>
             <button className="button primary play-button" onClick={start}>
-              <span>LOSFAHREN</span>
+              <span>LET’S RIDE</span>
               <ArrowUpRight size={29} />
             </button>
             <button className="garage-link" onClick={() => navigate('garage')}>
-              <Wrench size={18} /> GARAGE <ArrowRight size={17} />
+              <Wrench size={18} /> OPEN GARAGE <ArrowRight size={17} />
             </button>
-            <p className="input-caption">WISCHEN ODER TASTATUR</p>
+            <p className="input-caption">SWIPE OR KEYBOARD · NO LOGIN NEEDED</p>
           </div>
           <div className="bike-caption">
-            <span className="eyebrow">DEIN SETUP</span>
+            <span className="eyebrow">YOUR CURRENT SETUP</span>
             <strong>{equippedBike.name}</strong>
             <span>
               {equippedBike.name.toUpperCase()} /{' '}
-              {player.paint === '#e7e7df' ? 'STANDARD' : 'CUSTOM'}
+              {player.paint === '#e7e7df' ? 'CHALK' : 'CUSTOM'}
             </span>
           </div>
           <div className="menu-bottom">
             <div className="personal-best">
               <Trophy size={20} />
               <div>
-                <span className="eyebrow">BESTLEISTUNG</span>
+                <span className="eyebrow">PERSONAL BEST</span>
                 <strong>{fmt(player.highScore).padStart(6, '0')}</strong>
               </div>
               <span className="best-divider" />
               <div>
-                <span className="eyebrow">GESAMTDISTANZ</span>
+                <span className="eyebrow">TOTAL DISTANCE</span>
                 <strong>
                   {(player.totalDistance / 1000).toFixed(1)} <small>KM</small>
                 </strong>
@@ -307,10 +307,10 @@ export default function GameApp() {
             >
               <Flag size={21} />
               <div>
-                <span className="eyebrow">HEUTIGE CHALLENGES</span>
+                <span className="eyebrow">TODAY’S CHALLENGES</span>
                 <b>
                   {player.challenges.claimed.length} / {DAILY_CHALLENGES.length}{' '}
-                  ERLEDIGT
+                  COMPLETE
                 </b>
               </div>
               <ArrowUpRight />
@@ -333,35 +333,35 @@ export default function GameApp() {
         <main className="results-page">
           <div className="results-art">
             <Preview player={player} products={products} mode="garage" />
-            <span className="eyebrow">NOCH EINE RUNDE.</span>
+            <span className="eyebrow">DUST IT OFF. GO AGAIN.</span>
           </div>
           <section className="result-card">
             <p className="eyebrow">
               {result.reward.newRecord
-                ? 'A NEW BESTLEISTUNG'
-                : 'RIDE ERLEDIGT'}{' '}
+                ? 'A NEW PERSONAL BEST'
+                : 'RIDE COMPLETE'}{' '}
               <Flag size={15} />
             </p>
-            <h1>{result.reward.newRecord ? 'NEUE BESTLEISTUNG.' : 'NOCH EINE?'}</h1>
+            <h1>{result.reward.newRecord ? 'THAT’S A LINE.' : 'ONE MORE?'}</h1>
             <div className="result-score">
               {fmt(result.run.score)}
-              <span>PUNKTE</span>
+              <span>POINTS</span>
             </div>
             <p className="muted">
-              {result.run.cause} · {result.run.seconds} Sekunden unterwegs
+              {result.run.cause} · {result.run.seconds} seconds on the streets
             </p>
             <div className="result-stats">
               <div>
                 <b>{fmt(result.run.distance)} m</b>
-                <span>DISTANZ</span>
+                <span>DISTANCE</span>
               </div>
               <div>
                 <b>×{result.run.bestCombo.toFixed(1)}</b>
-                <span>BESTE KOMBO</span>
+                <span>BEST COMBO</span>
               </div>
               <div>
                 <b>{result.run.nearMisses}</b>
-                <span>KNAPPE MANÖVER</span>
+                <span>NEAR MISSES</span>
               </div>
               <div>
                 <b>{result.run.maxSpeed}</b>
@@ -373,11 +373,11 @@ export default function GameApp() {
                 <Zap size={19} /> +{result.reward.xp} XP
               </span>
               <span>
-                <Coin value={result.reward.coins} /> ERHALTEN
+                <Coin value={result.reward.coins} /> EARNED
               </span>
             </div>
             {result.reward.level > result.reward.previousLevel && (
-              <p className="level-up">LEVEL AUF → {result.reward.level}</p>
+              <p className="level-up">LEVEL UP → {result.reward.level}</p>
             )}
             <XpBar player={player} />
             {result.reward.challengeIds.length > 0 && (
@@ -388,15 +388,15 @@ export default function GameApp() {
                     complete
                   </p>
                 ))}
-                <small>Challenge-Belohnungen sind oben enthalten.</small>
+                <small>Challenge rewards included above.</small>
               </div>
             )}
-            <p className="result-best">BESTLEISTUNG {fmt(player.highScore)}</p>
+            <p className="result-best">PERSONAL BEST {fmt(player.highScore)}</p>
             <button className="button primary" onClick={start}>
-              NOCHMAL FAHREN <ArrowRight />
+              RIDE AGAIN <ArrowRight />
             </button>
             <button className="button" onClick={() => navigate('garage')}>
-              ZUR GARAGE <Wrench size={18} />
+              BACK TO GARAGE <Wrench size={18} />
             </button>
           </section>
         </main>
@@ -425,10 +425,10 @@ export default function GameApp() {
           back={back}
         />
       )}
-      <nav className="bottom-nav" aria-label="Spielnavigation">
+      <nav className="bottom-nav" aria-label="Game navigation">
         <button className={screen === 'menu' ? 'active' : ''} onClick={back}>
           <Zap size={18} />
-          <span>FAHREN</span>
+          <span>RIDE</span>
         </button>
         <button
           className={screen === 'garage' ? 'active' : ''}
@@ -442,43 +442,50 @@ export default function GameApp() {
           onClick={() => navigate('challenges')}
         >
           <Flag size={18} />
-          <span>AUFGABEN</span>
+          <span>CHALLENGES</span>
         </button>
         <button
           className={screen === 'rewards' ? 'active' : ''}
           onClick={() => navigate('rewards')}
         >
           <Gift size={18} />
-          <span>BELOHNUNGEN</span>
+          <span>REWARDS</span>
         </button>
         <button
           className={screen === 'leaderboard' ? 'active' : ''}
           onClick={() => navigate('leaderboard')}
         >
           <Trophy size={18} />
-          <span>RANGLISTE</span>
+          <span>RANKING</span>
         </button>
       </nav>
       <Dialog open={tutorial} onOpenChange={setTutorial}>
         <DialogContent className="game-dialog">
-          <p className="eyebrow">DEINE ERSTE RUNDE</p>
-          <DialogTitle>FINDE DEINE LINIE.</DialogTitle>
+          <p className="eyebrow">YOUR FIRST RIDE</p>
+          <DialogTitle>FIND YOUR LINE.</DialogTitle>
           <DialogDescription>
-            Gas läuft automatisch. Du steuerst den Rest.
+            Auto throttle. You handle the rest.
           </DialogDescription>
           <div className="control-guide">
             <span>
-              SWIPE ← → <b>Verkehr ausweichen</b>
+              SWIPE ← → <b>Dodge traffic</b>
             </span>
             <span>
-              SLIDE UP <b>Gewicht vor / korrigieren</b>
+              SLIDE UP <b>Weight forward / correct</b>
             </span>
             <span>
-              SLIDE DOWN <b>Gas / Gewicht zurück</b>
+              SLIDE DOWN <b>Throttle / weight back</b>
             </span>
           </div>
           <p className="muted">
-            Auf Touch: nach unten ziehen zum Anheben, nach oben zum Korrigieren und seitlich zum Ausweichen. Loslassen = neutral. Zwei Finger pausieren. Tastatur: A/D oder Pfeile zum Ausweichen, S/↓ zum Anheben, W/↑ zum Korrigieren. Wheelies und Stunts geben die meisten Punkte. Sammle P F U S C H für einen Set-Bonus.
+            Touch anywhere: slide down to raise, up to correct, sideways to
+            dodge. The same finger steers while balancing. Release for neutral;
+            tapping does not lift. Two-finger tap pauses. Keyboard: A / D or
+            arrows dodge, S / ↓ raises, W / ↑ corrects. Holding rear weight can
+            flip the bike. Wheelies and stunts earn most points. Enter a tow
+            truck&apos;s rear ramp to ride onto the deck, then swipe sideways to
+            jump into the adjacent lane. Collect P F U S C H for a set bonus.
+            Dodge traffic and construction barriers.
           </p>
           <button
             className="button primary"
@@ -491,7 +498,7 @@ export default function GameApp() {
               start();
             }}
           >
-            VERSTANDEN. LOSFAHREN <ArrowRight />
+            GOT IT. LET’S RIDE <ArrowRight />
           </button>
         </DialogContent>
       </Dialog>

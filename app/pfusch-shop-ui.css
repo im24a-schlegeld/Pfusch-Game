@@ -1,0 +1,675 @@
+/* PFUSCH SHOP UI PATCH
+   Visual-only layer: black/white storefront language, compact viewport layout,
+   rectangular controls, minimal copy, no changes to game mechanics. */
+
+:root,
+.dark {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --muted: #f3f3f3;
+  --muted-foreground: #666666;
+  --popover: #ffffff;
+  --input: #dedede;
+  --border: #d4d4d4;
+  --radius: 0rem;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  background: #ffffff;
+}
+
+body {
+  overflow: hidden;
+  background: #ffffff;
+  color: #0a0a0a;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.wordmark,
+.result-score,
+.score-display strong,
+.personal-best strong {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: -0.035em;
+}
+
+.eyebrow {
+  color: #666666;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.muted {
+  color: #666666;
+}
+
+.signal-dot,
+.top-status i,
+.preview-indicator i {
+  background: #0a0a0a;
+  border-radius: 0;
+}
+
+.button,
+.icon-button,
+.level-chip,
+.tag,
+.product-card,
+.challenge-card,
+.reward-card,
+.bike-card,
+.settings-list > div,
+.ranking-list > div,
+.personal-best,
+.daily-teaser {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.button {
+  min-height: 44px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #111111;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.button:hover:not(:disabled) {
+  background: #f1f1f1;
+}
+
+.button.primary {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+}
+
+.button.primary:hover:not(:disabled) {
+  background: #2a2a2a;
+}
+
+.button.equipped {
+  border-color: #111111;
+  background: #eeeeee;
+  color: #111111;
+}
+
+.icon-button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #111111;
+}
+
+.icon-button:hover {
+  border-color: #111111;
+  background: #f3f3f3;
+}
+
+.coin svg {
+  color: #111111;
+}
+
+.tag {
+  border-color: #111111;
+  background: #ffffff;
+  color: #111111;
+}
+
+.app-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: 0;
+  display: grid;
+  grid-template-rows: 64px minmax(0, 1fr) 58px;
+  background: #ffffff;
+}
+
+.topbar {
+  position: static;
+  z-index: 20;
+  height: 64px;
+  padding: 0 clamp(18px, 3vw, 40px);
+  border-bottom: 1px solid #111111;
+  background: #ffffff;
+  color: #111111;
+}
+
+.brand {
+  gap: 14px;
+  color: #111111;
+}
+
+.brand-logo {
+  width: 118px;
+  height: 48px;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+}
+
+.brand-sub {
+  border-left: 1px solid #111111;
+  padding-left: 14px;
+  color: #111111;
+  font-size: 9px;
+  letter-spacing: 0.13em;
+}
+
+.top-status {
+  color: #666666;
+}
+
+.top-right {
+  gap: 8px;
+}
+
+.level-chip {
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #111111;
+}
+
+.bottom-nav {
+  position: static;
+  z-index: 20;
+  height: 58px;
+  grid-row: 3;
+  gap: clamp(16px, 5vw, 72px);
+  padding: 0 16px env(safe-area-inset-bottom);
+  border-top: 1px solid #111111;
+  background: #ffffff;
+  backdrop-filter: none;
+}
+
+.bottom-nav button {
+  color: #555555;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.bottom-nav button.active,
+.bottom-nav button:hover {
+  color: #111111;
+}
+
+.bottom-nav button.active::before {
+  height: 2px;
+  background: #111111;
+}
+
+.save-warning {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+}
+
+.main-menu {
+  grid-row: 2;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.35fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 18px 36px;
+  padding: clamp(20px, 3vw, 42px) clamp(22px, 4vw, 56px) 22px;
+  background: #ffffff;
+}
+
+.menu-stage {
+  position: relative;
+  inset: auto;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #111111;
+  background: #f4f4f4;
+}
+
+.menu-stage::after {
+  display: none;
+}
+
+.menu-title {
+  position: relative;
+  z-index: 3;
+  grid-column: 1;
+  grid-row: 1;
+  width: auto;
+  padding: 0;
+  align-self: center;
+  color: #111111;
+}
+
+.hero-logo {
+  display: block;
+  width: min(430px, 82%);
+  max-height: 250px;
+  object-fit: contain;
+  object-position: left center;
+  margin: 8px 0 18px;
+}
+
+.intro {
+  max-width: 370px;
+  color: #222222;
+  font-size: clamp(15px, 1.25vw, 18px);
+  line-height: 1.42;
+}
+
+.play-button {
+  width: min(330px, 100%);
+  min-height: 56px;
+  margin-top: 24px;
+  padding: 13px 18px;
+  font-size: 15px;
+  font-style: normal;
+}
+
+.garage-link {
+  gap: 10px;
+  padding: 13px 0 8px;
+  color: #111111;
+}
+
+.garage-link svg:last-child {
+  margin-left: 26px;
+}
+
+.input-caption {
+  margin-top: 5px;
+  color: #777777;
+}
+
+.bike-caption {
+  right: 18px;
+  bottom: 18px;
+  max-width: 210px;
+  padding: 10px 12px;
+  border: 1px solid #111111;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111111;
+}
+
+.bike-caption strong {
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-style: normal;
+  letter-spacing: -0.02em;
+}
+
+.bike-caption > span:last-child {
+  color: #666666;
+}
+
+.menu-bottom {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 3;
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.personal-best,
+.daily-teaser {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #111111;
+}
+
+.personal-best {
+  gap: 12px;
+}
+
+.personal-best > svg {
+  color: #111111;
+}
+
+.personal-best strong {
+  font-size: 23px;
+}
+
+.best-divider {
+  margin: 0 5px;
+  background: #cccccc;
+}
+
+.daily-teaser {
+  gap: 12px;
+}
+
+.daily-teaser .eyebrow,
+.personal-best .eyebrow {
+  color: #666666;
+}
+
+.standard-page,
+.garage-page,
+.results-page {
+  grid-row: 2;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #ffffff;
+  color: #111111;
+  scrollbar-gutter: stable;
+}
+
+.standard-page,
+.garage-page {
+  max-width: 1440px;
+  width: 100%;
+  padding: 24px clamp(18px, 3.4vw, 48px) 30px;
+}
+
+.standard-page.narrow {
+  max-width: 1040px;
+}
+
+.screen-heading {
+  margin-bottom: 20px;
+}
+
+.screen-heading .icon-button {
+  border-color: #111111;
+}
+
+.page-intro {
+  margin-bottom: 20px;
+  color: #555555;
+}
+
+.section-intro {
+  margin: 18px 0 14px;
+}
+
+.section-intro p {
+  color: #666666;
+}
+
+.challenge-card,
+.reward-card,
+.product-card,
+.bike-card,
+.settings-list > div,
+.ranking-list > div,
+.equipped-slots > div,
+.garage-product-panel,
+.result-card {
+  border-color: #d4d4d4 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+.challenge-card.complete {
+  border-color: #111111 !important;
+}
+
+.challenge-card p,
+.reward-card p,
+.product-body p,
+.bike-info p,
+.catalog-note,
+.settings-section p,
+.preview-source-note,
+.detail-description {
+  color: #666666 !important;
+}
+
+.category-filter button,
+.garage-tabs button,
+.ranking-tabs button,
+.product-view-controls button,
+.garage-angles button,
+.reset-preview,
+.equipped-slots button {
+  color: #555555 !important;
+}
+
+.category-filter button.active,
+.category-filter button[aria-pressed='true'],
+.product-view-controls button[aria-pressed='true'],
+.garage-tabs button[data-state='active'],
+.ranking-tabs button[data-state='active'] {
+  color: #111111 !important;
+  border-color: #111111 !important;
+}
+
+.product-link {
+  color: #111111 !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+[data-slot='progress-track'] {
+  background: #dddddd !important;
+}
+
+[data-slot='progress-indicator'] {
+  background: #111111 !important;
+}
+
+input,
+select,
+.variant-select {
+  border-radius: 0 !important;
+  border-color: #111111 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+.game-dialog {
+  border-radius: 0 !important;
+  border: 1px solid #111111 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18) !important;
+}
+
+.toast {
+  border-radius: 0 !important;
+  border: 1px solid #111111 !important;
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
+.results-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+}
+
+.result-card {
+  border-left: 1px solid #111111 !important;
+}
+
+.result-score,
+.result-card h1 {
+  color: #111111;
+}
+
+.earned,
+.level-up {
+  border-color: #111111 !important;
+  background: #f2f2f2 !important;
+  color: #111111 !important;
+}
+
+@media (max-width: 1050px) {
+  .top-status {
+    display: none;
+  }
+
+  .main-menu {
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+    gap: 14px 22px;
+    padding: 20px 24px 18px;
+  }
+
+  .hero-logo {
+    width: min(350px, 80%);
+  }
+
+  .menu-bottom {
+    gap: 6px;
+  }
+
+  .daily-teaser {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    grid-template-rows: 56px minmax(0, 1fr) 54px;
+  }
+
+  .topbar {
+    height: 56px;
+    padding: 0 12px;
+  }
+
+  .brand-logo {
+    width: 88px;
+    height: 44px;
+  }
+
+  .brand-sub,
+  .top-status {
+    display: none;
+  }
+
+  .top-right {
+    gap: 2px;
+  }
+
+  .top-right .coin {
+    font-size: 12px;
+  }
+
+  .level-chip {
+    min-height: 28px;
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .icon-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .bottom-nav {
+    height: 54px;
+    justify-content: space-around;
+    gap: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .bottom-nav button {
+    min-width: 54px;
+    justify-content: center;
+    gap: 4px;
+    font-size: 8px;
+  }
+
+  .main-menu {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(170px, 42%) minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .menu-stage {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .menu-title {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+  }
+
+  .menu-title > .eyebrow,
+  .hero-logo,
+  .input-caption,
+  .bike-caption,
+  .menu-bottom {
+    display: none;
+  }
+
+  .intro {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .play-button {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .garage-link {
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 0;
+  }
+
+  .standard-page,
+  .garage-page {
+    padding: 16px 14px 22px;
+  }
+
+  .screen-heading {
+    margin-bottom: 14px;
+  }
+
+  .page-intro {
+    margin-bottom: 14px;
+  }
+
+  .results-page {
+    grid-template-columns: 1fr;
+  }
+
+  .results-art {
+    display: none;
+  }
+
+  .result-card {
+    border-left: 0 !important;
+  }
+}

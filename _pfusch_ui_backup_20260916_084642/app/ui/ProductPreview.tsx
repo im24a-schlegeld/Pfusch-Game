@@ -97,19 +97,19 @@ export default function ProductPreview({
   return (
     <section
       className="garage-product-panel"
-      aria-label={`${product.title} Vorschau-Steuerung`}
+      aria-label={`${product.title} preview controls`}
       data-testid="product-preview-panel"
     >
       <header className="product-preview-header">
         <button className="button small" onClick={onClose}>
-          <ArrowLeft size={14} /> VORSCHAU SCHLIESSEN
+          <ArrowLeft size={14} /> LEAVE PREVIEW
         </button>
         <div className="product-paging">
           {[-1, 1].map((direction) => (
             <button
               key={direction}
               className="icon-button"
-              aria-label={direction < 0 ? 'Vorheriges Produkt' : 'Nächstes Produkt'}
+              aria-label={direction < 0 ? 'Previous product' : 'Next product'}
               onClick={() =>
                 onSelect(
                   products[
@@ -135,7 +135,7 @@ export default function ProductPreview({
         <h2>{product.title}</h2>
         <div className="detail-price">
           <strong>{money(variant?.price ?? product.price)}</strong>
-          <span>{variant?.available ? 'VERFÜGBAR' : 'AUSVERKAUFT'}</span>
+          <span>{variant?.available ? 'IN STOCK' : 'SOLD OUT'}</span>
         </div>
         <div className="product-view-controls">
           <button
@@ -145,7 +145,7 @@ export default function ProductPreview({
               onInspect(Math.PI);
             }}
           >
-            VORNE
+            FRONT
           </button>
           <button
             aria-pressed={view === 'back'}
@@ -155,9 +155,9 @@ export default function ProductPreview({
               onInspect(0);
             }}
           >
-            HINTEN{!color.back ? ' · NICHT VERÖFFENTLICHT' : ''}
+            BACK{!color.back ? ' · NOT PUBLISHED' : ''}
           </button>
-          <span>AM FAHRER / GARAGE</span>
+          <span>ON RIDER / GARAGE VIEW</span>
         </div>
         <div className="authoritative-image">
           <img
@@ -165,17 +165,18 @@ export default function ProductPreview({
             alt={`${product.title} — ${color.label} — ${view}`}
             data-testid="preview-product-image"
           />
-          <span>{view.toUpperCase()} / ECHTES PRODUKTBILD</span>
+          <span>{view.toUpperCase()} / REAL PRODUCT IMAGE</span>
         </div>
         <p className="preview-source-note">
-          Die Shop-Fotos zeigen das echte Produkt. Farben und Passform kannst du direkt am Fahrer in der Garage ansehen.
+          Shop photographs show the actual product; try colors and fit on your
+          rider in the Garage.
           {product.category === 'head'
             ? ' Caps are carried at the hip with the riding helmet on.'
             : ''}
         </p>
         <div className="preview-colors">
           <p className="preview-field-label">
-            FARBE <b>{color.label}</b>
+            COLOR <b>{color.label}</b>
           </p>
           <div>
             {colors.map((c) => (
@@ -194,7 +195,7 @@ export default function ProductPreview({
         </div>
         {color.variantIds.length > 1 && (
           <div className="preview-variant">
-            <label htmlFor="preview-variant">GRÖSSE / VARIANTE</label>
+            <label htmlFor="preview-variant">SIZE / VARIANT</label>
             <Select
               value={configuration.variantId}
               onValueChange={(id) => {
@@ -207,7 +208,7 @@ export default function ProductPreview({
               <SelectTrigger
                 id="preview-variant"
                 className="variant-select"
-                aria-label="Grösse oder Variante"
+                aria-label="Preview size or variant"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -226,14 +227,14 @@ export default function ProductPreview({
         {numberEnabled && (
           <div className="number-customization">
             <label htmlFor="zipper-number">
-              DEINE RÜCKENNUMMER{' '}
-              <small>1–2 Ziffern · kostenlose Vorschau</small>
+              YOUR BACK NUMBER{' '}
+              <small>1–2 digits · Merriweather · free to preview</small>
             </label>
             {numberFont === 'ready' ? (
               <>
                 <input
                   id="zipper-number"
-                  aria-label="Rückennummer"
+                  aria-label="Zipper number"
                   value={configuration.customNumber ?? ''}
                   inputMode="numeric"
                   pattern="[0-9]{1,2}"
@@ -249,7 +250,7 @@ export default function ProductPreview({
                 />
                 <output
                   className="number-proof"
-                  aria-label="Vorschau Rückennummer"
+                  aria-label="Number customization preview"
                 >
                   {configuration.customNumber || '—'}
                 </output>
@@ -257,12 +258,13 @@ export default function ProductPreview({
             ) : (
               <output>
                 {numberFont === 'error'
-                  ? 'Schrift konnte nicht geladen werden. Bitte neu laden.'
-                  : 'Schrift wird geladen…'}
+                  ? 'Number font could not load. Reload to try again.'
+                  : 'Loading number type…'}
               </output>
             )}
             <p>
-              Das Shop-Foto zeigt die Beispielnummer 23. Deine Nummer erscheint am Fahrer in der Garage.
+              The shop photo includes example 23. Your number appears on the
+              Garage rider.
             </p>
           </div>
         )}
@@ -274,7 +276,7 @@ export default function ProductPreview({
               disabled={!validConfiguration(product, configuration)}
               onClick={onKeep}
             >
-              IN VORSCHAU BEHALTEN
+              KEEP IN TRY-ON SETUP
             </button>
           )}
           {permanent ? (
@@ -283,15 +285,15 @@ export default function ProductPreview({
               disabled={exact || !validConfiguration(product, configuration)}
               onClick={() => onEquip(product, configuration)}
             >
-              {exact ? 'AUSGERÜSTET' : 'FÜRS SPIEL AUSRÜSTEN'}
+              {exact ? 'EQUIPPED' : 'EQUIP FOR GAMEPLAY'}
             </button>
           ) : (
             <>
               <p className="gameplay-lock">
                 <Lock size={13} />
                 {equippable(product)
-                  ? 'FÜRS SPIEL GESPERRT · VORSCHAU KOSTENLOS'
-                  : 'DIGITALES SAMMELSTÜCK'}
+                  ? 'LOCKED FOR GAMEPLAY · FREE TO TRY ON'
+                  : 'DIGITAL COLLECTIBLE'}
               </p>
               <button
                 className="button"
@@ -302,10 +304,10 @@ export default function ProductPreview({
               >
                 {state === 'LOCKED' ? (
                   <>
-                    <Coin value={digitalPrice(product)} /> DIGITAL FREISCHALTEN
+                    <Coin value={digitalPrice(product)} /> UNLOCK DIGITAL
                   </>
                 ) : (
-                  'ERHALTEN'
+                  'COLLECTED'
                 )}
               </button>
             </>
@@ -317,7 +319,7 @@ export default function ProductPreview({
             rel="noopener noreferrer"
             onClick={onLink}
           >
-            PRODUKT IM SHOP <ExternalArrow />
+            VIEW PRODUCT <ExternalArrow />
           </a>
         </div>
       </div>

@@ -56,20 +56,20 @@ export default function Garage({
     const next = unlock(player, p.id, digitalPrice(p));
     if (next) {
       update(next);
-      notify(`${p.title} digital freigeschaltet. Jetzt kannst du es ausrüsten.`);
+      notify(`${p.title} digitally unlocked. Choose Equip when you are ready.`);
     } else
-      notify('Du brauchst mehr Coins. Vorschau bleibt kostenlos.');
+      notify('Earn more coins to unlock for gameplay. Preview is always free.');
   }
   function equipProduct(p: Product, config: ProductConfiguration) {
     const next = equipConfiguration(player, p, config);
     if (!next) {
-      notify('Schalte den Artikel frei, bevor du ihn ausrüstest.');
+      notify('Unlock this item before equipping it for gameplay.');
       return;
     }
     update(next);
     setDraft(null);
     services.analytics.track('product_equipped', { id: p.id });
-    notify(`${p.title} ausgerüstet und gespeichert.`);
+    notify(`${p.title} equipped and saved.`);
   }
   function previewBike(
     values: Partial<Pick<Player, 'bike' | 'paint' | 'rims'>>,
@@ -88,7 +88,7 @@ export default function Garage({
     setDraft(null);
     setSelected(null);
     setConfiguration(null);
-    notify('Helmet ausgerüstet und gespeichert.');
+    notify('Helmet equipped and saved.');
   }
   const helmetChanged =
     appearance.helmet !== player.helmet ||
@@ -106,7 +106,7 @@ export default function Garage({
       rims: appearance.rims,
     });
     setDraft(null);
-    notify(`${bike.name} Setup ausgerüstet.`);
+    notify(`${bike.name} setup equipped.`);
   }
   const visible = products.filter(
     (p) => filter === 'all' || p.category === filter,
@@ -120,7 +120,7 @@ export default function Garage({
   };
   const grid = (
     <>
-      <div className="category-filter" aria-label="Produktkategorien">
+      <div className="category-filter" aria-label="Product categories">
         {['all', 'upper', 'head', 'accessory', 'collectible'].map((f) => (
           <button
             key={f}
@@ -129,14 +129,14 @@ export default function Garage({
             onClick={() => setFilter(f)}
           >
             {f === 'all'
-              ? 'ALLE'
+              ? 'ALL'
               : f === 'upper'
-                ? 'OBERTEILE'
+                ? 'TOPS'
                 : f === 'head'
-                  ? 'KOPFBEDECKUNG'
+                  ? 'HEADWEAR'
                   : f === 'accessory'
-                    ? 'ACCESSOIRES'
-                    : 'SAMMELSTÜCKE'}
+                    ? 'ACCESSORIES'
+                    : 'COLLECTIBLES'}
           </button>
         ))}
       </div>
@@ -149,7 +149,7 @@ export default function Garage({
           >
             <button
               className="product-image product-open"
-              aria-label={`Vorschau ${p.title}`}
+              aria-label={`Preview ${p.title}`}
               onClick={() => openProduct(p)}
             >
               <img
@@ -161,12 +161,12 @@ export default function Garage({
               />
               <span className="ownership">
                 {ownership(player, p) === 'EQUIPPED'
-                  ? 'AUSGERÜSTET'
+                  ? 'EQUIPPED'
                   : ownership(player, p) === 'LOCKED'
-                    ? 'KOSTENLOSE VORSCHAU'
+                    ? 'FREE PREVIEW'
                     : ownership(player, p) === 'OWNED_IRL'
-                      ? 'BESITZT DU'
-                      : 'DIGITAL FREISCHALTEN'}
+                      ? 'OWNED IRL'
+                      : 'DIGITAL UNLOCK'}
               </span>
             </button>
             <div className="product-body">
@@ -177,7 +177,7 @@ export default function Garage({
                 className="button small primary"
                 onClick={() => openProduct(p)}
               >
-                {equippable(p) ? 'VORSCHAU / ANPROBIEREN' : 'PRODUKT ANSEHEN'}
+                {equippable(p) ? 'PREVIEW / TRY ON' : 'PREVIEW PRODUCT'}
               </button>
               <a
                 className="product-link"
@@ -188,7 +188,7 @@ export default function Garage({
                   services.analytics.track('product_link_clicked', { id: p.id })
                 }
               >
-                PRODUKT IM SHOP <ExternalArrow />
+                VIEW PRODUCT <ExternalArrow />
               </a>
             </div>
           </article>
@@ -199,15 +199,15 @@ export default function Garage({
   return (
     <main className="garage-page">
       <ScreenHeading
-        kicker="DEIN SETUP."
-        title="GARAGE."
+        kicker="YOUR SPACE. YOUR SETUP."
+        title="THE GARAGE."
         back={back}
       />
       <div className="garage-layout">
         <section className="garage-preview">
           <div className="preview-top">
             <span className="eyebrow">
-              {draft ? 'KOSTENLOSE VORSCHAU' : 'AKTUELLES SETUP'}
+              {draft ? 'FREE SETUP PREVIEW' : 'EQUIPPED SETUP'}
             </span>
             {draft && (
               <button
@@ -217,7 +217,7 @@ export default function Garage({
                   setSelected(null);
                 }}
               >
-                ZUM AKTUELLEN SETUP
+                RETURN TO EQUIPPED
               </button>
             )}
           </div>
@@ -247,10 +247,10 @@ export default function Garage({
           <div className="preview-bottom">
             <div className="garage-angles">
               {[
-                { label: 'VORNE ¾', angle: 2.35 },
-                { label: 'SEITE', angle: 1.57 },
-                { label: 'HINTEN ¾', angle: 0.55 },
-                { label: 'VORNE', angle: Math.PI },
+                { label: 'FRONT ¾', angle: 2.35 },
+                { label: 'SIDE', angle: 1.57 },
+                { label: 'REAR ¾', angle: 0.55 },
+                { label: 'FRONT', angle: Math.PI },
               ].map((v) => (
                 <button
                   key={v.label}
@@ -268,12 +268,12 @@ export default function Garage({
             <h2>{bike.name}</h2>
             <p>
               {products.find((p) => p.id === appearance.equipped.upper)
-                ?.title ?? 'Standard-Outfit'}
-              {draft ? ' · temporäre Vorschau' : ''}
+                ?.title ?? 'Crew riding kit'}
+              {draft ? ' · temporary preview' : ''}
             </p>
             <XpBar player={player} />
             <button className="button primary" onClick={start}>
-              RIDE AKTUELLES SETUP <ArrowRight />
+              RIDE EQUIPPED SETUP <ArrowRight />
             </button>
           </div>
         </section>
@@ -286,28 +286,28 @@ export default function Garage({
             }}
           >
             <TabsList className="garage-tabs" variant="line">
-              <TabsTrigger value="rider">FAHRER</TabsTrigger>
+              <TabsTrigger value="rider">RIDER</TabsTrigger>
               <TabsTrigger value="bike">BIKE</TabsTrigger>
-              <TabsTrigger value="progress">FORTSCHRITT</TabsTrigger>
+              <TabsTrigger value="progress">PROGRESS</TabsTrigger>
             </TabsList>
             <TabsContent value="rider">
               <div className="section-intro">
-                <h2>ANPROBIEREN. AUSWÄHLEN.</h2>
-                <p>Jeder Artikel kann kostenlos angesehen werden, auch gesperrte.</p>
+                <h2>TRY IT. MAKE IT YOURS.</h2>
+                <p>Every piece is free to try on, including locked gear.</p>
               </div>
               <div className="equipped-slots">
                 {(['upper', 'head', 'accessory'] as const).map((slot) => (
                   <div key={slot}>
                     <span className="eyebrow">
                       {slot === 'upper'
-                        ? 'OBERTEIL'
+                        ? 'TOP'
                         : slot === 'head'
-                          ? 'KOPFBEDECKUNG'
-                          : 'ACCESSOIRE'}
+                          ? 'HEADWEAR'
+                          : 'ACCESSORY'}
                     </span>
                     <b>
                       {products.find((p) => p.id === player.equipped[slot])
-                        ?.title ?? 'Standard-Outfit'}
+                        ?.title ?? 'Stock riding kit'}
                     </b>
                     {player.equipped[slot] && (
                       <button
@@ -318,19 +318,19 @@ export default function Garage({
                           setDraft(null);
                         }}
                       >
-                        ENTFERNEN
+                        REMOVE
                       </button>
                     )}
                   </div>
                 ))}
               </div>
-              <section aria-label="Helmoptionen">
+              <section aria-label="Helmet options">
                 <h3 className="custom-label">HELMET</h3>
-                <div className="category-filter" aria-label="Helmtyp">
+                <div className="category-filter" aria-label="Helmet style">
                   {HELMETS.map((helmet) => (
                     <button
                       key={helmet.id}
-                      aria-label={`Vorschau ${helmet.name} Helm`}
+                      aria-label={`Preview ${helmet.name} helmet`}
                       aria-pressed={appearance.helmet === helmet.id}
                       className={
                         appearance.helmet === helmet.id ? 'active' : ''
@@ -341,7 +341,7 @@ export default function Garage({
                     </button>
                   ))}
                 </div>
-                <div className="swatches" aria-label="Helmfarbe">
+                <div className="swatches" aria-label="Helmet color">
                   {HELMET_COLORS.map((color) => (
                     <button
                       key={color.value}
@@ -356,7 +356,7 @@ export default function Garage({
                     >
                       <i style={{ background: color.value }} />
                       <b>{color.name}</b>
-                      <span>KOSTENLOS</span>
+                      <span>FREE</span>
                     </button>
                   ))}
                 </div>
@@ -366,7 +366,7 @@ export default function Garage({
                     disabled={!helmetChanged}
                     onClick={saveHelmet}
                   >
-                    <Check size={14} /> HELM AUSRÜSTEN
+                    <Check size={14} /> EQUIP HELMET
                   </button>
                   {helmetChanged && (
                     <button
@@ -377,7 +377,7 @@ export default function Garage({
                         setConfiguration(null);
                       }}
                     >
-                      VORSCHAU VERWERFEN
+                      DISCARD PREVIEW
                     </button>
                   )}
                 </div>
@@ -417,9 +417,10 @@ export default function Garage({
             </TabsContent>
             <TabsContent value="bike">
               <div className="section-intro">
-                <h2>DEIN BIKE.</h2>
+                <h2>FIND YOUR RIDE.</h2>
                 <p>
-                  Alle Bikes und Farben können angesehen werden. Gespeichert wird erst beim Ausrüsten.
+                  Preview every bike and finish. Your saved setup changes only
+                  with Equip.
                 </p>
               </div>
               <div className="bike-options">
@@ -433,25 +434,25 @@ export default function Garage({
                       <h3>{b.name}</h3>
                       <p>
                         {b.id === '125'
-                          ? 'Leichtes Bike. Direkt und unkompliziert.'
+                          ? 'Light frame. Easy upright riding.'
                           : b.id === 'scooter'
-                            ? 'Kleine Räder. Für die Stadt.'
+                            ? 'Small wheels. Open floorboard. City riding.'
                           : b.id === '450'
-                            ? 'Hohe Sitzposition. Strassenreifen.'
-                            : 'Vollverkleidung. Tiefe Lenkerposition.'}
+                            ? 'Tall stance. Road tires. Street attitude.'
+                            : 'Full fairings. Low bars. Tucked posture.'}
                       </p>
                       <span className="eyebrow">
                         {owned(`bike:${b.id}`)
-                          ? 'BESITZT'
-                          : `FREISCHALTEN · LEVEL ${b.level} · ${b.price} COINS`}
+                          ? 'OWNED'
+                          : `GAMEPLAY UNLOCK · LEVEL ${b.level} · ${b.price} COINS`}
                       </span>
                     </div>
                     <button
                       className="button small"
-                      aria-label={`Vorschau ${b.name}`}
+                      aria-label={`Preview ${b.name}`}
                       onClick={() => previewBike({ bike: b.id })}
                     >
-                      VORSCHAU
+                      PREVIEW
                     </button>
                   </article>
                 ))}
@@ -474,17 +475,17 @@ export default function Garage({
                 >
                   {player.level < bike.level ? (
                     <>
-                      <Lock size={14} /> FREISCHALTEN AB LEVEL {bike.level}
+                      <Lock size={14} /> GAMEPLAY UNLOCK AT LEVEL {bike.level}
                     </>
                   ) : (
                     <>
-                      <Coin value={bike.price} /> FREISCHALTEN{' '}
+                      <Coin value={bike.price} /> UNLOCK{' '}
                       {bike.name.toUpperCase()}
                     </>
                   )}
                 </button>
               )}
-              <h3 className="custom-label">FARBE</h3>
+              <h3 className="custom-label">PAINT / BODYWORK</h3>
               <div className="swatches">
                 {PAINTS.map((c) => (
                   <button
@@ -497,7 +498,7 @@ export default function Garage({
                     <i style={{ background: c.value }} />
                     <b>{c.name}</b>
                     <span>
-                      {owned(`paint:${c.value}`) ? 'BESITZT' : 'KOSTENLOSE VORSCHAU'}
+                      {owned(`paint:${c.value}`) ? 'OWNED' : 'FREE PREVIEW'}
                     </span>
                   </button>
                 ))}
@@ -516,12 +517,12 @@ export default function Garage({
                     if (p) update(p);
                   }}
                 >
-                  FREISCHALTEN PAINT ·{' '}
+                  UNLOCK PAINT ·{' '}
                   {PAINTS.find((c) => c.value === appearance.paint)?.price}{' '}
                   COINS
                 </button>
               )}
-              <h3 className="custom-label">FELGEN</h3>
+              <h3 className="custom-label">RIMS / FINISH</h3>
               <div className="swatches">
                 {RIMS.map((c) => (
                   <button
@@ -534,7 +535,7 @@ export default function Garage({
                     <i style={{ background: c.value }} />
                     <b>{c.name}</b>
                     <span>
-                      {owned(`rims:${c.value}`) ? 'BESITZT' : 'KOSTENLOSE VORSCHAU'}
+                      {owned(`rims:${c.value}`) ? 'OWNED' : 'FREE PREVIEW'}
                     </span>
                   </button>
                 ))}
@@ -552,7 +553,7 @@ export default function Garage({
                     if (p) update(p);
                   }}
                 >
-                  FREISCHALTEN RIMS ·{' '}
+                  UNLOCK RIMS ·{' '}
                   {RIMS.find((c) => c.value === appearance.rims)?.price} COINS
                 </button>
               )}
@@ -562,7 +563,7 @@ export default function Garage({
                   disabled={!bikeSetupOwned || player.level < bike.level}
                   onClick={equipBike}
                 >
-                  <Check size={16} /> BIKE-SETUP AUSRÜSTEN
+                  <Check size={16} /> EQUIP BIKE SETUP
                 </button>
                 <button
                   className="button"
@@ -571,7 +572,7 @@ export default function Garage({
                     setSelected(null);
                   }}
                 >
-                  RESET VORSCHAU
+                  RESET PREVIEW
                 </button>
               </div>
             </TabsContent>

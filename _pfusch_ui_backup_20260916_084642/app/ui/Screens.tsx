@@ -32,15 +32,15 @@ export function Challenges({
   return (
     <main className="standard-page">
       <ScreenHeading
-        kicker="EIN GRUND FÜR NOCH EINE."
-        title="TÄGLICHE AUFGABEN."
+        kicker="A REASON FOR ONE MORE."
+        title="DAILY CHALLENGES."
         back={back}
       />
       <div className="page-intro">
         <p>
-          Kurze Aufgaben. Direkte Belohnungen. Fortschritt zählt über alle Fahrten.
+          A little risk. A little reward. Progress adds up across your rides.
         </p>
-        <span className="tag">RESET 00:00 UTC</span>
+        <span className="tag">RESETS 00:00 UTC</span>
       </div>
       <div className="challenge-grid">
         {DAILY_CHALLENGES.map((c, i) => {
@@ -52,7 +52,7 @@ export function Challenges({
               className={`challenge-card ${complete ? 'complete' : ''}`}
             >
               <div className="challenge-top">
-                <span>0{i + 1} / TÄGLICH</span>
+                <span>0{i + 1} / DAILY</span>
                 {complete ? <Check /> : <Flag />}
               </div>
               <h2>{c.title}</h2>
@@ -68,16 +68,16 @@ export function Challenges({
               <div className="challenge-reward">
                 <span>+{c.xp} XP</span>
                 <Coin value={c.coins} />
-                {complete && <b>ERHALTEN</b>}
+                {complete && <b>COLLECTED</b>}
               </div>
             </article>
           );
         })}
       </div>
       <div className="challenge-footer">
-        <p>Belohnungen werden nach einer Fahrt automatisch gutgeschrieben.</p>
+        <p>Rewards are collected automatically after a ride.</p>
         <button className="button primary" onClick={start}>
-          LOSFAHREN <ArrowRight />
+          LET’S RIDE <ArrowRight />
         </button>
       </div>
     </main>
@@ -87,37 +87,37 @@ export function ProgressContent({ player }: { player: Player }) {
   return (
     <>
       <div className="section-intro">
-        <p className="eyebrow">DEIN FORTSCHRITT</p>
+        <p className="eyebrow">YOUR REPUTATION</p>
         <h2>{LEVEL_NAMES[player.level - 1]}</h2>
       </div>
       <XpBar player={player} />
       <div className="lifetime-stats">
         <div>
           <b>{fmt(player.runsPlayed)}</b>
-          <span>FAHRTEN</span>
+          <span>RIDES</span>
         </div>
         <div>
           <b>{(player.totalDistance / 1000).toFixed(1)} km</b>
-          <span>DISTANZ</span>
+          <span>DISTANCE</span>
         </div>
         <div>
           <b>{fmt(player.highScore)}</b>
-          <span>BESTLEISTUNG</span>
+          <span>HIGH SCORE</span>
         </div>
         <div>
           <b>{fmt(player.totalNearMisses)}</b>
-          <span>KNAPPE MANÖVER</span>
+          <span>NEAR MISSES</span>
         </div>
         <div>
           <b>{fmt(player.totalWheelieMeters)} m</b>
-          <span>AUF EINEM RAD</span>
+          <span>ON ONE WHEEL</span>
         </div>
         <div>
           <b>{player.ownedItems.length}</b>
-          <span>FREIGESCHALTET</span>
+          <span>UNLOCKED ITEMS</span>
         </div>
       </div>
-      <h3 className="custom-label">DEIN LEVEL</h3>
+      <h3 className="custom-label">FROM NEW BLOOD TO CREW</h3>
       <div className="level-list">
         {LEVELS.map((xp, i) => (
           <div key={xp} className={player.level >= i + 1 ? 'reached' : ''}>
@@ -128,14 +128,14 @@ export function ProgressContent({ player }: { player: Player }) {
               <b>{LEVEL_NAMES[i]}</b>
               <span>
                 {i === 0
-                  ? 'Töffli + 150 Start-Coins'
+                  ? 'Töffli + 150 starting coins'
                   : i === 2
-                    ? 'Supermoto verfügbar'
+                    ? 'Supermoto available'
                     : i === 4
-                      ? 'After-Hours-Felgen verfügbar'
+                      ? 'After hours rims reward available'
                       : i === 5
-                        ? 'Sport verfügbar'
-                        : `${fmt(xp)} XP gesamt`}
+                        ? 'Sport available'
+                        : `${fmt(xp)} lifetime XP`}
               </span>
             </div>
             {player.level >= i + 1 ? <Check size={19} /> : <Lock size={16} />}
@@ -149,8 +149,8 @@ export function ProgressScreen({ player, back }: Base) {
   return (
     <main className="standard-page narrow">
       <ScreenHeading
-        kicker="JEDE FAHRT ZÄHLT."
-        title="FORTSCHRITT."
+        kicker="EVERY RIDE COUNTS."
+        title="STREET REPUTATION."
         back={back}
       />
       <ProgressContent player={player} />
@@ -171,14 +171,14 @@ export function Rewards({
   return (
     <main className="standard-page">
       <ScreenHeading
-        kicker="IM SPIEL VERDIENT."
-        title="BELOHNUNGEN."
+        kicker="EARNED ON THE STREETS."
+        title="CREW REWARDS."
         back={back}
       />
       <div className="page-intro">
-        <p>Digitale Extras für deinen Fortschritt.</p>
+        <p>Digital gear for putting in the miles.</p>
         <span className="tag">
-          {player.tickets} PFUSCH TICKETS · SPÄTER NUTZBAR
+          {player.tickets} PFUSCH TICKETS · FUTURE USE
         </span>
       </div>
       <div className="reward-grid">
@@ -199,7 +199,7 @@ export function Rewards({
                   <Gift size={52} strokeWidth={1} />
                 )}
                 <span className="tag">
-                  {future ? 'SHOP VORSCHAU' : 'DIGITALE BELOHNUNG'}
+                  {future ? 'SHOP PREVIEW' : 'DIGITAL REWARD'}
                 </span>
               </div>
               <div>
@@ -217,12 +217,12 @@ export function Rewards({
                   }}
                 >
                   {future
-                    ? 'KOMMT SPÄTER'
+                    ? 'COMING LATER'
                     : claimed
-                      ? 'ERHALTEN'
+                      ? 'COLLECTED'
                       : player.level < r.level
-                        ? `AB LEVEL ${r.level}`
-                        : 'BELOHNUNG HOLEN'}
+                        ? `UNLOCK AT LEVEL ${r.level}`
+                        : 'COLLECT REWARD'}
                 </button>
               </div>
             </article>
@@ -230,7 +230,8 @@ export function Rewards({
         })}
       </div>
       <p className="catalog-note">
-        Shop-Vorteile sind in dieser Version nur Vorschau. Es werden keine Gutscheine, Rabatte oder Early-Access-Vorteile ausgegeben.
+        Shop benefits are previews only. No shipping vouchers, discounts or
+        early access are issued in this version.
       </p>
     </main>
   );
@@ -247,27 +248,27 @@ export function Leaderboard({
   return (
     <main className="standard-page narrow">
       <ScreenHeading
-        kicker="LOKALE RANGLISTE"
-        title="RANGLISTE."
+        kicker="LOCAL LEADERBOARD"
+        title="STREET RANKING."
         back={back}
       />
       <div className="page-intro">
-        <p>Deine lokale Bestleistung neben den Demo-Fahrern.</p>
-        <span className="tag">LOKAL / DEMO</span>
+        <p>Your local best, alongside the demo crew.</p>
+        <span className="tag">LOCAL / DEMO RANKING</span>
       </div>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
         <TabsList className="ranking-tabs" variant="line">
           {(['Today', 'This week', 'All time'] as const).map((p) => (
             <TabsTrigger key={p} value={p}>
-              {p === 'Today' ? 'HEUTE' : p === 'This week' ? 'DIESE WOCHE' : 'GESAMT'}
+              {p.toUpperCase()}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
       <div className="ranking-list">
         <div className="ranking-head">
-          <span>RANG / FAHRER</span>
-          <span>PUNKTE</span>
+          <span>RANK / RIDER</span>
+          <span>POINTS</span>
         </div>
         {entries.map((e, i) => (
           <div key={e.name} className={e.you ? 'you' : ''}>
@@ -276,14 +277,15 @@ export function Leaderboard({
             </span>
             <span className="racer">
               {e.name}
-              <small>{e.you ? 'DEIN BESTER WERT AUF DIESEM GERÄT' : 'DEMO-FAHRER'}</small>
+              <small>{e.you ? 'YOUR BEST ON THIS DEVICE' : 'DEMO RIDER'}</small>
             </span>
             <strong>{fmt(e.score)}</strong>
           </div>
         ))}
       </div>
       <p className="catalog-note">
-        Scores werden nicht hochgeladen. Heute und diese Woche basieren nur auf den lokal gespeicherten Fahrten.
+        No scores are uploaded. Today and this week use your dated rides; weeks
+        start Monday, UTC.
       </p>
     </main>
   );
@@ -311,12 +313,12 @@ export function SettingsScreen({
   }
   return (
     <main className="standard-page narrow">
-      <ScreenHeading kicker="STELL ES EIN." title="EINSTELLUNGEN." back={back} />
+      <ScreenHeading kicker="DIAL IT IN." title="SETTINGS." back={back} />
       <div className="settings-list">
         <div>
           <label htmlFor="sound">
-            <b>Motor & Soundeffekte</b>
-            <span>Motor, Feedback und Kollisionen.</span>
+            <b>Engine & sound effects</b>
+            <span>Engine, skill feedback and collisions.</span>
           </label>
           <Switch
             id="sound"
@@ -326,8 +328,8 @@ export function SettingsScreen({
         </div>
         <div>
           <label htmlFor="motion">
-            <b>Reduzierte Bewegung</b>
-            <span>Weniger Kamerabewegung. Keine automatische Garage-Rotation.</span>
+            <b>Reduced motion</b>
+            <span>Less camera movement. No automatic garage rotation.</span>
           </label>
           <Switch
             id="motion"
@@ -337,9 +339,9 @@ export function SettingsScreen({
         </div>
         <div>
           <label htmlFor="quality">
-            <b>Performance-Modus</b>
+            <b>Performance mode</b>
             <span>
-              Niedrigere Auflösung und weniger Details für ältere Geräte.
+              Lower resolution and fewer roadside details for older phones.
             </span>
           </label>
           <Switch
@@ -350,19 +352,20 @@ export function SettingsScreen({
         </div>
       </div>
       <section className="settings-section">
-        <h2>DEIN FORTSCHRITT</h2>
+        <h2>YOUR PROGRESS</h2>
         <p>
-          Der Fortschritt wird automatisch in diesem Browser gespeichert. Kein Login. Beim Löschen der Browserdaten geht der Spielstand verloren.
+          Saved automatically in this browser on this device. No login. Clearing
+          browser data removes your progress.
         </p>
         <button className="button" onClick={exportSave}>
-          <Download size={18} /> SPIELSTAND EXPORTIEREN
+          <Download size={18} /> EXPORT SAVE BACKUP
         </button>
       </section>
       <section className="settings-section">
-        <h2>STEUERUNG</h2>
+        <h2>THE CONTROLS</h2>
         <div className="control-guide">
           <span>
-            SWIPE ← → / A D <b>Ausweichen</b>
+            SWIPE ← → / A D <b>Dodge</b>
           </span>
           <span>
             SLIDE UP / W / ↑ <b>Weight forward / correct</b>
@@ -375,12 +378,20 @@ export function SettingsScreen({
           </span>
         </div>
         <p>
-          Touch: nach unten ziehen = Gewicht zurück, nach oben = korrigieren, seitlich = ausweichen. Zwei Finger pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ zurück, W/↑ vor. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. P F U S C H komplett sammeln gibt einen Set-Bonus.
+          On touch, start anywhere and slide down to move weight back, up to
+          correct. Your starting point is neutral; tapping never raises the
+          front. Swipe sideways with the same finger while balancing. Release
+          for neutral. A two-finger tap pauses or resumes. Holding rear weight
+          can overrotate the bike; keep correcting. Wheelies, near misses and
+          stunts earn most points. Dodge traffic and construction barriers. Ride
+          up a tow truck&apos;s rear ramp, then swipe sideways from the deck to
+          jump into the adjacent lane. Collect all six PFUSCH signs for an extra
+          set bonus.
         </p>
       </section>
       <footer className="settings-section">
         <span className="eyebrow">PFUSCH STREET RUN · V1.0</span>
-        <p>Echte Strassen sind keine Rennstrecke. Risiko bleibt im Spiel.</p>
+        <p>Real streets are not a racetrack. Keep the risk in the game.</p>
         <a
           className="product-link"
           href="https://pfusch-clothing.ch/"

@@ -264,20 +264,20 @@ export default function Ride({
       />
       <div
         className="gesture-zone"
-        aria-label="Steuerung: seitlich wischen, nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
+        aria-label="Ride gestures: swipe to steer, slide down to raise, up to correct; two-finger tap to pause"
         onContextMenu={(e) => e.preventDefault()}
       />
       <div className="ride-top">
         <div className="score-display">
-          <span className="eyebrow">PUNKTE</span>
+          <span className="eyebrow">SCORE</span>
           <strong>{fmt(engine.score).padStart(6, '0')}</strong>
-          <small>BESTE {fmt(player.highScore)}</small>
+          <small>BEST {fmt(player.highScore)}</small>
         </div>
         <div
           className="sign-progress"
-          aria-label={`PFUSCH signs: ${SIGN_IDS.filter((_, i) => engine.collectedSigns & (1 << i)).join(', ') || 'keine'}; ${engine.signSetCount} Sets komplett`}
+          aria-label={`PFUSCH signs: ${SIGN_IDS.filter((_, i) => engine.collectedSigns & (1 << i)).join(', ') || 'none'}; ${engine.signSetCount} sets complete`}
         >
-          <span className="eyebrow">SAMMLE DAS SET</span>
+          <span className="eyebrow">COLLECT THE SET</span>
           <div>
             {SIGN_IDS.map((id, index) => (
               <b
@@ -303,7 +303,7 @@ export default function Ride({
       </div>
       <div className={`combo-display ${engine.combo > 1 ? 'is-active' : ''}`}>
         <b>×{engine.combo.toFixed(1)}</b>
-        <span>KOMBO</span>
+        <span>COMBO</span>
         <div
           style={{
             transform: `scaleX(${Math.max(0, engine.comboTime / 3.8)})`,
@@ -320,24 +320,24 @@ export default function Ride({
       )}
       {countdown > 0 && (
         <div className="countdown">
-          <p className="eyebrow">FAHR DEINE LINIE</p>
+          <p className="eyebrow">MAKE IT YOUR LINE</p>
           <strong>{ready ? countdown : '…'}</strong>
-          <p>Verkehr ausweichen. Vorderrad balancieren.</p>
+          <p>Dodge traffic. Balance the front wheel.</p>
         </div>
       )}
       {engine.elapsed < 9 && countdown === 0 && engine.phase !== 'crashed' && (
         <div className="ride-tip">
           <span className="desktop-control-tip">
-            S / ↓ ANHEBEN · W / ↑ KORRIGIEREN
+            S / ↓ RAISE · W / ↑ CORRECT
           </span>
           <span className="touch-control-tip">
-            SLIDE ↓ ANHEBEN · ↑ KORRIGIEREN · ZWEI FINGER = PAUSE
+            SLIDE ↓ RAISE · ↑ CORRECT · TWO-FINGER TAP PAUSES
           </span>
-          {' · WISCHEN = AUSWEICHEN'}
+          {' · SWIPE TO DODGE'}
         </div>
       )}
       {engine.phase === 'playing' && (
-        <div className="ride-balance" aria-label="Wheelie-Winkel">
+        <div className="ride-balance" aria-label="Wheelie angle">
           <small>BALANCE</small>
           <div className="balance-meter">
             <b
@@ -364,31 +364,40 @@ export default function Ride({
         }}
       >
         <DialogContent className="game-dialog" showCloseButton={false}>
-          <p className="eyebrow">PAUSE</p>
-          <DialogTitle>FAHRT PAUSIERT.</DialogTitle>
+          <p className="eyebrow">TAKE A BREATHER</p>
+          <DialogTitle>RIDE PAUSED.</DialogTitle>
           <DialogDescription>
-            Mit zwei Fingern fortsetzen. Deine Fahrt bleibt an dieser Stelle.
+            Two-finger tap to resume. Your line will be right here.
           </DialogDescription>
           <div className="control-guide">
             <span>
-              ← → / A D <b>Ausweichen</b>
+              ← → / A D <b>Dodge</b>
             </span>
             <span>
-              ↑ / W <b>Gewicht vor / korrigieren</b>
+              ↑ / W <b>Weight forward / correct</b>
             </span>
             <span>
-              ↓ / S <b>Gas / Gewicht zurück</b>
+              ↓ / S <b>Throttle / weight back</b>
             </span>
             <span>
               ESC / P <b>Pause</b>
             </span>
           </div>
           <p className="muted">
-            Touch: nach unten ziehen zum Anheben, nach oben zum Korrigieren und seitlich zum Ausweichen. Loslassen = neutral. Zwei Finger pausieren. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Sammle P F U S C H für einen Set-Bonus.
+            Touch anywhere on the road and slide down to raise the front, up to
+            shift forward. Your starting position is neutral; release for
+            neutral. Swipe sideways with the same finger to steer while
+            balancing. A tap does not raise the front. Two-finger tap pauses or
+            resumes. Keep correcting: holding full rear weight can flip the
+            bike. Wheelies, near misses and stunts earn most points. Dodge
+            traffic and construction barriers. Enter a tow truck&apos;s rear
+            ramp to ride onto the deck, then swipe sideways to jump into the
+            adjacent lane. Collect P F U S C H for a set bonus. A clear lane
+            remains available.
           </p>
           <button className="button" onClick={onMute}>
             {player.settings.muted ? <VolumeX /> : <Volume2 />}
-            {player.settings.muted ? 'TON AN' : 'TON AUS'}
+            {player.settings.muted ? 'UNMUTE' : 'MUTE'}
           </button>
           <button
             className="button primary"
@@ -398,7 +407,7 @@ export default function Ride({
               setTick((n) => n + 1);
             }}
           >
-            WEITERFAHREN <ArrowRight />
+            BACK TO THE STREETS <ArrowRight />
           </button>
           <button
             className="button"
@@ -407,7 +416,7 @@ export default function Ride({
               engine.crash('Ride ended');
             }}
           >
-            FAHRT BEENDEN
+            END RIDE & COLLECT
           </button>
         </DialogContent>
       </Dialog>
