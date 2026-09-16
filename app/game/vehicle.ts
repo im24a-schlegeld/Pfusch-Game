@@ -2391,18 +2391,28 @@ function makeRider(
         .add(V(pose.hip))
         .toArray() as Point;
     const outerwear = hoodie || zipper;
+
+    // Move the hidden sleeve origin toward the actual armpit:
+    // - farther out from the spine (x)
+    // - lower under the shoulder (y)
+    // - slightly toward the rider's front (negative z)
+    // This keeps the visible rear silhouette clean and makes the curve appear
+    // under the arm instead of starting too far across the back panel.
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.132 : 0.128,
-      outerwear ? 0.432 : 0.444,
-      0.008,
+      outerwear ? 0.158 : 0.154,
+      outerwear ? 0.405 : 0.416,
+      outerwear ? -0.052 : -0.048,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.17 : 0.166,
-      outerwear ? 0.482 : 0.488,
-      0.008,
+      outerwear ? 0.186 : 0.181,
+      outerwear ? 0.455 : 0.465,
+      outerwear ? -0.036 : -0.032,
     );
-    const rootRadius = (outerwear ? 0.104 : 0.094) * volume;
-    const blendRadius = (outerwear ? 0.101 : 0.092) * volume;
+
+    // Slightly narrower hidden roots prevent a bulky rear-facing bulge while
+    // preserving enough overlap to keep torso and sleeve visually connected.
+    const rootRadius = (outerwear ? 0.09 : 0.081) * volume;
+    const blendRadius = (outerwear ? 0.093 : 0.084) * volume;
     const shoulderRadius = (outerwear ? 0.094 : 0.086) * volume;
     const armMeshes: THREE.Mesh[] = [];
     if (tee) {
