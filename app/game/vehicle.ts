@@ -2366,177 +2366,165 @@ function makeRider(
   );
   trouserSeat.name = 'continuous-trouser-seat';
 
-  const underarmDrapes: {
+  const underarmGussets: {
     side: -1 | 1;
     index: number;
     mesh: THREE.Mesh;
   }[] = [];
 
-  const createUnderarmDrape = (side: -1 | 1, index: number) => {
+  const createUnderarmGusset = (side: -1 | 1, index: number) => {
+    // Five cross-sections, each with a front and rear point.
+    // This creates one continuous fabric strip rather than a fan/wing shape.
+    const sections = 5;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
       'position',
-      new THREE.Float32BufferAttribute(new Float32Array(10 * 3), 3),
+      new THREE.Float32BufferAttribute(
+        new Float32Array(sections * 2 * 3),
+        3,
+      ),
     );
     geometry.setAttribute(
       'uv',
       new THREE.Float32BufferAttribute(
-        [
-          0, 1,
-          1, 1,
-          1, 0,
-          0, 0,
-          0.5, 0.5,
-          0, 1,
-          1, 1,
-          1, 0,
-          0, 0,
-          0.5, 0.5,
-        ],
+        Array.from({ length: sections }, (_, i) => {
+          const u = i / (sections - 1);
+          return [u, 0, u, 1];
+        }).flat(),
         2,
       ),
     );
-    geometry.setIndex([
-      0, 1, 4,
-      1, 2, 4,
-      2, 3, 4,
-      3, 0, 4,
-      5, 9, 6,
-      6, 9, 7,
-      7, 9, 8,
-      8, 9, 5,
-      0, 5, 1,
-      1, 5, 6,
-      1, 6, 2,
-      2, 6, 7,
-      2, 7, 3,
-      3, 7, 8,
-      3, 8, 0,
-      0, 8, 5,
-    ]);
-    const finish = cloth.clone();
+
+    const indices: number[] = [];
+    for (let i = 0; i < sections - 1; i++) {
+      const a = i * 2,
+        b = a + 2;
+      indices.push(
+        a, b, a + 1,
+        a + 1, b, b + 1,
+      );
+    }
+    // Close both ends so the underarm never reads as a paper-thin open flap.
+    indices.push(0, 1, 2, 2, 1, 3);
+    const last = (sections - 1) * 2;
+    indices.push(last - 2, last - 1, last, last, last - 1, last + 1);
+
+    geometry.setIndex(indices);
+
+    const finish =
+      upper?.handle === 'racing-zipper'
+        ? sleeveMaterial(upper, player, color, side)
+        : cloth.clone();
     finish.side = THREE.DoubleSide;
-    const drape = new THREE.Mesh(geometry, finish);
-    drape.name = 'underarm-hanging-cloth';
-    drape.castShadow = true;
-    drape.receiveShadow = true;
-    drape.frustumCulled = false;
-    drape.userData.garmentConnection = 'torso-to-sleeve';
-    drape.userData.drapeVersion = 2;
-    rider.add(drape);
-    underarmDrapes.push({ side, index, mesh: drape });
+
+    const gusset = new THREE.Mesh(geometry, finish);
+    gusset.name = 'underarm-garment-gusset';
+    gusset.castShadow = true;
+    gusset.receiveShadow = true;
+    gusset.frustumCulled = false;
+    gusset.userData.garmentConnection = 'clean-torso-sleeve-gusset';
+    gusset.userData.gussetVersion = 3;
+    rider.add(gusset);
+    underarmGussets.push({ side, index, mesh: gusset });
   };
 
-  const updateUnderarmDrapes = (
+  const updateUnderarmGussets = (
     current: ReturnType<typeof riderMotionPose>,
   ) => {
     const orientation = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(-current.lean, 0, current.roll),
     );
     const hip = V(current.hip);
-    const down = new THREE.Vector3(0, -1, 0);
-    const clothNormal = new THREE.Vector3(0, 0, 1)
+    const worldDown = new THREE.Vector3(0, -1, 0);
+    const normal = new THREE.Vector3(0, 0, 1)
       .applyQuaternion(orientation)
       .normalize();
 
-    const torsoPoint = (
+    const torsoSidePoint = (
       side: -1 | 1,
       width: number,
       y: number,
-      z: number,
     ) =>
-      new THREE.Vector3(side * width, y, z)
+      new THREE.Vector3(side * width, y, 0)
         .applyQuaternion(orientation)
         .add(hip);
 
-    for (const drape of underarmDrapes) {
-      const arm = current.limbs[drape.index].arm;
-      const start = V(arm.start);
-      const upperDirection = V(arm.joint).sub(start).normalize();
-      const outward = new THREE.Vector3(drape.side, 0, 0)
-        .applyQuaternion(orientation)
-        .normalize();
+    for (const gusset of underarmGussets) {
+      const arm = current.limbs[gusset.index].arm;
+      const shoulder = V(arm.start);
+      const elbow = V(arm.joint);
+      const armDirection = elbow.clone().sub(shoulder).normalize();
 
-      // The old bridge was only 12 mm deep in total and sat on the rider's
-      // centre plane, so it was hidden inside the torso/sleeve. These anchors
-      // define the visible side silhouette first; front/back depth is applied
-      // separately below.
-      const torsoUpper = torsoPoint(
-        drape.side,
-        0.205 * volume,
-        0.49,
-        0,
-      );
-      const torsoLower = torsoPoint(
-        drape.side,
-        0.198 * volume,
-        0.315,
-        0,
+      // Garment type controls only looseness. The connection exists for every
+      // top, including T-shirts, hoodies, zippers and windbreakers.
+      const outerwear = hoodie || zipper;
+      const sideWidth = (outerwear ? 0.212 : 0.202) * volume;
+      const torsoTop = torsoSidePoint(gusset.side, sideWidth, 0.48);
+      const torsoBottom = torsoSidePoint(
+        gusset.side,
+        sideWidth - 0.008,
+        outerwear ? 0.37 : 0.385,
       );
 
-      // Sleeve connection follows the moving upper arm but starts inside the
-      // sleeve root. The second point hangs lower to make a real underarm drape
-      // instead of a straight triangular filler.
-      const sleeveRoot = start
+      // Sleeve underside points remain close to the existing sleeve tube.
+      // They do not extend far down the arm, which avoids the goofy bat-wing.
+      const sleeveNear = shoulder
         .clone()
-        .addScaledVector(upperDirection, 0.035)
-        .addScaledVector(down, 0.018)
-        .addScaledVector(outward, -0.012);
-      const sleeveUnder = start
+        .addScaledVector(armDirection, outerwear ? 0.07 : 0.06)
+        .addScaledVector(worldDown, outerwear ? 0.035 : 0.026);
+      const sleeveFar = shoulder
         .clone()
-        .addScaledVector(upperDirection, 0.235)
-        .addScaledVector(down, 0.09)
-        .addScaledVector(outward, -0.022);
+        .addScaledVector(armDirection, outerwear ? 0.19 : 0.16)
+        .addScaledVector(worldDown, outerwear ? 0.052 : 0.04);
 
-      const center = torsoUpper
+      // Smooth centreline: torso -> small hanging fold -> sleeve.
+      const c0 = torsoTop;
+      const c1 = torsoBottom
         .clone()
-        .add(sleeveRoot)
-        .add(sleeveUnder)
-        .add(torsoLower)
-        .multiplyScalar(0.25)
-        .addScaledVector(down, 0.06);
+        .lerp(sleeveNear, 0.22)
+        .addScaledVector(worldDown, outerwear ? 0.018 : 0.012);
+      const c2 = torsoBottom
+        .clone()
+        .lerp(sleeveNear, 0.55)
+        .addScaledVector(worldDown, outerwear ? 0.032 : 0.022);
+      const c3 = sleeveNear
+        .clone()
+        .lerp(sleeveFar, 0.45)
+        .addScaledVector(worldDown, outerwear ? 0.012 : 0.008);
+      const c4 = sleeveFar;
 
-      const surface = [
-        torsoUpper,
-        sleeveRoot,
-        sleeveUnder,
-        torsoLower,
-        center,
+      const centers = [c0, c1, c2, c3, c4];
+
+      // Match the front/back depth of the torso at the inner end and taper
+      // smoothly into the sleeve. No oversized box volume.
+      const torsoDepth = (outerwear ? 0.116 : 0.108) * volume;
+      const sleeveDepth = (outerwear ? 0.078 : 0.073) * volume;
+      const depths = [
+        torsoDepth,
+        THREE.MathUtils.lerp(torsoDepth, sleeveDepth, 0.25),
+        THREE.MathUtils.lerp(torsoDepth, sleeveDepth, 0.55),
+        THREE.MathUtils.lerp(torsoDepth, sleeveDepth, 0.82),
+        sleeveDepth,
       ];
 
-      // Per-point half-depths make this a real closed garment volume spanning
-      // the back/front surfaces. Torso points match the shirt body depth while
-      // sleeve points taper to the arm. This is deliberately much wider than
-      // V1 so the connection is clearly visible from rear 3/4 views.
-      const halfDepths = [
-        0.112 * volume,
-        0.082 * volume,
-        0.071 * volume,
-        0.105 * volume,
-        0.088 * volume,
-      ];
-
-      const positions = drape.mesh.geometry.getAttribute(
+      const positions = gusset.mesh.geometry.getAttribute(
         'position',
       ) as THREE.BufferAttribute;
 
-      for (let layer = 0; layer < 2; layer++) {
-        const direction = layer === 0 ? 1 : -1;
-        for (let i = 0; i < surface.length; i++) {
-          const point = surface[i]
-            .clone()
-            .addScaledVector(
-              clothNormal,
-              direction * halfDepths[i],
-            );
-          const index = layer * surface.length + i;
-          positions.setXYZ(index, point.x, point.y, point.z);
-        }
+      for (let i = 0; i < centers.length; i++) {
+        const front = centers[i]
+          .clone()
+          .addScaledVector(normal, depths[i]);
+        const rear = centers[i]
+          .clone()
+          .addScaledVector(normal, -depths[i]);
+        positions.setXYZ(i * 2, front.x, front.y, front.z);
+        positions.setXYZ(i * 2 + 1, rear.x, rear.y, rear.z);
       }
 
       positions.needsUpdate = true;
-      drape.mesh.geometry.computeVertexNormals();
-      drape.mesh.geometry.computeBoundingSphere();
+      gusset.mesh.geometry.computeVertexNormals();
+      gusset.mesh.geometry.computeBoundingSphere();
     }
   };
 
@@ -2633,11 +2621,10 @@ function makeRider(
       seams.forEach((seam) => rider.add(seam));
       armMeshes.push(...seams);
     }
-    if (tee)
-      createUnderarmDrape(
-        side as -1 | 1,
-        side === -1 ? 0 : 1,
-      );
+    createUnderarmGusset(
+      side as -1 | 1,
+      side === -1 ? 0 : 1,
+    );
     // The cuff overlaps the glove, which curls around the actual grip center.
     tube(
       rider,
@@ -2722,7 +2709,7 @@ function makeRider(
     foot.position.x = side * pose.peg[0];
     foot.name = 'rider-boot';
   }
-  updateUnderarmDrapes(rest);
+  updateUnderarmGussets(rest);
   const neck = tube(
     rider,
     [
@@ -2915,7 +2902,7 @@ function makeRider(
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);
-    updateUnderarmDrapes(current);
+    updateUnderarmGussets(current);
     pelvis.position.set(
       current.hip[0] - pose.hip[0],
       current.hip[1] - pose.hip[1],
