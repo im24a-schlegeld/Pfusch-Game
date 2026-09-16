@@ -2367,8 +2367,8 @@ function makeRider(
           1 -
           THREE.MathUtils.smoothstep(
             signedFromShoulder,
-            -0.045,
-            0.135,
+            -0.055,
+            0.18,
           );
 
         const tA = segmentA.closestPointToPointParameter(sample, true);
@@ -2538,6 +2538,30 @@ function makeRider(
         .add(V(pose.hip))
         .toArray() as Point;
     const outerwear = hoodie || zipper;
+
+    // Hidden rounded seam backing. It stays inside the torso silhouette and
+    // only becomes visible through any residual torso/sleeve seam opening.
+    // This removes the "hole" without adding an outside flap or shoulder bump.
+    const seamBackingMaterial =
+      upper?.handle === 'racing-zipper'
+        ? sleeveMaterial(upper, player, color, side)
+        : cloth.clone();
+    const seamBacking = oval(
+      torsoGroup,
+      [
+        side * (outerwear ? 0.184 : 0.182),
+        outerwear ? 0.505 : 0.512,
+        0,
+      ],
+      [
+        outerwear ? 0.056 : 0.054,
+        outerwear ? 0.064 : 0.06,
+        outerwear ? 0.086 : 0.08,
+      ],
+      seamBackingMaterial,
+    );
+    seamBacking.name = 'shoulder-seam-backing';
+    seamBacking.userData.purpose = 'hide-torso-sleeve-gap';
 
     // Armhole centres stay almost on the torso depth plane. V5 pushed them
     // forward in z, which produced the visible front-facing wedge.
