@@ -2365,6 +2365,165 @@ function makeRider(
     pants,
   );
   trouserSeat.name = 'continuous-trouser-seat';
+
+  const underarmDrapes: {
+    side: -1 | 1;
+    index: number;
+    mesh: THREE.Mesh;
+  }[] = [];
+
+  const createUnderarmDrape = (side: -1 | 1, index: number) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(new Float32Array(10 * 3), 3),
+    );
+    geometry.setAttribute(
+      'uv',
+      new THREE.Float32BufferAttribute(
+        [
+          0, 1,
+          1, 1,
+          1, 0,
+          0, 0,
+          0.5, 0.5,
+          0, 1,
+          1, 1,
+          1, 0,
+          0, 0,
+          0.5, 0.5,
+        ],
+        2,
+      ),
+    );
+    geometry.setIndex([
+      0, 1, 4,
+      1, 2, 4,
+      2, 3, 4,
+      3, 0, 4,
+      5, 9, 6,
+      6, 9, 7,
+      7, 9, 8,
+      8, 9, 5,
+      0, 5, 1,
+      1, 5, 6,
+      1, 6, 2,
+      2, 6, 7,
+      2, 7, 3,
+      3, 7, 8,
+      3, 8, 0,
+      0, 8, 5,
+    ]);
+    const finish = cloth.clone();
+    finish.side = THREE.DoubleSide;
+    const drape = new THREE.Mesh(geometry, finish);
+    drape.name = 'underarm-hanging-cloth';
+    drape.castShadow = true;
+    drape.receiveShadow = true;
+    drape.frustumCulled = false;
+    drape.userData.garmentConnection = 'torso-to-sleeve';
+    rider.add(drape);
+    underarmDrapes.push({ side, index, mesh: drape });
+  };
+
+  const updateUnderarmDrapes = (
+    current: ReturnType<typeof riderMotionPose>,
+  ) => {
+    const orientation = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(-current.lean, 0, current.roll),
+    );
+    const hip = V(current.hip);
+    const down = new THREE.Vector3(0, -1, 0);
+    const clothNormal = new THREE.Vector3(0, 0, 1)
+      .applyQuaternion(orientation)
+      .normalize();
+
+    const torsoPoint = (
+      side: -1 | 1,
+      width: number,
+      y: number,
+      z: number,
+    ) =>
+      new THREE.Vector3(side * width, y, z)
+        .applyQuaternion(orientation)
+        .add(hip);
+
+    for (const drape of underarmDrapes) {
+      const arm = current.limbs[drape.index].arm;
+      const start = V(arm.start);
+      const upperDirection = V(arm.joint).sub(start).normalize();
+      const outward = new THREE.Vector3(drape.side, 0, 0)
+        .applyQuaternion(orientation)
+        .normalize();
+
+      // Torso anchors sit just inside the visible shirt surface so the new
+      // fabric disappears into the body instead of floating on top.
+      const torsoUpper = torsoPoint(
+        drape.side,
+        0.198 * volume,
+        0.485,
+        0.01,
+      );
+      const torsoLower = torsoPoint(
+        drape.side,
+        0.19 * volume,
+        0.345,
+        0.018,
+      );
+
+      // The sleeve anchors are pulled slightly inward and downward. This forms
+      // the natural armpit seam instead of a hard circular sleeve/torso gap.
+      const sleeveRoot = start
+        .clone()
+        .addScaledVector(upperDirection, 0.055)
+        .addScaledVector(down, 0.034)
+        .addScaledVector(outward, -0.014);
+      const sleeveUnder = start
+        .clone()
+        .addScaledVector(upperDirection, 0.205)
+        .addScaledVector(down, 0.066)
+        .addScaledVector(outward, -0.018);
+
+      // A lower centre vertex gives the cloth a gravity-driven hanging fold.
+      const center = torsoUpper
+        .clone()
+        .add(sleeveRoot)
+        .add(sleeveUnder)
+        .add(torsoLower)
+        .multiplyScalar(0.25)
+        .addScaledVector(down, 0.034)
+        .addScaledVector(clothNormal, 0.006);
+
+      const surface = [
+        torsoUpper,
+        sleeveRoot,
+        sleeveUnder,
+        torsoLower,
+        center,
+      ];
+
+      const positions = drape.mesh.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const halfThickness = 0.006;
+
+      for (let layer = 0; layer < 2; layer++) {
+        const offset = layer === 0 ? halfThickness : -halfThickness;
+        for (let i = 0; i < surface.length; i++) {
+          const point = surface[i]
+            .clone()
+            .addScaledVector(clothNormal, offset);
+          const index = layer * surface.length + i;
+          positions.setXYZ(index, point.x, point.y, point.z);
+        }
+      }
+
+      positions.needsUpdate = true;
+      drape.mesh.geometry.computeVertexNormals();
+      drape.mesh.geometry.computeBoundingSphere();
+    }
+  };
+
   for (const side of [-1, 1]) {
     const shoulder: Point = [
         side * RIDER_DIMENSIONS.shoulderHalf,
@@ -2458,6 +2617,11 @@ function makeRider(
       seams.forEach((seam) => rider.add(seam));
       armMeshes.push(...seams);
     }
+    if (tee)
+      createUnderarmDrape(
+        side as -1 | 1,
+        side === -1 ? 0 : 1,
+      );
     // The cuff overlaps the glove, which curls around the actual grip center.
     tube(
       rider,
@@ -2542,6 +2706,7 @@ function makeRider(
     foot.position.x = side * pose.peg[0];
     foot.name = 'rider-boot';
   }
+  updateUnderarmDrapes(rest);
   const neck = tube(
     rider,
     [
@@ -2734,6 +2899,7 @@ function makeRider(
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);
+    updateUnderarmDrapes(current);
     pelvis.position.set(
       current.hip[0] - pose.hip[0],
       current.hip[1] - pose.hip[1],
