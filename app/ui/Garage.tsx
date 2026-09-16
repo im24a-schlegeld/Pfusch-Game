@@ -44,6 +44,9 @@ export default function Garage({
 }: Props) {
   const [tab, setTab] = useState('rider');
   const [filter, setFilter] = useState('all');
+  const [productViews, setProductViews] = useState<
+    Record<string, 'front' | 'back'>
+  >({});
   const [draft, setDraft] = useState<Player | null>(null);
   const [selected, setSelected] = useState<Product | null>(null);
   const [configuration, setConfiguration] =
@@ -172,6 +175,19 @@ export default function Garage({
                 }
               : {}),
           };
+          const selectedColor =
+            colors.find((c) => c.variantIds.includes(config.variantId)) ??
+            colors[0];
+          const productView = productViews[p.id] ?? 'front';
+          const selectedMockup =
+            productView === 'back'
+              ? selectedColor?.back ?? selectedColor?.front
+              : selectedColor?.front ?? selectedColor?.back;
+          const mockupSource =
+            selectedMockup?.localImage ?? p.localImage ?? p.image;
+          const hasFrontAndBack = Boolean(
+            selectedColor?.front && selectedColor?.back,
+          );
           const isOwned = state !== 'LOCKED';
           const isEquipped = state === 'EQUIPPED';
           const canWear = equippable(p);
@@ -189,17 +205,93 @@ export default function Garage({
                     equipProduct(p, config);
                   } else if (canWear) {
                     setDraft(previewLoadout(player, p, config));
+                    setSelected(p);
+                    setConfiguration(config);
                     services.analytics.track('product_viewed', { id: p.id });
                   }
+                  setAngle(productView === 'front' ? Math.PI : 0);
+                  setInspectionRevision((r) => r + 1);
                 }}
               >
+                <span className="image-loader" aria-hidden="true">
+                  <i />
+                </span>
                 <img
-                  src={imagePath(p.localImage ?? p.image)}
+                  className="product-mockup-image"
+                  src={imagePath(mockupSource)}
                   alt={p.title}
                   loading="lazy"
                   width="360"
                   height="360"
+                  onLoad={(e) =>
+                    e.currentTarget
+                      .closest('.product-image')
+                      ?.classList.add('image-loaded')
+                  }
+                  onError={(e) =>
+                    e.currentTarget
+                      .closest('.product-image')
+                      ?.classList.add('image-loaded')
+                  }
                 />
+                {hasFrontAndBack && (
+                  <>
+                    <span
+                      className="mockup-arrow mockup-arrow-left"
+                      role="button"
+                      aria-label={`${p.title} vorherige Ansicht`}
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const nextView =
+                          productView === 'front' ? 'back' : 'front';
+                        setProductViews((views) => ({
+                          ...views,
+                          [p.id]: nextView,
+                        }));
+                        if (canWear) {
+                          setDraft(previewLoadout(player, p, config));
+                          setSelected(p);
+                          setConfiguration(config);
+                          services.analytics.track('product_viewed', {
+                            id: p.id,
+                          });
+                        }
+                        setAngle(nextView === 'front' ? Math.PI : 0);
+                        setInspectionRevision((r) => r + 1);
+                      }}
+                    >
+                      ‹
+                    </span>
+                    <span
+                      className="mockup-arrow mockup-arrow-right"
+                      role="button"
+                      aria-label={`${p.title} nächste Ansicht`}
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const nextView =
+                          productView === 'front' ? 'back' : 'front';
+                        setProductViews((views) => ({
+                          ...views,
+                          [p.id]: nextView,
+                        }));
+                        if (canWear) {
+                          setDraft(previewLoadout(player, p, config));
+                          setSelected(p);
+                          setConfiguration(config);
+                          services.analytics.track('product_viewed', {
+                            id: p.id,
+                          });
+                        }
+                        setAngle(nextView === 'front' ? Math.PI : 0);
+                        setInspectionRevision((r) => r + 1);
+                      }}
+                    >
+                      ›
+                    </span>
+                  </>
+                )}
                 <span className="ownership">
                   {isEquipped
                     ? 'AUSGERÜSTET'
@@ -229,12 +321,22 @@ export default function Garage({
                               ...config,
                               variantId: c.variantIds[0] ?? config.variantId,
                             };
+                            setProductViews((views) => ({
+                              ...views,
+                              [p.id]: 'front',
+                            }));
                             if (isOwned && canWear) {
                               equipProduct(p, nextConfig);
                             } else if (canWear) {
                               setDraft(previewLoadout(player, p, nextConfig));
-                              services.analytics.track('product_viewed', { id: p.id });
+                              setSelected(p);
+                              setConfiguration(nextConfig);
+                              services.analytics.track('product_viewed', {
+                                id: p.id,
+                              });
                             }
+                            setAngle(Math.PI);
+                            setInspectionRevision((r) => r + 1);
                           }}
                         >
                           <i style={{ background: c.baseColor }} />
@@ -308,11 +410,6 @@ export default function Garage({
   );
   return (
     <main className="garage-page">
-      <ScreenHeading
-        kicker="DEIN SETUP."
-        title="GARAGE."
-        back={back}
-      />
       <div className="garage-layout">
         <section className="garage-preview">
           <div className="preview-top">

@@ -704,3 +704,345 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
   font-size: 8px !important;
   letter-spacing: .06em !important;
 }
+
+/* PFUSCH UI V5 RESPONSIVE GARAGE + LOADERS */
+
+/* Einheitliche Ladeanimation. */
+.spinner {
+  width: 24px !important;
+  height: 24px !important;
+  border: 2px solid #5e5e5e !important;
+  border-top-color: #f0f0ed !important;
+  border-radius: 50% !important;
+  animation: spin .72s linear infinite !important;
+}
+.scene-loading {
+  z-index: 30 !important;
+  background: #323232 !important;
+  color: #bdbdb9 !important;
+  gap: 12px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: .13em !important;
+}
+.scene-loading-runtime {
+  pointer-events: none !important;
+}
+.product-image .image-loader {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #363636 !important;
+  opacity: 1 !important;
+  transition: opacity .18s ease !important;
+}
+.product-image .image-loader i {
+  width: 22px !important;
+  height: 22px !important;
+  border: 2px solid #5c5c5c !important;
+  border-top-color: #e8e8e4 !important;
+  border-radius: 50% !important;
+  animation: spin .72s linear infinite !important;
+}
+.product-image img {
+  opacity: 0 !important;
+  transition: opacity .18s ease !important;
+}
+.product-image.image-loaded .image-loader {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+.product-image.image-loaded img {
+  opacity: 1 !important;
+}
+
+/* Garage-Titel entfernt: Layout nutzt den kompletten Content-Bereich. */
+.garage-page > .screen-heading {
+  display: none !important;
+}
+
+/* DESKTOP/TABLET LANDSCAPE:
+   linke 3D-Vorschau steht fest, nur die rechte Steuerungsseite scrollt. */
+@media (min-width: 761px) {
+  .garage-page {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    scrollbar-gutter: auto !important;
+  }
+  .garage-layout {
+    display: grid !important;
+    grid-template-columns: minmax(390px, 44%) minmax(0, 1fr) !important;
+    gap: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .garage-preview {
+    position: relative !important;
+    top: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-right: 1px solid #4b4b4b !important;
+  }
+  .garage-model {
+    inset: 0 0 146px !important;
+  }
+  .preview-bottom {
+    min-height: 146px !important;
+    padding: 14px 20px 16px !important;
+  }
+  .garage-controls {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 18px 28px 48px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    scrollbar-gutter: stable !important;
+  }
+  .garage-tabs[data-slot='tabs-list'] {
+    position: sticky !important;
+    top: -18px !important;
+    z-index: 20 !important;
+    background: #323232 !important;
+  }
+}
+
+/* MOBILE:
+   eine normale vertikale Seite. Preview oben, Controls darunter.
+   Kein verschachteltes Scrollen und keine zweispaltigen Mini-Karten. */
+@media (max-width: 760px) {
+  .app-shell {
+    overflow: hidden !important;
+  }
+  .garage-page {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-gutter: auto !important;
+  }
+  .garage-layout {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+  .garage-preview {
+    position: relative !important;
+    top: auto !important;
+    width: 100% !important;
+    height: clamp(430px, 64dvh, 560px) !important;
+    min-height: 430px !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-bottom: 1px solid #4b4b4b !important;
+  }
+  .garage-model {
+    inset: 0 0 136px !important;
+  }
+  .preview-top {
+    padding: 12px 14px !important;
+  }
+  .preview-bottom {
+    min-height: 136px !important;
+    padding: 12px 14px 14px !important;
+  }
+  .preview-bottom h2 {
+    font-size: 27px !important;
+  }
+  .preview-bottom > p {
+    font-size: 11px !important;
+  }
+  .preview-bottom .button.primary {
+    min-height: 42px !important;
+    margin-top: 10px !important;
+  }
+  .garage-controls {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 12px 12px 40px !important;
+    overflow: visible !important;
+  }
+  .garage-tabs[data-slot='tabs-list'] {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    height: 44px !important;
+    background: #323232 !important;
+  }
+  .garage-tabs [data-slot='tabs-trigger'] {
+    min-height: 43px !important;
+    font-size: 9px !important;
+  }
+  .equipped-slots {
+    grid-template-columns: 1fr !important;
+  }
+  .equipped-slots > div {
+    min-height: 72px !important;
+  }
+  .category-filter {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 6px !important;
+    margin: 14px -12px 12px !important;
+    padding: 0 12px 5px !important;
+    scrollbar-width: none !important;
+  }
+  .category-filter::-webkit-scrollbar {
+    display: none !important;
+  }
+  .category-filter button {
+    flex: 0 0 auto !important;
+  }
+  .swatches {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  .swatches button {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 9px 5px !important;
+  }
+  .compact-product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .compact-product-card {
+    width: 100% !important;
+  }
+  .compact-product-card .product-image {
+    max-height: 320px !important;
+  }
+  .compact-product-body {
+    padding: 11px !important;
+  }
+  .digital-only-note {
+    margin: 12px 0 8px !important;
+    font-size: 10px !important;
+  }
+  .inline-number-picker {
+    grid-template-columns: auto 58px minmax(0, 1fr) !important;
+  }
+}
+
+/* Sehr kleine Phones. */
+@media (max-width: 390px) {
+  .garage-preview {
+    height: 455px !important;
+    min-height: 455px !important;
+  }
+  .garage-model {
+    inset: 0 0 132px !important;
+  }
+  .preview-bottom {
+    min-height: 132px !important;
+  }
+  .swatches {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .compact-product-card .product-image {
+    max-height: 285px !important;
+  }
+}
+
+/* PFUSCH UI V6 MOCKUP PREVIEWS */
+
+/* Das reale Produktmockup bleibt sichtbar, auch wenn das Item noch gesperrt ist. */
+.product-mockup-image {
+  object-fit: contain !important;
+  object-position: center !important;
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0,0,0,1) 0%,
+    rgba(0,0,0,1) 66%,
+    rgba(0,0,0,.78) 86%,
+    rgba(0,0,0,.48) 100%
+  ) !important;
+  mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0,0,0,1) 0%,
+    rgba(0,0,0,1) 66%,
+    rgba(0,0,0,.78) 86%,
+    rgba(0,0,0,.48) 100%
+  ) !important;
+}
+
+/* Pfeile sitzen halbtransparent am linken/rechten Mockup-Rand. */
+.mockup-arrow {
+  position: absolute !important;
+  top: 50% !important;
+  z-index: 8 !important;
+  width: 36px !important;
+  height: 52px !important;
+  margin-top: -26px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  background: rgba(50,50,50,.56) !important;
+  color: #f4f4f2 !important;
+  font-size: 28px !important;
+  font-weight: 300 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  backdrop-filter: blur(3px) !important;
+}
+.mockup-arrow-left {
+  left: 0 !important;
+  border-left: 0 !important;
+}
+.mockup-arrow-right {
+  right: 0 !important;
+  border-right: 0 !important;
+}
+.mockup-arrow:hover,
+.mockup-arrow:focus-visible {
+  background: rgba(50,50,50,.78) !important;
+  color: #fff !important;
+  outline: none !important;
+}
+.product-image .ownership {
+  z-index: 9 !important;
+}
+
+/* Ladeanimation bleibt unter den Pfeilen, aber über dem Bild. */
+.product-image .image-loader {
+  z-index: 7 !important;
+}
+.product-image.image-loaded .image-loader {
+  pointer-events: none !important;
+}
+
+@media (max-width: 760px) {
+  .mockup-arrow {
+    width: 42px !important;
+    height: 58px !important;
+    margin-top: -29px !important;
+    font-size: 30px !important;
+  }
+}

@@ -10,7 +10,7 @@ export function SceneLoading() {
   return (
     <div className="scene-loading">
       <span className="spinner" />
-      <span>WARMING UP THE ENGINE</span>
+      <span>LÄDT</span>
     </div>
   );
 }

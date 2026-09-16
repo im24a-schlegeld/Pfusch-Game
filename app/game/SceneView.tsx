@@ -49,6 +49,7 @@ export default function SceneView({
   const readyCallback = useRef(onReady);
   const crashCallback = useRef(onCrashComplete);
   const [error, setError] = useState('');
+  const [renderReady, setRenderReady] = useState(false);
   const appearance = useRef({ player, products, key: '' });
   appearance.current = {
     player,
@@ -71,6 +72,7 @@ export default function SceneView({
   readyCallback.current = onReady;
   crashCallback.current = onCrashComplete;
   useEffect(() => {
+    setRenderReady(false);
     const { player, products } = appearance.current;
     const el = host.current;
     if (!el) return;
@@ -264,7 +266,7 @@ export default function SceneView({
       last = performance.now(),
       hud = 0,
       clock = 0;
-    let ready = false;
+    let callbackReady = false;
     let focused = document.hasFocus(),
       visible = !document.hidden;
     const visualBlur = () => {
@@ -590,8 +592,9 @@ export default function SceneView({
         crashNotified = true;
         crashCallback.current?.();
       }
-      if (!ready) {
-        ready = true;
+      if (!callbackReady) {
+        callbackReady = true;
+        setRenderReady(true);
         readyCallback.current?.();
       }
     };
@@ -648,6 +651,12 @@ export default function SceneView({
           : 'Interactive rider and motorcycle preview'
       }
     >
+      {!renderReady && !error && (
+        <div className="scene-loading scene-loading-runtime" aria-live="polite">
+          <span className="spinner" />
+          <span>LÄDT</span>
+        </div>
+      )}
       {error && (
         <div className="graphics-error" role="alert">
           {error}
