@@ -160,7 +160,18 @@ export default function Garage({
           const colors = productColors(p);
           const baseConfig = initialConfiguration(player, p);
           const variantId = appearance.variants[p.id] ?? baseConfig.variantId;
-          const config: ProductConfiguration = { ...baseConfig, variantId };
+          const config: ProductConfiguration = {
+            ...baseConfig,
+            variantId,
+            ...(p.preview?.numberCustomization
+              ? {
+                  customNumber:
+                    appearance.customizations[p.id]?.customNumber ??
+                    baseConfig.customNumber ??
+                    '',
+                }
+              : {}),
+          };
           const isOwned = state !== 'LOCKED';
           const isEquipped = state === 'EQUIPPED';
           const canWear = equippable(p);
@@ -215,8 +226,8 @@ export default function Garage({
                           title={c.label}
                           onClick={() => {
                             const nextConfig: ProductConfiguration = {
-                              ...baseConfig,
-                              variantId: c.variantIds[0] ?? baseConfig.variantId,
+                              ...config,
+                              variantId: c.variantIds[0] ?? config.variantId,
                             };
                             if (isOwned && canWear) {
                               equipProduct(p, nextConfig);
@@ -232,11 +243,45 @@ export default function Garage({
                     })}
                   </div>
                 )}
+                {p.preview?.numberCustomization && (
+                  <div className="inline-number-picker">
+                    <span>NUMMER</span>
+                    <input
+                      aria-label={`${p.title} Nummer`}
+                      inputMode="numeric"
+                      pattern="[0-9]{1,2}"
+                      maxLength={2}
+                      placeholder="23"
+                      value={config.customNumber ?? ''}
+                      onChange={(e) => {
+                        const customNumber = e.target.value
+                          .replace(/\D/g, '')
+                          .slice(0, 2);
+                        const nextConfig: ProductConfiguration = {
+                          ...config,
+                          customNumber,
+                        };
+                        if (
+                          isOwned &&
+                          canWear &&
+                          /^\d{1,2}$/.test(customNumber)
+                        ) {
+                          equipProduct(p, nextConfig);
+                        } else if (canWear) {
+                          setDraft(previewLoadout(player, p, nextConfig));
+                          services.analytics.track('product_viewed', { id: p.id });
+                        }
+                      }}
+                    />
+                    <small>1–2 ZIFFERN</small>
+                  </div>
+                )}
                 <button
                   className="button small primary compact-buy-button"
                   disabled={
-                    isEquipped ||
-                    (state === 'LOCKED' && player.coins < digitalPrice(p))
+                    (state === 'LOCKED' && player.coins < digitalPrice(p)) ||
+                    (p.preview?.numberCustomization &&
+                      !/^\d{1,2}$/.test(config.customNumber ?? ''))
                   }
                   onClick={() => {
                     if (state === 'LOCKED') {
