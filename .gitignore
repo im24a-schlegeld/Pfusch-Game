@@ -40,3 +40,5 @@ next-env.d.ts
 *.tsbuildinfo
 /test-results/
 /playwright-report/
+
+/_pfusch_ui_backup_*
