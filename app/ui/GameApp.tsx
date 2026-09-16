@@ -264,11 +264,7 @@ export default function GameApp() {
               <span className="signal-dot" /> PFUSCH CLOTHING
             </p>
             <img className="hero-logo" src="/branding/pfusch-logo.png" alt="Pfusch" />
-            <p className="intro">
-              Drei Spuren. Ein Rad.
-              <br />
-              Fahr deine Linie.
-            </p>
+            
             <button className="button primary play-button" onClick={start}>
               <span>LOSFAHREN</span>
               <ArrowUpRight size={29} />

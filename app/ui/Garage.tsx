@@ -52,13 +52,29 @@ export default function Garage({
   const appearance = draft ?? player;
   const bike = BIKES.find((b) => b.id === appearance.bike)!;
   const owned = (id: string) => player.ownedItems.includes(id);
-  function unlockProduct(p: Product) {
-    const next = unlock(player, p.id, digitalPrice(p));
-    if (next) {
-      update(next);
-      notify(`${p.title} digital freigeschaltet. Jetzt kannst du es ausrüsten.`);
-    } else
-      notify('Du brauchst mehr Coins. Vorschau bleibt kostenlos.');
+  function unlockProduct(p: Product, config: ProductConfiguration) {
+    const unlocked = unlock(player, p.id, digitalPrice(p));
+    if (!unlocked) {
+      notify('Du brauchst mehr Coins.');
+      return;
+    }
+    if (equippable(p)) {
+      const equipped = equipConfiguration(unlocked, p, config);
+      if (equipped) {
+        update(equipped);
+        setDraft(null);
+        setSelected(null);
+        setConfiguration(null);
+        services.analytics.track('product_equipped', { id: p.id });
+        notify(`${p.title} freigeschaltet und direkt ausgerüstet.`);
+        return;
+      }
+    }
+    update(unlocked);
+    setDraft(null);
+    setSelected(null);
+    setConfiguration(null);
+    notify(`${p.title} freigeschaltet.`);
   }
   function equipProduct(p: Product, config: ProductConfiguration) {
     const next = equipConfiguration(player, p, config);
@@ -163,10 +179,10 @@ export default function Garage({
                 {ownership(player, p) === 'EQUIPPED'
                   ? 'AUSGERÜSTET'
                   : ownership(player, p) === 'LOCKED'
-                    ? 'KOSTENLOSE VORSCHAU'
-                    : ownership(player, p) === 'OWNED_IRL'
-                      ? 'BESITZT DU'
-                      : 'DIGITAL FREISCHALTEN'}
+                    ? 'ANPROBIEREN'
+                    : equippable(p)
+                      ? 'AUSRÜSTEN'
+                      : 'FREIGESCHALTET'}
               </span>
             </button>
             <div className="product-body">
@@ -175,9 +191,23 @@ export default function Garage({
               <p className="product-price">{money(p.price)}</p>
               <button
                 className="button small primary"
-                onClick={() => openProduct(p)}
+                disabled={ownership(player, p) === 'EQUIPPED'}
+                onClick={() => {
+                  const state = ownership(player, p);
+                  if (state !== 'LOCKED' && equippable(p)) {
+                    equipProduct(p, initialConfiguration(player, p));
+                  } else {
+                    openProduct(p);
+                  }
+                }}
               >
-                {equippable(p) ? 'VORSCHAU / ANPROBIEREN' : 'PRODUKT ANSEHEN'}
+                {ownership(player, p) === 'EQUIPPED'
+                  ? 'AUSGERÜSTET'
+                  : ownership(player, p) !== 'LOCKED' && equippable(p)
+                    ? 'AUSRÜSTEN'
+                    : equippable(p)
+                      ? 'ANPROBIEREN'
+                      : 'ANSEHEN'}
               </button>
               <a
                 className="product-link"
@@ -292,8 +322,7 @@ export default function Garage({
             </TabsList>
             <TabsContent value="rider">
               <div className="section-intro">
-                <h2>ANPROBIEREN. AUSWÄHLEN.</h2>
-                <p>Jeder Artikel kann kostenlos angesehen werden, auch gesperrte.</p>
+                <h2>KLEIDUNG</h2>
               </div>
               <div className="equipped-slots">
                 {(['upper', 'head', 'accessory'] as const).map((slot) => (
@@ -417,10 +446,7 @@ export default function Garage({
             </TabsContent>
             <TabsContent value="bike">
               <div className="section-intro">
-                <h2>DEIN BIKE.</h2>
-                <p>
-                  Alle Bikes und Farben können angesehen werden. Gespeichert wird erst beim Ausrüsten.
-                </p>
+                <h2>BIKES</h2>
               </div>
               <div className="bike-options">
                 {BIKES.map((b, i) => (
@@ -448,10 +474,23 @@ export default function Garage({
                     </div>
                     <button
                       className="button small"
-                      aria-label={`Vorschau ${b.name}`}
-                      onClick={() => previewBike({ bike: b.id })}
+                      aria-label={`${owned(`bike:${b.id}`) ? 'Ausrüsten' : 'Ansehen'} ${b.name}`}
+                      disabled={owned(`bike:${b.id}`) && player.bike === b.id}
+                      onClick={() => {
+                        if (owned(`bike:${b.id}`)) {
+                          update({ ...player, bike: b.id });
+                          setDraft(null);
+                          notify(`${b.name} ausgerüstet.`);
+                        } else {
+                          previewBike({ bike: b.id });
+                        }
+                      }}
                     >
-                      VORSCHAU
+                      {owned(`bike:${b.id}`)
+                        ? player.bike === b.id
+                          ? 'AUSGERÜSTET'
+                          : 'AUSRÜSTEN'
+                        : 'ANSEHEN'}
                     </button>
                   </article>
                 ))}
@@ -469,7 +508,11 @@ export default function Garage({
                       bike.price,
                       bike.level,
                     );
-                    if (p) update(p);
+                    if (p) {
+                      update({ ...p, bike: bike.id });
+                      setDraft(null);
+                      notify(`${bike.name} freigeschaltet und direkt ausgerüstet.`);
+                    }
                   }}
                 >
                   {player.level < bike.level ? (
@@ -492,12 +535,24 @@ export default function Garage({
                     aria-label={`${c.name} paint`}
                     aria-pressed={appearance.paint === c.value}
                     className={appearance.paint === c.value ? 'selected' : ''}
-                    onClick={() => previewBike({ paint: c.value })}
+                    onClick={() => {
+                      if (owned(`paint:${c.value}`)) {
+                        update({ ...player, paint: c.value });
+                        setDraft(null);
+                        notify(`${c.name} ausgerüstet.`);
+                      } else {
+                        previewBike({ paint: c.value });
+                      }
+                    }}
                   >
                     <i style={{ background: c.value }} />
                     <b>{c.name}</b>
                     <span>
-                      {owned(`paint:${c.value}`) ? 'BESITZT' : 'KOSTENLOSE VORSCHAU'}
+                      {owned(`paint:${c.value}`)
+                        ? player.paint === c.value
+                          ? 'AUSGERÜSTET'
+                          : 'AUSRÜSTEN'
+                        : 'ANSEHEN'}
                     </span>
                   </button>
                 ))}
@@ -513,7 +568,11 @@ export default function Garage({
                   onClick={() => {
                     const c = PAINTS.find((c) => c.value === appearance.paint)!;
                     const p = unlock(player, `paint:${c.value}`, c.price);
-                    if (p) update(p);
+                    if (p) {
+                      update({ ...p, paint: c.value });
+                      setDraft(null);
+                      notify(`${c.name} freigeschaltet und direkt ausgerüstet.`);
+                    }
                   }}
                 >
                   FREISCHALTEN PAINT ·{' '}
@@ -529,12 +588,24 @@ export default function Garage({
                     aria-label={`${c.name} rims`}
                     aria-pressed={appearance.rims === c.value}
                     className={appearance.rims === c.value ? 'selected' : ''}
-                    onClick={() => previewBike({ rims: c.value })}
+                    onClick={() => {
+                      if (owned(`rims:${c.value}`)) {
+                        update({ ...player, rims: c.value });
+                        setDraft(null);
+                        notify(`${c.name} ausgerüstet.`);
+                      } else {
+                        previewBike({ rims: c.value });
+                      }
+                    }}
                   >
                     <i style={{ background: c.value }} />
                     <b>{c.name}</b>
                     <span>
-                      {owned(`rims:${c.value}`) ? 'BESITZT' : 'KOSTENLOSE VORSCHAU'}
+                      {owned(`rims:${c.value}`)
+                        ? player.rims === c.value
+                          ? 'AUSGERÜSTET'
+                          : 'AUSRÜSTEN'
+                        : 'ANSEHEN'}
                     </span>
                   </button>
                 ))}
@@ -549,7 +620,11 @@ export default function Garage({
                   onClick={() => {
                     const c = RIMS.find((c) => c.value === appearance.rims)!;
                     const p = unlock(player, `rims:${c.value}`, c.price);
-                    if (p) update(p);
+                    if (p) {
+                      update({ ...p, rims: c.value });
+                      setDraft(null);
+                      notify(`${c.name} freigeschaltet und direkt ausgerüstet.`);
+                    }
                   }}
                 >
                   FREISCHALTEN RIMS ·{' '}

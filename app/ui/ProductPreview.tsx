@@ -27,7 +27,7 @@ interface Props {
   onClose: () => void;
   onKeep: () => void;
   onEquip: (p: Product, c: ProductConfiguration) => void;
-  onUnlock: (p: Product) => void;
+  onUnlock: (p: Product, c: ProductConfiguration) => void;
   onLink: () => void;
   onSelect: (p: Product) => void;
   onInspect: (angle: number) => void;
@@ -268,15 +268,6 @@ export default function ProductPreview({
         )}
         <p className="detail-description">{product.description}</p>
         <div className="preview-actions">
-          {equippable(product) && (
-            <button
-              className="button primary"
-              disabled={!validConfiguration(product, configuration)}
-              onClick={onKeep}
-            >
-              IN VORSCHAU BEHALTEN
-            </button>
-          )}
           {permanent ? (
             <button
               className="button"
@@ -298,7 +289,7 @@ export default function ProductPreview({
                 disabled={
                   player.coins < digitalPrice(product) || state !== 'LOCKED'
                 }
-                onClick={() => onUnlock(product)}
+                onClick={() => onUnlock(product, configuration)}
               >
                 {state === 'LOCKED' ? (
                   <>

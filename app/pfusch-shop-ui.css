@@ -342,3 +342,137 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
   .bottom-nav button { font-size: 7px !important; letter-spacing: .03em !important; }
   .top-right .icon-button:first-of-type { display: none !important; }
 }
+
+/* PFUSCH UI V3 OVERRIDES */
+.brand {
+  width: 148px !important;
+  min-width: 148px !important;
+  height: 46px !important;
+  flex: 0 0 148px !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.brand-logo {
+  position: static !important;
+  display: block !important;
+  width: 138px !important;
+  height: 44px !important;
+  max-width: 138px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  filter: none !important;
+  transform: none !important;
+}
+.hero-logo {
+  display: block !important;
+  position: static !important;
+  width: min(230px, 82%) !important;
+  height: auto !important;
+  max-height: 150px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  filter: none !important;
+  margin: 0 0 18px !important;
+}
+.menu-title > .eyebrow,
+.menu-title > .intro,
+.input-caption,
+.bike-caption,
+.menu-bottom {
+  display: none !important;
+}
+.menu-title {
+  gap: 0 !important;
+}
+.garage-angles {
+  display: none !important;
+}
+.preview-bottom .xp-block {
+  display: none !important;
+}
+.garage-preview {
+  min-height: 520px !important;
+  height: min(650px, calc(100dvh - 150px)) !important;
+  max-height: none !important;
+}
+.garage-model {
+  inset: 0 0 155px !important;
+}
+.preview-bottom {
+  padding: 14px 20px 16px !important;
+  background: #323232 !important;
+}
+.preview-bottom h2 {
+  margin: 0 !important;
+}
+.preview-bottom > p {
+  margin: 4px 0 0 !important;
+}
+.preview-bottom .button.primary {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 5 !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  margin-top: 12px !important;
+}
+.section-intro p {
+  display: none !important;
+}
+.product-body > .button.primary,
+.bike-unlock,
+.finish-unlock,
+.bike-confirm .button.primary {
+  background: #f0f0ed !important;
+  color: #323232 !important;
+  border-color: #f0f0ed !important;
+}
+.product-body > .button.primary:disabled {
+  background: transparent !important;
+  color: #8f8f8b !important;
+  border-color: #555 !important;
+}
+@media (max-width: 900px) {
+  .brand {
+    width: 124px !important;
+    min-width: 124px !important;
+    flex-basis: 124px !important;
+  }
+  .brand-logo {
+    width: 116px !important;
+    max-width: 116px !important;
+    height: 40px !important;
+  }
+  .garage-preview {
+    height: 580px !important;
+  }
+}
+@media (max-width: 640px) {
+  .brand {
+    width: 106px !important;
+    min-width: 106px !important;
+    flex-basis: 106px !important;
+  }
+  .brand-logo {
+    width: 100px !important;
+    max-width: 100px !important;
+    height: 38px !important;
+  }
+  .hero-logo {
+    width: min(190px, 70%) !important;
+    max-height: 105px !important;
+    margin-bottom: 12px !important;
+  }
+  .menu-title {
+    justify-content: center !important;
+  }
+  .garage-preview {
+    position: relative !important;
+    top: auto !important;
+    min-height: 500px !important;
+    height: 540px !important;
+  }
+}
