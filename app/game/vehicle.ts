@@ -2422,6 +2422,7 @@ function makeRider(
     drape.receiveShadow = true;
     drape.frustumCulled = false;
     drape.userData.garmentConnection = 'torso-to-sleeve';
+    drape.userData.drapeVersion = 2;
     rider.add(drape);
     underarmDrapes.push({ side, index, mesh: drape });
   };
@@ -2456,43 +2457,44 @@ function makeRider(
         .applyQuaternion(orientation)
         .normalize();
 
-      // Torso anchors sit just inside the visible shirt surface so the new
-      // fabric disappears into the body instead of floating on top.
+      // The old bridge was only 12 mm deep in total and sat on the rider's
+      // centre plane, so it was hidden inside the torso/sleeve. These anchors
+      // define the visible side silhouette first; front/back depth is applied
+      // separately below.
       const torsoUpper = torsoPoint(
         drape.side,
-        0.198 * volume,
-        0.485,
-        0.01,
+        0.205 * volume,
+        0.49,
+        0,
       );
       const torsoLower = torsoPoint(
         drape.side,
-        0.19 * volume,
-        0.345,
-        0.018,
+        0.198 * volume,
+        0.315,
+        0,
       );
 
-      // The sleeve anchors are pulled slightly inward and downward. This forms
-      // the natural armpit seam instead of a hard circular sleeve/torso gap.
+      // Sleeve connection follows the moving upper arm but starts inside the
+      // sleeve root. The second point hangs lower to make a real underarm drape
+      // instead of a straight triangular filler.
       const sleeveRoot = start
         .clone()
-        .addScaledVector(upperDirection, 0.055)
-        .addScaledVector(down, 0.034)
-        .addScaledVector(outward, -0.014);
+        .addScaledVector(upperDirection, 0.035)
+        .addScaledVector(down, 0.018)
+        .addScaledVector(outward, -0.012);
       const sleeveUnder = start
         .clone()
-        .addScaledVector(upperDirection, 0.205)
-        .addScaledVector(down, 0.066)
-        .addScaledVector(outward, -0.018);
+        .addScaledVector(upperDirection, 0.235)
+        .addScaledVector(down, 0.09)
+        .addScaledVector(outward, -0.022);
 
-      // A lower centre vertex gives the cloth a gravity-driven hanging fold.
       const center = torsoUpper
         .clone()
         .add(sleeveRoot)
         .add(sleeveUnder)
         .add(torsoLower)
         .multiplyScalar(0.25)
-        .addScaledVector(down, 0.034)
-        .addScaledVector(clothNormal, 0.006);
+        .addScaledVector(down, 0.06);
 
       const surface = [
         torsoUpper,
@@ -2502,17 +2504,31 @@ function makeRider(
         center,
       ];
 
+      // Per-point half-depths make this a real closed garment volume spanning
+      // the back/front surfaces. Torso points match the shirt body depth while
+      // sleeve points taper to the arm. This is deliberately much wider than
+      // V1 so the connection is clearly visible from rear 3/4 views.
+      const halfDepths = [
+        0.112 * volume,
+        0.082 * volume,
+        0.071 * volume,
+        0.105 * volume,
+        0.088 * volume,
+      ];
+
       const positions = drape.mesh.geometry.getAttribute(
         'position',
       ) as THREE.BufferAttribute;
-      const halfThickness = 0.006;
 
       for (let layer = 0; layer < 2; layer++) {
-        const offset = layer === 0 ? halfThickness : -halfThickness;
+        const direction = layer === 0 ? 1 : -1;
         for (let i = 0; i < surface.length; i++) {
           const point = surface[i]
             .clone()
-            .addScaledVector(clothNormal, offset);
+            .addScaledVector(
+              clothNormal,
+              direction * halfDepths[i],
+            );
           const index = layer * surface.length + i;
           positions.setXYZ(index, point.x, point.y, point.z);
         }
