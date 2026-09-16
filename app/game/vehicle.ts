@@ -2308,12 +2308,15 @@ function makeRider(
     [
       [hem, 0.205 * volume, 0.126 * volume, 0.006],
       [0.02, 0.204 * volume, 0.127 * volume, 0.003],
-      [0.18, 0.209 * volume, 0.125 * volume, 0],
-      [0.39, 0.22 * volume, 0.133 * volume, 0],
-      [0.5, 0.228 * volume, 0.12 * volume, 0],
-      [0.55, 0.216 * volume, 0.098 * volume, 0],
-      [0.6, 0.085, 0.065, 0],
-      [0.63, 0.073, 0.057, 0],
+      [0.18, 0.211 * volume, 0.126 * volume, 0],
+      [0.37, 0.223 * volume, 0.133 * volume, 0],
+      [0.46, 0.232 * volume, 0.128 * volume, 0],
+      [0.515, 0.238 * volume, 0.118 * volume, 0],
+      [0.55, 0.234 * volume, 0.105 * volume, 0],
+      [0.575, 0.218 * volume, 0.092 * volume, 0],
+      [0.595, 0.178 * volume, 0.081 * volume, 0],
+      [0.615, 0.112, 0.067, 0],
+      [0.635, 0.074, 0.057, 0],
     ],
     garmentMaterial(upper, player, color),
   );
@@ -2417,7 +2420,7 @@ function makeRider(
     const rootRadius = (outerwear ? 0.083 : 0.075) * volume;
     const blendRadius = (outerwear ? 0.086 : 0.078) * volume;
     const armholeRadius = (outerwear ? 0.09 : 0.082) * volume;
-    const shoulderRadius = (outerwear ? 0.094 : 0.086) * volume;
+    const shoulderRadius = (outerwear ? 0.098 : 0.09) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
