@@ -2367,8 +2367,8 @@ function makeRider(
           1 -
           THREE.MathUtils.smoothstep(
             signedFromShoulder,
-            -0.055,
-            0.18,
+            -0.06,
+            0.23,
           );
 
         const tA = segmentA.closestPointToPointParameter(sample, true);
@@ -2539,64 +2539,41 @@ function makeRider(
         .toArray() as Point;
     const outerwear = hoodie || zipper;
 
-    // Hidden rounded seam backing. It stays inside the torso silhouette and
-    // only becomes visible through any residual torso/sleeve seam opening.
-    // This removes the "hole" without adding an outside flap or shoulder bump.
-    const seamBackingMaterial =
-      upper?.handle === 'racing-zipper'
-        ? sleeveMaterial(upper, player, color, side)
-        : cloth.clone();
-    const seamBacking = oval(
-      torsoGroup,
-      [
-        side * (outerwear ? 0.184 : 0.182),
-        outerwear ? 0.505 : 0.512,
-        0,
-      ],
-      [
-        outerwear ? 0.056 : 0.054,
-        outerwear ? 0.064 : 0.06,
-        outerwear ? 0.086 : 0.08,
-      ],
-      seamBackingMaterial,
-    );
-    seamBacking.name = 'shoulder-seam-backing';
-    seamBacking.userData.purpose = 'hide-torso-sleeve-gap';
-
     // Armhole centres stay almost on the torso depth plane. V5 pushed them
     // forward in z, which produced the visible front-facing wedge.
     // Four centres now form a smooth inward C-curve under the armpit.
+    // Root points are deliberately deeper inside the torso. The overlap itself
+    // closes the seam, so no extra visible filler geometry is needed.
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.156 : 0.152,
+      outerwear ? 0.148 : 0.144,
       outerwear ? 0.398 : 0.41,
-      outerwear ? -0.012 : -0.01,
+      0,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.176 : 0.171,
+      outerwear ? 0.166 : 0.162,
       outerwear ? 0.438 : 0.449,
-      outerwear ? -0.008 : -0.006,
+      0,
     );
     const sleeveArmhole = torsoSleevePoint(
-      outerwear ? 0.197 : 0.192,
-      outerwear ? 0.486 : 0.494,
-      outerwear ? -0.004 : -0.003,
+      outerwear ? 0.187 : 0.183,
+      outerwear ? 0.484 : 0.492,
+      0,
     );
 
-    // Smaller hidden radii keep the front/rear surfaces inside the torso until
-    // the sleeve reaches the true shoulder. This removes the triangular front
-    // protrusion while maintaining overlap.
-    const rootRadius = (outerwear ? 0.083 : 0.075) * volume;
-    const blendRadius = (outerwear ? 0.086 : 0.078) * volume;
-    const armholeRadius = (outerwear ? 0.09 : 0.082) * volume;
+    // Slightly fuller hidden sections increase internal overlap only.
+    // The visible shoulder cap remains smaller, so no second hump is created.
+    const rootRadius = (outerwear ? 0.09 : 0.082) * volume;
+    const blendRadius = (outerwear ? 0.092 : 0.084) * volume;
+    const armholeRadius = (outerwear ? 0.094 : 0.086) * volume;
 
     // Sichtbare Stoff-Schulter tiefer als das anatomische Gelenk:
     // keine nach oben stehende Spitze, Skelett bleibt unverändert.
     const garmentShoulder: Point = [
-      shoulder[0] + side * (outerwear ? 0.016 : 0.014),
-      shoulder[1] - (outerwear ? 0.048 : 0.042),
-      shoulder[2] + 0.003,
+      shoulder[0] + side * (outerwear ? 0.008 : 0.006),
+      shoulder[1] - (outerwear ? 0.05 : 0.044),
+      shoulder[2],
     ];
-    const shoulderRadius = (outerwear ? 0.09 : 0.083) * volume;
+    const shoulderRadius = (outerwear ? 0.088 : 0.081) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
