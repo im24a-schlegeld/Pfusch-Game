@@ -2392,29 +2392,97 @@ function makeRider(
         .toArray() as Point;
     const outerwear = hoodie || zipper;
 
-    // Move the hidden sleeve origin toward the actual armpit:
-    // - farther out from the spine (x)
-    // - lower under the shoulder (y)
-    // - slightly toward the rider's front (negative z)
-    // This keeps the visible rear silhouette clean and makes the curve appear
-    // under the arm instead of starting too far across the back panel.
+    // Armhole centres stay almost on the torso depth plane. V5 pushed them
+    // forward in z, which produced the visible front-facing wedge.
+    // Four centres now form a smooth inward C-curve under the armpit.
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.158 : 0.154,
-      outerwear ? 0.405 : 0.416,
-      outerwear ? -0.052 : -0.048,
+      outerwear ? 0.156 : 0.152,
+      outerwear ? 0.398 : 0.41,
+      outerwear ? -0.012 : -0.01,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.186 : 0.181,
-      outerwear ? 0.455 : 0.465,
-      outerwear ? -0.036 : -0.032,
+      outerwear ? 0.176 : 0.171,
+      outerwear ? 0.438 : 0.449,
+      outerwear ? -0.008 : -0.006,
+    );
+    const sleeveArmhole = torsoSleevePoint(
+      outerwear ? 0.197 : 0.192,
+      outerwear ? 0.486 : 0.494,
+      outerwear ? -0.004 : -0.003,
     );
 
-    // Slightly narrower hidden roots prevent a bulky rear-facing bulge while
-    // preserving enough overlap to keep torso and sleeve visually connected.
-    const rootRadius = (outerwear ? 0.09 : 0.081) * volume;
-    const blendRadius = (outerwear ? 0.093 : 0.084) * volume;
+    // Smaller hidden radii keep the front/rear surfaces inside the torso until
+    // the sleeve reaches the true shoulder. This removes the triangular front
+    // protrusion while maintaining overlap.
+    const rootRadius = (outerwear ? 0.083 : 0.075) * volume;
+    const blendRadius = (outerwear ? 0.086 : 0.078) * volume;
+    const armholeRadius = (outerwear ? 0.09 : 0.082) * volume;
     const shoulderRadius = (outerwear ? 0.094 : 0.086) * volume;
     const armMeshes: THREE.Mesh[] = [];
+
+    const shapeArmholeInward = (
+      sleeve: THREE.Mesh,
+      rings: number,
+      sides: number,
+      sideSign: -1 | 1,
+      amount: number,
+    ) => {
+      const positions = sleeve.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const center = new THREE.Vector3();
+      const point = new THREE.Vector3();
+
+      for (let ring = 0; ring <= rings; ring++) {
+        const t = ring / rings;
+        if (t > 0.42) break;
+
+        center.set(0, 0, 0);
+        for (let j = 0; j <= sides; j++)
+          center.add(
+            point.fromBufferAttribute(
+              positions,
+              ring * (sides + 1) + j,
+            ),
+          );
+        center.divideScalar(sides + 1);
+
+        // Smooth bell-shaped influence: zero at the hidden root and again
+        // before the ordinary sleeve starts. No kink at either boundary.
+        const along =
+          Math.exp(-(((t - 0.205) / 0.125) ** 2)) *
+          THREE.MathUtils.smoothstep(t, 0.015, 0.08) *
+          (1 - THREE.MathUtils.smoothstep(t, 0.34, 0.42));
+
+        for (let j = 0; j <= sides; j++) {
+          const index = ring * (sides + 1) + j;
+          point.fromBufferAttribute(positions, index);
+          const relativeX = point.x - center.x;
+
+          // Only the torso-facing half of the circular sleeve section moves.
+          // The outside shoulder silhouette is untouched.
+          const inwardSide = THREE.MathUtils.clamp(
+            (-sideSign * relativeX) / 0.1,
+            0,
+            1,
+          );
+          const angular = inwardSide * inwardSide * (3 - 2 * inwardSide);
+          const influence = along * angular;
+
+          // Pull toward the body centre and slightly upward. This produces the
+          // requested rounded inward C-shape instead of an outward bulge.
+          point.x -= sideSign * amount * influence;
+          point.y += amount * 0.22 * influence;
+
+          positions.setXYZ(index, point.x, point.y, point.z);
+        }
+      }
+
+      positions.needsUpdate = true;
+      sleeve.geometry.computeVertexNormals();
+      sleeve.geometry.computeBoundingSphere();
+    };
+
     if (tee) {
       const sleeveEnd = V(shoulder).lerp(V(elbow), 0.86).toArray() as Point,
         skinStart = V(shoulder).lerp(V(elbow), 0.73).toArray() as Point;
@@ -2424,6 +2492,7 @@ function makeRider(
           [
             sleeveRoot,
             sleeveBlend,
+            sleeveArmhole,
             shoulder,
             V(shoulder).lerp(V(elbow), 0.26).toArray() as Point,
             sleeveEnd,
@@ -2431,6 +2500,7 @@ function makeRider(
           [
             rootRadius,
             blendRadius,
+            armholeRadius,
             shoulderRadius,
             0.089 * volume,
             0.09 * volume,
@@ -2465,6 +2535,7 @@ function makeRider(
           [
             sleeveRoot,
             sleeveBlend,
+            sleeveArmhole,
             shoulder,
             V(shoulder).lerp(V(elbow), 0.38).toArray() as Point,
             V(shoulder).lerp(V(elbow), 0.72).toArray() as Point,
@@ -2475,6 +2546,7 @@ function makeRider(
           [
             rootRadius,
             blendRadius,
+            armholeRadius,
             shoulderRadius,
             0.094 * volume,
             0.09 * volume,
@@ -2497,6 +2569,13 @@ function makeRider(
         ),
       );
     sleeveFolds(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20, tee);
+    shapeArmholeInward(
+      armMeshes[0],
+      tee ? 24 : 36,
+      tee ? 24 : 20,
+      side as -1 | 1,
+      tee ? 0.028 : 0.022,
+    );
     if (upper) {
       const seams = sleeveSeams(
         armMeshes[0],
