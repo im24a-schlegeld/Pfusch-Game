@@ -2639,6 +2639,56 @@ function makeRider(
       sleeve.geometry.computeBoundingSphere();
     };
 
+    const smoothOuterSleeveContour = (
+      sleeve: THREE.Mesh,
+      rings: number,
+      sides: number,
+      sideSign: -1 | 1,
+    ) => {
+      if (!outerwear) return;
+
+      const positions = sleeve.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const center = new THREE.Vector3();
+      const point = new THREE.Vector3();
+
+      for (let ring = 0; ring <= rings; ring++) {
+        const t = ring / rings;
+        if (t < 0.16 || t > 0.72) continue;
+
+        center.set(0, 0, 0);
+        for (let j = 0; j <= sides; j++)
+          center.add(
+            point.fromBufferAttribute(
+              positions,
+              ring * (sides + 1) + j,
+            ),
+          );
+        center.divideScalar(sides + 1);
+
+        const band = Math.exp(-(((t - 0.43) / 0.19) ** 2));
+
+        for (let j = 0; j <= sides; j++) {
+          const index = ring * (sides + 1) + j;
+          point.fromBufferAttribute(positions, index);
+          const relativeX = point.x - center.x;
+          const outer = THREE.MathUtils.clamp(
+            (sideSign * relativeX) / 0.1,
+            0,
+            1,
+          );
+          const smooth = outer * outer * (3 - 2 * outer);
+          point.x -= sideSign * 0.011 * band * smooth;
+          positions.setX(index, point.x);
+        }
+      }
+
+      positions.needsUpdate = true;
+      sleeve.geometry.computeVertexNormals();
+      sleeve.geometry.computeBoundingSphere();
+    };
+
     const flattenShoulderTop = (
       sleeve: THREE.Mesh,
       rings: number,
@@ -2750,10 +2800,10 @@ function makeRider(
             blendRadius,
             armholeRadius,
             shoulderRadius,
-            0.094 * volume,
-            0.09 * volume,
-            0.073 * volume,
-            0.077 * volume,
+            (outerwear ? 0.087 : 0.088) * volume,
+            (outerwear ? 0.084 : 0.085) * volume,
+            (outerwear ? 0.078 : 0.076) * volume,
+            (outerwear ? 0.071 : 0.07) * volume,
             0.045,
           ],
           hoodie
@@ -2775,7 +2825,7 @@ function makeRider(
     // armpit silhouette is exposed, producing a clean inward C-curve.
     {
       const torsoAnchor = torsoSleevePoint(
-        outerwear ? 0.198 : 0.194,
+        outerwear ? 0.184 : 0.181,
         outerwear ? 0.355 : 0.368,
         0,
       );
@@ -2786,7 +2836,13 @@ function makeRider(
       );
       const sleeveAnchor = sleeveCenter
         .clone()
-        .add(new THREE.Vector3(0, outerwear ? -0.065 : -0.06, 0));
+        .add(
+          new THREE.Vector3(
+            -side * (outerwear ? 0.022 : 0.019),
+            outerwear ? -0.065 : -0.06,
+            0,
+          ),
+        );
 
       const start = V(torsoAnchor);
       const end = sleeveAnchor;
@@ -2795,12 +2851,12 @@ function makeRider(
       const control1 = start
         .clone()
         .lerp(end, 0.28)
-        .addScaledVector(inward, outerwear ? 0.03 : 0.027)
+        .addScaledVector(inward, outerwear ? 0.044 : 0.039)
         .add(new THREE.Vector3(0, outerwear ? -0.012 : -0.01, 0));
       const control2 = start
         .clone()
         .lerp(end, 0.68)
-        .addScaledVector(inward, outerwear ? 0.022 : 0.02)
+        .addScaledVector(inward, outerwear ? 0.034 : 0.03)
         .add(new THREE.Vector3(0, outerwear ? -0.008 : -0.007, 0));
 
       const underarmCurve = new THREE.CatmullRomCurve3(
@@ -2833,11 +2889,11 @@ function makeRider(
           const fullness =
             (1 - v * v) *
             Math.sin(Math.PI * u) *
-            (outerwear ? 0.006 : 0.0045);
+            (outerwear ? 0.0045 : 0.0035);
 
           vertices.push(
-            center.x + side * fullness,
-            center.y - fullness * 0.18,
+            center.x - side * fullness,
+            center.y - fullness * 0.12,
             center.z + v * halfDepth,
           );
           uvs.push(u, col / cols);
@@ -2892,12 +2948,18 @@ function makeRider(
       tee ? 24 : 36,
       tee ? 24 : 20,
       side as -1 | 1,
-      tee ? 0.028 : 0.022,
+      tee ? 0.028 : outerwear ? 0.03 : 0.022,
     );
     flattenShoulderTop(
       armMeshes[0],
       tee ? 24 : 36,
       tee ? 24 : 20,
+    );
+    smoothOuterSleeveContour(
+      armMeshes[0],
+      tee ? 24 : 36,
+      tee ? 24 : 20,
+      side as -1 | 1,
     );
     if (upper) {
       const seams = sleeveSeams(
