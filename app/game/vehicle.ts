@@ -1356,38 +1356,38 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
       16,
     ).name = 'supermoto-tail-fender';
-// supermoto-tail-refine-v32
-    // Integrated inner tail plastic: broad under the seat, then naturally
-    // tapers toward the rear. It sits below the painted outer tail instead
-    // of hanging as a separate box.
-    const underTailLinerMat = material('#b9bec0', 0.02, 0.9);
+// supermoto-tail-mudflap-refine-v34
+    // Undertail plastic tucked closer under the tail, with a cooler light-grey
+    // tone so it reads like OEM inner plastic instead of a bright white add-on.
+    const underTailLinerMat = material('#d8e0e4', 0.02, 0.88);
     loft(
       body,
       [
-        [0.48, 0.112, 0.012, 0.904],
-        [0.64, 0.116, 0.018, 0.916],
-        [0.79, 0.108, 0.02, 0.928],
-        [0.91, 0.09, 0.018, 0.918],
-        [1.0, 0.064, 0.014, 0.892],
-        [1.06, 0.042, 0.009, 0.86],
+        [0.46, 0.096, 0.01, 0.892],
+        [0.6, 0.102, 0.014, 0.902],
+        [0.73, 0.102, 0.016, 0.91],
+        [0.84, 0.088, 0.016, 0.902],
+        [0.92, 0.068, 0.013, 0.882],
+        [0.98, 0.046, 0.009, 0.848],
       ],
       underTailLinerMat,
       'z',
       20,
-    ).name = 'supermoto-under-tail-liner';    // supermoto-mudflap-v33
-    // Mudflap sits near the suspension/front of the rear wheel, like a real
-    // inner splash flap, not as a license-plate style rear hanger.
+    ).name = 'supermoto-under-tail-liner';
+
+    // Dark inner splash flap near the suspension / front of rear wheel.
+    // Smaller, more tucked in, and clearly separate from a license plate holder.
     const mudflapGeometry = new THREE.BufferGeometry();
     mudflapGeometry.setAttribute(
       'position',
       new THREE.Float32BufferAttribute(
         [
-          -0.05, 0.77, 0.56,
-           0.05, 0.77, 0.56,
-          -0.046, 0.69, 0.61,
-           0.046, 0.69, 0.61,
-          -0.034, 0.59, 0.665,
-           0.034, 0.59, 0.665,
+          -0.034, 0.744, 0.438,
+           0.034, 0.744, 0.438,
+          -0.03, 0.662, 0.49,
+           0.03, 0.662, 0.49,
+          -0.02, 0.57, 0.548,
+           0.02, 0.57, 0.548,
         ],
         3,
       ),
@@ -1400,7 +1400,7 @@ export function makeBike(player: Player, products: Product[]) {
     ]);
     mudflapGeometry.computeVertexNormals();
 
-    const mudflapFinish = material('#171717', 0.01, 0.98);
+    const mudflapFinish = material('#161616', 0.01, 0.98);
     mudflapFinish.side = THREE.DoubleSide;
     const mudflap = mesh(body, mudflapGeometry, mudflapFinish);
     mudflap.name = 'supermoto-mudflap';
