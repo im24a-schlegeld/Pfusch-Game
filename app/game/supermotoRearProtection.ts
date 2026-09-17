@@ -3,6 +3,11 @@ import * as THREE from 'three';
 type Point = [number, number, number];
 type EdgeSample = { x: number; y: number };
 
+function smoothstep(a: number, b: number, t: number) {
+  const x = THREE.MathUtils.clamp((t - a) / (b - a), 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
 /** Intersect a vertical line with the mesh's real triangles (bike-local space). */
 function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number) {
   const p = geometry.getAttribute('position');
@@ -39,7 +44,9 @@ function frameBottomAt(geometry: THREE.BufferGeometry, z: number) {
       const az = p.getZ(a), bz = p.getZ(b);
       if (Math.abs(bz - az) < 1e-9) continue;
       const t = (z - az) / (bz - az);
-      if (t >= 0 && t <= 1) lowest = Math.min(lowest, p.getY(a) + t * (p.getY(b) - p.getY(a)));
+      if (t >= 0 && t <= 1) {
+        lowest = Math.min(lowest, p.getY(a) + t * (p.getY(b) - p.getY(a)));
+      }
     }
   }
   return lowest;
@@ -74,7 +81,7 @@ function lowerEdgeAt(boundary: Point[], z: number): EdgeSample {
   return result;
 }
 
-/** A thin, closed sheet. The two faces share a rim; no separate hanging blocks. */
+/** A thin, closed sheet. The two faces share a rim. */
 function sheet(
   rows: number,
   cols: number,
@@ -101,8 +108,10 @@ function sheet(
     for (let col = 0; col < cols; col++) {
       const a = row * stride + col, b = a + stride;
       indices.push(a, b, a + 1, a + 1, b, b + 1);
-      indices.push(a + faceCount, a + 1 + faceCount, b + faceCount,
-        a + 1 + faceCount, b + 1 + faceCount, b + faceCount);
+      indices.push(
+        a + faceCount, a + 1 + faceCount, b + faceCount,
+        a + 1 + faceCount, b + 1 + faceCount, b + faceCount,
+      );
     }
   }
   const perimeter: number[] = [];
@@ -123,82 +132,193 @@ function sheet(
   return geometry;
 }
 
-/** Fitted to the actual side covers; never extends below the exposed tail tip. */
+function reshapeSideCover(cover: THREE.Mesh) {
+  const geometry = cover.geometry;
+  const p = geometry.getAttribute('position');
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const absX = Math.abs(x);
+    let y = p.getY(i);
+    let z = p.getZ(i);
+
+    // Rear side plastic: lower and slightly longer like the references.
+    const rear = smoothstep(0.50, 0.86, z);
+    const rearLowerBand = 1 - smoothstep(0.79, 1.02, y);
+    y -= rear * (0.045 + 0.105 * rearLowerBand);
+    z += rear * rearLowerBand * 0.018;
+    const rearOut = rear * (0.18 + 0.82 * rearLowerBand);
+    const newAbsX = absX + 0.002 + rearOut * 0.011;
+
+    // Front lower angle: stronger slash and fuller descent like a real shroud.
+    const front = 1 - smoothstep(0.28, 0.56, z);
+    const frontLowerBand = 1 - smoothstep(0.82, 0.97, y);
+    y -= front * frontLowerBand * 0.068;
+    z -= front * frontLowerBand * 0.022;
+    const frontOut = front * (0.25 + 0.75 * frontLowerBand) * 0.01;
+
+    p.setXYZ(i, Math.sign(x) * (newAbsX + frontOut), y, z);
+  }
+  p.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+}
+
+function addRiderFootpegs(body: THREE.Group) {
+  if (body.getObjectByName('supermoto-rider-footpeg-left')) return;
+
+  const dark = new THREE.MeshStandardMaterial({
+    color: '#25292c',
+    metalness: 0.46,
+    roughness: 0.56,
+  });
+  const alloy = new THREE.MeshStandardMaterial({
+    color: '#b5bcc0',
+    metalness: 0.74,
+    roughness: 0.34,
+  });
+
+  const group = new THREE.Group();
+  group.name = 'supermoto-rider-footpeg-assembly-v36';
+
+  for (const s of [-1, 1]) {
+    const peg = new THREE.Group();
+    peg.name = s < 0 ? 'supermoto-rider-footpeg-left' : 'supermoto-rider-footpeg-right';
+
+    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.032, 0.012), dark);
+    mount.position.set(s * 0.112, 0.418, 0.158);
+    peg.add(mount);
+
+    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.018, 0.04), dark);
+    brace.position.set(s * 0.126, 0.405, 0.174);
+    brace.rotation.z = s * 0.42;
+    peg.add(brace);
+
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(0.054, 0.011, 0.020), alloy);
+    platform.position.set(s * 0.157, 0.396, 0.182);
+    peg.add(platform);
+
+    for (let i = 0; i < 5; i++) {
+      const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.004, 0.018), alloy);
+      tooth.position.set(
+        s * (0.138 + i * 0.0095),
+        0.403,
+        0.182,
+      );
+      peg.add(tooth);
+    }
+
+    const endCap = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.014, 0.022), dark);
+    endCap.position.set(s * 0.182, 0.397, 0.182);
+    peg.add(endCap);
+
+    group.add(peg);
+  }
+
+  body.add(group);
+}
+
+/** Fits the side plastics lower and adds undertail + mudflap + rider pegs. */
 export function addSupermotoRearProtection(
   body: THREE.Group,
   paint: THREE.MeshStandardMaterial,
   rubber: THREE.MeshStandardMaterial,
 ) {
-  if (body.getObjectByName('supermoto-rear-protection-v35')) return;
+  if (body.getObjectByName('supermoto-rear-protection-v36')) return;
+
   const tail = body.getObjectByName('supermoto-tail-fender');
   const cover = body.getObjectByName('supermoto-side-cover');
   const rail = body.getObjectByName('supermoto-rear-subframe');
   const airbox = body.getObjectByName('supermoto-airbox');
+
   if (!(tail instanceof THREE.Mesh) || !(cover instanceof THREE.Mesh) ||
       !(rail instanceof THREE.Mesh) || !(airbox instanceof THREE.Mesh)) {
     throw new Error('Build the Supermoto side covers and tail before its inner liner');
   }
+
+  reshapeSideCover(cover);
   const boundary = readSideBoundary(cover);
-  const frontZ = 0.50;
+  const frontZ = 0.44;
   const endZ = Math.max(...boundary.map(p => p[2]));
   const sections = new Map<number, { halfWidth: number; edgeY: number; crown: number }>();
+
   const section = (z: number) => {
     const cached = sections.get(z);
     if (cached) return cached;
     const edge = lowerEdgeAt(boundary, z);
     const roof = undersideAt(tail.geometry, 0, z);
-    // The rim is inside the side-cover wall, not suspended below it.
-    const edgeY = edge.y + 0.005;
-    // Stay below the actual subframe tubes, so they cannot poke through the pan.
-    const crown = Math.min(edgeY + 0.020, roof + 0.001,
-      frameBottomAt(rail.geometry, z) - 0.006);
+
+    // Keep the liner close to the lowered side plastics, with more visible drop.
+    const edgeY = edge.y + 0.004;
+    const crown = Math.min(
+      edgeY + 0.026,
+      roof - 0.002,
+      frameBottomAt(rail.geometry, z) - 0.004,
+    );
     const result = { halfWidth: edge.x + 0.001, edgeY, crown };
     sections.set(z, result);
     return result;
   };
+
   const linerPoint = (z: number, v: number): Point => {
     const p = section(z);
-    const edgeT = Math.max(0, Math.min(1, (Math.abs(v) - 0.84) / 0.16));
-    const edgeBlend = edgeT * edgeT * (3 - 2 * edgeT);
-    return [p.halfWidth * v, p.crown + (p.edgeY - p.crown) * edgeBlend, z];
+    const inner = 1 - Math.pow(Math.abs(v), 1.2);
+    const edgeBlend = Math.pow(Math.abs(v), 1.65);
+    return [
+      p.halfWidth * v,
+      p.crown * inner + p.edgeY * edgeBlend,
+      z + 0.002 * inner,
+    ];
   };
+
   const parts = new THREE.Group();
-  parts.name = 'supermoto-rear-protection-v35';
+  parts.name = 'supermoto-rear-protection-v36';
+
   const linerFinish = paint.clone();
   linerFinish.metalness = 0;
-  linerFinish.roughness = 0.9;
+  linerFinish.roughness = 0.92;
   const liner = new THREE.Mesh(
-    sheet(48, 20, (u, v) => linerPoint(frontZ + (endZ - frontZ) * u, v), [0, -0.003, 0]),
+    sheet(
+      56,
+      22,
+      (u, v) => linerPoint(frontZ + (endZ - frontZ) * u, v),
+      [0, -0.003, 0],
+    ),
     linerFinish,
   );
   liner.name = 'supermoto-under-tail-liner';
   liner.castShadow = liner.receiveShadow = true;
   parts.add(liner);
 
-  // Fastened to the underside immediately behind the spring, before the tire.
-  // The free edge ends above the narrowest spring/tire gap.
-  const mountZ = 0.40;
-
+  // Mudflap sits near the spring, not at the tail. Small and dark.
+  const mountZ = 0.405;
   const flapFinish = rubber.clone();
-  flapFinish.color.set('#171717');
+  flapFinish.color.set('#141414');
   flapFinish.metalness = 0;
   flapFinish.roughness = 1;
+
   const flap = new THREE.Mesh(
-    sheet(20, 12, (u, v) => {
-      const halfWidth = 0.083 - 0.009 * u * u;
-      const x = halfWidth * v;
-      const attachmentY = undersideAt(airbox.geometry, x, mountZ) + 0.001;
-      const roundedCorner = 0.007 * Math.pow(Math.abs(v), 6) * u * u;
-      return [
-        x,
-        attachmentY - 0.208 * u + roundedCorner,
-        mountZ + 0.080 * u + 0.005 * Math.sin(Math.PI * u),
-      ];
-    }, [0, 0, -0.003]),
+    sheet(
+      18,
+      10,
+      (u, v) => {
+        const topHalf = 0.064 - 0.005 * u;
+        const x = topHalf * v;
+        const attachmentY = undersideAt(airbox.geometry, x, mountZ) + 0.001;
+        return [
+          x,
+          attachmentY - 0.16 * u - 0.028 * u * u,
+          mountZ + 0.058 * u,
+        ];
+      },
+      [0, 0, -0.003],
+    ),
     flapFinish,
   );
   flap.name = 'supermoto-mudflap';
   flap.castShadow = flap.receiveShadow = true;
   parts.add(flap);
+
   body.add(parts);
+  addRiderFootpegs(body);
 }
