@@ -2411,8 +2411,8 @@ function makeRider(
         original.material,
       );
       skinned.name = original.name;
-      skinned.castShadow = true;
-      skinned.receiveShadow = true;
+      skinned.castShadow = original.castShadow;
+      skinned.receiveShadow = original.receiveShadow;
       skinned.frustumCulled = false;
 
       rider.remove(original);
@@ -2839,7 +2839,7 @@ function makeRider(
       tee ? 24 : 36,
       tee ? 24 : 20,
       tee,
-      tee ? 0.24 : outerwear ? 0.06 : 0.28,
+      tee ? 0.08 : outerwear ? 0.012 : 0.1,
     );
     shapeArmholeInward(
       armMeshes[0],
@@ -2868,6 +2868,13 @@ function makeRider(
       );
       seams.forEach((seam) => rider.add(seam));
       armMeshes.push(...seams);
+    }
+
+    // Reduce dark crease artifacts on clothing arms only.
+    // Torso, gloves, rider, bike and environment keep normal shadows.
+    for (const garmentArmMesh of armMeshes) {
+      garmentArmMesh.castShadow = false;
+      garmentArmMesh.receiveShadow = false;
     }
 
     // The cuff overlaps the glove, which curls around the actual grip center.
