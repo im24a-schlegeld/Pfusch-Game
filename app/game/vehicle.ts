@@ -1356,6 +1356,63 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
       16,
     ).name = 'supermoto-tail-fender';
+
+    // Add visible under-tail plastic like the reference bike, so the rear
+    // section does not end as open bodywork. This is the inner tail liner
+    // visible from the rear/underside.
+    const underTailPlasticMat = material('#eef1f2', 0.02, 0.82);
+    loft(
+      body,
+      [
+        [0.62, 0.108, 0.018, 0.952],
+        [0.79, 0.108, 0.025, 0.972],
+        [0.94, 0.1, 0.03, 1.004],
+        [1.045, 0.086, 0.03, 1.028],
+        [1.12, 0.064, 0.024, 1.012],
+      ],
+      underTailPlasticMat,
+      'z',
+      16,
+    ).name = 'supermoto-under-tail-plastic';
+
+    // Close the left/right underside visually so the white plastic looks
+    // like a proper liner, not a floating center piece.
+    for (const s of [-1, 1]) {
+      sidePanel(
+        body,
+        s,
+        [
+          [0.012, 0.913, 0.86],
+          [0.012, 0.888, 0.98],
+          [0.012, 0.852, 1.055],
+          [0.012, 0.81, 1.085],
+          [0.012, 0.782, 1.012],
+          [0.012, 0.82, 0.89],
+        ],
+        underTailPlasticMat,
+        0.005,
+      ).name = 'supermoto-under-tail-side';
+    }
+
+    // Small rear mudflap under the tail.
+    const mudflapMat = material('#121212', 0.02, 0.96);
+    const mudflap = mesh(
+      body,
+      new THREE.BoxGeometry(0.096, 0.162, 0.008),
+      mudflapMat,
+    );
+    mudflap.name = 'supermoto-mudflap';
+    mudflap.position.set(0, 0.828, 1.075);
+    mudflap.rotation.x = -0.18;
+
+    const mudflapBrace = mesh(
+      body,
+      new THREE.BoxGeometry(0.068, 0.034, 0.01),
+      mudflapMat,
+    );
+    mudflapBrace.name = 'supermoto-mudflap-brace';
+    mudflapBrace.position.set(0, 0.905, 1.04);
+    mudflapBrace.rotation.x = -0.12;
     loft(
       body,
       [
