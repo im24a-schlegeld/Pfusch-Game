@@ -2268,6 +2268,59 @@ export function makeBike(player: Player, products: Product[]) {
     rearAxle: rear * modelScale,
   };
 }
+
+function trimTeeSleeveTorsoOverlap(
+  sleeve: THREE.Mesh,
+  rings: number,
+  sides: number,
+  sideSign: -1 | 1,
+) {
+  const geometry = sleeve.geometry;
+  const positions = geometry.getAttribute('position');
+  const sourceIndex = geometry.getIndex();
+  if (!sourceIndex) throw new Error('T-shirt sleeve must be indexed');
+
+  const kept: number[] = [];
+
+  for (let i = 0; i < sourceIndex.count; i += 3) {
+    const a = sourceIndex.getX(i);
+    const b = sourceIndex.getX(i + 1);
+    const c = sourceIndex.getX(i + 2);
+
+    const ring =
+      (Math.floor(a / (sides + 1)) +
+        Math.floor(b / (sides + 1)) +
+        Math.floor(c / (sides + 1))) /
+      3;
+    const u = ring / rings;
+
+    let buriedInTorso = false;
+
+    if (u < 0.52) {
+      const signedX =
+        sideSign *
+        ((positions.getX(a) +
+          positions.getX(b) +
+          positions.getX(c)) /
+          3);
+
+      // The first T-shirt sleeve rings run through the torso.
+      // Their visible intersection is the curved shoulder -> inner-back line.
+      // Keep the overlap underneath, but do not render triangles buried
+      // toward the torso centre.
+      const fade = THREE.MathUtils.smoothstep(u, 0, 0.52);
+      const innerLimit = THREE.MathUtils.lerp(0.205, 0.142, fade);
+      buriedInTorso = signedX < innerLimit;
+    }
+
+    if (!buriedInTorso) kept.push(a, b, c);
+  }
+
+  geometry.setIndex(kept);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+}
+
 function makeRider(
   parent: THREE.Object3D,
   pose: RiderPose,
@@ -2841,6 +2894,14 @@ function makeRider(
         ),
       );
     // T-shirt seam is now closed by hidden sleeve/torso overlap.
+    if (tee)
+      trimTeeSleeveTorsoOverlap(
+        armMeshes[0],
+        24,
+        24,
+        side as -1 | 1,
+      );
+
     sleeveFolds(
       armMeshes[0],
       tee ? 24 : 36,
