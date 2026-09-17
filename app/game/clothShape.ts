@@ -14,14 +14,22 @@ export function torsoDrape(
       y = positions.getY(i),
       z = positions.getZ(i);
     const hip = y - (0.1 + Math.abs(x) * 0.3);
-    const pit = y - (0.4 - Math.abs(x) * 0.35);
     const side = Math.min(1, Math.abs(x) / 0.17);
     const ridge = (offset: number, width: number) =>
       gaussian(offset / width) -
       0.55 * gaussian((offset - width * 1.6) / width);
+
+    // upper-back shoulder line removal:
+    // The old "pit" ridge followed y = 0.4 - |x| * 0.35. That creates a
+    // visible diagonal crease from each shoulder toward the inner back.
+    // Remove that diagonal ridge entirely. Keep only lower/hip cloth shaping,
+    // and fade it out before the shoulder/back graphic zone.
+    const upperFade =
+      1 - THREE.MathUtils.smoothstep(y, 0.26, 0.36);
     const folds =
-      (ridge(hip, 0.023) * 0.006 +
-        ridge(pit, 0.028) * 0.0018 * side) *
+      ridge(hip, 0.026) *
+      0.0045 *
+      upperFade *
       (outerwear ? 0.72 : 0.82);
     const hang = gaussian((y - hem) / 0.07);
     // Side seams hang slightly lower; front compresses over the seated hip.
