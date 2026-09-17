@@ -2367,8 +2367,8 @@ function makeRider(
           1 -
           THREE.MathUtils.smoothstep(
             signedFromShoulder,
-            -0.06,
-            0.23,
+            -0.065,
+            0.25,
           );
 
         const tA = segmentA.closestPointToPointParameter(sample, true);
@@ -2770,6 +2770,122 @@ function makeRider(
           side,
         ),
       );
+    // Continuous underarm cloth panel.
+    // The endpoints are buried inside torso and sleeve. Only the missing
+    // armpit silhouette is exposed, producing a clean inward C-curve.
+    {
+      const torsoAnchor = torsoSleevePoint(
+        outerwear ? 0.198 : 0.194,
+        outerwear ? 0.355 : 0.368,
+        0,
+      );
+
+      const sleeveCenter = V(garmentShoulder).lerp(
+        V(elbow),
+        outerwear ? 0.22 : 0.2,
+      );
+      const sleeveAnchor = sleeveCenter
+        .clone()
+        .add(new THREE.Vector3(0, outerwear ? -0.065 : -0.06, 0));
+
+      const start = V(torsoAnchor);
+      const end = sleeveAnchor;
+      const inward = new THREE.Vector3(-side, 0, 0);
+
+      const control1 = start
+        .clone()
+        .lerp(end, 0.28)
+        .addScaledVector(inward, outerwear ? 0.03 : 0.027)
+        .add(new THREE.Vector3(0, outerwear ? -0.012 : -0.01, 0));
+      const control2 = start
+        .clone()
+        .lerp(end, 0.68)
+        .addScaledVector(inward, outerwear ? 0.022 : 0.02)
+        .add(new THREE.Vector3(0, outerwear ? -0.008 : -0.007, 0));
+
+      const underarmCurve = new THREE.CatmullRomCurve3(
+        [start, control1, control2, end],
+        false,
+        'catmullrom',
+        0.32,
+      );
+
+      const rows = 10;
+      const cols = 8;
+      const vertices: number[] = [];
+      const uvs: number[] = [];
+      const indices: number[] = [];
+
+      for (let row = 0; row <= rows; row++) {
+        const u = row / rows;
+        const center = underarmCurve.getPoint(u);
+        const halfDepth = THREE.MathUtils.lerp(
+          outerwear ? 0.084 : 0.08,
+          outerwear ? 0.069 : 0.065,
+          u,
+        );
+
+        for (let col = 0; col <= cols; col++) {
+          const v = (col / cols) * 2 - 1;
+
+          // Slight centre fullness keeps the panel cloth-like while both
+          // front/back edges stay tucked inside the existing garment meshes.
+          const fullness =
+            (1 - v * v) *
+            Math.sin(Math.PI * u) *
+            (outerwear ? 0.006 : 0.0045);
+
+          vertices.push(
+            center.x + side * fullness,
+            center.y - fullness * 0.18,
+            center.z + v * halfDepth,
+          );
+          uvs.push(u, col / cols);
+        }
+      }
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const a = row * (cols + 1) + col;
+          const b = a + cols + 1;
+          indices.push(
+            a, b, a + 1,
+            a + 1, b, b + 1,
+          );
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(vertices, 3),
+      );
+      geometry.setAttribute(
+        'uv',
+        new THREE.Float32BufferAttribute(uvs, 2),
+      );
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const panelMaterial =
+        upper?.handle === 'racing-zipper'
+          ? sleeveMaterial(upper, player, color, side)
+          : cloth.clone();
+      panelMaterial.side = THREE.DoubleSide;
+
+      const panel = new THREE.Mesh(geometry, panelMaterial);
+      panel.name = 'continuous-underarm-panel';
+      panel.castShadow = true;
+      panel.receiveShadow = true;
+      panel.frustumCulled = false;
+      panel.userData.purpose = 'close-underarm-silhouette';
+      rider.add(panel);
+
+      // skinGarmentArm applies the same torso -> upper-arm deformation used
+      // by the sleeve, so the connection remains clean during wheelies.
+      armMeshes.push(panel);
+    }
+
     sleeveFolds(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20, tee);
     shapeArmholeInward(
       armMeshes[0],
