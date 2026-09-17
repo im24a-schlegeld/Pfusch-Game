@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addSupermotoRearProtection } from './supermotoRearProtection';
 import type { Player, Product } from '../domain/types';
 import {
   garmentMaterial,
@@ -1356,54 +1357,8 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
       16,
     ).name = 'supermoto-tail-fender';
-// supermoto-tail-mudflap-refine-v34
-    // Undertail plastic tucked closer under the tail, with a cooler light-grey
-    // tone so it reads like OEM inner plastic instead of a bright white add-on.
-    const underTailLinerMat = material('#d8e0e4', 0.02, 0.88);
-    loft(
-      body,
-      [
-        [0.46, 0.096, 0.01, 0.892],
-        [0.6, 0.102, 0.014, 0.902],
-        [0.73, 0.102, 0.016, 0.91],
-        [0.84, 0.088, 0.016, 0.902],
-        [0.92, 0.068, 0.013, 0.882],
-        [0.98, 0.046, 0.009, 0.848],
-      ],
-      underTailLinerMat,
-      'z',
-      20,
-    ).name = 'supermoto-under-tail-liner';
-
-    // Dark inner splash flap near the suspension / front of rear wheel.
-    // Smaller, more tucked in, and clearly separate from a license plate holder.
-    const mudflapGeometry = new THREE.BufferGeometry();
-    mudflapGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(
-        [
-          -0.034, 0.744, 0.438,
-           0.034, 0.744, 0.438,
-          -0.03, 0.662, 0.49,
-           0.03, 0.662, 0.49,
-          -0.02, 0.57, 0.548,
-           0.02, 0.57, 0.548,
-        ],
-        3,
-      ),
-    );
-    mudflapGeometry.setIndex([
-      0, 2, 1,
-      1, 2, 3,
-      2, 4, 3,
-      3, 4, 5,
-    ]);
-    mudflapGeometry.computeVertexNormals();
-
-    const mudflapFinish = material('#161616', 0.01, 0.98);
-    mudflapFinish.side = THREE.DoubleSide;
-    const mudflap = mesh(body, mudflapGeometry, mudflapFinish);
-    mudflap.name = 'supermoto-mudflap';
+    // V35: inner liner fitted to the existing side covers; splash flap at the shock.
+    addSupermotoRearProtection(body, paint, rubber);
     rod(body, [-0.15, 0.5, 0.12], [0.15, 0.5, 0.12], 0.05, dark);
     // Compact crankcase, cylinder and head occupy the cradle instead of floating below the tank.
     oval(body, [0, 0.51, -0.015], [0.137, 0.132, 0.185], engine).name =
