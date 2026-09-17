@@ -2295,6 +2295,7 @@ function makeRider(
     meshes: THREE.Mesh[],
     restArm: ArmSkinPose,
     restTorso: TorsoSkinPose,
+    outerwearSkin: boolean,
   ) => {
     const torsoBone = new THREE.Bone();
     const upperBone = new THREE.Bone();
@@ -2367,8 +2368,8 @@ function makeRider(
           1 -
           THREE.MathUtils.smoothstep(
             signedFromShoulder,
-            -0.065,
-            0.25,
+            outerwearSkin ? -0.075 : -0.065,
+            outerwearSkin ? 0.31 : 0.25,
           );
 
         const tA = segmentA.closestPointToPointParameter(sample, true);
@@ -2545,25 +2546,25 @@ function makeRider(
     // Root points are deliberately deeper inside the torso. The overlap itself
     // closes the seam, so no extra visible filler geometry is needed.
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.148 : 0.144,
-      outerwear ? 0.398 : 0.41,
+      outerwear ? 0.138 : 0.144,
+      outerwear ? 0.394 : 0.41,
       0,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.166 : 0.162,
-      outerwear ? 0.438 : 0.449,
+      outerwear ? 0.158 : 0.162,
+      outerwear ? 0.434 : 0.449,
       0,
     );
     const sleeveArmhole = torsoSleevePoint(
-      outerwear ? 0.187 : 0.183,
-      outerwear ? 0.484 : 0.492,
+      outerwear ? 0.181 : 0.183,
+      outerwear ? 0.48 : 0.492,
       0,
     );
 
-    // Slightly fuller hidden sections increase internal overlap only.
-    // The visible shoulder cap remains smaller, so no second hump is created.
-    const rootRadius = (outerwear ? 0.09 : 0.082) * volume;
-    const blendRadius = (outerwear ? 0.092 : 0.084) * volume;
+    // Outerwear roots overlap farther inside the torso, while the visible cap
+    // stays small. This closes the seam without filling the concave armpit.
+    const rootRadius = (outerwear ? 0.1 : 0.082) * volume;
+    const blendRadius = (outerwear ? 0.098 : 0.084) * volume;
     const armholeRadius = (outerwear ? 0.094 : 0.086) * volume;
 
     // Sichtbare Stoff-Schulter tiefer als das anatomische Gelenk:
@@ -2679,7 +2680,7 @@ function makeRider(
             1,
           );
           const smooth = outer * outer * (3 - 2 * outer);
-          point.x -= sideSign * 0.011 * band * smooth;
+          point.x -= sideSign * 0.016 * band * smooth;
           positions.setX(index, point.x);
         }
       }
@@ -2800,10 +2801,10 @@ function makeRider(
             blendRadius,
             armholeRadius,
             shoulderRadius,
-            (outerwear ? 0.087 : 0.088) * volume,
-            (outerwear ? 0.084 : 0.085) * volume,
-            (outerwear ? 0.078 : 0.076) * volume,
-            (outerwear ? 0.071 : 0.07) * volume,
+            (outerwear ? 0.084 : 0.088) * volume,
+            (outerwear ? 0.081 : 0.085) * volume,
+            (outerwear ? 0.076 : 0.076) * volume,
+            (outerwear ? 0.069 : 0.07) * volume,
             0.045,
           ],
           hoodie
@@ -2820,10 +2821,9 @@ function makeRider(
           side,
         ),
       );
-    // Continuous underarm cloth panel.
-    // The endpoints are buried inside torso and sleeve. Only the missing
-    // armpit silhouette is exposed, producing a clean inward C-curve.
-    {
+    // T-shirts need a thin fill panel. Outerwear does not: the deeper hidden
+    // sleeve overlap closes the seam while preserving the inward armpit curve.
+    if (tee) {
       const torsoAnchor = torsoSleevePoint(
         outerwear ? 0.184 : 0.181,
         outerwear ? 0.355 : 0.368,
@@ -2942,13 +2942,19 @@ function makeRider(
       armMeshes.push(panel);
     }
 
-    sleeveFolds(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20, tee);
+    sleeveFolds(
+      armMeshes[0],
+      tee ? 24 : 36,
+      tee ? 24 : 20,
+      tee,
+      tee ? 1 : outerwear ? 0.28 : 0.6,
+    );
     shapeArmholeInward(
       armMeshes[0],
       tee ? 24 : 36,
       tee ? 24 : 20,
       side as -1 | 1,
-      tee ? 0.028 : outerwear ? 0.03 : 0.022,
+      tee ? 0.028 : outerwear ? 0.04 : 0.022,
     );
     flattenShoulderTop(
       armMeshes[0],
@@ -3046,6 +3052,7 @@ function makeRider(
           lean: rest.lean,
           roll: rest.roll,
         },
+        outerwear,
       ),
       leg: skinLimb(rider, [leg], rest.limbs[index].leg),
     });
