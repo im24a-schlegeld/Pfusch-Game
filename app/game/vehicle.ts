@@ -2467,6 +2467,8 @@ function makeRider(
     garmentMaterial(upper, player, color),
   );
   torso.name = 'tailored-garment';
+  torso.castShadow = false;
+  torso.receiveShadow = false;
   torsoDrape(torso.geometry, hem, hoodie || zipper, hoodie);
   if (hoodie)
     applyRibbedTrim(torso.material as THREE.MeshStandardMaterial, 'hem');
@@ -2674,7 +2676,7 @@ function makeRider(
           );
         center.divideScalar(sides + 1);
 
-        const band = Math.exp(-(((t - 0.43) / 0.19) ** 2));
+        const band = Math.exp(-(((t - 0.43) / 0.3) ** 2));
 
         for (let j = 0; j <= sides; j++) {
           const index = ring * (sides + 1) + j;
@@ -2688,7 +2690,7 @@ function makeRider(
           const smooth = outer * outer * (3 - 2 * outer);
           point.x -=
             sideSign *
-            (tee ? 0.01 : 0.016) *
+            (tee ? 0.0025 : outerwear ? 0.0035 : 0.006) *
             band *
             smooth;
           positions.setX(index, point.x);
@@ -2735,7 +2737,12 @@ function makeRider(
           point.fromBufferAttribute(positions, index);
           const dy = point.y - center.y;
           if (dy > 0) {
-            point.y = center.y + dy * (1 - shoulderBand * 0.45);
+            point.y =
+              center.y +
+              dy *
+                (1 -
+                  shoulderBand *
+                    (tee || outerwear ? 0.08 : 0.28));
             positions.setY(index, point.y);
           }
         }
@@ -2839,7 +2846,7 @@ function makeRider(
       tee ? 24 : 36,
       tee ? 24 : 20,
       tee,
-      tee ? 0.08 : outerwear ? 0.012 : 0.1,
+      (tee || outerwear) ? 0 : 0.06,
     );
     shapeArmholeInward(
       armMeshes[0],
@@ -2859,7 +2866,7 @@ function makeRider(
       tee ? 24 : 20,
       side as -1 | 1,
     );
-    if (upper) {
+    if (upper && !tee && !outerwear) {
       const seams = sleeveSeams(
         armMeshes[0],
         tee ? 24 : 36,

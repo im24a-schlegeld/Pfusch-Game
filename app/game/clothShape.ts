@@ -20,8 +20,9 @@ export function torsoDrape(
       gaussian(offset / width) -
       0.55 * gaussian((offset - width * 1.6) / width);
     const folds =
-      (ridge(hip, 0.023) * 0.01 + ridge(pit, 0.021) * 0.011 * side) *
-      (outerwear ? 1.2 : 1);
+      (ridge(hip, 0.023) * 0.006 +
+        ridge(pit, 0.028) * 0.0018 * side) *
+      (outerwear ? 0.72 : 0.82);
     const hang = gaussian((y - hem) / 0.07);
     // Side seams hang slightly lower; front compresses over the seated hip.
     const hemDrop =
