@@ -1052,17 +1052,35 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          [s * 0.014, 0.98, forkAxisAt(0.98)[2] + 0.024],
-          [s * 0.11, 0.6, -0.33],
-          [s * 0.12, 0.38, -0.2],
-          [s * 0.13, 0.37, 0.1],
           [s * 0.13, 0.51, 0.13],
+          [s * 0.13, 0.37, 0.1],
+          [s * 0.12, 0.38, -0.2],
+          [s * 0.085, 0.49, -0.285],
+          [s * 0.045, 0.575, -0.33],
+          [0, 0.625, -0.35],
         ],
-        [0.027, 0.028, 0.028, 0.027, 0.032],
+        [0.032, 0.03, 0.029, 0.029, 0.03, 0.032],
         dark,
-        32,
+        28,
         14,
-      );
+      ).name = 'supermoto-frame-merge-branch';
+
+      // Both lower frame rails meet here. From this junction upward there is
+      // one visibly wider central frame tube instead of two parallel rods.
+      if (s === 1)
+        tube(
+          body,
+          [
+            [0, 0.625, -0.35],
+            [0, 0.72, -0.365],
+            [0, 0.84, -0.39],
+            [0, 0.98, forkAxisAt(0.98)[2] + 0.024],
+          ],
+          [0.04, 0.041, 0.04, 0.037],
+          dark,
+          24,
+          16,
+        ).name = 'supermoto-frame-central-up-tube';
       tube(
         body,
         [
