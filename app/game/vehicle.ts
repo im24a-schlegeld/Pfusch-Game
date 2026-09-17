@@ -2839,7 +2839,7 @@ function makeRider(
       tee ? 24 : 36,
       tee ? 24 : 20,
       tee,
-      tee ? 0.45 : outerwear ? 0.28 : 0.6,
+      tee ? 0.24 : outerwear ? 0.06 : 0.28,
     );
     shapeArmholeInward(
       armMeshes[0],

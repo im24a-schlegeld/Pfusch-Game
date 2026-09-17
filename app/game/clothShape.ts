@@ -59,13 +59,14 @@ export function sleeveFolds(
     for (let j = 0; j <= sides; j++) {
       const t = ring / rings,
         angle = (j / sides) * Math.PI * 2;
-      const elbow = t - (tee ? 0.78 : 0.61) + Math.cos(angle) * 0.035;
-      const cuff = t - 0.91 + Math.cos(angle) * 0.02;
+      const elbow = t - (tee ? 0.78 : 0.61) + Math.cos(angle) * 0.026;
+      const cuff = t - 0.91 + Math.cos(angle) * 0.014;
       const fold =
         strength *
-        (0.007 *
-          (gaussian(elbow / 0.032) - 0.6 * gaussian((elbow - 0.055) / 0.032)) +
-          (tee ? 0.002 : 0.005) * gaussian(cuff / 0.023));
+        (0.0038 *
+          (gaussian(elbow / 0.046) -
+            0.28 * gaussian((elbow - 0.062) / 0.046)) +
+          (tee ? 0.0007 : 0.0015) * gaussian(cuff / 0.032));
       const index = ring * (sides + 1) + j;
       point.fromBufferAttribute(positions, index).sub(center);
       point.setLength(Math.max(0.01, point.length() + fold)).add(center);
