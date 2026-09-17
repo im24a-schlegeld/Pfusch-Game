@@ -2321,6 +2321,51 @@ function trimTeeSleeveTorsoOverlap(
   geometry.computeBoundingSphere();
 }
 
+
+function moveTeeShoulderForward(
+  sleeve: THREE.Mesh,
+  rings: number,
+  sides: number,
+) {
+  const positions = sleeve.geometry.getAttribute('position');
+  const center = new THREE.Vector3(),
+    point = new THREE.Vector3();
+
+  const maxRing = Math.max(4, Math.min(rings, Math.floor(rings * 0.34)));
+
+  for (let ring = 0; ring <= maxRing; ring++) {
+    center.set(0, 0, 0);
+    for (let j = 0; j < sides; j++) {
+      center.add(point.fromBufferAttribute(positions, ring * (sides + 1) + j));
+    }
+    center.divideScalar(sides);
+
+    const t = ring / Math.max(1, rings);
+    const shoulder = Math.exp(-(((t - 0.16) / 0.18) ** 2));
+
+    for (let j = 0; j <= sides; j++) {
+      const index = ring * (sides + 1) + j;
+      point.fromBufferAttribute(positions, index).sub(center);
+
+      const upper = point.y > 0 ? 1 : 0;
+      const outer =
+        Math.abs(point.x) /
+        Math.max(0.0001, Math.abs(point.x) + Math.abs(point.z));
+      const pull = shoulder * upper * (0.45 + 0.55 * outer);
+
+      // Slightly forward, slightly flatter. No torso edits.
+      point.z += 0.008 * pull;
+      point.y *= 1 - 0.04 * pull;
+      point.x *= 1 - 0.01 * pull;
+
+      point.add(center);
+      positions.setXYZ(index, point.x, point.y, point.z);
+    }
+  }
+
+  sleeve.geometry.computeVertexNormals();
+}
+
 function makeRider(
   parent: THREE.Object3D,
   pose: RiderPose,
@@ -2635,7 +2680,7 @@ function makeRider(
       shoulder[1] - (outerwear ? 0.05 : tee ? 0.048 : 0.044),
       shoulder[2],
     ];
-    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.079 : 0.081) * volume;
+    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.074 : 0.081) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
@@ -2893,7 +2938,8 @@ function makeRider(
           side,
         ),
       );
-    // T-shirt seam is now closed by hidden sleeve/torso overlap.
+    // T-shirt seam is now closed by hidden sleeve/torso overlap.    if (tee) moveTeeShoulderForward(armMeshes[0], 24, 24);
+
     if (tee)
       trimTeeSleeveTorsoOverlap(
         armMeshes[0],
