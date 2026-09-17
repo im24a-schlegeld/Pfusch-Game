@@ -45,6 +45,8 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
+import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER } from './supermotoFit';
+import { addSupermotoFootpeg } from './supermotoFootpegs';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -1162,16 +1164,7 @@ export function makeBike(player: Player, products: Product[]) {
       const shroud = sidePanel(
         body,
         s,
-        [
-          [0.138, 0.965, -0.408],
-          [0.194, 0.965, -0.265],
-          [0.182, 0.927, -0.045],
-          [0.142, 0.946, 0.12],
-          [0.147, 0.852, 0.085],
-          [0.17, 0.726, -0.12],
-          [0.192, 0.742, -0.283],
-          [0.201, 0.858, -0.348],
-        ],
+        SUPERMOTO_SHROUD,
         paint,
       );
       shroud.name = 'radiator-shroud';
@@ -1250,15 +1243,7 @@ export function makeBike(player: Player, products: Product[]) {
       sidePanel(
         body,
         s,
-        [
-          [0.14, 0.946, 0.106],
-          [0.119, 0.989, 0.665],
-          [0.074, 1.019, 0.866],
-          [0.111, 0.857, 0.71],
-          [0.151, 0.706, 0.332],
-          [0.158, 0.736, 0.245],
-          [0.154, 0.827, 0.128],
-        ],
+        SUPERMOTO_SIDE_COVER,
         paint,
       ).name = 'supermoto-side-cover';
       // The inner liner closes the under-seat body at its sides. It stays
@@ -2224,13 +2209,17 @@ export function makeBike(player: Player, products: Product[]) {
         alloy,
         0.014,
       ).name = 'frame-mounted-rearset';
-    rod(
-      body,
-      [s * 0.1, pose.peg[1], pose.peg[2]],
-      [s * (pose.peg[0] + 0.055), pose.peg[1], pose.peg[2]],
-      0.018,
-      dark,
-    ).name = 'rider-footpeg';
+    if (player.bike === '450') {
+      addSupermotoFootpeg(body, s, pose.peg, alloy, dark);
+    } else {
+      rod(
+        body,
+        [s * 0.1, pose.peg[1], pose.peg[2]],
+        [s * (pose.peg[0] + 0.055), pose.peg[1], pose.peg[2]],
+        0.018,
+        dark,
+      ).name = 'rider-footpeg';
+    }
   }
   const rider = makeRider(body, riderPose, player, products);
   // Bike dimensions grow relative to the same adult. Counter-scale only this

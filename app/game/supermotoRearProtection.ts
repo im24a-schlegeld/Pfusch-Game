@@ -3,11 +3,6 @@ import * as THREE from 'three';
 type Point = [number, number, number];
 type EdgeSample = { x: number; y: number };
 
-function smoothstep(a: number, b: number, t: number) {
-  const x = THREE.MathUtils.clamp((t - a) / (b - a), 0, 1);
-  return x * x * (3 - 2 * x);
-}
-
 /** Intersect a vertical line with the mesh's real triangles (bike-local space). */
 function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number) {
   const p = geometry.getAttribute('position');
@@ -132,99 +127,13 @@ function sheet(
   return geometry;
 }
 
-function reshapeSideCover(cover: THREE.Mesh) {
-  const geometry = cover.geometry;
-  const p = geometry.getAttribute('position');
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i);
-    const absX = Math.abs(x);
-    let y = p.getY(i);
-    let z = p.getZ(i);
-
-    // Rear side plastic: lower and slightly longer like the references.
-    const rear = smoothstep(0.50, 0.86, z);
-    const rearLowerBand = 1 - smoothstep(0.79, 1.02, y);
-    y -= rear * (0.045 + 0.105 * rearLowerBand);
-    z += rear * rearLowerBand * 0.018;
-    const rearOut = rear * (0.18 + 0.82 * rearLowerBand);
-    const newAbsX = absX + 0.002 + rearOut * 0.011;
-
-    // Front lower angle: stronger slash and fuller descent like a real shroud.
-    const front = 1 - smoothstep(0.28, 0.56, z);
-    const frontLowerBand = 1 - smoothstep(0.82, 0.97, y);
-    y -= front * frontLowerBand * 0.068;
-    z -= front * frontLowerBand * 0.022;
-    const frontOut = front * (0.25 + 0.75 * frontLowerBand) * 0.01;
-
-    p.setXYZ(i, Math.sign(x) * (newAbsX + frontOut), y, z);
-  }
-  p.needsUpdate = true;
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-}
-
-function addRiderFootpegs(body: THREE.Group) {
-  if (body.getObjectByName('supermoto-rider-footpeg-left')) return;
-
-  const dark = new THREE.MeshStandardMaterial({
-    color: '#25292c',
-    metalness: 0.46,
-    roughness: 0.56,
-  });
-  const alloy = new THREE.MeshStandardMaterial({
-    color: '#b5bcc0',
-    metalness: 0.74,
-    roughness: 0.34,
-  });
-
-  const group = new THREE.Group();
-  group.name = 'supermoto-rider-footpeg-assembly-v36';
-
-  for (const s of [-1, 1]) {
-    const peg = new THREE.Group();
-    peg.name = s < 0 ? 'supermoto-rider-footpeg-left' : 'supermoto-rider-footpeg-right';
-
-    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.032, 0.012), dark);
-    mount.position.set(s * 0.112, 0.418, 0.158);
-    peg.add(mount);
-
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.018, 0.04), dark);
-    brace.position.set(s * 0.126, 0.405, 0.174);
-    brace.rotation.z = s * 0.42;
-    peg.add(brace);
-
-    const platform = new THREE.Mesh(new THREE.BoxGeometry(0.054, 0.011, 0.020), alloy);
-    platform.position.set(s * 0.157, 0.396, 0.182);
-    peg.add(platform);
-
-    for (let i = 0; i < 5; i++) {
-      const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.004, 0.018), alloy);
-      tooth.position.set(
-        s * (0.138 + i * 0.0095),
-        0.403,
-        0.182,
-      );
-      peg.add(tooth);
-    }
-
-    const endCap = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.014, 0.022), dark);
-    endCap.position.set(s * 0.182, 0.397, 0.182);
-    peg.add(endCap);
-
-    group.add(peg);
-  }
-
-  body.add(group);
-}
-
-/** Fits the side plastics lower and adds undertail + mudflap + rider pegs. */
+/** Read the already-built, symmetric covers; only add the liner and mudflap. */
 export function addSupermotoRearProtection(
   body: THREE.Group,
   paint: THREE.MeshStandardMaterial,
   rubber: THREE.MeshStandardMaterial,
 ) {
-  if (body.getObjectByName('supermoto-rear-protection-v36')) return;
+  if (body.getObjectByName('supermoto-rear-protection-v37')) return;
 
   const tail = body.getObjectByName('supermoto-tail-fender');
   const cover = body.getObjectByName('supermoto-side-cover');
@@ -236,7 +145,11 @@ export function addSupermotoRearProtection(
     throw new Error('Build the Supermoto side covers and tail before its inner liner');
   }
 
-  reshapeSideCover(cover);
+  const covers: THREE.Mesh[] = [];
+  body.traverse((object) => {
+    if (object.name === 'supermoto-side-cover' && object instanceof THREE.Mesh) covers.push(object);
+  });
+  if (covers.length !== 2) throw new Error('Expected two Supermoto side covers');
   const boundary = readSideBoundary(cover);
   const frontZ = 0.44;
   const endZ = Math.max(...boundary.map(p => p[2]));
@@ -262,17 +175,17 @@ export function addSupermotoRearProtection(
 
   const linerPoint = (z: number, v: number): Point => {
     const p = section(z);
-    const inner = 1 - Math.pow(Math.abs(v), 1.2);
+    // Complementary weights: the liner must not sag below both edge/crown.
     const edgeBlend = Math.pow(Math.abs(v), 1.65);
     return [
       p.halfWidth * v,
-      p.crown * inner + p.edgeY * edgeBlend,
-      z + 0.002 * inner,
+      p.crown + (p.edgeY - p.crown) * edgeBlend,
+      z,
     ];
   };
 
   const parts = new THREE.Group();
-  parts.name = 'supermoto-rear-protection-v36';
+  parts.name = 'supermoto-rear-protection-v37';
 
   const linerFinish = paint.clone();
   linerFinish.metalness = 0;
@@ -320,5 +233,4 @@ export function addSupermotoRearProtection(
   parts.add(flap);
 
   body.add(parts);
-  addRiderFootpegs(body);
 }
