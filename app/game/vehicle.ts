@@ -2268,6 +2268,39 @@ export function makeBike(player: Player, products: Product[]) {
     rearAxle: rear * modelScale,
   };
 }
+function softenTeeShoulderTransition(
+  mesh: THREE.Mesh,
+  rings: number,
+  sides: number,
+) {
+  const positions = mesh.geometry.getAttribute('position');
+  const center = new THREE.Vector3(),
+    point = new THREE.Vector3();
+  const shoulderRings = Math.max(3, Math.min(rings, Math.floor(rings * 0.42)));
+  for (let ring = 0; ring <= shoulderRings; ring++) {
+    center.set(0, 0, 0);
+    for (let j = 0; j < sides; j++) {
+      center.add(point.fromBufferAttribute(positions, ring * (sides + 1) + j));
+    }
+    center.divideScalar(sides);
+    const t = ring / Math.max(1, rings);
+    const shoulder = Math.exp(-(((t - 0.18) / 0.17) ** 2));
+    for (let j = 0; j <= sides; j++) {
+      const index = ring * (sides + 1) + j;
+      point.fromBufferAttribute(positions, index).sub(center);
+      const upper = point.y > 0 ? 1 : 0;
+      const side = Math.abs(point.x) / Math.max(0.0001, Math.abs(point.x) + Math.abs(point.z));
+      const relax = shoulder * upper * (0.12 + 0.2 * side);
+      point.x *= 1 - relax;
+      point.y *= 1 - relax * 0.8;
+      point.z *= 1 - relax * 0.08;
+      point.add(center);
+      positions.setXYZ(index, point.x, point.y, point.z);
+    }
+  }
+  mesh.geometry.computeVertexNormals();
+}
+
 function makeRider(
   parent: THREE.Object3D,
   pose: RiderPose,
@@ -2690,7 +2723,7 @@ function makeRider(
           const smooth = outer * outer * (3 - 2 * outer);
           point.x -=
             sideSign *
-            (tee ? 0.0025 : outerwear ? 0.0035 : 0.006) *
+            (tee ? 0.0006 : outerwear ? 0.003 : 0.005) *
             band *
             smooth;
           positions.setX(index, point.x);
@@ -2742,7 +2775,7 @@ function makeRider(
               dy *
                 (1 -
                   shoulderBand *
-                    (tee || outerwear ? 0.08 : 0.28));
+                    (tee ? 0 : outerwear ? 0.06 : 0.24));
             positions.setY(index, point.y);
           }
         }
@@ -2846,7 +2879,7 @@ function makeRider(
       tee ? 24 : 36,
       tee ? 24 : 20,
       tee,
-      (tee || outerwear) ? 0 : 0.06,
+      tee ? 0 : outerwear ? 0.012 : 0.06,
     );
     shapeArmholeInward(
       armMeshes[0],
@@ -2855,6 +2888,7 @@ function makeRider(
       side as -1 | 1,
       tee ? 0.036 : outerwear ? 0.04 : 0.022,
     );
+    if (tee) softenTeeShoulderTransition(armMeshes[0], 24, 24);
     flattenShoulderTop(
       armMeshes[0],
       tee ? 24 : 36,
