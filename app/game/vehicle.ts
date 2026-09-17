@@ -2296,7 +2296,7 @@ function trimTeeSleeveTorsoOverlap(
 
     let buriedInTorso = false;
 
-    if (u < 0.52) {
+    if (u < 0.68) {
       const signedX =
         sideSign *
         ((positions.getX(a) +
@@ -2308,9 +2308,11 @@ function trimTeeSleeveTorsoOverlap(
       // Their visible intersection is the curved shoulder -> inner-back line.
       // Keep the overlap underneath, but do not render triangles buried
       // toward the torso centre.
-      const fade = THREE.MathUtils.smoothstep(u, 0, 0.52);
-      const innerLimit = THREE.MathUtils.lerp(0.205, 0.142, fade);
-      buriedInTorso = signedX < innerLimit;
+      const fade = THREE.MathUtils.smoothstep(u, 0, 0.68);
+      const innerLimit = THREE.MathUtils.lerp(0.245, 0.158, fade);
+      const deepRootLimit = THREE.MathUtils.lerp(0.225, 0.175, fade);
+      buriedInTorso =
+        signedX < innerLimit || (u < 0.3 && signedX < deepRootLimit);
     }
 
     if (!buriedInTorso) kept.push(a, b, c);
