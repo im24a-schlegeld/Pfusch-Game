@@ -240,12 +240,20 @@ export function garmentMaterial(
           if (disposed) return;
           const cropped = printedCrop(img, spec.crop, maskImage),
             p = spec.texturePlacement;
+
+          // keep-up tee back print clearance:
+          // Do not distort the rider/shoulder to make room for the artwork.
+          // Keep the normal T-shirt body and move only this very wide back
+          // print inward/down so the armhole/shoulder cannot cut through it.
+          const keepUpTeeBack =
+            product?.handle === 'keep-up-t-shirt' && side === 'back';
           const panelWidth = 365,
             centerX =
               (side === 'front' ? 768 : 256) + (p.center[0] - 0.5) * panelWidth;
-          const y = 0.54 - p.center[1] * 0.59,
+          const placementY = p.center[1] + (keepUpTeeBack ? 0.035 : 0);
+          const y = 0.54 - placementY * 0.59,
             centerY = ((0.63 - y) / 0.675) * 1024,
-            width = p.width * panelWidth,
+            width = p.width * panelWidth * (keepUpTeeBack ? 0.84 : 1),
             height = ((p.height * 0.59) / 0.675) * 1024;
           const destination = [
             centerX - width / 2,

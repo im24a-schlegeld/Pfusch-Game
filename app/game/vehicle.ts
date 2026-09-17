@@ -2268,84 +2268,6 @@ export function makeBike(player: Player, products: Product[]) {
     rearAxle: rear * modelScale,
   };
 }
-function softenTeeShoulderTransition(
-  mesh: THREE.Mesh,
-  rings: number,
-  sides: number,
-) {
-  const positions = mesh.geometry.getAttribute('position');
-  const center = new THREE.Vector3(),
-    point = new THREE.Vector3();
-  const shoulderRings = Math.max(4, Math.min(rings, Math.floor(rings * 0.5)));
-  for (let ring = 0; ring <= shoulderRings; ring++) {
-    center.set(0, 0, 0);
-    for (let j = 0; j < sides; j++) {
-      center.add(point.fromBufferAttribute(positions, ring * (sides + 1) + j));
-    }
-    center.divideScalar(sides);
-    const t = ring / Math.max(1, rings);
-    const shoulder = Math.exp(-(((t - 0.18) / 0.2) ** 2));
-    for (let j = 0; j <= sides; j++) {
-      const index = ring * (sides + 1) + j;
-      point.fromBufferAttribute(positions, index).sub(center);
-      const upper = point.y > 0 ? 1 : 0;
-      const absX = Math.abs(point.x);
-      const absZ = Math.abs(point.z);
-      const side = absX / Math.max(0.0001, absX + absZ);
-      const relax = shoulder * upper;
-
-      // Flat shirt shoulder: almost no "muscle" bulge, but still enough lateral
-      // clearance so the sleeve stays out of the back print area.
-      point.x += Math.sign(point.x || 1) * 0.003 * relax * (0.35 + 0.65 * side);
-      point.y *= 1 - 0.14 * relax;
-      point.z *= 1 - 0.055 * relax * (0.45 + 0.55 * side);
-
-      point.add(center);
-      positions.setXYZ(index, point.x, point.y, point.z);
-    }
-  }
-  mesh.geometry.computeVertexNormals();
-}
-
-function relaxTeeUpperTorsoGraphicZone(
-  mesh: THREE.Mesh,
-  rings: number,
-  sides: number,
-) {
-  const positions = mesh.geometry.getAttribute('position');
-  const center = new THREE.Vector3(),
-    point = new THREE.Vector3();
-  const maxRing = Math.max(5, Math.min(rings, Math.floor(rings * 0.42)));
-  for (let ring = 0; ring <= maxRing; ring++) {
-    center.set(0, 0, 0);
-    for (let j = 0; j < sides; j++) {
-      center.add(point.fromBufferAttribute(positions, ring * (sides + 1) + j));
-    }
-    center.divideScalar(sides);
-    const t = ring / Math.max(1, rings);
-    const zone = Math.exp(-(((t - 0.16) / 0.18) ** 2));
-    for (let j = 0; j <= sides; j++) {
-      const index = ring * (sides + 1) + j;
-      point.fromBufferAttribute(positions, index).sub(center);
-      const upper = point.y > 0 ? 1 : 0;
-      const absX = Math.abs(point.x);
-      const absZ = Math.abs(point.z);
-      const side = absX / Math.max(0.0001, absX + absZ);
-      const centerBias = 1 - side;
-      const effect = zone * upper;
-
-      // Keep the upper shirt back flatter, especially in the graphic zone.
-      point.x += Math.sign(point.x || 1) * 0.0022 * effect * side;
-      point.y *= 1 - (0.16 * centerBias + 0.08 * side) * effect;
-      point.z *= 1 - (0.095 * centerBias + 0.04 * side) * effect;
-
-      point.add(center);
-      positions.setXYZ(index, point.x, point.y, point.z);
-    }
-  }
-  mesh.geometry.computeVertexNormals();
-}
-
 function makeRider(
   parent: THREE.Object3D,
   pose: RiderPose,
@@ -2548,7 +2470,6 @@ function makeRider(
   torso.castShadow = false;
   torso.receiveShadow = false;
   torsoDrape(torso.geometry, hem, hoodie || zipper, hoodie);
-  if (tee) relaxTeeUpperTorsoGraphicZone(torso, 32, 28);
   if (hoodie)
     applyRibbedTrim(torso.material as THREE.MeshStandardMaterial, 'hem');
   const stitching = material(
@@ -2633,35 +2554,35 @@ function makeRider(
       0,
     );
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.138 : tee ? 0.154 : 0.144,
-      outerwear ? 0.394 : tee ? 0.384 : 0.41,
+      outerwear ? 0.138 : tee ? 0.136 : 0.144,
+      outerwear ? 0.394 : tee ? 0.404 : 0.41,
       0,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.158 : tee ? 0.182 : 0.162,
-      outerwear ? 0.434 : tee ? 0.421 : 0.449,
+      outerwear ? 0.158 : tee ? 0.158 : 0.162,
+      outerwear ? 0.434 : tee ? 0.444 : 0.449,
       0,
     );
     const sleeveArmhole = torsoSleevePoint(
-      outerwear ? 0.181 : tee ? 0.205 : 0.183,
-      outerwear ? 0.48 : tee ? 0.465 : 0.492,
+      outerwear ? 0.181 : tee ? 0.18 : 0.183,
+      outerwear ? 0.48 : tee ? 0.486 : 0.492,
       0,
     );
 
     // Tee roots now overlap deeply inside the torso instead of relying on a
     // separate visible fill panel.
-    const rootRadius = (outerwear ? 0.1 : tee ? 0.078 : 0.082) * volume;
-    const blendRadius = (outerwear ? 0.098 : tee ? 0.074 : 0.084) * volume;
-    const armholeRadius = (outerwear ? 0.094 : tee ? 0.068 : 0.086) * volume;
+    const rootRadius = (outerwear ? 0.1 : tee ? 0.1 : 0.082) * volume;
+    const blendRadius = (outerwear ? 0.098 : tee ? 0.096 : 0.084) * volume;
+    const armholeRadius = (outerwear ? 0.094 : tee ? 0.091 : 0.086) * volume;
 
     // Sichtbare Stoff-Schulter tiefer als das anatomische Gelenk:
     // keine nach oben stehende Spitze, Skelett bleibt unverändert.
     const garmentShoulder: Point = [
-      shoulder[0] + side * (outerwear ? 0.008 : tee ? 0.022 : 0.006),
-      shoulder[1] - (outerwear ? 0.05 : tee ? 0.061 : 0.044),
+      shoulder[0] + side * (outerwear ? 0.008 : tee ? 0.003 : 0.006),
+      shoulder[1] - (outerwear ? 0.05 : tee ? 0.048 : 0.044),
       shoulder[2],
     ];
-    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.058 : 0.081) * volume;
+    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.079 : 0.081) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
@@ -2769,7 +2690,7 @@ function makeRider(
           const smooth = outer * outer * (3 - 2 * outer);
           point.x -=
             sideSign *
-            (tee ? 0.0006 : outerwear ? 0.003 : 0.005) *
+            (tee ? 0.0025 : outerwear ? 0.0035 : 0.006) *
             band *
             smooth;
           positions.setX(index, point.x);
@@ -2821,7 +2742,7 @@ function makeRider(
               dy *
                 (1 -
                   shoulderBand *
-                    (tee ? 0 : outerwear ? 0.06 : 0.24));
+                    (tee || outerwear ? 0.08 : 0.28));
             positions.setY(index, point.y);
           }
         }
@@ -2925,7 +2846,7 @@ function makeRider(
       tee ? 24 : 36,
       tee ? 24 : 20,
       tee,
-      tee ? 0 : outerwear ? 0.012 : 0.06,
+      (tee || outerwear) ? 0 : 0.06,
     );
     shapeArmholeInward(
       armMeshes[0],
@@ -2934,7 +2855,6 @@ function makeRider(
       side as -1 | 1,
       tee ? 0.036 : outerwear ? 0.04 : 0.022,
     );
-    if (tee) softenTeeShoulderTransition(armMeshes[0], 24, 24);
     flattenShoulderTop(
       armMeshes[0],
       tee ? 24 : 36,
