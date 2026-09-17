@@ -1374,21 +1374,20 @@ export function makeBike(player: Player, products: Product[]) {
       underTailLinerMat,
       'z',
       20,
-    ).name = 'supermoto-under-tail-liner';
-
-    // Thin tapered rubber mudflap following the rear wheel direction.
-    // This is a flexible-looking sheet, not a rectangular license-plate box.
+    ).name = 'supermoto-under-tail-liner';    // supermoto-mudflap-v33
+    // Mudflap sits near the suspension/front of the rear wheel, like a real
+    // inner splash flap, not as a license-plate style rear hanger.
     const mudflapGeometry = new THREE.BufferGeometry();
     mudflapGeometry.setAttribute(
       'position',
       new THREE.Float32BufferAttribute(
         [
-          -0.055, 0.89, 0.985,
-           0.055, 0.89, 0.985,
-          -0.052, 0.84, 1.015,
-           0.052, 0.84, 1.015,
-          -0.036, 0.785, 1.047,
-           0.036, 0.785, 1.047,
+          -0.05, 0.77, 0.56,
+           0.05, 0.77, 0.56,
+          -0.046, 0.69, 0.61,
+           0.046, 0.69, 0.61,
+          -0.034, 0.59, 0.665,
+           0.034, 0.59, 0.665,
         ],
         3,
       ),
