@@ -1356,74 +1356,55 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
       16,
     ).name = 'supermoto-tail-fender';
-
-    // Add visible under-tail plastic like the reference bike, so the rear
-    // section does not end as open bodywork. This is the inner tail liner
-    // visible from the rear/underside.
-    const underTailPlasticMat = material('#eef1f2', 0.02, 0.82);
+// supermoto-tail-refine-v32
+    // Integrated inner tail plastic: broad under the seat, then naturally
+    // tapers toward the rear. It sits below the painted outer tail instead
+    // of hanging as a separate box.
+    const underTailLinerMat = material('#b9bec0', 0.02, 0.9);
     loft(
       body,
       [
-        [0.62, 0.108, 0.018, 0.952],
-        [0.79, 0.108, 0.025, 0.972],
-        [0.94, 0.1, 0.03, 1.004],
-        [1.045, 0.086, 0.03, 1.028],
-        [1.12, 0.064, 0.024, 1.012],
+        [0.48, 0.112, 0.012, 0.904],
+        [0.64, 0.116, 0.018, 0.916],
+        [0.79, 0.108, 0.02, 0.928],
+        [0.91, 0.09, 0.018, 0.918],
+        [1.0, 0.064, 0.014, 0.892],
+        [1.06, 0.042, 0.009, 0.86],
       ],
-      underTailPlasticMat,
+      underTailLinerMat,
       'z',
-      16,
-    ).name = 'supermoto-under-tail-plastic';
+      20,
+    ).name = 'supermoto-under-tail-liner';
 
-    // Close the left/right underside visually so the white plastic looks
-    // like a proper liner, not a floating center piece.
-    for (const s of [-1, 1]) {
-      sidePanel(
-        body,
-        s,
+    // Thin tapered rubber mudflap following the rear wheel direction.
+    // This is a flexible-looking sheet, not a rectangular license-plate box.
+    const mudflapGeometry = new THREE.BufferGeometry();
+    mudflapGeometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(
         [
-          [0.012, 0.913, 0.86],
-          [0.012, 0.888, 0.98],
-          [0.012, 0.852, 1.055],
-          [0.012, 0.81, 1.085],
-          [0.012, 0.782, 1.012],
-          [0.012, 0.82, 0.89],
+          -0.055, 0.89, 0.985,
+           0.055, 0.89, 0.985,
+          -0.052, 0.84, 1.015,
+           0.052, 0.84, 1.015,
+          -0.036, 0.785, 1.047,
+           0.036, 0.785, 1.047,
         ],
-        underTailPlasticMat,
-        0.005,
-      ).name = 'supermoto-under-tail-side';
-    }
-
-    // Small rear mudflap under the tail.
-    const mudflapMat = material('#121212', 0.02, 0.96);
-    const mudflap = mesh(
-      body,
-      new THREE.BoxGeometry(0.096, 0.162, 0.008),
-      mudflapMat,
+        3,
+      ),
     );
+    mudflapGeometry.setIndex([
+      0, 2, 1,
+      1, 2, 3,
+      2, 4, 3,
+      3, 4, 5,
+    ]);
+    mudflapGeometry.computeVertexNormals();
+
+    const mudflapFinish = material('#171717', 0.01, 0.98);
+    mudflapFinish.side = THREE.DoubleSide;
+    const mudflap = mesh(body, mudflapGeometry, mudflapFinish);
     mudflap.name = 'supermoto-mudflap';
-    mudflap.position.set(0, 0.828, 1.075);
-    mudflap.rotation.x = -0.18;
-
-    const mudflapBrace = mesh(
-      body,
-      new THREE.BoxGeometry(0.068, 0.034, 0.01),
-      mudflapMat,
-    );
-    mudflapBrace.name = 'supermoto-mudflap-brace';
-    mudflapBrace.position.set(0, 0.905, 1.04);
-    mudflapBrace.rotation.x = -0.12;
-    loft(
-      body,
-      [
-        [0.27, 0.105, 0.013, 0.709],
-        [0.39, 0.105, 0.014, 0.77],
-        [0.53, 0.083, 0.01, 0.905],
-      ],
-      dark,
-      'z',
-      12,
-    ).name = 'rear-mud-flap';
     rod(body, [-0.15, 0.5, 0.12], [0.15, 0.5, 0.12], 0.05, dark);
     // Compact crankcase, cylinder and head occupy the cradle instead of floating below the tank.
     oval(body, [0, 0.51, -0.015], [0.137, 0.132, 0.185], engine).name =
