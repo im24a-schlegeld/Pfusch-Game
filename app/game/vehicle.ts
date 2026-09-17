@@ -2276,7 +2276,7 @@ function softenTeeShoulderTransition(
   const positions = mesh.geometry.getAttribute('position');
   const center = new THREE.Vector3(),
     point = new THREE.Vector3();
-  const shoulderRings = Math.max(3, Math.min(rings, Math.floor(rings * 0.42)));
+  const shoulderRings = Math.max(3, Math.min(rings, Math.floor(rings * 0.46)));
   for (let ring = 0; ring <= shoulderRings; ring++) {
     center.set(0, 0, 0);
     for (let j = 0; j < sides; j++) {
@@ -2284,16 +2284,18 @@ function softenTeeShoulderTransition(
     }
     center.divideScalar(sides);
     const t = ring / Math.max(1, rings);
-    const shoulder = Math.exp(-(((t - 0.18) / 0.17) ** 2));
+    const shoulder = Math.exp(-(((t - 0.18) / 0.18) ** 2));
     for (let j = 0; j <= sides; j++) {
       const index = ring * (sides + 1) + j;
       point.fromBufferAttribute(positions, index).sub(center);
       const upper = point.y > 0 ? 1 : 0;
-      const side = Math.abs(point.x) / Math.max(0.0001, Math.abs(point.x) + Math.abs(point.z));
-      const relax = shoulder * upper * (0.12 + 0.2 * side);
-      point.x *= 1 - relax;
-      point.y *= 1 - relax * 0.8;
-      point.z *= 1 - relax * 0.08;
+      const absX = Math.abs(point.x);
+      const absZ = Math.abs(point.z);
+      const outer = absX / Math.max(0.0001, absX + absZ);
+      const relax = shoulder * upper;
+      point.x += Math.sign(point.x || 1) * 0.0048 * relax * (0.3 + 0.7 * outer);
+      point.y *= 1 - 0.045 * relax;
+      point.z *= 1 - 0.015 * relax;
       point.add(center);
       positions.setXYZ(index, point.x, point.y, point.z);
     }
@@ -2587,35 +2589,35 @@ function makeRider(
       0,
     );
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.138 : tee ? 0.136 : 0.144,
-      outerwear ? 0.394 : tee ? 0.404 : 0.41,
+      outerwear ? 0.138 : tee ? 0.142 : 0.144,
+      outerwear ? 0.394 : tee ? 0.398 : 0.41,
       0,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.158 : tee ? 0.158 : 0.162,
-      outerwear ? 0.434 : tee ? 0.444 : 0.449,
+      outerwear ? 0.158 : tee ? 0.165 : 0.162,
+      outerwear ? 0.434 : tee ? 0.438 : 0.449,
       0,
     );
     const sleeveArmhole = torsoSleevePoint(
-      outerwear ? 0.181 : tee ? 0.18 : 0.183,
-      outerwear ? 0.48 : tee ? 0.486 : 0.492,
+      outerwear ? 0.181 : tee ? 0.186 : 0.183,
+      outerwear ? 0.48 : tee ? 0.482 : 0.492,
       0,
     );
 
     // Tee roots now overlap deeply inside the torso instead of relying on a
     // separate visible fill panel.
-    const rootRadius = (outerwear ? 0.1 : tee ? 0.1 : 0.082) * volume;
-    const blendRadius = (outerwear ? 0.098 : tee ? 0.096 : 0.084) * volume;
-    const armholeRadius = (outerwear ? 0.094 : tee ? 0.091 : 0.086) * volume;
+    const rootRadius = (outerwear ? 0.1 : tee ? 0.094 : 0.082) * volume;
+    const blendRadius = (outerwear ? 0.098 : tee ? 0.091 : 0.084) * volume;
+    const armholeRadius = (outerwear ? 0.094 : tee ? 0.086 : 0.086) * volume;
 
     // Sichtbare Stoff-Schulter tiefer als das anatomische Gelenk:
     // keine nach oben stehende Spitze, Skelett bleibt unverändert.
     const garmentShoulder: Point = [
-      shoulder[0] + side * (outerwear ? 0.008 : tee ? 0.003 : 0.006),
-      shoulder[1] - (outerwear ? 0.05 : tee ? 0.048 : 0.044),
+      shoulder[0] + side * (outerwear ? 0.008 : tee ? 0.011 : 0.006),
+      shoulder[1] - (outerwear ? 0.05 : tee ? 0.051 : 0.044),
       shoulder[2],
     ];
-    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.079 : 0.081) * volume;
+    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.074 : 0.081) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
