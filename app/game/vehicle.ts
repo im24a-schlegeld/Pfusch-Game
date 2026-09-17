@@ -2296,6 +2296,7 @@ function makeRider(
     restArm: ArmSkinPose,
     restTorso: TorsoSkinPose,
     outerwearSkin: boolean,
+    teeSkin: boolean,
   ) => {
     const torsoBone = new THREE.Bone();
     const upperBone = new THREE.Bone();
@@ -2368,8 +2369,8 @@ function makeRider(
           1 -
           THREE.MathUtils.smoothstep(
             signedFromShoulder,
-            outerwearSkin ? -0.075 : -0.065,
-            outerwearSkin ? 0.31 : 0.25,
+            outerwearSkin ? -0.075 : teeSkin ? -0.082 : -0.065,
+            outerwearSkin ? 0.31 : teeSkin ? 0.3 : 0.25,
           );
 
         const tA = segmentA.closestPointToPointParameter(sample, true);
@@ -2545,36 +2546,41 @@ function makeRider(
     // Four centres now form a smooth inward C-curve under the armpit.
     // Root points are deliberately deeper inside the torso. The overlap itself
     // closes the seam, so no extra visible filler geometry is needed.
+    const teeRootDeep = torsoSleevePoint(
+      0.116,
+      0.365,
+      0,
+    );
     const sleeveRoot = torsoSleevePoint(
-      outerwear ? 0.138 : 0.144,
-      outerwear ? 0.394 : 0.41,
+      outerwear ? 0.138 : tee ? 0.136 : 0.144,
+      outerwear ? 0.394 : tee ? 0.404 : 0.41,
       0,
     );
     const sleeveBlend = torsoSleevePoint(
-      outerwear ? 0.158 : 0.162,
-      outerwear ? 0.434 : 0.449,
+      outerwear ? 0.158 : tee ? 0.158 : 0.162,
+      outerwear ? 0.434 : tee ? 0.444 : 0.449,
       0,
     );
     const sleeveArmhole = torsoSleevePoint(
-      outerwear ? 0.181 : 0.183,
-      outerwear ? 0.48 : 0.492,
+      outerwear ? 0.181 : tee ? 0.18 : 0.183,
+      outerwear ? 0.48 : tee ? 0.486 : 0.492,
       0,
     );
 
-    // Outerwear roots overlap farther inside the torso, while the visible cap
-    // stays small. This closes the seam without filling the concave armpit.
-    const rootRadius = (outerwear ? 0.1 : 0.082) * volume;
-    const blendRadius = (outerwear ? 0.098 : 0.084) * volume;
-    const armholeRadius = (outerwear ? 0.094 : 0.086) * volume;
+    // Tee roots now overlap deeply inside the torso instead of relying on a
+    // separate visible fill panel.
+    const rootRadius = (outerwear ? 0.1 : tee ? 0.1 : 0.082) * volume;
+    const blendRadius = (outerwear ? 0.098 : tee ? 0.096 : 0.084) * volume;
+    const armholeRadius = (outerwear ? 0.094 : tee ? 0.091 : 0.086) * volume;
 
     // Sichtbare Stoff-Schulter tiefer als das anatomische Gelenk:
     // keine nach oben stehende Spitze, Skelett bleibt unverändert.
     const garmentShoulder: Point = [
-      shoulder[0] + side * (outerwear ? 0.008 : 0.006),
-      shoulder[1] - (outerwear ? 0.05 : 0.044),
+      shoulder[0] + side * (outerwear ? 0.008 : tee ? 0.003 : 0.006),
+      shoulder[1] - (outerwear ? 0.05 : tee ? 0.048 : 0.044),
       shoulder[2],
     ];
-    const shoulderRadius = (outerwear ? 0.088 : 0.081) * volume;
+    const shoulderRadius = (outerwear ? 0.088 : tee ? 0.079 : 0.081) * volume;
     const armMeshes: THREE.Mesh[] = [];
 
     const shapeArmholeInward = (
@@ -2646,7 +2652,7 @@ function makeRider(
       sides: number,
       sideSign: -1 | 1,
     ) => {
-      if (!outerwear) return;
+      if (!outerwear && !tee) return;
 
       const positions = sleeve.geometry.getAttribute(
         'position',
@@ -2680,7 +2686,11 @@ function makeRider(
             1,
           );
           const smooth = outer * outer * (3 - 2 * outer);
-          point.x -= sideSign * 0.016 * band * smooth;
+          point.x -=
+            sideSign *
+            (tee ? 0.01 : 0.016) *
+            band *
+            smooth;
           positions.setX(index, point.x);
         }
       }
@@ -2743,6 +2753,7 @@ function makeRider(
         tube(
           rider,
           [
+            teeRootDeep,
             sleeveRoot,
             sleeveBlend,
             sleeveArmhole,
@@ -2751,12 +2762,13 @@ function makeRider(
             sleeveEnd,
           ],
           [
+            0.106 * volume,
             rootRadius,
             blendRadius,
             armholeRadius,
             shoulderRadius,
-            0.089 * volume,
-            0.09 * volume,
+            0.083 * volume,
+            0.079 * volume,
           ],
           cloth,
           24,
@@ -2821,140 +2833,20 @@ function makeRider(
           side,
         ),
       );
-    // T-shirts need a thin fill panel. Outerwear does not: the deeper hidden
-    // sleeve overlap closes the seam while preserving the inward armpit curve.
-    if (tee) {
-      const torsoAnchor = torsoSleevePoint(
-        outerwear ? 0.184 : 0.181,
-        outerwear ? 0.355 : 0.368,
-        0,
-      );
-
-      const sleeveCenter = V(garmentShoulder).lerp(
-        V(elbow),
-        outerwear ? 0.22 : 0.2,
-      );
-      const sleeveAnchor = sleeveCenter
-        .clone()
-        .add(
-          new THREE.Vector3(
-            -side * (outerwear ? 0.022 : 0.019),
-            outerwear ? -0.065 : -0.06,
-            0,
-          ),
-        );
-
-      const start = V(torsoAnchor);
-      const end = sleeveAnchor;
-      const inward = new THREE.Vector3(-side, 0, 0);
-
-      const control1 = start
-        .clone()
-        .lerp(end, 0.28)
-        .addScaledVector(inward, outerwear ? 0.044 : 0.039)
-        .add(new THREE.Vector3(0, outerwear ? -0.012 : -0.01, 0));
-      const control2 = start
-        .clone()
-        .lerp(end, 0.68)
-        .addScaledVector(inward, outerwear ? 0.034 : 0.03)
-        .add(new THREE.Vector3(0, outerwear ? -0.008 : -0.007, 0));
-
-      const underarmCurve = new THREE.CatmullRomCurve3(
-        [start, control1, control2, end],
-        false,
-        'catmullrom',
-        0.32,
-      );
-
-      const rows = 10;
-      const cols = 8;
-      const vertices: number[] = [];
-      const uvs: number[] = [];
-      const indices: number[] = [];
-
-      for (let row = 0; row <= rows; row++) {
-        const u = row / rows;
-        const center = underarmCurve.getPoint(u);
-        const halfDepth = THREE.MathUtils.lerp(
-          outerwear ? 0.084 : 0.08,
-          outerwear ? 0.069 : 0.065,
-          u,
-        );
-
-        for (let col = 0; col <= cols; col++) {
-          const v = (col / cols) * 2 - 1;
-
-          // Slight centre fullness keeps the panel cloth-like while both
-          // front/back edges stay tucked inside the existing garment meshes.
-          const fullness =
-            (1 - v * v) *
-            Math.sin(Math.PI * u) *
-            (outerwear ? 0.0045 : 0.0035);
-
-          vertices.push(
-            center.x - side * fullness,
-            center.y - fullness * 0.12,
-            center.z + v * halfDepth,
-          );
-          uvs.push(u, col / cols);
-        }
-      }
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const a = row * (cols + 1) + col;
-          const b = a + cols + 1;
-          indices.push(
-            a, b, a + 1,
-            a + 1, b, b + 1,
-          );
-        }
-      }
-
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(vertices, 3),
-      );
-      geometry.setAttribute(
-        'uv',
-        new THREE.Float32BufferAttribute(uvs, 2),
-      );
-      geometry.setIndex(indices);
-      geometry.computeVertexNormals();
-
-      const panelMaterial =
-        upper?.handle === 'racing-zipper'
-          ? sleeveMaterial(upper, player, color, side)
-          : cloth.clone();
-      panelMaterial.side = THREE.DoubleSide;
-
-      const panel = new THREE.Mesh(geometry, panelMaterial);
-      panel.name = 'continuous-underarm-panel';
-      panel.castShadow = true;
-      panel.receiveShadow = true;
-      panel.frustumCulled = false;
-      panel.userData.purpose = 'close-underarm-silhouette';
-      rider.add(panel);
-
-      // skinGarmentArm applies the same torso -> upper-arm deformation used
-      // by the sleeve, so the connection remains clean during wheelies.
-      armMeshes.push(panel);
-    }
-
+    // T-shirt seam is now closed by hidden sleeve/torso overlap.
     sleeveFolds(
       armMeshes[0],
       tee ? 24 : 36,
       tee ? 24 : 20,
       tee,
-      tee ? 1 : outerwear ? 0.28 : 0.6,
+      tee ? 0.45 : outerwear ? 0.28 : 0.6,
     );
     shapeArmholeInward(
       armMeshes[0],
       tee ? 24 : 36,
       tee ? 24 : 20,
       side as -1 | 1,
-      tee ? 0.028 : outerwear ? 0.04 : 0.022,
+      tee ? 0.036 : outerwear ? 0.04 : 0.022,
     );
     flattenShoulderTop(
       armMeshes[0],
@@ -3053,6 +2945,7 @@ function makeRider(
           roll: rest.roll,
         },
         outerwear,
+        tee,
       ),
       leg: skinLimb(rider, [leg], rest.limbs[index].leg),
     });
