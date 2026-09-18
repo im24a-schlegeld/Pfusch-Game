@@ -42,7 +42,7 @@ export class Engine {
     rewardPoints: 0, rewardText: '', velocity: 0, rampUsed: false }));
   readonly world: World;
   private rng: number;
-  private spawnIn = 34;
+  private spawnIn = 28;
   private nextSafe = 0;
   private pendingWave: { section: string; kinds: TrafficKind[]; velocity: number } | null = null;
   private wheelieChain = 0;
@@ -80,7 +80,8 @@ export class Engine {
       // still collide if the rider jumps into them below their actual roof.
       this.towSafeObstacles.add(this.towCarrier);
       this.towCarrier = null;
-      this.velocityY = TOW_TRANSFER.launchVelocity;
+      this.velocityY = TOW_TRANSFER.launchVelocity * (this.wheelie ? 0.94 : 1);
+      if (this.wheelieAngle < this.balanceProfile.crashAngle * 0.72) this.wheelieAngularVelocity -= 0.58;
       this.transferAge = 0; this.transferOriginX = this.x;
       this.towJumpActive = true; this.airLaneChangeUsed = true; this.launchSerial++;
       this.event = { text: 'RAMP TRANSFER', kind: 'skill', serial: this.event.serial + 1 };
@@ -160,7 +161,7 @@ export class Engine {
     if (this.random() < 0.5) lanes.reverse();
     for (let i = 0; i < count; i++) this.spawn(nextKinds[i], lanes[i], 145, 0, velocity);
     this.pendingWave = null;
-    this.spawnIn = trafficWaveSpacing(environment.initialSpacing, environment.minimumSpacing, this.difficulty);
+    this.spawnIn = Math.max(10, trafficWaveSpacing(environment.initialSpacing, environment.minimumSpacing, this.difficulty) * 0.84 - this.random() * 5);
     this.spawnWaveSign();
   }
   private spawnWaveSign() {
@@ -179,7 +180,7 @@ export class Engine {
     if (lane === undefined) return;
     if (this.spawnSign(id, lane, 128)) {
       this.signSequence = (SIGN_IDS.indexOf(id) + 1) % SIGN_IDS.length;
-      this.nextSignAttempt = this.distance + SIGN_DISTANCE_GAP + this.random() * 120;
+      this.nextSignAttempt = this.distance + SIGN_DISTANCE_GAP + this.random() * 380;
     }
   }
   spawnSign(id: SignId, lane: number, z: number) {
@@ -215,13 +216,12 @@ export class Engine {
     return localZ + front.axle - front.radius < TOW_RAMP.cabRearZ + 0.08;
   }
   private airBalance(dt: number) {
-    // Preserve angle AND angular velocity. Inputs provide modest aerial control;
-    // there is no ground launch pulse, forced nose-down, or automatic reset.
     this.liftPull *= Math.exp(-dt * 7);
     this.throttleLoad += (this.throttleInput - this.throttleLoad) * (1 - Math.exp(-dt * 9));
     this.forwardLoad += (this.forwardInput - this.forwardLoad) * (1 - Math.exp(-dt * 12));
-    this.wheelieAngularVelocity += (0.55 * this.throttleLoad - 1.1 * this.forwardLoad
-      - 1.6 * this.wheelieAngularVelocity) * dt;
+    const recover = this.wheelieAngle < this.balanceProfile.crashAngle * 0.72 ? 0.48 : 0.18;
+    this.wheelieAngularVelocity += (0.52 * this.throttleLoad - 1.12 * this.forwardLoad
+      - 1.8 * this.wheelieAngularVelocity - recover * this.wheelieAngle - recover * 0.55) * dt;
     this.wheelieAngle = Math.max(0, this.wheelieAngle + this.wheelieAngularVelocity * dt);
     if (this.wheelieAngle === 0 && this.wheelieAngularVelocity < 0) this.wheelieAngularVelocity = 0;
   }

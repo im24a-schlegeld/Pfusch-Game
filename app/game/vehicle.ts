@@ -49,7 +49,7 @@ import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from '.
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addCleanCrossbody, addIgnitionKey } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
-import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings } from './v40ModelFinish';
+import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, tiltHandlebarBack } from './v40ModelFinish';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -2230,6 +2230,9 @@ export function makeBike(player: Player, products: Product[]) {
   if (player.bike === '450') fitRearExitExhaust(body, paint);
   finishWheelColors(body, player.rims); blackSprings(body);
   const rider = makeRider(body, riderPose, player, products);
+  // V41-FIX: makeRider returns a controller; its group exists only after construction.
+  darkenWardrobe(rider.group);
+  if (player.bike === '450') tiltHandlebarBack(body);
   // Bike dimensions grow relative to the same adult. Counter-scale only this
   // parent transform; every rider mesh and fixed bone retains its world length.
   body.scale.setScalar(modelScale);

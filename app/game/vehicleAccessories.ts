@@ -118,30 +118,31 @@ function garmentStrapFit(torso: THREE.Group) {
   };
 }
 export function addCleanCrossbody(torso: THREE.Group, originalLogoMaterial: THREE.MeshStandardMaterial) {
-  const cloth = finish('#1f2022'), seam = finish('#303134'), hardware = finish('#555a5c', .7, .3);
-  const group = new THREE.Group(); group.name = 'crossbody-assembly-v39'; torso.add(group);
+  const cloth = finish('#1b1c1f'), seam = finish('#2f3134'), hardware = finish('#595e63', .7, .3);
+  const group = new THREE.Group(); group.name = 'crossbody-assembly-v41'; torso.add(group);
   const bag = new THREE.Group(); bag.name = 'carried-crossbody-bag';
-  bag.position.set(.214, .112, .176); bag.rotation.set(.045, -Math.PI + .13, -.055); group.add(bag);
-  put(bag, flatPouchGeometry(), [headerBagMaterial('/branding/pfusch-logo.png',originalLogoMaterial),cloth], 'crossbody-pouch');
-  const lugs: Point[] = [[-.072, .098, -.011], [.072, .098, .011]];
+  bag.position.set(.205, .102, .172); bag.rotation.set(.07, -Math.PI + .10, -.07); group.add(bag);
+  const body = put(bag, flatPouchGeometry(), [headerBagMaterial('/branding/pfusch-logo.png',originalLogoMaterial),cloth], 'crossbody-pouch');
+  body.scale.set(.96, 1.01, .88);
+  const lugs: Point[] = [[-.066, .092, -.009], [.062, .091, .007]];
   for (const p of lugs) {
-    const lug = put(bag, new THREE.TorusGeometry(.0105, .0021, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');
+    const lug = put(bag, new THREE.TorusGeometry(.0102, .0021, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');
     lug.position.set(...p); lug.rotation.y = Math.PI / 2;
   }
   bag.updateMatrix();
   const left = new THREE.Vector3(...lugs[0]).applyMatrix4(bag.matrix).toArray() as Point;
   const right = new THREE.Vector3(...lugs[1]).applyMatrix4(bag.matrix).toArray() as Point;
   put(group, strapGeometry([
-    left, [.176, .233, -.082], [.072, .347, -.165], [-.062, .47, -.166],
-    [-.149, .548, -.114], [-.164, .592, -.024], [-.159, .578, .086],
-    [-.088, .49, .168], [.027, .353, .194], right,
-  ], .024, .0022, garmentStrapFit(torso)), cloth, 'crossbody-flat-strap');
-  const zip = new THREE.CatmullRomCurve3([[-.071, .074, -.026], [0, .081, -.031], [.071, .074, -.026]].map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+    left, [.168, .227, -.078], [.062, .342, -.163], [-.064, .466, -.168],
+    [-.150, .546, -.115], [-.166, .592, -.022], [-.160, .578, .087],
+    [-.086, .488, .168], [.024, .354, .194], right,
+  ], .023, .0023, garmentStrapFit(torso)), cloth, 'crossbody-flat-strap');
+  const zip = new THREE.CatmullRomCurve3([[-.062, .071, -.021], [0, .077, -.028], [.060, .071, -.021]].map(([x, y, z]) => new THREE.Vector3(x, y, z)));
   put(bag, new THREE.TubeGeometry(zip, 28, .00145, 6, false), seam, 'crossbody-zipper-seam');
-  const pull = put(bag, new THREE.TorusGeometry(.0062, .0012, 6, 12), hardware, 'crossbody-zipper-pull');
-  pull.scale.y = 1.45; pull.position.set(.052, .069, -.032);
-  const adjuster = put(group, new THREE.BoxGeometry(.029, .011, .0045), hardware, 'crossbody-strap-adjuster');
-  adjuster.position.set(.08, .331, .188); adjuster.rotation.z = -.69;
+  const pull = put(bag, new THREE.TorusGeometry(.0062, .00115, 6, 12), hardware, 'crossbody-zipper-pull');
+  pull.scale.y = 1.45; pull.position.set(.046, .067, -.029);
+  const adjuster = put(group, new THREE.BoxGeometry(.029, .0105, .0043), hardware, 'crossbody-strap-adjuster');
+  adjuster.position.set(.080, .328, .186); adjuster.rotation.z = -.69;
 }
 function selectedColor(p: Product, player: Player) {
   return p.preview?.colors.find(c=>c.variantIds.includes(player.variants[p.id]))?.baseColor ?? p.baseColor;

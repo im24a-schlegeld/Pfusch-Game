@@ -1,0 +1,21 @@
+{
+  "version": 41,
+  "revision": "compile-fix-1",
+  "base": 40,
+  "files": {
+    "app/domain/paletteView.ts": "7b4c599a24a0bd36a56dbf93e9e37b6617a92391d376919d462faf9ae99c6689",
+    "app/game/engine.ts": "0aad7c3e5563d4cc383bed39134be5a621dcad15ad2ddadd57141745a6563530",
+    "app/game/headerBag.ts": "7d0592d93cae0712e5c1bacd4c40e642cb1d6f26c1257f04968ae270fd97cc2b",
+    "app/game/signArtwork.ts": "9b62c3304a05ae1d370c9896e62ced25a0ec5128585cf4787a6bc092903e8a55",
+    "app/game/signCollectibleView.ts": "829d817d4a1a90d11e2ae1235072887855b3cf432215ccbe9f2dc5138e8f90a7",
+    "app/game/signSet.ts": "58015e515d7c5abe8c7a2e81dffead961910d8003b43cc5c99f2410c15782b25",
+    "app/game/towTransfer.ts": "2891520184d090ed6f9d5310a30c7c84255273ff7aaa7fba073be3b64e9691d7",
+    "app/game/v40ModelFinish.ts": "6732e060213d6e8c50c4675fd2b6f412b40da6c14786f280ff7f7c022ec869f7",
+    "app/game/vehicleAccessories.ts": "4873fe61e4ac4e439119605f889a4ae60a36a2a686f53954f47693f1e3abbe94",
+    "app/refinement-v40.css": "d63161f2da0f47e80088e1e96481d1d1c76a97fddd7f49374f4ab8e117675899",
+    "app/ui/ColorSection.tsx": "08fa937d66e70313830c2a4410a3d408ba18622270b46f21ce896921c0f73bd0",
+    "app/ui/SignProgress.tsx": "805a2589a072f63ee18cac29f3df48144d449e715eebcfde1e0ba1aaa042ba05",
+    "app/game/vehicle.ts": "4d39bb4dfd1c4c102c3e11137457d2ed350931871e6eb0dc13a242b40c688d7d",
+    "app/game/motocrossHelmet.ts": "f03a6168e2f4423e8507a0844ac8e1025457ddb9f9721d5162282f83d4c8db65"
+  }
+}
