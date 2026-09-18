@@ -13,6 +13,7 @@ import {
 } from '../domain/progression';
 import { BIKES, REWARDS } from '../domain/config';
 import { isHelmet, isHelmetColor } from '../domain/helmet';
+import { shadeClothingCatalog } from '../domain/appearanceColors';
 
 export interface AuthService {
   getUser(): Promise<{ id: string; kind: 'guest' | 'customer' }>;
@@ -206,7 +207,7 @@ export class LocalProductProvider implements ProductProvider {
     const data: unknown = await response.json();
     if (!Array.isArray(data) || data.length === 0)
       throw new Error('Der Kleidungskatalog ist leer.');
-    return data as Product[];
+    return shadeClothingCatalog(data as Product[]);
   }
 }
 export class MockRewardService implements RewardService {

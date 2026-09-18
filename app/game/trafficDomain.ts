@@ -134,7 +134,7 @@ function supportedAxle(center: number, radius: number) {
 }
 
 /** Root height and rear-axle pitch for animateSuspension(pitch, 0), in metres. */
-export function towRampPose(bikeId: string, localZ: number) {
+export function towRampPose(bikeId: string, localZ: number, minimumPitch = 0) {
   const front = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
   const rear = RAMP_REAR_CONTACT[bikeId] ?? RAMP_REAR_CONTACT['450'];
   const clearance = (pitch: number, leading: boolean) => {
@@ -159,7 +159,8 @@ export function towRampPose(bikeId: string, localZ: number) {
       else high = pitch;
     }
   } else high = 0;
-  const pitch = (low + high) / 2;
+  const pitch = Math.max((low + high) / 2,
+    Number.isFinite(minimumPitch) ? Math.max(0, Math.min(Math.PI * 0.49, minimumPitch)) : 0);
   return {
     height:
       Math.max(0, clearance(pitch, true), clearance(pitch, false)) + 0.018,

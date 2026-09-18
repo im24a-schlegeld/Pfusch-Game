@@ -16,17 +16,26 @@ export const SUPERMOTO_SHROUD: FitPoint[] = [
   [0.201, 0.817, -0.355],
 ];
 
-// Deeper forward/lower tip under the seat. The flared lower rear edge clears
-// the existing right-hand silencer; both sides use the SAME boundary.
+// Deep lower tip retained. Narrower cheeks sit ABOVE the existing silencer,
+// rather than flaring outward around it; both sides share the same boundary.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.14, 0.946, 0.106],
   [0.119, 0.989, 0.665],
   [0.074, 1.019, 0.866],
-  [0.24, 0.832, 0.675],
-  [0.247, 0.765, 0.475],
+  [0.176, 0.845, 0.675],
+  [0.185, 0.778, 0.475],
   [0.165, 0.607, 0.285],
   [0.158, 0.657, 0.205],
   [0.154, 0.827, 0.128],
+];
+
+/** Wider rear mudguard. The top tip remains at 1.068 to retain tail-contact physics. */
+export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
+  [0.19, 0.114, 0.012, 0.945],
+  [0.44, 0.124, 0.018, 0.95],
+  [0.72, 0.101, 0.019, 1.009],
+  [0.90, 0.080, 0.014, 1.040],
+  [1.045, 0.057, 0.012, 1.056],
 ];
 
 export interface FitSurface {

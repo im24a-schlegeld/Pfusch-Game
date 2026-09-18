@@ -91,7 +91,7 @@ export default function SceneView({
     }
     const low = player.settings.quality === 'low';
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, low ? 1 : 1.6));
-    renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#181d1f');
+    renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#323232');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
@@ -107,7 +107,7 @@ export default function SceneView({
     studio.dispose();
     environmentGenerator.dispose();
     scene.fog = new THREE.Fog(
-      mode === 'ride' ? DAY_SKY : '#181d1f',
+      mode === 'ride' ? DAY_SKY : '#323232',
       mode === 'ride' ? 55 : 16,
       mode === 'ride' ? 158 : 65,
     );
@@ -188,41 +188,17 @@ export default function SceneView({
         for (let color = 0; color < 4; color++)
           templates.set(`${kind}:${color}`, makeTraffic(kind, color));
     } else {
-      box(scene, 100, 0.2, 100, 0, -0.12, 0, '#262d2f');
-      const platform = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.4, 2.48, 0.12, 64),
-        new THREE.MeshStandardMaterial({
-          color: '#343c3e',
-          metalness: 0.4,
-          roughness: 0.6,
-        }),
+      scene.background = new THREE.Color('#323232');
+      scene.fog = null;
+      const shadowFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(200, 200),
+        new THREE.ShadowMaterial({ opacity: 0.18 }),
       );
-      platform.position.y = -0.06;
-      platform.receiveShadow = true;
-      scene.add(platform);
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(2.38, 0.012, 4, 80),
-        new THREE.MeshBasicMaterial({ color: '#9ca582' }),
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.002;
-      scene.add(ring);
-      for (let i = -4; i <= 4; i++) {
-        box(scene, 0.015, 0.004, 60, i * 3, 0.002, 0, '#475052');
-        box(scene, 60, 0.004, 0.015, 0, 0.002, i * 3, '#475052');
-      }
-      box(scene, 35, 14, 0.3, 0, 6, -10, '#222a2d');
-      for (let i = -4; i <= 4; i++)
-        box(scene, 0.1, 12, 0.22, i * 4, 6, -9.8, '#394548');
-      for (const x of [-7, 7]) {
-        box(scene, 0.15, 12, 0.2, x, 6, -9.5, '#b9c6b6');
-        box(scene, 1.5, 0.05, 5, x, 7, -6, '#b9c6b6');
-      }
-      for (const x of [-6, 6]) {
-        box(scene, 2.3, 1.2, 1.6, x, 0.6, -5, '#333d3e');
-        for (let j = 0; j < 3; j++)
-          box(scene, 2.1, 0.035, 0.04, x, 0.4 + j * 0.3, -4.17, '#627173');
-      }
+      shadowFloor.rotation.x = -Math.PI / 2;
+      shadowFloor.position.y = -0.015;
+      shadowFloor.receiveShadow = true;
+      shadowFloor.name = 'neutral-preview-shadow-floor';
+      scene.add(shadowFloor);
     }
     const resize = () => {
       const w = el.clientWidth,

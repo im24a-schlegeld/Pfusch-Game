@@ -45,8 +45,9 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
-import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER } from './supermotoFit';
+import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
+import { addCleanCrossbody, addIgnitionKey } from './vehicleAccessories';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -546,8 +547,13 @@ function makeHelmet(
   return helmet;
 }
 export function makeBike(player: Player, products: Product[]) {
-  if (player.bike === 'scooter')
-    return makeScooter(player, products, makeRider);
+  if (player.bike === 'scooter') {
+    const scooter = makeScooter(player, products, makeRider);
+    const key = addIgnitionKey(scooter.body, player, products, BIKE_CONTACTS.scooter.grip);
+    return { ...scooter, animateAccessories(input: CarriedCapMotionInput, dt: number) {
+      scooter.animateAccessories(input, dt); key?.update(input, dt);
+    }};
+  }
   const root = new THREE.Group();
   root.scale.setScalar(1.45);
   const body = new THREE.Group();
@@ -1332,12 +1338,7 @@ export function makeBike(player: Player, products: Product[]) {
     // through the subframe, tapering beyond the seat rather than ending square.
     loft(
       body,
-      [
-        [0.19, 0.114, 0.012, 0.945],
-        [0.44, 0.124, 0.018, 0.95],
-        [0.72, 0.08, 0.013, 1.009],
-        [1.045, 0.03, 0.007, 1.061],
-      ],
+      SUPERMOTO_TAIL_FENDER,
       paint,
       'z',
       16,
@@ -2221,6 +2222,7 @@ export function makeBike(player: Player, products: Product[]) {
       ).name = 'rider-footpeg';
     }
   }
+  const ignitionKey = addIgnitionKey(body, player, products, pose.grip);
   const rider = makeRider(body, riderPose, player, products);
   // Bike dimensions grow relative to the same adult. Counter-scale only this
   // parent transform; every rider mesh and fixed bone retains its world length.
@@ -2261,7 +2263,9 @@ export function makeBike(player: Player, products: Product[]) {
     wheels,
     rider: rider.group,
     animateRider: rider.animate,
-    animateAccessories: rider.animateAccessories,
+    animateAccessories: (input: CarriedCapMotionInput, dt: number) => {
+      rider.animateAccessories(input, dt); ignitionKey?.update(input, dt);
+    },
     animateSuspension,
     wheelRadius: rearRadius * modelScale,
     rearAxle: rear * modelScale,
@@ -3103,78 +3107,7 @@ function makeRider(
   );
   const accessory = products.find((p) => p.id === player.equipped.accessory);
   if (accessory?.handle === 'logo-crossbody-tasche') {
-    tube(
-      torsoGroup,
-      [
-        [-0.19, 0.53, -0.1],
-        [0.05, 0.29, -0.16],
-        [0.22, 0.1, 0.075],
-      ],
-      [0.019, 0.019, 0.019],
-      boot,
-      28,
-      12,
-      0.38,
-    );
-    tube(
-      torsoGroup,
-      [
-        [0.22, 0.1, 0.14],
-        [0.03, 0.35, 0.17],
-        [-0.19, 0.53, 0.11],
-        [-0.19, 0.58, 0],
-        [-0.19, 0.53, -0.1],
-      ],
-      [0.019, 0.019, 0.019, 0.019, 0.019],
-      boot,
-      30,
-      12,
-      0.38,
-    );
-    const bag = new THREE.Group();
-    bag.name = 'carried-crossbody-bag';
-    bag.position.set(0.2, 0.115, 0.17);
-    bag.rotation.set(0.08, -Math.PI + 0.25, -0.1);
-    torsoGroup.add(bag);
-    loft(
-      bag,
-      [
-        [-0.12, 0.07, 0.026, 0],
-        [-0.1, 0.1, 0.038, 0],
-        [0.09, 0.095, 0.037, 0],
-        [0.12, 0.065, 0.025, 0],
-      ],
-      accessoryMaterial(accessory, player, productColor(accessory)),
-    );
-    tube(
-      bag,
-      [
-        [-0.083, 0.06, -0.024],
-        [0, 0.073, -0.039],
-        [0.083, 0.06, -0.024],
-      ],
-      [0.002, 0.002, 0.002],
-      boot,
-      18,
-      8,
-    );
-  } else if (accessory) {
-    const ring = mesh(
-      pelvis,
-      new THREE.TorusGeometry(0.031, 0.005, 8, 24),
-      material('#b2b8b9', 0.8, 0.25),
-    );
-    ring.position.set(0.2, pose.hip[1] - 0.04, pose.hip[2]);
-    const tag = loft(
-      pelvis,
-      [
-        [pose.hip[1] - 0.2, 0.023, 0.008, pose.hip[2]],
-        [pose.hip[1] - 0.07, 0.026, 0.009, pose.hip[2]],
-      ],
-      material(productColor(accessory)),
-      'y',
-    );
-    tag.position.x = 0.2;
+    addCleanCrossbody(torsoGroup, accessoryMaterial(accessory, player, productColor(accessory)));
   }
   let capMotion: ReturnType<typeof createCarriedCapMotion> | undefined;
   const cap = products.find((p) => p.id === player.equipped.head);

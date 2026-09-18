@@ -1,0 +1,26 @@
+{
+  "version": 38,
+  "baseCommit": "6ec85fbf20f127ef59ea71a48a15075ebfe9f383",
+  "files": {
+    "app/game/engine.ts": "9cb317bbf94ccf6835f6949dbf0dec51810da69e7a3e8c859fff47531a39d978",
+    "app/game/trafficDomain.ts": "911f74054505b027c8c45c25b79035cdade42403a53b64afcb53538b54335e0d",
+    "app/game/worldView.ts": "5be75021c796883e35dac3e94c7c1b4c2668c36c51ab563c77d13403bb931c40",
+    "app/game/SceneView.tsx": "08f93618db617f62a21dcc66259da626b11114f70551361fec571f7bfbe2616f",
+    "app/game/vehicle.ts": "234d72a69b2e7d3d4ce35a74e9c48b8da7a5612cef079878bc9187bd6966a142",
+    "app/game/supermotoFit.ts": "03858329671fc432a15f3f9f3dc4dfe1123dcf2e483eb1f38d593a4b3f3a19cd",
+    "app/domain/config.ts": "cf3ebe0c3aa15d98e4c73bab0f3d05052865d63d58bd05ccbbc3125cde04746d",
+    "app/domain/helmet.ts": "7980366b98843bfd07c24e7caef836c47eb6486264d2a254778a61b2fae1fd60",
+    "app/services/index.ts": "31798295cf77b1f0e7e7feb8f21c0e196dac00ccedc87de33c8d8b436f47a4d5",
+    "app/ui/Ride.tsx": "2185b276fa1fc717ab6c074d1fb2b3cce742d72d5b8e4e16b7b173f29e961482",
+    "app/ui/GameApp.tsx": "6f5a2aacc8bc3cfe152d609093abe595744db803d62f64fee74c04c969f4fa12",
+    "app/main.tsx": "33b30bb7390f57972b1160193a945b99a48c7606eac5cebf4fd6eb35a752590d",
+    "app/domain/appearanceColors.ts": "6d08acd0e778806eb58f22679a47f887458df92627f199f54a4203cb14bc6dba",
+    "app/game/signSet.ts": "a139b55584c46016d20c9db563f6aab608f4d348e8ccf49a7da9bb408c2ae3d6",
+    "app/game/trafficFlow.ts": "2d872967baccf39e1bf2b843a830bc952eb042574cbd16f35a90465b2d4c9a4e",
+    "app/game/vehicleAccessories.ts": "0b6b2b4aa6d1a04482d1b9765b4f9bd04439e9c1b6855ff1494bc5c20a18531d",
+    "app/ride-update-v38.css": "6e22f5119538287f1c97802ef80bc762f0d372fd3b34fe4f5cc05b5fa178ed55",
+    "app/ui/RidePause.tsx": "26330ee02db49353bfa24a3325602e73b9a0ffb9c3b9f06d9f8a2a454dfe262d",
+    "app/ui/RideResult.tsx": "57e3b035d7df164a02978e1343983b7df6aebf01b84d2606fc75eb62124c9141",
+    "app/ui/SignProgress.tsx": "f52e78fd1f49249f06151c0cf76c7c64439255efee718cefff00cfde0943d252"
+  }
+}

@@ -45,6 +45,7 @@ const COLORS = {
   yellow: '#c7ac5c',
   foliage: '#455d47',
   foliageLight: '#6b7b55',
+  forestFloor: '#394b38',
   trunk: '#675e4d',
   tunnelModern: '#7f9098',
   tunnelWeathered: '#837d6b',
@@ -179,7 +180,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   // including the neighboring environment at a clipped cell boundary.
   const clearances = new Float32Array(8192 * 6);
   // A 12 m cell can contain up to three spans long enough for 3.5 m details.
-  const candidates = Array.from({ length: WORLD_VIEW.cellCount * 12 }, () => ({
+  const candidates = Array.from({ length: WORLD_VIEW.cellCount * 40 }, () => ({
     x: 0,
     z: 0,
     height: 0,
@@ -371,17 +372,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         height * 0.77,
         z,
       );
-      if (!low)
-        put(
-          'canopy',
-          'foliageLight',
-          height * 0.23,
-          height * 0.26,
-          height * 0.23,
-          x + 0.9,
-          height * 0.88,
-          z + 0.4,
-        );
+      /* Only the original dark-green crown remains. */
     }
   }
 
@@ -393,11 +384,11 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       const halfDepth = height * (pine ? 0.27 : 0.28);
       const minX = x - radius - 0.12;
       const maxX =
-        x + Math.max(radius, pine || low ? 0 : 0.9 + height * 0.23) + 0.12;
+        x + radius + 0.12;
       const minZ =
         anchor -
         z -
-        Math.max(halfDepth, pine || low ? 0 : 0.4 + height * 0.23) -
+        halfDepth -
         0.12;
       const maxZ = anchor - z + halfDepth + 0.12;
       const top = height * (pine ? 1.17 : 1.14);
@@ -591,42 +582,24 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     }
   }
 
-  function open(
-    segment: WorldSegment,
-    start: number,
-    end: number,
-    cell: number,
-  ) {
-    const length = end - start,
-      mid = (start + end) / 2;
+  function open(segment: WorldSegment, start: number, end: number, cell: number) {
+    const length = end - start, mid = (start + end) / 2;
+    // A forest corridor: multiple staggered depths of firs, no low-poly hills.
+    box('forestFloor', 230, 0.012, length, 0, -0.101, mid);
+    const depths = low ? [10, 18, 29] : [9.5, 15.5, 23, 32, 43];
     for (const side of [-1, 1]) {
-      const v = variation(cell, segment.variant, side + 2);
-      put(
-        'canopy',
-        segment.variant % 2 ? 'grass' : 'soil',
-        18 + (v % 10),
-        3 + (v % 5),
-        length * 0.48,
-        side * 37,
-        1,
-        mid,
-      );
-      tree(side * (9 + (v % 8)), mid, 5 + (v % 4), segment.variant % 2 === 0);
-      if (!low)
-        tree(
-          side * (19 + (v % 6)),
-          mid + Math.min(2, length * 0.12),
-          4 + (v % 5),
-          segment.variant % 2 === 0,
-        );
-      box('white', 0.13, 0.75, 0.13, side * 5.5, 0.375, mid);
-      box('dark', 0.15, 0.15, 0.15, side * 5.5, 0.6, mid);
-      for (const face of [-1, 1])
-        box('white', 0.08, 0.055, 0.018, side * 5.5, 0.61, mid + face * 0.082);
-      if (segment.variant > 1 && cell % 3 === 0) {
-        put('round', 'trunk', 0.12, 7, 0.12, side * 8, 3.5, mid);
-        box('dark', 1.5, 0.12, 0.1, side * 8, 6.65, mid);
+      for (let row = 0; row < depths.length; row++) {
+        const v = variation(cell, segment.variant, row * 7 + side + 70);
+        const count = low ? 1 : 2;
+        for (let j = 0; j < count; j++) {
+          const z = start + length * ((j + .25 + (v % 4) * .075) / count);
+          const x = side * (depths[row] + ((v >>> 5) % 7) * .22);
+          const height = 5.3 + ((v >>> (j + 2)) % 11) * .28 + row * .18;
+          tree(x, z, height, true);
+        }
       }
+      box('white', .13, .75, .13, side * 5.5, .375, mid);
+      box('dark', .15, .15, .15, side * 5.5, .6, mid);
     }
   }
 
@@ -921,7 +894,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       transition(segment, start, end);
       return;
     }
-    sidewalk(start, end, segment.kind !== 'open');
+    if (segment.kind !== 'open') sidewalk(start, end);
     if (segment.kind === 'waterfront') {
       waterfront(segment, start, end, cell);
       return;

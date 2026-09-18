@@ -1,20 +1,12 @@
 import type { Helmet, Player } from './types';
+import { APPEARANCE_COLORS } from './appearanceColors';
 
 export const HELMETS = [
-  { id: 'fullface', name: 'Full-face' },
+  { id: 'fullface', name: 'Integralhelm' },
   { id: 'motocross', name: 'Motocross' },
 ] as const satisfies readonly { id: Helmet; name: string }[];
 
-export const HELMET_COLORS = [
-  { value: '#d7dbd7', name: 'Chalk' },
-  { value: '#202324', name: 'Black' },
-  { value: '#69716b', name: 'Slate' },
-  { value: '#b8ce47', name: 'Signal' },
-  { value: '#366bc0', name: 'Cobalt' },
-  { value: '#b83232', name: 'Racing red' },
-  { value: '#dc632e', name: 'Burnt orange' },
-  { value: '#b6a083', name: 'Sand' },
-] as const;
+export const HELMET_COLORS = APPEARANCE_COLORS;
 
 export const DEFAULT_HELMET: Helmet = 'fullface';
 export const DEFAULT_HELMET_COLOR = '#d7dbd7';

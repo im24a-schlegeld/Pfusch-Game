@@ -33,6 +33,7 @@ import {
   Rewards,
   SettingsScreen,
 } from './Screens';
+import RideResult from './RideResult';
 type Screen =
   | 'menu'
   | 'ride'
@@ -217,7 +218,7 @@ export default function GameApp() {
   const equippedBike = BIKES.find((b) => b.id === player.bike)!;
   const back = () => navigate('menu');
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-screen={screen}>
       <header className="topbar">
         <button className="brand" aria-label="PFUSCH Hauptmenü" onClick={back}>
           <img className="brand-logo" src="/branding/pfusch-logo.png" alt="Pfusch" />
@@ -337,76 +338,8 @@ export default function GameApp() {
         />
       )}
       {screen === 'results' && result && (
-        <main className="results-page">
-          <div className="results-art">
-            <Preview player={player} products={products} mode="garage" />
-            <span className="eyebrow">NOCH EINE RUNDE.</span>
-          </div>
-          <section className="result-card">
-            <p className="eyebrow">
-              {result.reward.newRecord
-                ? 'NEUE BESTLEISTUNG'
-                : 'FAHRT BEENDET'}{' '}
-              <Flag size={15} />
-            </p>
-            <h1>{result.reward.newRecord ? 'NEUE BESTLEISTUNG.' : 'NOCH EINE?'}</h1>
-            <div className="result-score">
-              {fmt(result.run.score)}
-              <span>PUNKTE</span>
-            </div>
-            <p className="muted">
-              {gameText(result.run.cause)} · {result.run.seconds} Sekunden unterwegs
-            </p>
-            <div className="result-stats">
-              <div>
-                <b>{fmt(result.run.distance)} m</b>
-                <span>DISTANZ</span>
-              </div>
-              <div>
-                <b>×{result.run.bestCombo.toFixed(1)}</b>
-                <span>BESTE KOMBO</span>
-              </div>
-              <div>
-                <b>{result.run.nearMisses}</b>
-                <span>KNAPPE MANÖVER</span>
-              </div>
-              <div>
-                <b>{result.run.maxSpeed}</b>
-                <span>TOP KM/H</span>
-              </div>
-            </div>
-            <div className="earned">
-              <span>
-                <Zap size={19} /> +{result.reward.xp} XP
-              </span>
-              <span>
-                <Coin value={result.reward.coins} /> ERHALTEN
-              </span>
-            </div>
-            {result.reward.level > result.reward.previousLevel && (
-              <p className="level-up">LEVEL AUF → {result.reward.level}</p>
-            )}
-            <XpBar player={player} />
-            {result.reward.challengeIds.length > 0 && (
-              <div className="completed-challenges">
-                {result.reward.challengeIds.map((id) => (
-                  <p key={id}>
-                    ✓ {DAILY_CHALLENGES.find((c) => c.id === id)?.title} —
-                    erledigt
-                  </p>
-                ))}
-                <small>Aufgaben-Belohnungen sind oben enthalten.</small>
-              </div>
-            )}
-            <p className="result-best">BESTLEISTUNG {fmt(player.highScore)}</p>
-            <button className="button primary" onClick={start}>
-              NOCHMAL FAHREN <ArrowRight />
-            </button>
-            <button className="button" onClick={() => navigate('garage')}>
-              ZUR GARAGE <Wrench size={18} />
-            </button>
-          </section>
-        </main>
+        <RideResult player={player} run={result.run} reward={result.reward}
+          start={start} garage={() => navigate('garage')} />
       )}
       {screen === 'challenges' && (
         <Challenges player={player} back={back} start={start} />

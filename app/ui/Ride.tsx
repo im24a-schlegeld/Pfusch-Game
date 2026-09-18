@@ -13,6 +13,8 @@ import { GameAudio } from '../game/audio';
 import { Preview, fmt, gameText } from './shared';
 import { RideGestures } from './rideGestures';
 import { SIGN_IDS } from '../game/signCollectibles';
+import SignProgress from './SignProgress';
+import RidePause from './RidePause';
 interface Props {
   player: Player;
   products: Product[];
@@ -273,25 +275,7 @@ export default function Ride({
           <strong>{fmt(engine.score).padStart(6, '0')}</strong>
           <small>BESTE {fmt(player.highScore)}</small>
         </div>
-        <div
-          className="sign-progress"
-          aria-label={`PFUSCH-Zeichen: ${SIGN_IDS.filter((_, i) => engine.collectedSigns & (1 << i)).join(', ') || 'keine'}; ${engine.signSetCount} Sets komplett`}
-        >
-          <span className="eyebrow">SAMMLE DAS SET</span>
-          <div>
-            {SIGN_IDS.map((id, index) => (
-              <b
-                key={id}
-                className={
-                  engine.collectedSigns & (1 << index) ? 'collected' : ''
-                }
-              >
-                {id}
-              </b>
-            ))}
-          </div>
-          {engine.signSetCount > 0 && <small>SÄTZE {engine.signSetCount}</small>}
-        </div>
+        <SignProgress mask={engine.collectedSigns} />
       </div>
       <div className="ride-metrics">
         <span>
@@ -363,53 +347,11 @@ export default function Ride({
           }
         }}
       >
-        <DialogContent className="game-dialog" showCloseButton={false}>
-          <p className="eyebrow">PAUSE</p>
-          <DialogTitle>FAHRT PAUSIERT.</DialogTitle>
-          <DialogDescription>
-            Mit zwei Fingern fortsetzen. Deine Fahrt bleibt an dieser Stelle.
-          </DialogDescription>
-          <div className="control-guide">
-            <span>
-              ← → / A D <b>Ausweichen</b>
-            </span>
-            <span>
-              ↑ / W <b>Gewicht vor / korrigieren</b>
-            </span>
-            <span>
-              ↓ / S <b>Gas / Gewicht zurück</b>
-            </span>
-            <span>
-              ESC / P <b>Pause</b>
-            </span>
-          </div>
-          <p className="muted">
-            Touch: nach unten ziehen zum Anheben, nach oben zum Korrigieren und seitlich zum Ausweichen. Loslassen = neutral. Zwei Finger pausieren. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Sammle P F U S C H für einen Set-Bonus.
-          </p>
-          <button className="button" onClick={onMute}>
-            {player.settings.muted ? <VolumeX /> : <Volume2 />}
-            {player.settings.muted ? 'TON AN' : 'TON AUS'}
-          </button>
-          <button
-            className="button primary"
-            onClick={() => {
-              engine.resume();
-              audio.unlock();
-              setTick((n) => n + 1);
-            }}
-          >
-            WEITERFAHREN <ArrowRight />
-          </button>
-          <button
-            className="button"
-            onClick={() => {
-              engine.resume();
-              engine.crash('Ride ended');
-            }}
-          >
-            FAHRT BEENDEN
-          </button>
-        </DialogContent>
+        <RidePause
+          muted={player.settings.muted} onMute={onMute}
+          resume={() => { engine.resume(); audio.unlock(); setTick(n => n + 1); }}
+          end={() => { engine.resume(); engine.crash('Ride ended'); }}
+        />
       </Dialog>
     </main>
   );
