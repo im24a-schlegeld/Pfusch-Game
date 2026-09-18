@@ -29,6 +29,17 @@ export function motorcycleRim(
   rim.name = 'formed-rim-barrel';
   rim.castShadow = rim.receiveShadow = true;
   wheel.add(rim);
+  for (const side of [-1, 1]) {
+    const bedBand = new THREE.Mesh(
+      new THREE.TorusGeometry(radius - 0.025, 0.016, 12, 72),
+      finish,
+    );
+    bedBand.rotation.y = Math.PI / 2;
+    bedBand.position.x = side * halfWidth * 0.34;
+    bedBand.name = 'rim-bed-band';
+    bedBand.castShadow = bedBand.receiveShadow = true;
+    wheel.add(bedBand);
+  }
   if (sport) {
     const shape = new THREE.Shape();
     const outline = [

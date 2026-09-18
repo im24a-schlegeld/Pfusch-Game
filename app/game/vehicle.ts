@@ -637,7 +637,7 @@ export function makeBike(player: Player, products: Product[]) {
       lip.rotation.y = Math.PI / 2;
       lip.position.x = x;
     }
-    rod(wheel, [-0.06, 0, 0], [0.06, 0, 0], 0.055, dark);
+    rod(wheel, [-0.06, 0, 0], [0.06, 0, 0], 0.055, rim);
     if (!moped)
       motorcycleRim(wheel, sport, rimRadius, width * 0.81, rim, alloy);
     const spokes = 5;

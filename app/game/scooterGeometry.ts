@@ -270,8 +270,16 @@ function castWheel(
     );
     lip.rotation.y = Math.PI / 2;
     lip.position.x = side * half;
+    const bedBand = mesh(
+      wheel,
+      new THREE.TorusGeometry(radius - 0.022, 0.015, 10, 56),
+      rim,
+      'rim-bed-band',
+    );
+    bedBand.rotation.y = Math.PI / 2;
+    bedBand.position.x = side * half * 0.36;
   }
-  rod(wheel, [-half, 0, 0], [half, 0, 0], 0.04, alloy, 'wheel-hub');
+  rod(wheel, [-half, 0, 0], [half, 0, 0], 0.04, rim, 'wheel-hub');
   const shape = new THREE.Shape();
   shape.moveTo(0.025, -0.017);
   shape.quadraticCurveTo(0.077, -0.005, radius - 0.013, -0.027);

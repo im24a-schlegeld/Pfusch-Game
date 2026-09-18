@@ -146,8 +146,10 @@ export function addCleanCrossbody(torso: THREE.Group, originalLogoMaterial: THRE
   const body = put(bag, pouchGeometry(), cloth, 'crossbody-pouch');
   body.scale.set(.94, .98, .86);
   const logoMat = headerBagMaterial('/branding/pfusch-logo.png', originalLogoMaterial);
-  const logo = put(bag, new THREE.PlaneGeometry(.118, .058), logoMat, 'crossbody-logo-front');
-  logo.position.set(0, -.004, .039); logo.renderOrder = 2;
+  const logo = put(bag, new THREE.PlaneGeometry(.118, .058), logoMat, 'crossbody-logo-rear');
+  logo.position.set(0, -.004, -.041);
+  logo.rotation.y = Math.PI;
+  logo.renderOrder = 2;
   const lugs: Point[] = [[-.060, .090, -.006], [.056, .088, .006]];
   for (const p of lugs) {
     const lug = put(bag, new THREE.TorusGeometry(.0102, .0021, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');

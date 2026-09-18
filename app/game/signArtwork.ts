@@ -48,14 +48,16 @@ async function original(d:SignCollectibleDefinition){
 export function loadSignArtwork():Promise<SignArtwork>{
   if(cached)return cached;
   cached=Promise.all(SIGN_COLLECTIBLES.map(original)).then(loaded=>{
-    const width=660,height=205,image=makeCanvas(width,height),ctx=context(image);
+    const width=660,height=220,image=makeCanvas(width,height),ctx=context(image);
+    // Proportions taken from the supplied PFUSCH road-sign composition:
+    // P/F large, U/C circular, S tall behind them, H square on the right.
     const slots=[
-      {cx:70,cy:112,maxW:108,maxH:126},
-      {cx:164,cy:106,maxW:100,maxH:126},
-      {cx:272,cy:112,maxW:84,maxH:110},
-      {cx:374,cy:100,maxW:108,maxH:112},
-      {cx:478,cy:108,maxW:88,maxH:118},
-      {cx:580,cy:108,maxW:88,maxH:122},
+      {cx:59,cy:133,maxW:118,maxH:154},
+      {cx:183,cy:123,maxW:144,maxH:147},
+      {cx:285,cy:119,maxW:122,maxH:130},
+      {cx:372,cy:114,maxW:132,maxH:194},
+      {cx:468,cy:108,maxW:121,maxH:139},
+      {cx:590,cy:98,maxW:135,maxH:134},
     ];
     const pieces=loaded.map(({canvas},i)=>{
       const slot=slots[i];
@@ -63,8 +65,12 @@ export function loadSignArtwork():Promise<SignArtwork>{
       const w=Math.max(1,Math.round(canvas.width*scale)),h=Math.max(1,Math.round(canvas.height*scale));
       const x=Math.round(slot.cx-w/2),y=Math.round(slot.cy-h/2);
       const piece=makeCanvas(w,h);context(piece).drawImage(canvas,0,0,piece.width,piece.height);
-      ctx.drawImage(piece,x,y);return {canvas:piece,dim:grayscale(piece),x,y,width:piece.width,height:piece.height};
+      return {canvas:piece,dim:grayscale(piece),x,y,width:piece.width,height:piece.height};
     });
+    for(const i of [0,1,3,2,4,5]){
+      const p=pieces[i];
+      ctx.drawImage(p.canvas,p.x,p.y);
+    }
     return {image,dim:grayscale(image),pieces,width,height,fallbacks:loaded.filter(s=>s.fallback).length};
   }).catch(e=>{cached=undefined;throw e;});
   return cached;
