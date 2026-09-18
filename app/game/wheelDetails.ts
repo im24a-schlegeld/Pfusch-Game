@@ -9,37 +9,35 @@ export function motorcycleRim(
   finish: THREE.Material,
   metal: THREE.Material,
 ) {
+  // The side faces are part of the SAME lathed rim body.  This intentionally
+  // replaces the temporary extra Torus "bed ring" from V47.
+  //
+  // From the side the painted surface now runs continuously from the tire bead
+  // to the inner rim edge where the spoke nipples disappear behind the rim.
   const barrel = new THREE.LatheGeometry(
     [
-      new THREE.Vector2(radius - 0.009, -halfWidth),
+      new THREE.Vector2(radius - 0.028, -halfWidth),
       new THREE.Vector2(radius + 0.001, -halfWidth),
       new THREE.Vector2(radius + 0.003, -halfWidth * 0.86),
-      new THREE.Vector2(radius - 0.020, -halfWidth * 0.66),
+      new THREE.Vector2(radius - 0.010, -halfWidth * 0.58),
+      new THREE.Vector2(radius - 0.026, -halfWidth * 0.28),
       new THREE.Vector2(radius - 0.034, 0),
-      new THREE.Vector2(radius - 0.020, halfWidth * 0.66),
+      new THREE.Vector2(radius - 0.026, halfWidth * 0.28),
+      new THREE.Vector2(radius - 0.010, halfWidth * 0.58),
       new THREE.Vector2(radius + 0.003, halfWidth * 0.86),
       new THREE.Vector2(radius + 0.001, halfWidth),
-      new THREE.Vector2(radius - 0.009, halfWidth),
+      new THREE.Vector2(radius - 0.028, halfWidth),
     ],
     72,
   );
   barrel.rotateZ(Math.PI / 2);
-  // Polished alloy bed remains visible inside the colored outer lips.
+
+  // Rim body is always the selected rim colour.
   const rim = new THREE.Mesh(barrel, finish);
   rim.name = 'formed-rim-barrel';
   rim.castShadow = rim.receiveShadow = true;
   wheel.add(rim);
-  for (const side of [-1, 1]) {
-    const bedBand = new THREE.Mesh(
-      new THREE.TorusGeometry(radius - 0.025, 0.016, 12, 72),
-      finish,
-    );
-    bedBand.rotation.y = Math.PI / 2;
-    bedBand.position.x = side * halfWidth * 0.34;
-    bedBand.name = 'rim-bed-band';
-    bedBand.castShadow = bedBand.receiveShadow = true;
-    wheel.add(bedBand);
-  }
+
   if (sport) {
     const shape = new THREE.Shape();
     const outline = [
@@ -83,6 +81,7 @@ export function motorcycleRim(
       wheel.add(spoke);
     }
   } else {
+    // Supermoto: ONLY the spokes stay silver/metal.
     const count = 36;
     const spokes = new THREE.InstancedMesh(
       new THREE.CylinderGeometry(1, 1, 1, 6),

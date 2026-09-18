@@ -34,44 +34,64 @@ async function original(d:SignCollectibleDefinition){
   ctx.save();boundary(ctx,d,c.width,c.height);ctx.clip();
   if(im)ctx.drawImage(im,l*naturalW,(1-t)*naturalH,rawW,rawH,0,0,c.width,c.height);
   else {
-    // A bounded offline fallback never removes the pickup or grows the HUD.
     ctx.fillStyle='#3b4144';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#f0f0ec';ctx.font=`bold ${c.height*.62}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(d.id,c.width/2,c.height/2);
   }
   ctx.restore();
-  // Retain the supplied artwork's intended tilt without clipping its corners.
   const angle=-d.rotation,co=Math.abs(Math.cos(angle)),si=Math.abs(Math.sin(angle));
   const out=makeCanvas(c.width*co+c.height*si+4,c.width*si+c.height*co+4),o=context(out);
   o.translate(out.width/2,out.height/2);o.rotate(angle);o.drawImage(c,-c.width/2,-c.height/2);
   return {canvas:out,fallback:!im};
 }
-/** Use six independent original files. The overlapping hoodie composite is NOT six disconnected regions. */
+
+/**
+ * Fixed reference layout.
+ *
+ * The coordinates are scaled directly from the supplied 1401x466 PFUSCH sign
+ * composition to a 660x220 HUD canvas. There is no per-letter maxW/maxH auto-fit.
+ *
+ * Reference layer order: P -> F -> S -> U -> C -> H.
+ */
 export function loadSignArtwork():Promise<SignArtwork>{
   if(cached)return cached;
   cached=Promise.all(SIGN_COLLECTIBLES.map(original)).then(loaded=>{
     const width=660,height=220,image=makeCanvas(width,height),ctx=context(image);
-    // Proportions taken from the supplied PFUSCH road-sign composition:
-    // P/F large, U/C circular, S tall behind them, H square on the right.
-    const slots=[
-      {cx:59,cy:133,maxW:118,maxH:154},
-      {cx:183,cy:123,maxW:144,maxH:147},
-      {cx:285,cy:119,maxW:122,maxH:130},
-      {cx:372,cy:114,maxW:132,maxH:194},
-      {cx:468,cy:108,maxW:121,maxH:139},
-      {cx:590,cy:98,maxW:135,maxH:134},
-    ];
+
+    const layout=[
+      {x:0,   y:49, w:163, h:163}, // P, partly covered by F
+      {x:110, y:49, w:153, h:153}, // F
+      {x:219, y:53, w:133, h:133}, // U
+      {x:298, y:16, w:155, h:196}, // S triangle behind U/C
+      {x:414, y:38, w:142, h:142}, // C
+      {x:522, y:32, w:136, h:136}, // H
+    ] as const;
+
     const pieces=loaded.map(({canvas},i)=>{
-      const slot=slots[i];
-      const scale=Math.min(slot.maxW/canvas.width,slot.maxH/canvas.height);
-      const w=Math.max(1,Math.round(canvas.width*scale)),h=Math.max(1,Math.round(canvas.height*scale));
-      const x=Math.round(slot.cx-w/2),y=Math.round(slot.cy-h/2);
-      const piece=makeCanvas(w,h);context(piece).drawImage(canvas,0,0,piece.width,piece.height);
-      return {canvas:piece,dim:grayscale(piece),x,y,width:piece.width,height:piece.height};
+      const target=layout[i];
+      const piece=makeCanvas(target.w,target.h);
+      context(piece).drawImage(canvas,0,0,piece.width,piece.height);
+      return {
+        canvas:piece,
+        dim:grayscale(piece),
+        x:target.x,
+        y:target.y,
+        width:piece.width,
+        height:piece.height,
+      };
     });
+
     for(const i of [0,1,3,2,4,5]){
       const p=pieces[i];
       ctx.drawImage(p.canvas,p.x,p.y);
     }
-    return {image,dim:grayscale(image),pieces,width,height,fallbacks:loaded.filter(s=>s.fallback).length};
+
+    return {
+      image,
+      dim:grayscale(image),
+      pieces,
+      width,
+      height,
+      fallbacks:loaded.filter(s=>s.fallback).length,
+    };
   }).catch(e=>{cached=undefined;throw e;});
   return cached;
 }
