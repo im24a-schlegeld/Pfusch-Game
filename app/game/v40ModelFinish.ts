@@ -1,3 +1,4 @@
+import {TUBE_EXHAUST,exhaustAxisY,raisedLinerY} from './exhaustClearance';
 import * as THREE from 'three';
 type P = [number, number, number];
 function add(root: THREE.Object3D, g: THREE.BufferGeometry, m: THREE.Material, name: string) {
@@ -14,36 +15,52 @@ function panel(root:THREE.Object3D, vertices:number[], indices:number[], mat:THR
   return add(root,g,mat,name);
 }
 function clonePaint(base:THREE.MeshStandardMaterial){const m=base.clone();m.side=THREE.DoubleSide;return m;}
-/** Hidden high-mounted supermoto exhaust with a real rear opening and rear cut-out only. */
+/** Only the pipe/silencer and a raised channel in the EXISTING liner. No box panels. */
 export function fitRearExitExhaust(body:THREE.Group, paint:THREE.MeshStandardMaterial) {
-  if(body.getObjectByName('v41-rear-exhaust'))return;
-  const oldNames=new Set(['single-exhaust','exhaust-mount-band','exhaust-frame-hanger','open-silencer-outlet','connected-exhaust-pipe','exhaust-upper-connector','rear-only-exhaust-recess','rear-panel-with-exhaust-opening','closed-undertail-cheek']);
-  const old:THREE.Object3D[]=[];body.traverse(o=>{if(oldNames.has(o.name)||o.name==='v40-rear-exhaust')old.push(o);});
-  for(const o of old){o.removeFromParent();if(o instanceof THREE.Mesh)o.geometry.dispose();}
-  const group=new THREE.Group();group.name='v41-rear-exhaust';body.add(group);
-  const metal=color('#767c81',.78,.34), dark=color('#111214',.18,.82), carbon=color('#232528',.18,.72), outer=clonePaint(paint);
-  const x=.072, y=.975, rear=.828;
-  tube(group,[[.046,.724,-.238],[.103,.700,-.248],[.138,.680,-.188],[.104,.696,.020],[.086,.748,.258],[.076,.860,.462],[x,.942,.622]],.019,metal,'connected-exhaust-pipe');
-  const can=add(group,new THREE.CylinderGeometry(.039,.034,.250,28,1,true),metal,'single-exhaust');
-  can.rotation.x=Math.PI/2;can.position.set(x,y-.006,rear-.100);can.scale.set(1,.98,1);
-  const tip=add(group,new THREE.CylinderGeometry(.042,.038,.070,28,1,true),carbon,'exhaust-carbon-cap');
-  tip.rotation.x=Math.PI/2;tip.position.set(x,y,rear-.020);
-  const bore=add(group,new THREE.CylinderGeometry(.021,.021,.060,24,1,true),dark,'open-silencer-outlet');
-  bore.rotation.x=Math.PI/2;bore.position.set(x,y+.001,rear+.004);
-  const ring=add(group,new THREE.TorusGeometry(.029,.0035,8,24),metal,'exhaust-tip-ring');ring.rotation.x=Math.PI/2;ring.position.set(x,y,rear+.037);
-  const band=add(group,new THREE.TorusGeometry(.038,.003,8,30),metal,'exhaust-mount-band');band.rotation.x=Math.PI/2;band.position.set(x,y-.018,rear-.120);
-  tube(group,[[.115,.985,.535],[.095,.982,.575],[x,.972,.617]],.008,color('#3d4145',.5,.42),'exhaust-frame-hanger');
-  const panelShape=new THREE.Shape();
-  panelShape.moveTo(-.140,.890);panelShape.lineTo(.140,.890);panelShape.lineTo(.140,1.024);panelShape.lineTo(-.140,1.024);panelShape.closePath();
-  const hole=new THREE.Path();hole.absellipse(x,y,.046,.033,0,Math.PI*2,true);panelShape.holes.push(hole);
-  const cap=add(group,new THREE.ExtrudeGeometry(panelShape,{depth:.010,bevelEnabled:false,curveSegments:28}),outer,'rear-panel-with-exhaust-opening');cap.position.z=rear+.005;
-  // side cheeks go lower and conceal the exhaust in profile
-  for(const side of [-1,1]){
-    const xx=side*.142;
-    panel(group,[xx,.892,.495,xx,1.006,.495,xx,1.038,.838,xx,.936,.856],[0,1,2,0,2,3],outer,'closed-undertail-cheek');
+  if(body.getObjectByName('v42-tube-exhaust'))return;
+  const names=new Set(['single-exhaust','exhaust-mount-band','exhaust-frame-hanger','open-silencer-outlet','connected-exhaust-pipe']);
+  const old:THREE.Mesh[]=[];
+  body.traverse(o=>{if(o instanceof THREE.Mesh&&names.has(o.name))old.push(o);});
+  if(old.length!==5)throw new Error(`Expected the five original Supermoto exhaust parts, got ${old.length}`);
+  old.forEach(o=>{o.removeFromParent();o.geometry.dispose();});
+  const e=TUBE_EXHAUST,group=new THREE.Group();group.name='v42-tube-exhaust';body.add(group);
+  const silver=color('#a6abb0',.63,.40),carbon=color('#222427',.2,.72),inner=color('#0e0f10',.15,.94);
+  const a=new THREE.Vector3(e.x,e.startY,e.startZ),b=new THREE.Vector3(e.x,e.endY,e.endZ);
+  const axis=b.clone().sub(a).normalize(),len=a.distanceTo(b);
+  const orient=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis);
+  const shell=new THREE.LatheGeometry([
+    new THREE.Vector2(.022,0),new THREE.Vector2(.034,.014),new THREE.Vector2(e.radius,.040),
+    new THREE.Vector2(e.radius,len-.068),new THREE.Vector2(e.radius-.003,len-.035),
+  ],40);
+  const can=add(group,shell,silver,'single-exhaust');can.position.copy(a);can.quaternion.copy(orient);
+  const capGeometry=new THREE.LatheGeometry([
+    new THREE.Vector2(e.radius,len-.070),new THREE.Vector2(e.radius-.002,len-.029),
+    new THREE.Vector2(.039,len+.001),new THREE.Vector2(.027,len+.006),
+    new THREE.Vector2(.023,len+.006),new THREE.Vector2(.023,len-.061),
+  ],40);
+  const cap=add(group,capGeometry,carbon,'open-silencer-outlet');cap.position.copy(a);cap.quaternion.copy(orient);
+  const bore=add(group,new THREE.CylinderGeometry(.023,.023,.050,32,1,true),inner,'silencer-inner-bore');
+  bore.quaternion.copy(orient);bore.position.copy(b).addScaledVector(axis,-.028);
+  const endRing=add(group,new THREE.TorusGeometry(.025,.0024,8,40),silver,'silencer-outlet-ring');
+  endRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);endRing.position.copy(b).addScaledVector(axis,.007);
+  const band=add(group,new THREE.CylinderGeometry(.049,.049,.016,32,1,true),carbon,'exhaust-mount-band');
+  band.quaternion.copy(orient);band.position.copy(a).addScaledVector(axis,len*.42);
+  tube(group,[[.046,.724,-.238],[.103,.700,-.248],[.138,.680,-.188],[.108,.702,.04],[.104,.724,.27],[e.x,e.startY,e.startZ]],.019,silver,'connected-exhaust-pipe');
+  tube(group,[[.11,.976,.62],[e.x,.94,.64],[e.x,exhaustAxisY(.64)+.045,.64]],.008,carbon,'exhaust-frame-hanger');
+  const liner=body.getObjectByName('supermoto-under-tail-liner');
+  if(!(liner instanceof THREE.Mesh))throw new Error('Supermoto liner is missing');
+  const p=liner.geometry.getAttribute('position');let raised=0;
+  const original=Float32Array.from(p.array as ArrayLike<number>),half=p.count/2;
+  if(!Number.isInteger(half))throw new Error('Expected a two-sided liner sheet');
+  for(let i=0;i<p.count;i++){
+    const j=i%half,baseY=original[j*3+1],oldY=original[i*3+1];
+    const newY=raisedLinerY(original[j*3],baseY,original[j*3+2])+(oldY-baseY);
+    if(newY>oldY+1e-7){p.setY(i,newY);raised++;}
   }
-  group.userData.outletDirection='+Z';
+  p.needsUpdate=true;liner.geometry.computeVertexNormals();liner.geometry.computeBoundingBox();liner.geometry.computeBoundingSphere();
+  liner.userData.exhaustChannelRaised=raised;group.userData.sideCutouts=0;group.userData.boxPanels=0;
 }
+
 /** Color rim surfaces only. Spokes stay silver on the supermoto. */
 export function finishWheelColors(body:THREE.Group, value:string) {
   const accepted=new Set(['formed-rim-barrel','cast-y-spoke','rim-band','rim-surface']);
@@ -83,12 +100,17 @@ export function blackSprings(body:THREE.Group){
     o.material=Array.isArray(o.material)?o.material.map(tint):tint(o.material);
   });
 }
-/** Slightly darken garments only, not skin, tires, plastics or helmet shell. */
+/** Keep the ORIGINAL materials: cloning detaches them from the glow registry and async ink loaders. */
+const wardrobeTinted=new WeakSet<THREE.MeshStandardMaterial>();
 export function darkenWardrobe(root:THREE.Object3D,factor=.88){
   const keywords=['garment','hood','shirt','tee','hoodie','outerwear','sleeve','cuff','collar'];
-  root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;if(!keywords.some(k=>o.name.toLowerCase().includes(k)))return;
-    const apply=(m:THREE.Material)=>{if(!(m instanceof THREE.MeshStandardMaterial))return m;const n=m.clone();n.color.multiplyScalar(factor);return n;};
-    o.material=Array.isArray(o.material)?o.material.map(apply):apply(o.material);
+  root.traverse(o=>{if(!(o instanceof THREE.Mesh)||!keywords.some(k=>o.name.toLowerCase().includes(k)))return;
+    const materials=Array.isArray(o.material)?o.material:[o.material];
+    for(const m of materials){
+      if(!(m instanceof THREE.MeshStandardMaterial)||wardrobeTinted.has(m))continue;
+      wardrobeTinted.add(m);m.color.multiplyScalar(factor);
+      // Do not alter emissiveMap, callbacks, emissiveIntensity, or identity.
+    }
   });
 }
 /** Pull the supermoto cockpit slightly upward/back instead of forward-bent. */

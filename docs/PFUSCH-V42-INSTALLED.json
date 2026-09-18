@@ -1,0 +1,18 @@
+{
+  "version": 42,
+  "base": "V41-FIX",
+  "files": {
+    "app/game/engine.ts": "7cd8635e8645d5135587e3f9955b57d1389cecb322e332e72dbe4f37ff9bac83",
+    "app/game/exhaustClearance.ts": "1e68675a0fe5250b9a80e14051766f7bc4939d4afdd0e807847d68994825fa8e",
+    "app/game/signArtwork.ts": "6828b5ff3a523a2a9029a8a813f5a7845b93d446303f60c751bbb81640516695",
+    "app/game/signCollectibleView.ts": "829d817d4a1a90d11e2ae1235072887855b3cf432215ccbe9f2dc5138e8f90a7",
+    "app/game/towTransfer.ts": "7963b460124141a759f7cc1606c7878d2fac6b0291da162b904c0f75be306b30",
+    "app/game/v40ModelFinish.ts": "307a1b76736e214c5ff1cc639d5f4d7b2a41eb205ec3abb6a2d77ca2b546b068",
+    "app/ride-fix-v42.css": "e215679219688c9bd8ca35ae8a3db5a4f06ecfe1deeb8b1a3e7fa2a55ae1a004",
+    "app/ui/Ride.tsx": "c1f73490246b93ae343078dda20bae8203d029aba855ff6d2ac225f2db8c2d7f",
+    "app/ui/rideGestures.ts": "b92ded0890915c22315fbc180f118e5ae20c077d4765c07c6078195abe515184",
+    "app/ui/RideHud.tsx": "c0dafa8dbab05a729da8b0642ff4fe377678471bb568543e9cf8f59ebaa979d7",
+    "app/ui/SignProgress.tsx": "cf4a610ebf005ce9bba191c0dba03a87f1716bbf603f38f2a7720feb3528a1ea",
+    "app/main.tsx": "c8c78e10329b9335388a7109f02d094c6e55dd95ef4184d9485e130c70bced23"
+  }
+}

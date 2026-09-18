@@ -1,4 +1,4 @@
-import { TOW_TRANSFER, transferX } from './towTransfer';
+import { planTowTransfer, transferX, transferBoostDistance, type TransferPlan } from './towTransfer';
 import type { Bike, RunStats } from '../domain/types';
 import { World, distanceAtTime, speedAtTime } from './world';
 import { ROAD_EVENTS, TRAFFIC_ENVIRONMENTS, isRoadEvent, roadResponse, type RoadEventKind } from './roadEvents';
@@ -55,6 +55,8 @@ export class Engine {
   private rampEntryRemaining = 0;
   private transferAge = 0;
   private transferOriginX = 0;
+  private transferPlan: TransferPlan | null = null;
+  resumeRemaining = 0;
   private towWarningFor: Obstacle | null = null;
   private id: string;
   constructor(public bike: Bike, seed = 5489) {
@@ -78,10 +80,20 @@ export class Engine {
     if (this.towCarrier) {
       // Only the truck being left gets a short exit exemption. Other vehicles
       // still collide if the rider jumps into them below their actual roof.
-      this.towSafeObstacles.add(this.towCarrier);
+      const carrier = this.towCarrier;
+      this.transferPlan=planTowTransfer(this.height,this.speed,TOW_RAMP.gravity,this.x,this.lane*LANE,
+        this.obstacles.filter(o=>o.active&&o!==carrier).map(o=>{
+          const road=isRoadEvent(o.kind)?ROAD_EVENTS[o.kind]:undefined;
+          const shape=!isRoadEvent(o.kind)?TRAFFIC_SHAPES[o.kind]:undefined;
+          return {x:o.lane*LANE+o.offsetX,z:o.z,velocity:o.velocity,height:road?.height??shape!.height,
+            halfWidth:road?.contactHalfWidth??shape!.contactHalfWidth,
+            front:shape?shape.frontZ-1:-road!.contactHalfLength,
+            rear:shape?shape.rearZ+1:road!.contactHalfLength,car:o.kind==='car'};
+        }));
+      this.towSafeObstacles.add(carrier);
       this.towCarrier = null;
-      this.velocityY = TOW_TRANSFER.launchVelocity * (this.wheelie ? 0.94 : 1);
-      if (this.wheelieAngle < this.balanceProfile.crashAngle * 0.72) this.wheelieAngularVelocity -= 0.58;
+      this.velocityY = this.transferPlan.launchVelocity;
+      if (this.wheelieAngle < this.balanceProfile.balancePoint) this.wheelieAngularVelocity -= 0.58;
       this.transferAge = 0; this.transferOriginX = this.x;
       this.towJumpActive = true; this.airLaneChangeUsed = true; this.launchSerial++;
       this.event = { text: 'RAMP TRANSFER', kind: 'skill', serial: this.event.serial + 1 };
@@ -95,8 +107,21 @@ export class Engine {
   weight(value: number) { this.touchWeight = this.phase === 'playing' && Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0; }
   get throttleInput() { return Math.max(this.wheelieHeld ? 1 : 0, this.touchWeight); }
   get forwardInput() { return Math.max(this.forwardHeld ? 1 : 0, -this.touchWeight); }
-  pause() { if (this.phase === 'playing') { this.phase = 'paused'; this.clearInput(); } }
-  resume() { if (this.phase === 'paused') this.phase = 'playing'; }
+  pause() {
+    if(this.phase === 'playing' || this.phase === 'paused') {
+      this.phase='paused';this.resumeRemaining=0;this.accumulator=0;this.clearInput();
+    }
+  }
+  resume() {
+    if(this.phase==='paused' && this.resumeRemaining===0) {
+      this.clearInput();this.accumulator=0;this.resumeRemaining=3;
+    }
+  }
+  /** Ending a paused run is explicit; it does not resume gameplay or a timer. */
+  endRide() {
+    if(this.phase==='crashed')return;
+    this.resumeRemaining=0;this.phase='playing';this.crash('Ride ended');
+  }
   clearInput() { this.wheelieHeld = false; this.forwardHeld = false; this.touchWeight = 0; }
   skill(text: string, points: number) {
     this.combo = Math.min(5, this.combo + 0.5); this.bestCombo = Math.max(this.bestCombo, this.combo);
@@ -110,7 +135,15 @@ export class Engine {
     this.event = { text: cause, kind: 'crash', serial: this.event.serial + 1 };
   }
   advance(dt: number) {
-    if (this.phase !== 'playing' || !Number.isFinite(dt) || dt <= 0) return;
+    if(!Number.isFinite(dt)||dt<=0)return;
+    if(this.phase==='paused') {
+      if(this.resumeRemaining>0) {
+        this.resumeRemaining=Math.max(0,this.resumeRemaining-Math.min(dt,.1));
+        if(this.resumeRemaining<1e-8) {this.resumeRemaining=0;this.phase='playing';this.accumulator=0;this.clearInput();}
+      }
+      return; // no distance/traffic/score/input simulation during 3-2-1
+    }
+    if(this.phase!=='playing')return;
     this.accumulator += Math.min(dt, 0.1);
     while (this.accumulator + 1e-12 >= STEP && this.phase === 'playing') {
       this.tick(STEP); this.accumulator = Math.max(0, this.accumulator - STEP);
@@ -219,7 +252,7 @@ export class Engine {
     this.liftPull *= Math.exp(-dt * 7);
     this.throttleLoad += (this.throttleInput - this.throttleLoad) * (1 - Math.exp(-dt * 9));
     this.forwardLoad += (this.forwardInput - this.forwardLoad) * (1 - Math.exp(-dt * 12));
-    const recover = this.wheelieAngle < this.balanceProfile.crashAngle * 0.72 ? 0.48 : 0.18;
+    const recover = this.wheelieAngle < this.balanceProfile.balancePoint ? 0.48 : 0.18;
     this.wheelieAngularVelocity += (0.52 * this.throttleLoad - 1.12 * this.forwardLoad
       - 1.8 * this.wheelieAngularVelocity - recover * this.wheelieAngle - recover * 0.55) * dt;
     this.wheelieAngle = Math.max(0, this.wheelieAngle + this.wheelieAngularVelocity * dt);
@@ -229,7 +262,11 @@ export class Engine {
     const previousElapsed = this.elapsed;
     this.elapsed += dt; this.speed = speedAtTime(this.elapsed, this.bike);
     this.maxSpeed = Math.max(this.maxSpeed, this.speed);
-    const travel = distanceAtTime(this.elapsed, this.bike) - distanceAtTime(previousElapsed, this.bike);
+    let travel = distanceAtTime(this.elapsed, this.bike) - distanceAtTime(previousElapsed, this.bike);
+    if(this.transferPlan) {
+      const extra=transferBoostDistance(this.transferAge+dt,this.transferPlan)-transferBoostDistance(this.transferAge,this.transferPlan);
+      travel+=extra;this.speed+=extra/dt;this.maxSpeed=Math.max(this.maxSpeed,this.speed);
+    }
     this.distance += travel; this.world.advance(this.distance);
     this.roadRoughness *= Math.exp(-dt * 7);
     this.surfaceGrip += (1 - this.surfaceGrip) * (1 - Math.exp(-dt * 1.8));
@@ -237,9 +274,9 @@ export class Engine {
     this.laneChangeAge = Math.min(1, this.laneChangeAge + dt);
     const steeringLead = this.height > 0 || this.wheelie ? 1 :
       Math.max(0, Math.min(1, (this.laneChangeAge - 0.055) / 0.06));
+    if(this.transferPlan) this.transferAge+=dt;
     if (this.towJumpActive) {
-      this.transferAge += dt;
-      this.x = transferX(this.transferOriginX, this.lane * LANE, this.transferAge);
+      this.x = transferX(this.transferOriginX, this.lane * LANE, this.transferAge, this.transferPlan??undefined);
     } else {
       this.x += (this.lane * LANE - this.x) * Math.min(1,
         dt * this.bike.handling * this.surfaceGrip * (this.wheelie ? 0.78 : 1) * steeringLead);
@@ -278,14 +315,16 @@ export class Engine {
     } else this.towPitch *= Math.exp(-dt * 8);
     let landedTowJump = false;
     if (!this.towCarrier && (this.height > 0 || this.velocityY > 0)) {
+      // Exact constant-gravity step: do not lose height before lateral clearance.
+      this.height += this.velocityY*dt-.5*TOW_RAMP.gravity*dt*dt;
       this.velocityY -= TOW_RAMP.gravity * dt;
-      this.height += this.velocityY * dt;
       if (this.height <= 0) {
         this.landingSpeed = Math.abs(this.velocityY); this.landingSerial++;
         this.height = 0; this.velocityY = 0; this.airLaneChangeUsed = false; this.towPitch = 0;
         if (this.towJumpActive) { this.towJumpActive = false; landedTowJump = true; }
       }
     }
+    if(this.transferPlan&&!this.towJumpActive&&this.transferAge>=this.transferPlan.boostSeconds)this.transferPlan=null;
     const wasArmed = this.liftArmed;
     let touchdown = 0;
     if (this.towJumpActive) this.airBalance(dt);

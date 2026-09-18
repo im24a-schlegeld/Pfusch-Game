@@ -1,74 +1,61 @@
-export interface SignPiece {canvas: HTMLCanvasElement; dim: HTMLCanvasElement; x: number; y: number; width: number; height: number}
-export interface SignArtwork {image: HTMLCanvasElement; dim: HTMLCanvasElement; pieces: SignPiece[]; width:number; height:number}
+import { SIGN_COLLECTIBLES, type SignCollectibleDefinition } from './signCollectibles';
+export interface SignPiece {canvas:HTMLCanvasElement;dim:HTMLCanvasElement;x:number;y:number;width:number;height:number}
+export interface SignArtwork {image:HTMLCanvasElement;dim:HTMLCanvasElement;pieces:SignPiece[];width:number;height:number;fallbacks:number}
 let cached:Promise<SignArtwork>|undefined;
-function toGrey(src:HTMLCanvasElement){
-  const out=document.createElement('canvas');out.width=src.width;out.height=src.height;
-  const ctx=out.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(src,0,0);
-  const data=ctx.getImageData(0,0,out.width,out.height);
-  for(let i=0;i<data.data.length;i+=4){
-    const grey=Math.round(20+.22*(data.data[i]*.2126+data.data[i+1]*.7152+data.data[i+2]*.0722));
-    data.data[i]=data.data[i+1]=data.data[i+2]=grey;
-  }
-  ctx.putImageData(data,0,0);return out;
+const makeCanvas=(w:number,h:number)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));return c;};
+function context(c:HTMLCanvasElement){const x=c.getContext('2d',{willReadFrequently:true});if(!x)throw new Error('Canvas 2D unavailable');return x;}
+function load(path:string):Promise<HTMLImageElement>{
+  return new Promise((resolve,reject)=>{
+    const im=new Image();const timer=setTimeout(()=>{im.onload=im.onerror=null;reject(new Error('Sign timeout: '+path));},8000);
+    im.onload=()=>{clearTimeout(timer);resolve(im);};im.onerror=()=>{clearTimeout(timer);reject(new Error('Sign unavailable: '+path));};
+    im.src=path;
+  });
 }
+function boundary(ctx:CanvasRenderingContext2D,d:SignCollectibleDefinition,w:number,h:number){
+  ctx.beginPath();
+  if(d.shape==='circle')ctx.ellipse(w/2,h/2,w/2,h/2,0,0,Math.PI*2);
+  else if(d.shape==='triangle'){ctx.moveTo(w/2,0);ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();}
+  else if(d.shape==='rounded-square'){
+    const r=Math.min(w,h)*.045;ctx.moveTo(r,0);ctx.lineTo(w-r,0);ctx.quadraticCurveTo(w,0,w,r);ctx.lineTo(w,h-r);ctx.quadraticCurveTo(w,h,w-r,h);ctx.lineTo(r,h);ctx.quadraticCurveTo(0,h,0,h-r);ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);
+  } else ctx.rect(0,0,w,h);
+}
+function grayscale(source:HTMLCanvasElement){
+  const c=makeCanvas(source.width,source.height),ctx=context(c);ctx.drawImage(source,0,0);
+  const p=ctx.getImageData(0,0,c.width,c.height);
+  for(let i=0;i<p.data.length;i+=4){const g=Math.round(18+.22*(p.data[i]*.2126+p.data[i+1]*.7152+p.data[i+2]*.0722));p.data[i]=p.data[i+1]=p.data[i+2]=g;}
+  ctx.putImageData(p,0,0);return c;
+}
+async function original(d:SignCollectibleDefinition){
+  let im:HTMLImageElement|undefined;try{im=await load(d.asset);}catch{}
+  const [l,b,r,t]=d.crop;
+  const naturalW=im?.naturalWidth??d.sourceSize[0],naturalH=im?.naturalHeight??d.sourceSize[1];
+  const rawW=(r-l)*naturalW,rawH=(t-b)*naturalH,k=Math.min(1,384/Math.max(rawW,rawH));
+  const c=makeCanvas(rawW*k,rawH*k),ctx=context(c);
+  ctx.save();boundary(ctx,d,c.width,c.height);ctx.clip();
+  if(im)ctx.drawImage(im,l*naturalW,(1-t)*naturalH,rawW,rawH,0,0,c.width,c.height);
+  else {
+    // A bounded offline fallback never removes the pickup or grows the HUD.
+    ctx.fillStyle='#3b4144';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#f0f0ec';ctx.font=`bold ${c.height*.62}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(d.id,c.width/2,c.height/2);
+  }
+  ctx.restore();
+  // Retain the supplied artwork's intended tilt without clipping its corners.
+  const angle=-d.rotation,co=Math.abs(Math.cos(angle)),si=Math.abs(Math.sin(angle));
+  const out=makeCanvas(c.width*co+c.height*si+4,c.width*si+c.height*co+4),o=context(out);
+  o.translate(out.width/2,out.height/2);o.rotate(angle);o.drawImage(c,-c.width/2,-c.height/2);
+  return {canvas:out,fallback:!im};
+}
+/** Use six independent original files. The overlapping hoodie composite is NOT six disconnected regions. */
 export function loadSignArtwork():Promise<SignArtwork>{
   if(cached)return cached;
-  cached=new Promise((resolve,reject)=>{
-    const im=new Image();
-    im.onerror=()=>{cached=undefined;reject(new Error('Hoodie-Schildergrafik nicht geladen'));};
-    im.onload=()=>{
-      try{
-        const source=document.createElement('canvas');
-        const k=Math.min(1,960/im.naturalWidth);
-        source.width=Math.round(im.naturalWidth*k);source.height=Math.round(im.naturalHeight*k);
-        const sctx=source.getContext('2d',{willReadFrequently:true})!;
-        sctx.drawImage(im,0,0,source.width,source.height);
-        const src=sctx.getImageData(0,0,source.width,source.height);
-        let l=source.width,r=0,t=source.height,b=0;
-        for(let y=0;y<source.height;y++)for(let x=0;x<source.width;x++)if(src.data[(y*source.width+x)*4+3]>24){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y);}
-        if(r<=l||b<=t)throw new Error('Leere Schildergrafik');
-        const image=document.createElement('canvas');image.width=r-l+1;image.height=b-t+1;
-        image.getContext('2d')!.drawImage(source,l,t,image.width,image.height,0,0,image.width,image.height);
-        const ictx=image.getContext('2d',{willReadFrequently:true})!;
-        const data=ictx.getImageData(0,0,image.width,image.height);
-        const alpha=(x:number,y:number)=>data.data[(y*image.width+x)*4+3];
-        const seen=new Uint8Array(image.width*image.height);
-        const components:{x0:number;y0:number;x1:number;y1:number;pixels:[number,number][]}[]=[];
-        for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++){
-          const index=y*image.width+x;
-          if(seen[index]||alpha(x,y)<=24)continue;
-          const queue:[number,number][]=[[x,y]];seen[index]=1;
-          const pixels:[number,number][]=[];let x0=x,y0=y,x1=x,y1=y;
-          while(queue.length){
-            const [cx,cy]=queue.pop()!;pixels.push([cx,cy]);x0=Math.min(x0,cx);y0=Math.min(y0,cy);x1=Math.max(x1,cx);y1=Math.max(y1,cy);
-            for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]){
-              const nx=cx+dx, ny=cy+dy;
-              if(nx<0||ny<0||nx>=image.width||ny>=image.height)continue;
-              const ni=ny*image.width+nx;
-              if(seen[ni]||alpha(nx,ny)<=24)continue;
-              seen[ni]=1;queue.push([nx,ny]);
-            }
-          }
-          if((x1-x0+1)*(y1-y0+1)>=32)components.push({x0,y0,x1,y1,pixels});
-        }
-        components.sort((a,b)=>a.x0-b.x0);
-        if(components.length!==6)throw new Error(`Erwartet 6 Schild-Komponenten, gefunden ${components.length}`);
-        const pieces=components.map(c=>{
-          const canvas=document.createElement('canvas');canvas.width=c.x1-c.x0+1;canvas.height=c.y1-c.y0+1;
-          const ctx=canvas.getContext('2d')!;
-          const slice=ctx.createImageData(canvas.width,canvas.height);
-          for(const [px,py] of c.pixels){
-            const srcIndex=(py*image.width+px)*4, dstIndex=((py-c.y0)*canvas.width+(px-c.x0))*4;
-            slice.data[dstIndex]=data.data[srcIndex];slice.data[dstIndex+1]=data.data[srcIndex+1];slice.data[dstIndex+2]=data.data[srcIndex+2];slice.data[dstIndex+3]=data.data[srcIndex+3];
-          }
-          ctx.putImageData(slice,0,0);
-          const dim=toGrey(canvas);
-          return {canvas,dim,x:c.x0,y:c.y0,width:canvas.width,height:canvas.height};
-        });
-        resolve({image,dim:toGrey(image),pieces,width:image.width,height:image.height});
-      }catch(e){cached=undefined;reject(e);}
-    };
-    im.src='/images/artwork/signs.png';
-  });
+  cached=Promise.all(SIGN_COLLECTIBLES.map(original)).then(loaded=>{
+    const width=660,height=205,image=makeCanvas(width,height),ctx=context(image);
+    const centers=[74,170,278,386,485,582],ys=[114,106,112,99,107,106];
+    const pieces=loaded.map(({canvas},i)=>{
+      const scale=144/Math.max(canvas.width,canvas.height),w=canvas.width*scale,h=canvas.height*scale;
+      const x=centers[i]-w/2,y=ys[i]-h/2;const piece=makeCanvas(w,h);context(piece).drawImage(canvas,0,0,piece.width,piece.height);
+      ctx.drawImage(piece,x,y);return {canvas:piece,dim:grayscale(piece),x,y,width:piece.width,height:piece.height};
+    });
+    return {image,dim:grayscale(image),pieces,width,height,fallbacks:loaded.filter(s=>s.fallback).length};
+  }).catch(e=>{cached=undefined;throw e;});
   return cached;
 }
