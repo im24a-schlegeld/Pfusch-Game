@@ -5,7 +5,8 @@ import { BALANCE, advanceBalance, balanceAccuracy, wheelieScoreFactor, tailScrap
 import { TRAFFIC_SHAPES, TOW_RAMP, distanceDifficulty, towRampHeight, towRampPose,
   towDeckPosition, RAMP_FRONT_CONTACT, type TrafficKind } from './trafficDomain';
 import { SIGN_IDS, type SignId } from './signCollectibles';
-import { COMPLETE_SIGN_MASK, nextMissingSign, signBit } from './signSet';
+import { COMPLETE_SIGN_MASK, nextMissingSign, signBit, signScoreReady, SIGN_DISTANCE_GAP, SIGN_RETRY_DISTANCE } from './signSet';
+import { rampEntryImpulse, consumeRampImpulse } from './rampEntry';
 import { TRAFFIC_FLOW, trafficArrivalGap, trafficWaveSpacing } from './trafficFlow';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
@@ -49,7 +50,8 @@ export class Engine {
   private towSafeObstacles = new Set<Obstacle>();
   private scrapeMeters = 0;
   private signSequence = 0;
-  private nextSignAttempt = 0;
+  private nextSignAttempt = 300;
+  private rampEntryRemaining = 0;
   private towWarningFor: Obstacle | null = null;
   private id: string;
   constructor(public bike: Bike, seed = 5489) {
@@ -158,7 +160,8 @@ export class Engine {
     this.spawnWaveSign();
   }
   private spawnWaveSign() {
-    if (this.collectedSigns === COMPLETE_SIGN_MASK || this.distance < this.nextSignAttempt) return;
+    if (this.collectedSigns === COMPLETE_SIGN_MASK || this.distance < this.nextSignAttempt
+      || !signScoreReady(this.collectedSigns, this.score) || this.signs.some(s => s.active)) return;
     const id = nextMissingSign(this.collectedSigns, this.signs, this.signSequence);
     if (!id) return;
     const arrival = this.arrivalTime(128, 0);
@@ -172,7 +175,7 @@ export class Engine {
     if (lane === undefined) return;
     if (this.spawnSign(id, lane, 128)) {
       this.signSequence = (SIGN_IDS.indexOf(id) + 1) % SIGN_IDS.length;
-      this.nextSignAttempt = this.distance + 92;
+      this.nextSignAttempt = this.distance + SIGN_DISTANCE_GAP + this.random() * 120;
     }
   }
   spawnSign(id: SignId, lane: number, z: number) {
@@ -252,7 +255,8 @@ export class Engine {
         if (this.lane !== ramp.lane) queuedTowLane = this.lane;
         this.lane = ramp.lane; ramp.rampUsed = true; this.towCarrier = ramp;
         this.velocityY = 0; this.airLaneChangeUsed = false;
-        // Deliberately do NOT reset wheelieAngle, angular velocity, loads or inputs.
+        // A single finite impulse at ramp entry; no ongoing forced angle reduction.
+        this.rampEntryRemaining = rampEntryImpulse(this.wheelieAngle, this.speed - ramp.velocity);
         this.event = { text: 'RAMPE · JETZT ABSPRINGEN', kind: 'warning', serial: this.event.serial + 1 };
       }
     }
@@ -278,6 +282,11 @@ export class Engine {
     if (this.towJumpActive) this.airBalance(dt);
     else touchdown = advanceBalance(this, this.balanceProfile, this.speed,
       this.height === 0 || this.onTowTruck ? this.throttleInput : 0, this.forwardInput, dt);
+    if (this.onTowTruck) {
+      const reaction = consumeRampImpulse(this.rampEntryRemaining, dt);
+      this.rampEntryRemaining = reaction.remaining;
+      this.wheelieAngularVelocity -= reaction.applied;
+    } else this.rampEntryRemaining = 0;
     if (wasArmed && !this.liftArmed) this.wheelieLaunchSerial++;
     if (touchdown > 0.4) { this.landingSerial++; this.landingSpeed = touchdown * 2; }
     if (this.wheelieAngle >= this.balanceProfile.crashAngle) {
@@ -363,7 +372,7 @@ export class Engine {
         sign.active = false;
         // Prioritise a missed letter at the next safe wave, not six letters later.
         this.signSequence = SIGN_IDS.indexOf(sign.id);
-        this.nextSignAttempt = Math.min(this.nextSignAttempt, this.distance);
+        this.nextSignAttempt = Math.min(this.nextSignAttempt, this.distance + SIGN_RETRY_DISTANCE);
       }
     }
     if (this.phase === 'playing' && this.spawnIn <= 0) this.spawnWave();

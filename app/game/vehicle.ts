@@ -48,6 +48,7 @@ import {
 import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addCleanCrossbody, addIgnitionKey } from './vehicleAccessories';
+import { finishSupermotoSuspension } from './v39SuspensionFinish';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -1998,8 +1999,8 @@ export function makeBike(player: Player, products: Product[]) {
     );
   } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
-  const exhaustX = moped ? 0.15 : sport ? 0.215 : 0.165;
-  const exhaustY = moped ? 0.22 : sport ? 0.34 : 0.676;
+  const exhaustX = moped ? 0.15 : sport ? 0.215 : 0.130;
+  const exhaustY = moped ? 0.22 : sport ? 0.34 : 0.754;
   const mufflerStartZ = moped ? 0.38 : sport ? 0.55 : 0.415;
   const mufflerEndZ = moped ? 0.76 : sport ? 0.82 : 0.785;
   const mufflerRise = moped ? 0.025 : sport ? 0.155 : 0.133;
@@ -2222,6 +2223,8 @@ export function makeBike(player: Player, products: Product[]) {
       ).name = 'rider-footpeg';
     }
   }
+  // V39-FIX: finish after spring/fork construction; no one-sided panel mutation.
+  if (player.bike === '450') finishSupermotoSuspension(body);
   const ignitionKey = addIgnitionKey(body, player, products, pose.grip);
   const rider = makeRider(body, riderPose, player, products);
   // Bike dimensions grow relative to the same adult. Counter-scale only this

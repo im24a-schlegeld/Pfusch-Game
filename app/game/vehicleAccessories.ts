@@ -54,19 +54,25 @@ export function strapGeometry(points: Point[], width = .027, thickness = .0022,
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   g.setIndex(indices); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
 }
-/** Preserve the bag material's existing cylindrical UV layout and photographed logo. */
+/** Preserve the real logo material, but flatten the front so the print stays readable. */
 export function pouchGeometry() {
   const p: number[] = [], uv: number[] = [], ix: number[] = [];
-  const rows = 36, sides = 56;
+  const rows = 40, sides = 60;
   for (let i = 0; i <= rows; i++) {
-    const t = i / rows, y = -.113 + t * .226;
-    const taper = .73 + .27 * Math.sin(Math.PI * t) ** .32;
+    const t = i / rows, y = -.114 + t * .228;
+    const belly = Math.sin(Math.PI * t) ** .5;
+    const taperX = .79 + .21 * belly;
+    const taperZ = .68 + .32 * belly;
     for (let j = 0; j <= sides; j++) {
-      const a = j / sides * Math.PI * 2 - Math.PI / 2;
+      const u = j / sides;
+      const a = u * Math.PI * 2 - Math.PI / 2;
       const s = Math.sin(a), c = Math.cos(a);
-      p.push(Math.sign(s) * Math.abs(s) ** .48 * .092 * taper, y,
-        Math.sign(c) * Math.abs(c) ** .7 * .032 * taper);
-      uv.push(j / sides, t);
+      const front = Math.max(0, c);
+      const back = Math.max(0, -c);
+      const x = Math.sign(s) * Math.abs(s) ** .58 * .096 * taperX;
+      const z = front * (.028 + .004 * belly) - back * (.040 + .004 * (1 - belly));
+      p.push(x, y, z * taperZ);
+      uv.push(u, t);
     }
   }
   for (let i = 0; i < rows; i++) for (let j = 0; j < sides; j++) {
@@ -77,8 +83,12 @@ export function pouchGeometry() {
     const k = r * (sides + 1);
     if (!r) ix.push(k, k + j + 1, k + j); else ix.push(k, k + j, k + j + 1);
   }
-  const g = new THREE.BufferGeometry();g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));g.setIndex(ix);g.computeVertexNormals(); return g;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(ix);
+  g.computeVertexNormals();
+  return g;
 }
 /** Fit the middle of the strap to the actual garment, not a fixed shirt radius.
  * Local-to-world ray tests also handle a leaning rider and the folded hood.
@@ -107,30 +117,30 @@ function garmentStrapFit(torso: THREE.Group) {
   };
 }
 export function addCleanCrossbody(torso: THREE.Group, originalLogoMaterial: THREE.MeshStandardMaterial) {
-  const cloth = finish('#202124'), seam = finish('#303134'), hardware = finish('#555a5c', .7, .3);
-  const group = new THREE.Group(); group.name = 'crossbody-assembly-v38'; torso.add(group);
+  const cloth = finish('#1f2022'), seam = finish('#303134'), hardware = finish('#555a5c', .7, .3);
+  const group = new THREE.Group(); group.name = 'crossbody-assembly-v39'; torso.add(group);
   const bag = new THREE.Group(); bag.name = 'carried-crossbody-bag';
-  bag.position.set(.226, .107, .182);bag.rotation.set(.04, -Math.PI + .16, -.065);group.add(bag);
+  bag.position.set(.214, .112, .176); bag.rotation.set(.045, -Math.PI + .13, -.055); group.add(bag);
   put(bag, pouchGeometry(), originalLogoMaterial, 'crossbody-pouch');
-  const lugs: Point[] = [[-.073, .10, -.014], [.073, .10, .014]];
+  const lugs: Point[] = [[-.072, .098, -.011], [.072, .098, .011]];
   for (const p of lugs) {
-    const lug = put(bag, new THREE.TorusGeometry(.011, .0022, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');
-    lug.position.set(...p);lug.rotation.y = Math.PI / 2;
+    const lug = put(bag, new THREE.TorusGeometry(.0105, .0021, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');
+    lug.position.set(...p); lug.rotation.y = Math.PI / 2;
   }
   bag.updateMatrix();
   const left = new THREE.Vector3(...lugs[0]).applyMatrix4(bag.matrix).toArray() as Point;
   const right = new THREE.Vector3(...lugs[1]).applyMatrix4(bag.matrix).toArray() as Point;
   put(group, strapGeometry([
-    left, [.19, .245, -.09], [.095, .355, -.172], [-.065, .478, -.168],
-    [-.158, .551, -.105], [-.169, .596, -.01], [-.159, .565, .122],
-    [-.059, .449, .177], [.087, .311, .186], right,
-  ], .027, .0022, garmentStrapFit(torso)), cloth, 'crossbody-flat-strap');
-  const zip = new THREE.CatmullRomCurve3([[-.072,.074,-.029],[0,.08,-.034],[.072,.074,-.029]].map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-  put(bag, new THREE.TubeGeometry(zip, 28, .0015, 6, false), seam, 'crossbody-zipper-seam');
-  const pull = put(bag, new THREE.TorusGeometry(.0065, .0013, 6, 12), hardware, 'crossbody-zipper-pull');
-  pull.scale.y = 1.5;pull.position.set(.052,.068,-.035);
-  const adjuster = put(group, new THREE.BoxGeometry(.032,.012,.005), hardware, 'crossbody-strap-adjuster');
-  adjuster.position.set(.092,.32,.19);adjuster.rotation.z = -.73;
+    left, [.176, .233, -.082], [.072, .347, -.165], [-.062, .47, -.166],
+    [-.149, .548, -.114], [-.164, .592, -.024], [-.159, .578, .086],
+    [-.088, .49, .168], [.027, .353, .194], right,
+  ], .024, .0022, garmentStrapFit(torso)), cloth, 'crossbody-flat-strap');
+  const zip = new THREE.CatmullRomCurve3([[-.071, .074, -.026], [0, .081, -.031], [.071, .074, -.026]].map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+  put(bag, new THREE.TubeGeometry(zip, 28, .00145, 6, false), seam, 'crossbody-zipper-seam');
+  const pull = put(bag, new THREE.TorusGeometry(.0062, .0012, 6, 12), hardware, 'crossbody-zipper-pull');
+  pull.scale.y = 1.45; pull.position.set(.052, .069, -.032);
+  const adjuster = put(group, new THREE.BoxGeometry(.029, .011, .0045), hardware, 'crossbody-strap-adjuster');
+  adjuster.position.set(.08, .331, .188); adjuster.rotation.z = -.69;
 }
 function selectedColor(p: Product, player: Player) {
   return p.preview?.colors.find(c=>c.variantIds.includes(player.variants[p.id]))?.baseColor ?? p.baseColor;

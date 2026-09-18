@@ -1,0 +1,17 @@
+{
+  "version": 39,
+  "revision": "build-fix-1",
+  "requires": 38,
+  "files": {
+    "app/domain/appearanceColors.ts": "c3680870289d6f4490e00c5e981600b0311117bdb5a6e2ee648889a922f92712",
+    "app/game/engine.ts": "9d0b0f6473126ab63e888f9c05c45bfd8caeb97d91022f9db925036c38d79f74",
+    "app/game/rampEntry.ts": "6b60c6a93214ebb793547271c366bcdfcf0ce4fe2324eedb7a5951d4fc8896bd",
+    "app/game/signSet.ts": "82eff8eef6280f827f8ca75d40f262323213fe2424f3b37ccc4ff007ee3ecb8d",
+    "app/game/supermotoFit.ts": "90bd29fd2c7b44fc537b3e92ceffce9ea42bc31afe4031818e79499bae252cb4",
+    "app/game/supermotoRearProtection.ts": "51e51a0adb9a46c765b7746f480331e59f79478b2dc945416cb61b0391ee9731",
+    "app/game/v39SuspensionFinish.ts": "5c5975a4904a7b53a3e108f70301e8aee6551acbca28b858f60241f1913c070d",
+    "app/game/vehicleAccessories.ts": "277873e3da60448a283436c55874f53d978434977d2026154553d4045389cc0a",
+    "app/ui/SignProgress.tsx": "5dd7f2ebe087d47ee67b8e46f5327f323683d7e32c2d14297cd1c45311950b7e",
+    "app/game/vehicle.ts": "f7f846e31c8865a65e2deea88b200b6892dc83b91a8232e292f240c30a675e7c"
+  }
+}
