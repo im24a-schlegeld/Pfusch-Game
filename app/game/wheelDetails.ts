@@ -14,9 +14,9 @@ export function motorcycleRim(
       new THREE.Vector2(radius - 0.009, -halfWidth),
       new THREE.Vector2(radius + 0.001, -halfWidth),
       new THREE.Vector2(radius + 0.003, -halfWidth * 0.86),
-      new THREE.Vector2(radius - 0.009, -halfWidth * 0.7),
-      new THREE.Vector2(radius - 0.015, 0),
-      new THREE.Vector2(radius - 0.009, halfWidth * 0.7),
+      new THREE.Vector2(radius - 0.020, -halfWidth * 0.66),
+      new THREE.Vector2(radius - 0.034, 0),
+      new THREE.Vector2(radius - 0.020, halfWidth * 0.66),
       new THREE.Vector2(radius + 0.003, halfWidth * 0.86),
       new THREE.Vector2(radius + 0.001, halfWidth),
       new THREE.Vector2(radius - 0.009, halfWidth),
@@ -25,7 +25,7 @@ export function motorcycleRim(
   );
   barrel.rotateZ(Math.PI / 2);
   // Polished alloy bed remains visible inside the colored outer lips.
-  const rim = new THREE.Mesh(barrel, sport ? finish : metal);
+  const rim = new THREE.Mesh(barrel, finish);
   rim.name = 'formed-rim-barrel';
   rim.castShadow = rim.receiveShadow = true;
   wheel.add(rim);

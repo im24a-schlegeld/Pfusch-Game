@@ -250,9 +250,9 @@ function castWheel(
       [radius - 0.012, -half],
       [radius + 0.001, -half],
       [radius + 0.002, -half * 0.84],
-      [radius - 0.012, -half * 0.6],
-      [radius - 0.018, 0],
-      [radius - 0.012, half * 0.6],
+      [radius - 0.020, -half * 0.62],
+      [radius - 0.032, 0],
+      [radius - 0.020, half * 0.62],
       [radius + 0.002, half * 0.84],
       [radius + 0.001, half],
       [radius - 0.012, half],
@@ -264,7 +264,7 @@ function castWheel(
   for (const side of [-1, 1]) {
     const lip = mesh(
       wheel,
-      new THREE.TorusGeometry(radius - 0.002, 0.004, 8, 48),
+      new THREE.TorusGeometry(radius - 0.002, 0.009, 10, 56),
       rim,
       'rim-lip',
     );

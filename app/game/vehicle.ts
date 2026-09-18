@@ -626,7 +626,12 @@ export function makeBike(player: Player, products: Product[]) {
     for (const x of moped ? [0] : [-width * 0.81, width * 0.81]) {
       const lip = mesh(
         wheel,
-        new THREE.TorusGeometry(rimRadius, 0.007, 10, 64),
+        new THREE.TorusGeometry(
+          rimRadius,
+          moped ? 0.015 : sport ? 0.011 : 0.014,
+          12,
+          72,
+        ),
         rim,
       );
       lip.rotation.y = Math.PI / 2;
