@@ -25,7 +25,7 @@ export function fitRearExitExhaust(body:THREE.Group, paint:THREE.MeshStandardMat
   old.forEach(o=>{o.removeFromParent();o.geometry.dispose();});
   const e=TUBE_EXHAUST,group=new THREE.Group();group.name='v42-tube-exhaust';body.add(group);
   const silver=color('#a6abb0',.63,.40),carbon=color('#222427',.2,.72),inner=color('#0e0f10',.15,.94);
-  const a=new THREE.Vector3(e.x,e.startY,e.startZ),b=new THREE.Vector3(e.x,e.endY,e.endZ);
+  const a=new THREE.Vector3(e.x,e.startY+.018,e.startZ+.02),b=new THREE.Vector3(e.x,e.endY+.03,e.endZ-.01);
   const axis=b.clone().sub(a).normalize(),len=a.distanceTo(b);
   const orient=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis);
   const shell=new THREE.LatheGeometry([
@@ -45,7 +45,7 @@ export function fitRearExitExhaust(body:THREE.Group, paint:THREE.MeshStandardMat
   endRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);endRing.position.copy(b).addScaledVector(axis,.007);
   const band=add(group,new THREE.CylinderGeometry(.049,.049,.016,32,1,true),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a).addScaledVector(axis,len*.42);
-  tube(group,[[.046,.724,-.238],[.103,.700,-.248],[.138,.680,-.188],[.108,.702,.04],[.104,.724,.27],[e.x,e.startY,e.startZ]],.019,silver,'connected-exhaust-pipe');
+  tube(group,[[.046,.724,-.238],[.103,.700,-.248],[.138,.680,-.188],[.108,.702,.04],[.104,.734,.29],[e.x,e.startY+.018,e.startZ+.02]],.019,silver,'connected-exhaust-pipe');
   tube(group,[[.11,.976,.62],[e.x,.94,.64],[e.x,exhaustAxisY(.64)+.045,.64]],.008,carbon,'exhaust-frame-hanger');
   const liner=body.getObjectByName('supermoto-under-tail-liner');
   if(!(liner instanceof THREE.Mesh))throw new Error('Supermoto liner is missing');
@@ -63,10 +63,12 @@ export function fitRearExitExhaust(body:THREE.Group, paint:THREE.MeshStandardMat
 
 /** Color rim surfaces only. Spokes stay silver on the supermoto. */
 export function finishWheelColors(body:THREE.Group, value:string) {
-  const accepted=new Set(['formed-rim-barrel','cast-y-spoke','rim-band','rim-surface']);
+  const accepted=new Set(['formed-rim-barrel','rim-band','rim-surface','supermoto-rim-ring','supermoto-rim-face']);
   body.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
-    const byName=accepted.has(o.name);
-    const byWheel=o.parent?.name.endsWith('-wheel')&&o.name!=='cross-laced-spokes'&&o.name!=='spoke'&&o.geometry instanceof THREE.CylinderGeometry&&o.geometry.parameters.radiusTop===.055;
+    const lower=o.name.toLowerCase();
+    if(lower.includes('spoke')||lower.includes('tyre')||lower.includes('tire'))return;
+    const byName=accepted.has(o.name)||lower.includes('rim')||lower.includes('wheel-ring')||lower.includes('wheel-face');
+    const byWheel=o.parent?.name.endsWith('-wheel')&&o.geometry instanceof THREE.CylinderGeometry&&o.geometry.parameters.radiusTop>=.045&&o.geometry.parameters.radiusTop<=.058;
     if(!byName&&!byWheel)return;
     const mats=Array.isArray(o.material)?o.material:[o.material];
     const next=mats.map(m=>{if(!(m instanceof THREE.MeshStandardMaterial))return m;const n=m.clone();n.color.set(value);n.metalness=.52;n.roughness=.40;return n;});
@@ -102,7 +104,7 @@ export function blackSprings(body:THREE.Group){
 }
 /** Keep the ORIGINAL materials: cloning detaches them from the glow registry and async ink loaders. */
 const wardrobeTinted=new WeakSet<THREE.MeshStandardMaterial>();
-export function darkenWardrobe(root:THREE.Object3D,factor=.88){
+export function darkenWardrobe(root:THREE.Object3D,factor=.82){
   const keywords=['garment','hood','shirt','tee','hoodie','outerwear','sleeve','cuff','collar'];
   root.traverse(o=>{if(!(o instanceof THREE.Mesh)||!keywords.some(k=>o.name.toLowerCase().includes(k)))return;
     const materials=Array.isArray(o.material)?o.material:[o.material];
@@ -118,6 +120,6 @@ export function tiltHandlebarBack(body:THREE.Object3D){
   const names = new Set(['supermoto-handlebar', 'supermoto-handguard', 'supermoto-lever']);
   const hit=(name:string)=>names.has(name);
   body.traverse(o=>{if(!(o instanceof THREE.Mesh||o instanceof THREE.Group))return;if(!hit(o.name))return;
-    o.rotation.x += .10; o.rotation.z += .01;
+    o.rotation.x += .16; o.rotation.z -= .035; o.position.z -= .01; o.position.y += .008;
   });
 }

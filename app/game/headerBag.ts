@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 export function headerBagMaterial(path:string, source:THREE.MeshStandardMaterial){
-  const mat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.94,metalness:0});
+  const mat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.94,metalness:0,transparent:true,alphaTest:.08,side:THREE.DoubleSide});
   if(typeof document==='undefined')return mat;
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=640;
   const c=canvas.getContext('2d');if(!c)return mat;

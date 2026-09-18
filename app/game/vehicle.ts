@@ -47,7 +47,7 @@ import {
 } from './carriedCapMotion';
 import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
-import { addCleanCrossbody, addIgnitionKey } from './vehicleAccessories';
+import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
 import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, tiltHandlebarBack } from './v40ModelFinish';
 
@@ -2273,7 +2273,8 @@ export function makeBike(player: Player, products: Product[]) {
     rider: rider.group,
     animateRider: rider.animate,
     animateAccessories: (input: CarriedCapMotionInput, dt: number) => {
-      rider.animateAccessories(input, dt); ignitionKey?.update(input, dt);
+      rider.animateAccessories(input, dt);
+      updateCrossbodyMotion(rider.group, input, dt); ignitionKey?.update(input, dt);
     },
     animateSuspension,
     wheelRadius: rearRadius * modelScale,

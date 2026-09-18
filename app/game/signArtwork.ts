@@ -49,10 +49,20 @@ export function loadSignArtwork():Promise<SignArtwork>{
   if(cached)return cached;
   cached=Promise.all(SIGN_COLLECTIBLES.map(original)).then(loaded=>{
     const width=660,height=205,image=makeCanvas(width,height),ctx=context(image);
-    const centers=[74,170,278,386,485,582],ys=[114,106,112,99,107,106];
+    const slots=[
+      {cx:70,cy:112,maxW:108,maxH:126},
+      {cx:164,cy:106,maxW:100,maxH:126},
+      {cx:272,cy:112,maxW:84,maxH:110},
+      {cx:374,cy:100,maxW:108,maxH:112},
+      {cx:478,cy:108,maxW:88,maxH:118},
+      {cx:580,cy:108,maxW:88,maxH:122},
+    ];
     const pieces=loaded.map(({canvas},i)=>{
-      const scale=144/Math.max(canvas.width,canvas.height),w=canvas.width*scale,h=canvas.height*scale;
-      const x=centers[i]-w/2,y=ys[i]-h/2;const piece=makeCanvas(w,h);context(piece).drawImage(canvas,0,0,piece.width,piece.height);
+      const slot=slots[i];
+      const scale=Math.min(slot.maxW/canvas.width,slot.maxH/canvas.height);
+      const w=Math.max(1,Math.round(canvas.width*scale)),h=Math.max(1,Math.round(canvas.height*scale));
+      const x=Math.round(slot.cx-w/2),y=Math.round(slot.cy-h/2);
+      const piece=makeCanvas(w,h);context(piece).drawImage(canvas,0,0,piece.width,piece.height);
       ctx.drawImage(piece,x,y);return {canvas:piece,dim:grayscale(piece),x,y,width:piece.width,height:piece.height};
     });
     return {image,dim:grayscale(image),pieces,width,height,fallbacks:loaded.filter(s=>s.fallback).length};

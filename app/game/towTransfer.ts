@@ -7,7 +7,7 @@ export interface TransferPlan {
   launchVelocity: number; lateralDelay: number; lateralSeconds: number;
   forwardBoost: number; boostSeconds: number; feasible: boolean; apex: number;
 }
-export const TOW_TRANSFER = Object.freeze({launchVelocity: 8.1, lateralSeconds: .54});
+export const TOW_TRANSFER = Object.freeze({launchVelocity: 6.4, lateralSeconds: .42});
 const smooth = (t: number) => {t=Math.max(0,Math.min(1,t));return t*t*t*(10+t*(-15+6*t));};
 export function transferX(from:number,to:number,seconds:number,plan?:TransferPlan) {
   return from+(to-from)*smooth((seconds-(plan?.lateralDelay??0))/(plan?.lateralSeconds??.54));
@@ -23,15 +23,14 @@ export function planTowTransfer(height:number,speed:number,gravity:number,from:n
   const cars=relevant.filter(o=>o.car);
   const roof=cars.length?Math.max(...cars.map(o=>o.height)):1.98;
   const h0=Math.max(0,height);
-  const fallback:TransferPlan={launchVelocity:Math.sqrt(2*gravity*Math.max(.15,roof+.34-h0)),lateralDelay:.16,lateralSeconds:.42,forwardBoost:0,boostSeconds:.8,feasible:false,apex:Math.max(h0+.15,roof+.34)};
-  // Start from the lowest feasible arc. Search lateral timing rather than simply
-  // increasing height or turning off vehicle collisions.
-  for(const clearance of [.24,.32,.40]) {
+  const fallback:TransferPlan={launchVelocity:Math.sqrt(2*gravity*Math.max(.12,roof+.22-h0)),lateralDelay:.10,lateralSeconds:.34,forwardBoost:4.5,boostSeconds:.68,feasible:false,apex:Math.max(h0+.12,roof+.22)};
+  // Prefer a flatter, more forward jump that clears a small car instead of launching high.
+  for(const clearance of [.14,.18,.22,.28]) {
     const apex=Math.max(h0+.15,roof+clearance),v=Math.sqrt(2*gravity*(apex-h0));
     const flight=(v+Math.sqrt(v*v+2*gravity*h0))/gravity;
-    for(const boost of [0,2,4,6,8]) for(const duration of [.38,.46,.54,.62]) for(const delay of [0,.08,.16,.24,.32,.40,.48]) {
+    for(const boost of [3.5,4.5,5.5,6.5,7.5]) for(const duration of [.28,.34,.38,.42]) for(const delay of [0,.06,.12,.18,.24]) {
       const plan:TransferPlan={launchVelocity:v,lateralDelay:delay,lateralSeconds:duration,forwardBoost:boost,boostSeconds:.8,feasible:true,apex};
-      if(delay+duration>flight-.015)continue;
+      if(delay+duration>flight-.03)continue;
       let safe=true,crossed=cars.length===0;
       // Include arrival on the road. Both vertical and longitudinal clearance
       // must be real, using the same front/rear extents as the Engine.

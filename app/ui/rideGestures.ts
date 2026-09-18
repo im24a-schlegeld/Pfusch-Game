@@ -1,6 +1,6 @@
 interface PointerState {id:number;x:number;y:number;startX:number;startY:number;time:number}
 interface GestureActions {weight(value:number):void;move(direction:number):void;togglePause():void}
-export const RIDE_GESTURE=Object.freeze({lanePixels:100,weightDeadZone:8,weightPixels:72,twoFingerStartMs:180,twoFingerTapMs:340,tapSlop:12});
+export const RIDE_GESTURE=Object.freeze({lanePixels:155,weightDeadZone:10,weightPixels:76,twoFingerStartMs:180,twoFingerTapMs:340,tapSlop:14});
 /** Each intentional 100 CSS-pixel swipe makes ONE lane change; lifting re-arms it. */
 export class RideGestures {
   private pointers:PointerState[]=[];

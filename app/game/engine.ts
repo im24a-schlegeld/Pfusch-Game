@@ -158,7 +158,7 @@ export class Engine {
       const moving = !environment.kinds.includes('construction') && this.distance > 220
         && this.random() < 0.38 + this.difficulty * 0.24;
       let velocity = moving ? Math.min(TRAFFIC_FLOW.maximumCarSpeed,
-        this.speed * (0.25 + this.random() * 0.14)) : 0;
+        this.speed * (0.15 + this.random() * 0.08)) : 0;
       const kinds: TrafficKind[] = [];
       const pool: readonly TrafficKind[] = environment.kinds.includes('construction')
         ? environment.kinds : [...environment.kinds, 'car', 'car'];
@@ -213,7 +213,7 @@ export class Engine {
     if (lane === undefined) return;
     if (this.spawnSign(id, lane, 128)) {
       this.signSequence = (SIGN_IDS.indexOf(id) + 1) % SIGN_IDS.length;
-      this.nextSignAttempt = this.distance + SIGN_DISTANCE_GAP + this.random() * 380;
+      this.nextSignAttempt = this.distance + 15500 + this.random() * 3500;
     }
   }
   spawnSign(id: SignId, lane: number, z: number) {
@@ -321,7 +321,7 @@ export class Engine {
       if (this.height <= 0) {
         this.landingSpeed = Math.abs(this.velocityY); this.landingSerial++;
         this.height = 0; this.velocityY = 0; this.airLaneChangeUsed = false; this.towPitch = 0;
-        if (this.towJumpActive) { this.towJumpActive = false; landedTowJump = true; }
+        if (this.towJumpActive) { this.towJumpActive = false; landedTowJump = true; if (this.wheelieAngle < this.balanceProfile.balancePoint + 0.08) { this.wheelieAngle = Math.min(this.wheelieAngle, 0.1); this.wheelieAngularVelocity = Math.min(0, this.wheelieAngularVelocity); } }
       }
     }
     if(this.transferPlan&&!this.towJumpActive&&this.transferAge>=this.transferPlan.boostSeconds)this.transferPlan=null;
@@ -382,8 +382,13 @@ export class Engine {
       const top = o.kind === 'towtruck' && o.z > TOW_RAMP.cabRearZ
         ? o.z > TOW_RAMP.frontZ ? towRampHeight(o.z) : TOW_RAMP.frontHeight
         : (road?.height ?? traffic!.height);
-      if (this.towJumpActive && o.kind === 'car' && overlap && dx < contactWidth && this.height >= top + 0.08) {
-        o.cleared = true; o.rewardPoints = 180; o.rewardText = 'AUTO UEBERSPRUNG';
+      if (this.towJumpActive && o.kind === 'car' && overlap && dx < contactWidth) {
+        const needed = top - 0.10;
+        if (this.height >= needed) {
+          o.cleared = true; o.rewardPoints = 180; o.rewardText = 'AUTO UEBERSPRUNG';
+          this.towSafeObstacles.add(o);
+          continue;
+        }
       }
       if (overlap && this.height < top && !this.towSafeObstacles.has(o)) {
         const gap = dx - contactWidth;

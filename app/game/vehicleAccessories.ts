@@ -1,9 +1,30 @@
-import { headerBagMaterial, flatPouchGeometry } from './headerBag';
+import { headerBagMaterial } from './headerBag';
 import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
 type Point = [number, number, number];
 const up = new THREE.Vector3(0, 1, 0);
+
+// Controllers are registered during construction and invoked after the rider pose.
+// This does not invent an extra property on the shared cap-motion input.
+type CrossbodyController = { update(input: CarriedCapMotionInput, dt: number): void };
+const crossbodyControllers = new WeakMap<THREE.Object3D, CrossbodyController>();
+const crossbodyDispatch = new WeakMap<THREE.Object3D, CrossbodyController[]>();
+export function updateCrossbodyMotion(
+  root: THREE.Object3D, input: CarriedCapMotionInput, dt: number,
+) {
+  let controllers = crossbodyDispatch.get(root);
+  if (!controllers) {
+    controllers = [];
+    root.traverse(object => {
+      const controller = crossbodyControllers.get(object);
+      if (controller) controllers!.push(controller);
+    });
+    crossbodyDispatch.set(root, controllers);
+  }
+  for (const controller of controllers) controller.update(input, dt);
+}
+
 function finish(color: string, metalness = 0, roughness = 0.85) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness });
 }
@@ -119,12 +140,15 @@ function garmentStrapFit(torso: THREE.Group) {
 }
 export function addCleanCrossbody(torso: THREE.Group, originalLogoMaterial: THREE.MeshStandardMaterial) {
   const cloth = finish('#1b1c1f'), seam = finish('#2f3134'), hardware = finish('#595e63', .7, .3);
-  const group = new THREE.Group(); group.name = 'crossbody-assembly-v41'; torso.add(group);
+  const group = new THREE.Group(); group.name = 'crossbody-assembly-v43'; torso.add(group);
   const bag = new THREE.Group(); bag.name = 'carried-crossbody-bag';
-  bag.position.set(.205, .102, .172); bag.rotation.set(.07, -Math.PI + .10, -.07); group.add(bag);
-  const body = put(bag, flatPouchGeometry(), [headerBagMaterial('/branding/pfusch-logo.png',originalLogoMaterial),cloth], 'crossbody-pouch');
-  body.scale.set(.96, 1.01, .88);
-  const lugs: Point[] = [[-.066, .092, -.009], [.062, .091, .007]];
+  bag.position.set(.194, .108, .165); bag.rotation.set(.08, -Math.PI + .06, -.12); group.add(bag);
+  const body = put(bag, pouchGeometry(), cloth, 'crossbody-pouch');
+  body.scale.set(.94, .98, .86);
+  const logoMat = headerBagMaterial('/branding/pfusch-logo.png', originalLogoMaterial);
+  const logo = put(bag, new THREE.PlaneGeometry(.118, .058), logoMat, 'crossbody-logo-front');
+  logo.position.set(0, -.004, .039); logo.renderOrder = 2;
+  const lugs: Point[] = [[-.060, .090, -.006], [.056, .088, .006]];
   for (const p of lugs) {
     const lug = put(bag, new THREE.TorusGeometry(.0102, .0021, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');
     lug.position.set(...p); lug.rotation.y = Math.PI / 2;
@@ -132,18 +156,42 @@ export function addCleanCrossbody(torso: THREE.Group, originalLogoMaterial: THRE
   bag.updateMatrix();
   const left = new THREE.Vector3(...lugs[0]).applyMatrix4(bag.matrix).toArray() as Point;
   const right = new THREE.Vector3(...lugs[1]).applyMatrix4(bag.matrix).toArray() as Point;
-  put(group, strapGeometry([
-    left, [.168, .227, -.078], [.062, .342, -.163], [-.064, .466, -.168],
-    [-.150, .546, -.115], [-.166, .592, -.022], [-.160, .578, .087],
-    [-.086, .488, .168], [.024, .354, .194], right,
-  ], .023, .0023, garmentStrapFit(torso)), cloth, 'crossbody-flat-strap');
+  const strap = put(group, strapGeometry([
+    left, [.154, .214, -.064], [.044, .328, -.154], [-.070, .442, -.154],
+    [-.126, .508, -.112], [-.146, .556, -.034], [-.142, .548, .072],
+    [-.078, .466, .154], [.012, .346, .176], right,
+  ], .022, .0021, garmentStrapFit(torso)), cloth, 'crossbody-flat-strap');
   const zip = new THREE.CatmullRomCurve3([[-.062, .071, -.021], [0, .077, -.028], [.060, .071, -.021]].map(([x, y, z]) => new THREE.Vector3(x, y, z)));
   put(bag, new THREE.TubeGeometry(zip, 28, .00145, 6, false), seam, 'crossbody-zipper-seam');
   const pull = put(bag, new THREE.TorusGeometry(.0062, .00115, 6, 12), hardware, 'crossbody-zipper-pull');
   pull.scale.y = 1.45; pull.position.set(.046, .067, -.029);
   const adjuster = put(group, new THREE.BoxGeometry(.029, .0105, .0043), hardware, 'crossbody-strap-adjuster');
-  adjuster.position.set(.080, .328, .186); adjuster.rotation.z = -.69;
+  adjuster.position.set(.070, .318, .176); adjuster.rotation.z = -.69;
+  let sway = 0, swayVel = 0;
+  const worldRotation = new THREE.Quaternion();
+  const localGravity = new THREE.Vector3();
+  const controller: CrossbodyController = { update(input:CarriedCapMotionInput, dt:number) {
+    if (!Number.isFinite(dt) || dt <= 0 || input.paused) return;
+    const step = Math.min(dt, .05);
+    // Gravity expressed in the actual parent's frame reacts to a wheelie,
+    // without relying on a nonexistent input.wheelie flag.
+    group.getWorldQuaternion(worldRotation);
+    localGravity.set(0, -1, 0).applyQuaternion(worldRotation.invert());
+    const parentPitch = Math.atan2(localGravity.z, -localGravity.y);
+    const wheelieBias = THREE.MathUtils.clamp(-parentPitch * .35, -.32, .32);
+    const accelBias = THREE.MathUtils.clamp((input.longitudinalAcceleration ?? 0) * .010, -.12, .12);
+    const target = input.reducedMotion ? 0 : (wheelieBias + accelBias);
+    swayVel += (target - sway) * 18 * step;
+    swayVel *= Math.exp(-step * 6.5);
+    sway += swayVel * step;
+    bag.rotation.z = -.12 + sway * .55;
+    bag.rotation.x = .08 + Math.max(-.12, Math.min(.08, sway * .22));
+    bag.position.z = .165 + Math.max(-.02, Math.min(.012, sway * .045));
+  }};
+  crossbodyControllers.set(group, controller);
+  return controller;
 }
+
 function selectedColor(p: Product, player: Player) {
   return p.preview?.colors.find(c=>c.variantIds.includes(player.variants[p.id]))?.baseColor ?? p.baseColor;
 }

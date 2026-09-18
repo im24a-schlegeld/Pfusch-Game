@@ -1,0 +1,15 @@
+{
+  "version": 43,
+  "revision": "compile-safety-1",
+  "base": "V42 oder unveraenderter V43-Versuch",
+  "files": {
+    "app/game/engine.ts": "e199ecee0b71b11f9842a1fc7fe653f61b7889fc2fc08e721ebe4ae48a88b9a8",
+    "app/game/headerBag.ts": "220415943ffee30212d484b4aeefbe3536820da55442b275dab8c8b4a2f19992",
+    "app/game/signArtwork.ts": "3dd5c8494a0973e28a124ec15f9b5a38908e88fc67fbffd380c297edc3d7ca3d",
+    "app/game/towTransfer.ts": "19ea6694a49c636d3e7e2e4e091941eea7af8925a15983665eb54a0af1e02875",
+    "app/game/v40ModelFinish.ts": "d29fed3621602a520ea7380b60e890fc1987281d24f2b061251c0d6f72ce0510",
+    "app/game/vehicleAccessories.ts": "c32b67a8c343d8f68dad2f0fb96fdb36f4898a53a991156ac118e2f462f12067",
+    "app/ui/rideGestures.ts": "1b91a0c2abf20133e76c746492c07536caf7d45f47a606bd6c33e9679ce66066",
+    "app/game/vehicle.ts": "4a745e39388b28159c2ac2ca6dc79fde3d39afae352b32629fdb87ddf7eeb659"
+  }
+}
