@@ -24,6 +24,8 @@ import {
 } from './shared';
 import { ProgressContent } from './Screens';
 import ProductPreview from './ProductPreview';
+import ColorSection from './ColorSection';
+import { visiblePalette } from '../domain/paletteView';
 interface Props {
   player: Player;
   products: Product[];
@@ -547,8 +549,8 @@ export default function Garage({
                     </button>
                   ))}
                 </div>
-                <div className="swatches" aria-label="Helmfarbe">
-                  {HELMET_COLORS.map((color) => (
+                <ColorSection title="Helmfarbe" value={player.helmetColor}><div className="swatches" aria-label="Helmfarbe">
+                  {visiblePalette(HELMET_COLORS, player.helmetColor).map((color) => (
                     <button
                       key={color.value}
                       aria-label={`${color.name} helmet color`}
@@ -565,7 +567,7 @@ export default function Garage({
                       <span>KOSTENLOS</span>
                     </button>
                   ))}
-                </div>
+                </div></ColorSection>
               </section>
               {grid}
             </TabsContent>
@@ -652,9 +654,9 @@ export default function Garage({
                   )}
                 </button>
               )}
-              <h3 className="custom-label">FARBE</h3>
-              <div className="swatches">
-                {PAINTS.map((c) => (
+              
+              <ColorSection title="Lackfarbe" value={appearance.paint}><div className="swatches">
+                {visiblePalette(PAINTS, appearance.paint).map((c) => (
                   <button
                     key={c.value}
                     aria-label={`${c.name} paint`}
@@ -681,7 +683,7 @@ export default function Garage({
                     </span>
                   </button>
                 ))}
-              </div>
+              </div></ColorSection>
               {!owned(`paint:${appearance.paint}`) && (
                 <button
                   className="button small finish-unlock"
@@ -705,9 +707,9 @@ export default function Garage({
                   COINS
                 </button>
               )}
-              <h3 className="custom-label">FELGEN</h3>
-              <div className="swatches">
-                {RIMS.map((c) => (
+              
+              <ColorSection title="Felgenfarbe" value={appearance.rims}><div className="swatches">
+                {visiblePalette(RIMS, appearance.rims).map((c) => (
                   <button
                     key={c.value}
                     aria-label={`${c.name} rims`}
@@ -734,7 +736,7 @@ export default function Garage({
                     </span>
                   </button>
                 ))}
-              </div>
+              </div></ColorSection>
               {!owned(`rims:${appearance.rims}`) && (
                 <button
                   className="button small finish-unlock"

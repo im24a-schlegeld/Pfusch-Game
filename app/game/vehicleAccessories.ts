@@ -1,3 +1,4 @@
+import { headerBagMaterial, flatPouchGeometry } from './headerBag';
 import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
@@ -6,7 +7,7 @@ const up = new THREE.Vector3(0, 1, 0);
 function finish(color: string, metalness = 0, roughness = 0.85) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness });
 }
-function put(parent: THREE.Object3D, geometry: THREE.BufferGeometry, material: THREE.Material, name: string) {
+function put(parent: THREE.Object3D, geometry: THREE.BufferGeometry, material: THREE.Material | THREE.Material[], name: string) {
   const mesh = new THREE.Mesh(geometry, material); mesh.name = name;
   mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh;
 }
@@ -121,7 +122,7 @@ export function addCleanCrossbody(torso: THREE.Group, originalLogoMaterial: THRE
   const group = new THREE.Group(); group.name = 'crossbody-assembly-v39'; torso.add(group);
   const bag = new THREE.Group(); bag.name = 'carried-crossbody-bag';
   bag.position.set(.214, .112, .176); bag.rotation.set(.045, -Math.PI + .13, -.055); group.add(bag);
-  put(bag, pouchGeometry(), originalLogoMaterial, 'crossbody-pouch');
+  put(bag, flatPouchGeometry(), [headerBagMaterial('/branding/pfusch-logo.png',originalLogoMaterial),cloth], 'crossbody-pouch');
   const lugs: Point[] = [[-.072, .098, -.011], [.072, .098, .011]];
   for (const p of lugs) {
     const lug = put(bag, new THREE.TorusGeometry(.0105, .0021, 8, 16, Math.PI * 1.8), hardware, 'crossbody-strap-ring');

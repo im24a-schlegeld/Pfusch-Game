@@ -49,6 +49,7 @@ import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from '.
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addCleanCrossbody, addIgnitionKey } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
+import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings } from './v40ModelFinish';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -2226,6 +2227,8 @@ export function makeBike(player: Player, products: Product[]) {
   // V39-FIX: finish after spring/fork construction; no one-sided panel mutation.
   if (player.bike === '450') finishSupermotoSuspension(body);
   const ignitionKey = addIgnitionKey(body, player, products, pose.grip);
+  if (player.bike === '450') fitRearExitExhaust(body, paint);
+  finishWheelColors(body, player.rims); blackSprings(body);
   const rider = makeRider(body, riderPose, player, products);
   // Bike dimensions grow relative to the same adult. Counter-scale only this
   // parent transform; every rider mesh and fixed bone retains its world length.
@@ -2979,6 +2982,7 @@ function makeRider(
       tee ? 24 : 20,
       side as -1 | 1,
     );
+    fairShoulder(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20);
     if (upper && !tee && !outerwear) {
       const seams = sleeveSeams(
         armMeshes[0],

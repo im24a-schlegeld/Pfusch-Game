@@ -1,3 +1,4 @@
+import { TOW_TRANSFER, transferX } from './towTransfer';
 import type { Bike, RunStats } from '../domain/types';
 import { World, distanceAtTime, speedAtTime } from './world';
 import { ROAD_EVENTS, TRAFFIC_ENVIRONMENTS, isRoadEvent, roadResponse, type RoadEventKind } from './roadEvents';
@@ -52,6 +53,8 @@ export class Engine {
   private signSequence = 0;
   private nextSignAttempt = 300;
   private rampEntryRemaining = 0;
+  private transferAge = 0;
+  private transferOriginX = 0;
   private towWarningFor: Obstacle | null = null;
   private id: string;
   constructor(public bike: Bike, seed = 5489) {
@@ -77,7 +80,8 @@ export class Engine {
       // still collide if the rider jumps into them below their actual roof.
       this.towSafeObstacles.add(this.towCarrier);
       this.towCarrier = null;
-      this.velocityY = TOW_RAMP.launchVelocity;
+      this.velocityY = TOW_TRANSFER.launchVelocity;
+      this.transferAge = 0; this.transferOriginX = this.x;
       this.towJumpActive = true; this.airLaneChangeUsed = true; this.launchSerial++;
       this.event = { text: 'RAMP TRANSFER', kind: 'skill', serial: this.event.serial + 1 };
     } else if (airborne) this.airLaneChangeUsed = true;
@@ -233,8 +237,13 @@ export class Engine {
     this.laneChangeAge = Math.min(1, this.laneChangeAge + dt);
     const steeringLead = this.height > 0 || this.wheelie ? 1 :
       Math.max(0, Math.min(1, (this.laneChangeAge - 0.055) / 0.06));
-    this.x += (this.lane * LANE - this.x) * Math.min(1,
-      dt * this.bike.handling * this.surfaceGrip * (this.wheelie ? 0.78 : 1) * steeringLead);
+    if (this.towJumpActive) {
+      this.transferAge += dt;
+      this.x = transferX(this.transferOriginX, this.lane * LANE, this.transferAge);
+    } else {
+      this.x += (this.lane * LANE - this.x) * Math.min(1,
+        dt * this.bike.handling * this.surfaceGrip * (this.wheelie ? 0.78 : 1) * steeringLead);
+    }
     const approaching = this.obstacles.find(o => o.active && o.kind === 'towtruck' && !o.rampUsed
       && o.lane === this.lane && o.z < this.speed * 1.3 + TOW_RAMP.rearZ && o.z > TOW_RAMP.rearZ);
     if (approaching && this.towWarningFor !== approaching) {
@@ -334,6 +343,9 @@ export class Engine {
       const top = o.kind === 'towtruck' && o.z > TOW_RAMP.cabRearZ
         ? o.z > TOW_RAMP.frontZ ? towRampHeight(o.z) : TOW_RAMP.frontHeight
         : (road?.height ?? traffic!.height);
+      if (this.towJumpActive && o.kind === 'car' && overlap && dx < contactWidth && this.height >= top + 0.08) {
+        o.cleared = true; o.rewardPoints = 180; o.rewardText = 'AUTO UEBERSPRUNG';
+      }
       if (overlap && this.height < top && !this.towSafeObstacles.has(o)) {
         const gap = dx - contactWidth;
         if (gap < 0) {

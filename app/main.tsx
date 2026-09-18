@@ -10,3 +10,5 @@ createRoot(document.getElementById('root')!).render(
     <GameApp />
   </React.StrictMode>,
 );
+
+import './refinement-v40.css';

@@ -185,17 +185,7 @@ function addPeak(
   // A molded three-point peak: a narrow crown root opens into swept wings,
   // then tapers to a downturned nose. The temple roots close the side supports;
   // the crown behind them stays visible instead of wearing a rectangular roof.
-  const sections: [number, number, number][] = [
-    [-0.037, 0.017, 0.15],
-    [-0.063, 0.029, 0.145],
-    [-0.092, 0.052, 0.139],
-    [-0.123, 0.081, 0.131],
-    [-0.158, 0.108, 0.122],
-    [-0.19, 0.12, 0.115],
-    [-0.224, 0.123, 0.11],
-    [-0.248, 0.114, 0.105],
-    [-0.266, 0.096, 0.097],
-  ];
+  const sections: [number, number, number][] = [[-0.037,0.017,0.15],[-0.066,0.029,0.144],[-0.103,0.054,0.138],[-0.145,0.091,0.132],[-0.181,0.115,0.128],[-0.217,0.12,0.124],[-0.253,0.108,0.116],[-0.282,0.086,0.105],[-0.302,0.064,0.092]];
   const columns = [
     -1, -0.87, -0.68, -0.56, -0.4, -0.26, -0.12, 0, 0.12, 0.26, 0.4, 0.56, 0.68,
     0.87, 1,
