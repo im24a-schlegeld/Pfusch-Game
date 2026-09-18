@@ -1,14 +1,30 @@
 import * as THREE from 'three';
 
+type PixelPoint = [number, number];
 type Point = [number, number, number];
-type Surface = (u: number, v: number) => THREE.Vector3;
-const vector = (p: Point) => new THREE.Vector3(...p);
+
+// Calibration taken from the supplied clean side reference (image 3):
+// rear axle = (258,445), front axle = (998,445), wheelbase = 1405 mm,
+// ground line = y 605. This keeps the fairing/tank/tail silhouette tied to
+// the actual motorcycle instead of hand-waving the proportions.
+const PX_PER_METRE = 740 / 1.405;
+const REF_REAR_X = 258;
+const REF_GROUND_Y = 605;
+
+function refYZ([x, y]: PixelPoint) {
+  return {
+    z: 0.685 - (x - REF_REAR_X) / PX_PER_METRE,
+    y: (REF_GROUND_Y - y) / PX_PER_METRE,
+  };
+}
+
 function mesh(
   parent: THREE.Object3D,
   name: string,
   geometry: THREE.BufferGeometry,
   material: THREE.Material,
 ) {
+  geometry.computeVertexNormals();
   const result = new THREE.Mesh(geometry, material);
   result.name = name;
   result.castShadow = true;
@@ -16,483 +32,252 @@ function mesh(
   parent.add(result);
   return result;
 }
-/** Moulded skin with an inner surface and closed edge returns. */
-function panel(
+
+/** Thin real body panel at one side of the motorcycle, traced in side elevation. */
+function tracedPanel(
   parent: THREE.Object3D,
   name: string,
-  point: Surface,
+  side: -1 | 1,
+  outline: PixelPoint[],
+  outerX: number,
   material: THREE.Material,
   thickness = 0.006,
 ) {
-  const rows = 24,
-    cols = 24,
-    count = (rows + 1) * (cols + 1);
-  const vertices: number[] = [],
-    indices: number[] = [];
-  for (let layer = 0; layer < 2; layer++)
-    for (let row = 0; row <= rows; row++)
-      for (let col = 0; col <= cols; col++) {
-        const u = col / cols,
-          v = row / rows,
-          p = point(u, v);
-        const du = point(Math.min(1, u + 0.001), v).sub(
-          point(Math.max(0, u - 0.001), v),
-        );
-        const dv = point(u, Math.min(1, v + 0.001)).sub(
-          point(u, Math.max(0, v - 0.001)),
-        );
-        if (layer) p.addScaledVector(du.cross(dv).normalize(), -thickness);
-        vertices.push(...p.toArray());
-      }
-  for (let layer = 0; layer < 2; layer++)
-    for (let row = 0; row < rows; row++)
-      for (let col = 0; col < cols; col++) {
-        const a = layer * count + row * (cols + 1) + col,
-          b = a + cols + 1;
-        if (layer) indices.push(a, b, a + 1, b, b + 1, a + 1);
-        else indices.push(a, a + 1, b, b, a + 1, b + 1);
-      }
-  const edge: number[] = [];
-  for (let col = 0; col < cols; col++) edge.push(col);
-  for (let row = 0; row < rows; row++) edge.push(row * (cols + 1) + cols);
-  for (let col = cols; col > 0; col--) edge.push(rows * (cols + 1) + col);
-  for (let row = rows; row > 0; row--) edge.push(row * (cols + 1));
-  edge.forEach((a, i) => {
-    const b = edge[(i + 1) % edge.length];
-    indices.push(a, a + count, b, b, a + count, b + count);
+  const shape = outline.map((point) => {
+    const { y, z } = refYZ(point);
+    return new THREE.Vector2(z, y);
   });
+  const triangles = THREE.ShapeUtils.triangulateShape(shape, []);
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const x0 = side * outerX;
+  const x1 = side * (outerX - thickness);
+
+  for (const x of [x0, x1]) {
+    for (const point of outline) {
+      const { y, z } = refYZ(point);
+      vertices.push(x, y, z);
+    }
+  }
+  const count = outline.length;
+  for (const [a, b, c] of triangles) {
+    if (side > 0) indices.push(a, b, c, a + count, c + count, b + count);
+    else indices.push(a, c, b, a + count, b + count, c + count);
+  }
+  for (let i = 0; i < count; i++) {
+    const j = (i + 1) % count;
+    indices.push(i, j, i + count, j, j + count, i + count);
+  }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(vertices, 3),
-  );
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
   geometry.setIndex(indices);
-  geometry.computeVertexNormals();
   return mesh(parent, name, geometry, material);
 }
-function curve(points: Point[]) {
-  return new THREE.CatmullRomCurve3(
-    points.map(vector),
-    false,
-    'catmullrom',
-    0.25,
+
+function mirroredPanels(
+  parent: THREE.Object3D,
+  name: string,
+  outline: PixelPoint[],
+  outerX: number,
+  material: THREE.Material,
+  thickness = 0.006,
+) {
+  return ([-1, 1] as const).map((side) =>
+    tracedPanel(parent, name, side, outline, outerX, material, thickness),
   );
 }
 
-// Built anew from the R1 reference: ram-air bridge, shoulder cowls and separate
-// under-brow projectors. No geometry from the rejected one-piece nose is reused.
+/** Closed center bridge, used where the left/right plastics actually meet. */
+function bridge(
+  parent: THREE.Object3D,
+  name: string,
+  stations: Array<{ p: PixelPoint; halfWidth: number; halfHeight: number }>,
+  material: THREE.Material,
+) {
+  const sides = 18;
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  for (const station of stations) {
+    const { y, z } = refYZ(station.p);
+    for (let i = 0; i <= sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      vertices.push(
+        Math.sin(a) * station.halfWidth,
+        y + Math.cos(a) * station.halfHeight,
+        z,
+      );
+    }
+  }
+  const stride = sides + 1;
+  for (let row = 0; row < stations.length - 1; row++) {
+    for (let i = 0; i < sides; i++) {
+      const a = row * stride + i;
+      const b = a + stride;
+      indices.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  return mesh(parent, name, geometry, material);
+}
+
+function windscreenSurface(parent: THREE.Object3D, material: THREE.Material) {
+  const rows = 12;
+  const cols = 18;
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  for (let row = 0; row <= rows; row++) {
+    const v = row / rows;
+    const root = refYZ([884, 192]);
+    const top = refYZ([943, 48]);
+    const centerY = THREE.MathUtils.lerp(root.y, top.y, v);
+    const centerZ = THREE.MathUtils.lerp(root.z, top.z, v) + 0.018 * Math.sin(v * Math.PI);
+    const half = THREE.MathUtils.lerp(0.105, 0.055, v);
+    for (let col = 0; col <= cols; col++) {
+      const u = col / cols;
+      const x = (u * 2 - 1) * half;
+      vertices.push(x, centerY - 0.012 * x * x / (half * half), centerZ + 0.02 * (x / half) ** 2);
+    }
+  }
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const a = row * (cols + 1) + col;
+      const b = a + cols + 1;
+      indices.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  return mesh(parent, 'sport-smoked-windscreen', geometry, material);
+}
+
 export function makeSportBodywork(
   parent: THREE.Object3D,
   paint: THREE.MeshStandardMaterial,
   tank?: THREE.Mesh,
 ) {
+  void tank;
   const front = new THREE.Group();
   front.name = 'sport-front-assembly';
   parent.add(front);
-  parent = front;
+
   const finish = paint.clone();
   finish.side = THREE.DoubleSide;
-  const graphite = new THREE.MeshStandardMaterial({
-    color: '#131b20',
-    roughness: 0.47,
-    metalness: 0.15,
+  finish.roughness = Math.min(0.38, finish.roughness);
+
+  const dark = new THREE.MeshStandardMaterial({
+    color: '#101518',
+    roughness: 0.5,
+    metalness: 0.16,
     side: THREE.DoubleSide,
   });
   const cavity = new THREE.MeshStandardMaterial({
-    color: '#060b0e',
-    roughness: 0.8,
+    color: '#030607',
+    roughness: 0.9,
     side: THREE.DoubleSide,
   });
-  const light = new THREE.MeshStandardMaterial({
-    color: '#d5e6f2',
-    emissive: '#7391aa',
-    emissiveIntensity: 0.32,
-    roughness: 0.18,
-  });
   const lens = new THREE.MeshPhysicalMaterial({
-    color: '#839aa9',
-    roughness: 0.12,
-    metalness: 0.4,
+    color: '#c9d6dc',
+    transparent: true,
+    opacity: 0.72,
+    roughness: 0.08,
+    metalness: 0.12,
     clearcoat: 1,
+    side: THREE.DoubleSide,
+    depthWrite: false,
   });
-  const hood: Surface = (u, v) => {
-    const x = u * 2 - 1,
-      width = 0.064 + 0.091 * Math.sin((v * Math.PI) / 2);
-    return new THREE.Vector3(
-      x * width,
-      0.824 +
-        0.176 * v +
-        0.013 * (1 - v) * Math.abs(x) -
-        0.012 * v * x * x +
-        0.012 * Math.sin(v * Math.PI),
-      -0.963 +
-        0.273 * v +
-        (0.036 - 0.017 * v) * Math.abs(x) -
-        0.026 * Math.sin(v * Math.PI),
-    );
-  };
-  panel(parent, 'sport-ram-air-bridge', hood, finish);
-  // Actual recessed mouth between the central bridge and the lower lip.
-  const mouth = [
-    vector([-0.078, 0.838, -0.935]),
-    vector([0.078, 0.838, -0.935]),
-    vector([0.055, 0.765, -0.909]),
-    vector([-0.055, 0.765, -0.909]),
+  const screen = new THREE.MeshPhysicalMaterial({
+    color: '#11171b',
+    transparent: true,
+    opacity: 0.62,
+    roughness: 0.16,
+    clearcoat: 0.8,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+
+  // Major painted silhouette. Each side is a thin moulded panel, not a solid blob.
+  const upperFairing: PixelPoint[] = [
+    [548, 290], [656, 239], [809, 193], [930, 194], [1009, 224],
+    [992, 246], [910, 232], [767, 251], [644, 292], [566, 324],
   ];
-  const vertices: number[] = [],
-    indices: number[] = [];
-  for (let ring = 0; ring < 2; ring++)
-    mouth.forEach((p) =>
-      vertices.push(
-        p.x * (1 - ring * 0.18),
-        p.y + ring * 0.007,
-        p.z + ring * 0.085,
-      ),
-    );
-  for (let i = 0; i < 4; i++) {
-    const j = (i + 1) % 4;
-    indices.push(i, j, i + 4, j, j + 4, i + 4);
-  }
-  indices.push(4, 5, 6, 4, 6, 7);
-  const intake = new THREE.BufferGeometry();
-  intake.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(vertices, 3),
-  );
-  intake.setIndex(indices);
-  intake.computeVertexNormals();
-  mesh(parent, 'sport-ram-air-duct', intake, cavity);
-  panel(
-    parent,
-    'sport-intake-lower-lip',
-    (u, v) =>
-      new THREE.Vector3(
-        (u * 2 - 1) * (0.058 + 0.005 * v),
-        0.765 - 0.013 * v,
-        -0.909 + 0.042 * v,
-      ),
-    graphite,
-  );
-  for (const side of [-1, 1]) {
-    const shoulder = curve([
-      [0.236, 0.879, -0.824],
-      [0.256, 0.925, -0.747],
-      [0.243, 0.969, -0.624],
-    ]);
-    panel(
-      parent,
-      'sport-shoulder-cowl',
-      (u, v) => {
-        const p = hood(1, v).lerp(shoulder.getPoint(v), u);
-        p.y += 0.014 * Math.sin(u * Math.PI) * Math.sin(v * Math.PI);
-        p.z -= 0.014 * Math.sin(u * Math.PI);
-        p.x *= side;
-        return p;
-      },
-      finish,
-    );
-    const center = new THREE.Vector3(side * 0.166, 0.797, -0.852);
-    const rim = (angle: number, radius: number) =>
-      new THREE.Vector3(
-        center.x + side * Math.cos(angle) * radius * 0.033,
-        center.y + Math.sin(angle) * radius * 0.028,
-        center.z + Math.cos(angle) * 0.012 + Math.sin(angle) * 0.008,
-      );
-    const cheek = new THREE.CatmullRomCurve3(
-      [
-        vector([0.239, 0.809, -0.797]),
-        vector([0.237, 0.884, -0.831]),
-        vector([0.102, 0.85, -0.923]),
-        vector([0.09, 0.752, -0.876]),
-        vector([0.222, 0.748, -0.795]),
-      ],
-      true,
-      'catmullrom',
-      0.12,
-    );
-    panel(
-      parent,
-      'sport-projector-surround',
-      (u, v) => {
-        const outer = cheek.getPoint(u);
-        outer.x *= side;
-        return rim(u * Math.PI * 2, 1).lerp(outer, v);
-      },
-      graphite,
-      0.004,
-    );
-    panel(
-      parent,
-      'sport-projector-recess',
-      (u, v) => {
-        const p = rim(u * Math.PI * 2, 1 - v * 0.13);
-        p.z += v * 0.047;
-        return p;
-      },
-      cavity,
-      0.003,
-    );
-    const housing = mesh(
-      parent,
-      'sport-projector-housing',
-      new THREE.CylinderGeometry(0.024, 0.026, 0.025, 32),
-      graphite,
-    );
-    housing.rotation.x = Math.PI / 2;
-    housing.position.copy(center).add(new THREE.Vector3(0, 0, 0.036));
-    const glass = mesh(
-      parent,
-      'sport-projector-lens',
-      new THREE.SphereGeometry(1, 32, 20),
-      lens,
-    );
-    glass.position.copy(center).add(new THREE.Vector3(0, 0, 0.015));
-    glass.scale.set(0.022, 0.021, 0.01);
-    const brow = curve([
-      [side * 0.094, 0.847, -0.926],
-      [side * 0.162, 0.862, -0.879],
-      [side * 0.235, 0.891, -0.831],
-    ]);
-    mesh(
-      parent,
-      'sport-running-light-recess',
-      new THREE.TubeGeometry(brow, 32, 0.01, 8, false),
-      graphite,
-    );
-    const lightCurve = new THREE.CatmullRomCurve3(
-      brow.getPoints(24).map((p) => p.add(new THREE.Vector3(0, 0, -0.004))),
-    );
-    mesh(
-      parent,
-      'sport-running-light',
-      new THREE.TubeGeometry(lightCurve, 32, 0.004, 8, false),
-      light,
-    );
-    // One continuous side shell shares the whole shoulder boundary. Its lower
-    // return bends beneath the motor, with a distinct moulded character ridge.
-    const topRear = curve([
-      [0.243, 0.969, -0.624],
-      [0.247, 0.921, -0.43],
-      [0.223, 0.798, -0.16],
-      [0.175, 0.64, 0.1],
-      [0.151, 0.34, 0.22],
-    ]);
-    const lower = curve([
-      [0.222, 0.748, -0.795],
-      [0.219, 0.66, -0.527],
-      [0.157, 0.237, -0.328],
-      [0.155, 0.193, -0.055],
-      [0.151, 0.207, 0.15],
-      [0.151, 0.265, 0.22],
-    ]);
-    const outerSkin: Surface = (u, v) => {
-      const top =
-        v < 0.24
-          ? shoulder.getPoint(v / 0.24)
-          : topRear.getPoint((v - 0.24) / 0.76);
-      const bottom = lower.getPoint(v);
-      const p = top.lerp(bottom, u);
-      const crown =
-        Math.sin(u * Math.PI) * (0.017 + 0.014 * Math.sin(v * Math.PI));
-      p.x += crown;
-      p.z -= 0.022 * Math.sin(u * Math.PI) * Math.sin(v * Math.PI);
-      p.x *= side;
-      return p;
-    };
-    const sideShell = panel(
-      parent,
-      'sport-continuous-side-shell',
-      (u, v) => outerSkin(u * 0.68, v),
-      finish,
-    );
-    panel(
-      parent,
-      'sport-lower-fairing-return',
-      (u, v) => outerSkin(0.68 + u * 0.32, v),
-      graphite,
-    );
-    if (tank) {
-      // Join the real tank equator to the existing fairing edge. Sampling both
-      // boundaries keeps the knee recess closed when the tank profile changes.
-      const positions = tank.geometry.getAttribute('position');
-      const fairingPositions = sideShell.geometry.getAttribute('position');
-      const tankEdge: THREE.Vector3[] = [];
-      for (let row = 0; row < positions.count / 33; row++)
-        tankEdge.push(
-          new THREE.Vector3().fromBufferAttribute(
-            positions,
-            row * 33 + (side > 0 ? 16 : 0),
-          ),
-        );
-      const flankRows = Array.from({ length: 25 }, (_, row) => {
-        const edgeRow = (0.24 + 0.76 * (0.38 + (row / 24) * 0.39)) * 24;
-        const edgeIndex = Math.floor(edgeRow);
-        const bottom = new THREE.Vector3()
-          .fromBufferAttribute(fairingPositions, edgeIndex * 25)
-          .lerp(
-            new THREE.Vector3().fromBufferAttribute(
-              fairingPositions,
-              (edgeIndex + 1) * 25,
-            ),
-            edgeRow - edgeIndex,
-          );
-        const index = Math.max(
-          1,
-          tankEdge.findIndex((p) => p.z >= bottom.z),
-        );
-        const before = tankEdge[index - 1],
-          after = tankEdge[index];
-        const top = before
-          .clone()
-          .lerp(
-            after,
-            THREE.MathUtils.clamp(
-              (bottom.z - before.z) / (after.z - before.z),
-              0,
-              1,
-            ),
-          );
-        return { top, bottom };
-      });
-      panel(
-        parent,
-        'sport-tank-fairing-flank',
-        (u, v) => {
-          const row = Math.min(23, Math.floor(v * 24)),
-            blend = v * 24 - row;
-          const top = flankRows[row].top
-            .clone()
-            .lerp(flankRows[row + 1].top, blend);
-          const bottom = flankRows[row].bottom
-            .clone()
-            .lerp(flankRows[row + 1].bottom, blend);
-          const p = top.lerp(bottom, u);
-          p.x += side * 0.003 * Math.sin(u * Math.PI);
-          return p;
-        },
-        finish,
-        0.004,
-      );
-    }
-    // A formed air scoop with a recessed throat sits within the fairing surface.
-    const scoopEdge = (u: number, v: number) =>
-      outerSkin(0.19 + u * 0.22, 0.36 + v * 0.3 + u * 0.12);
-    panel(
-      parent,
-      'sport-side-scoop',
-      (u, v) => {
-        const p = scoopEdge(u, v);
-        p.x += side * (0.003 + 0.02 * Math.sin(u * Math.PI));
-        return p;
-      },
-      graphite,
-      0.003,
-    );
-    for (const t of [0.43, 0.72]) {
-      const screw = mesh(
-        parent,
-        'sport-fairing-fastener',
-        new THREE.SphereGeometry(0.004, 10, 8),
-        graphite,
-      );
-      screw.position
-        .copy(outerSkin(0.58, t))
-        .add(new THREE.Vector3(side * 0.004, 0, 0));
-    }
-    const cockpitOuter = curve([
-      [0.243, 0.969, -0.624],
-      [0.244, 0.931, -0.466],
-      [0.218, 0.863, -0.284],
-    ]);
-    const cockpitInner = curve([
-      [0.154, 0.988, -0.671],
-      [0.158, 0.969, -0.518],
-      [0.16, 0.91, -0.3],
-    ]);
-    panel(
-      parent,
-      'sport-cockpit-rim',
-      (u, v) => {
-        const p = cockpitOuter.getPoint(v).lerp(cockpitInner.getPoint(v), u);
-        p.x *= side;
-        return p;
-      },
-      graphite,
-    );
-  }
-  // Continue the cowl's rearward tangent into a low smoked screen. Its lower
-  // edge must not kick upright against the flowing nose/shoulder silhouette.
-  const screen: Surface = (u, v) => {
-    const x = u * 2 - 1;
-    return new THREE.Vector3(
-      x * (0.12 + 0.011 * Math.sin(v * Math.PI) - 0.018 * v),
-      1.002 + 0.18 * v - 0.024 * x * x * v - 0.008 * x * x,
-      -0.708 +
-        0.3 * v +
-        (0.025 + 0.015 * v) * x * x +
-        0.025 * Math.sin(v * Math.PI),
-    );
-  };
-  panel(
-    parent,
-    'sport-smoked-windscreen',
-    screen,
-    new THREE.MeshPhysicalMaterial({
-      color: '#222a31',
-      transparent: true,
-      opacity: 0.6,
-      roughness: 0.22,
-      metalness: 0,
-      clearcoat: 0.55,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    }),
-    0.002,
-  );
-  const border = [
-    ...Array.from({ length: 25 }, (_, i) => screen(0, i / 24)),
-    ...Array.from({ length: 24 }, (_, i) => screen((i + 1) / 24, 1)),
-    ...Array.from({ length: 24 }, (_, i) => screen(1, 1 - (i + 1) / 24)),
+  const mainFairing: PixelPoint[] = [
+    [515, 327], [614, 273], [758, 233], [918, 237], [992, 255],
+    [956, 284], [882, 313], [838, 351], [805, 402], [773, 454],
+    [727, 438], [686, 395], [630, 356], [573, 349],
   ];
-  mesh(
-    parent,
-    'sport-screen-binding',
-    new THREE.TubeGeometry(
-      new THREE.CatmullRomCurve3(border),
-      72,
-      0.0025,
-      6,
-      false,
-    ),
-    graphite,
+  const lowerFairing: PixelPoint[] = [
+    [451, 520], [474, 474], [523, 437], [574, 417], [631, 409],
+    [694, 410], [748, 429], [785, 466], [811, 520],
+  ];
+  mirroredPanels(front, 'sport-upper-fairing', upperFairing, 0.205, finish);
+  mirroredPanels(front, 'sport-continuous-side-shell', mainFairing, 0.195, finish);
+  mirroredPanels(front, 'sport-lower-fairing-return', lowerFairing, 0.165, finish);
+
+  // The front cowl is a compact center volume. Side panels meet it cleanly.
+  bridge(
+    front,
+    'sport-ram-air-bridge',
+    [
+      { p: [1068, 219], halfWidth: 0.082, halfHeight: 0.055 },
+      { p: [1020, 197], halfWidth: 0.165, halfHeight: 0.092 },
+      { p: [948, 152], halfWidth: 0.182, halfHeight: 0.12 },
+      { p: [884, 178], halfWidth: 0.17, halfHeight: 0.105 },
+    ],
+    finish,
   );
-  for (const side of [-1, 1])
-    for (const t of [0.06, 0.45]) {
-      const bolt = mesh(
-        parent,
-        'sport-screen-fastener',
-        new THREE.SphereGeometry(0.004, 10, 8),
-        graphite,
-      );
-      bolt.position
-        .copy(screen(side < 0 ? 0.015 : 0.985, t))
-        .add(new THREE.Vector3(0, 0, -0.003));
-    }
-  // Keep the compact cowl's overhang short relative to the front wheel. Shape
-  // the complete assembled nose together, including recessed optics and
-  // screen, so shared panel edges cannot separate when setting its overhang.
-  for (const child of front.children) {
-    if (!(child instanceof THREE.Mesh)) continue;
-    child.updateMatrix();
-    child.geometry.applyMatrix4(child.matrix);
-    child.position.set(0, 0, 0);
-    child.rotation.set(0, 0, 0);
-    child.scale.set(1, 1, 1);
-    const positions = child.geometry.getAttribute('position');
-    for (let i = 0; i < positions.count; i++) {
-      const z = positions.getZ(i);
-      if (z < -0.624) positions.setZ(i, -0.624 + (z + 0.624) * 0.7);
-    }
-    child.geometry.computeVertexNormals();
+
+  // Sharp Yamaha-style headlamp pockets, no round cartoon eyes.
+  const lampPocket: PixelPoint[] = [
+    [884, 193], [936, 166], [1005, 185], [1042, 216], [1011, 221],
+    [955, 208], [896, 213],
+  ];
+  const lampLens: PixelPoint[] = [
+    [946, 181], [999, 190], [1028, 211], [1000, 208], [962, 198],
+  ];
+  mirroredPanels(front, 'sport-projector-surround', lampPocket, 0.184, dark, 0.004);
+  mirroredPanels(front, 'sport-projector-lens', lampLens, 0.188, lens, 0.003);
+
+  // Center ram-air mouth is truly recessed.
+  const mouthOuter: PixelPoint[] = [[1044, 211], [1070, 219], [1062, 239], [1035, 230]];
+  const mouthInner: PixelPoint[] = [[1048, 216], [1064, 221], [1059, 232], [1041, 228]];
+  mirroredPanels(front, 'sport-intake-lower-lip', mouthOuter, 0.07, dark, 0.004);
+  mirroredPanels(front, 'sport-ram-air-duct', mouthInner, 0.068, cavity, 0.012);
+
+  // Real side vents copied from the reference silhouette.
+  mirroredPanels(
+    front,
+    'sport-side-scoop',
+    [[651, 292], [728, 260], [850, 235], [911, 238], [837, 260], [755, 294]],
+    0.198,
+    cavity,
+    0.006,
+  );
+  mirroredPanels(
+    front,
+    'sport-lower-side-vent',
+    [[752, 350], [807, 321], [853, 316], [818, 351], [789, 378]],
+    0.194,
+    cavity,
+    0.006,
+  );
+
+  windscreenSurface(front, screen);
+
+  // Screen binding only; deliberately no mirrors or mirror stalks.
+  for (const side of [-1, 1] as const) {
+    const points = [
+      new THREE.Vector3(side * 0.105, refYZ([884, 192]).y, refYZ([884, 192]).z),
+      new THREE.Vector3(side * 0.08, refYZ([910, 116]).y, refYZ([910, 116]).z),
+      new THREE.Vector3(side * 0.055, refYZ([943, 48]).y, refYZ([943, 48]).z),
+    ];
+    mesh(
+      front,
+      'sport-screen-binding',
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 18, 0.0025, 6),
+      dark,
+    );
   }
 }
