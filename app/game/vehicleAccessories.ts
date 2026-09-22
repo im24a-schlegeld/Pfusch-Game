@@ -275,7 +275,8 @@ export function addCleanCrossbody(torso: THREE.Group) {
   pivot.name = 'crossbody-hanging-pivot';
   // At rest the pouch lies against the lower back. Its upper side rings form
   // the hinge; gravity can lift the bottom away from the back during a wheelie.
-  const mount = new THREE.Vector3(0.07, 0.29, 0.183);
+  // Bottom = .180 - .088 - .114*.98 = -.01972: the upper rear hem seam.
+  const mount = new THREE.Vector3(0.07, 0.18, 0.183);
   pivot.position.copy(mount);
   group.add(pivot);
   const bag = new THREE.Group();

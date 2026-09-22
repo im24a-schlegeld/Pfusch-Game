@@ -53,8 +53,31 @@ describe('crossbody cloth attachment', () => {
           pouch.getWorldPosition(new Vector3()),
         );
         expect(Math.abs(center.x)).toBeLessThan(0.18);
-        expect(center.y).toBeGreaterThan(0.12);
-        expect(center.y).toBeLessThan(0.3);
+        expect(center.y).toBeGreaterThan(0.07);
+        expect(center.y).toBeLessThan(0.14);
+        const hem = bike.rider.getObjectByName(
+          'garment-bottom-hem-stitch',
+        ) as Mesh;
+        const hemPositions = hem.geometry.getAttribute('position');
+        let hemTop = -Infinity;
+        for (let i = 0; i < hemPositions.count; i++)
+          if (
+            Math.abs(hemPositions.getX(i) - center.x) < 0.015 &&
+            hemPositions.getZ(i) > 0.05
+          )
+            hemTop = Math.max(hemTop, hemPositions.getY(i));
+        const body = pouch.getObjectByName('crossbody-pouch') as Mesh;
+        const bodyPositions = body.geometry.getAttribute('position');
+        let bottom = Infinity;
+        for (let i = 0; i < bodyPositions.count; i++) {
+          point
+            .fromBufferAttribute(bodyPositions, i)
+            .applyMatrix4(body.matrixWorld);
+          garment.parent!.worldToLocal(point);
+          bottom = Math.min(bottom, point.y);
+        }
+        expect(bottom).toBeGreaterThan(hemTop - 0.005);
+        expect(bottom).toBeLessThan(hemTop + 0.01);
         expect(center.z).toBeGreaterThan(0.15);
         expect(center.z).toBeLessThan(0.23);
         expect(

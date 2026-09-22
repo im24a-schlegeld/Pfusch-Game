@@ -28,6 +28,7 @@ import { applyRibbedTrim } from './garmentTrim';
 import {
   SPORT_GEOMETRY,
   sportTireGeometry,
+  sportBoxBeamGeometry,
   roadTireGeometry,
 } from './sportGeometry';
 import {
@@ -1760,7 +1761,7 @@ export function makeBike(player: Player, products: Product[]) {
         [0.12, 0.1, 0.02, 0.831],
         [0.27, 0.135, 0.025, 0.837],
         [0.39, 0.132, 0.025, 0.854],
-        [0.47, 0.098, 0.023, 0.886],
+        [0.47, 0.113, 0.021, 0.868],
       ],
       seat,
       'z',
@@ -1889,19 +1890,12 @@ export function makeBike(player: Player, products: Product[]) {
       return nearest;
     };
     for (const s of [-1, 1]) {
-      const subframe = tube(
-        body,
-        [
-          [s * 0.16, 0.56, 0.15],
-          [s * 0.108, 0.737, 0.39],
-          [s * 0.066, 0.82, 0.58],
-          [s * 0.02, 0.919, 0.765],
-        ],
-        [0.023, 0.021, 0.019, 0.016],
-        dark,
-        24,
-        12,
-      );
+      const subframe = mesh(body, sportBoxBeamGeometry([
+        [s * 0.176, 0.734, 0.065, 0.016, 0.021],
+        [s * 0.105, 0.740, 0.38, 0.018, 0.019],
+        [s * 0.054, 0.884, 0.59, 0.020, 0.020],
+        [s * 0.030, 0.964, 0.78, 0.015, 0.014],
+      ]), dark);
       subframe.name = 'sport-rear-subframe';
       const underside = tailContact(
         tailShell,
@@ -1923,20 +1917,14 @@ export function makeBike(player: Player, products: Product[]) {
         0.005,
         dark,
       ).name = 'sport-tail-mount';
-      const swingarm = loft(
-        body,
-        [
-          [0.14, 0.032, 0.058, 0.51],
-          [0.38, 0.035, 0.048, 0.43],
-          [rear, 0.027, 0.03, rearRadius],
-        ],
-        dark,
-        'z',
-        16,
-      );
-      swingarm.geometry.scale(0.84, 1, 1);
-      swingarm.position.x =
-        s < 0 ? CHAIN_DRIVE.leftSwingarmX : CHAIN_DRIVE.rightSwingarmX;
+      const armX = s < 0 ? CHAIN_DRIVE.leftSwingarmX : CHAIN_DRIVE.rightSwingarmX;
+      const swingarm = mesh(body, sportBoxBeamGeometry([
+        [armX, 0.51, 0.14, 0.027, 0.058],
+        [armX, 0.519, 0.27, 0.030, 0.073],
+        [armX, 0.477, 0.43, 0.029, 0.075],
+        [armX, 0.394, 0.57, 0.026, 0.054],
+        [armX, rearRadius, rear, 0.023, 0.031],
+      ]), material('#30383c', 0.62, 0.42));
       swingarm.name = 'box-section-swingarm';
 
       rod(
@@ -1967,7 +1955,7 @@ export function makeBike(player: Player, products: Product[]) {
     );
   } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
-  const exhaustX = moped ? 0.15 : sport ? 0.215 : 0.130;
+  const exhaustX = moped ? 0.15 : sport ? 0.272 : 0.130;
   const exhaustY = moped ? 0.22 : sport ? 0.31 : 0.754;
   const mufflerStartZ = moped ? 0.38 : sport ? 0.43 : 0.415;
   const mufflerEndZ = moped ? 0.76 : sport ? 0.82 : 0.785;
@@ -2111,7 +2099,7 @@ export function makeBike(player: Player, products: Product[]) {
     rod(
       body,
       // Sport silencer support shares the lower rearset carrier, not the tail.
-      [moped ? 0.105 : 0.205, moped ? 0.337 : 0.47, moped ? 0.55 : 0.4],
+      [moped ? 0.105 : 0.215, moped ? 0.337 : 0.47, moped ? 0.55 : 0.4],
       [exhaustX, mufflerY(moped ? 0.591 : 0.691), moped ? 0.591 : 0.691],
       moped ? 0.009 : 0.012,
       dark,
@@ -2598,6 +2586,28 @@ function makeRider(
     pants,
   );
   trouserSeat.name = 'continuous-trouser-seat';
+  const waistPositions = trouserSeat.geometry.getAttribute('position');
+  const waistRest = Float32Array.from(waistPositions.array as ArrayLike<number>);
+  const waistPoint = new THREE.Vector3(), waistBent = new THREE.Vector3(), waistHip = V(pose.hip);
+  const waistRotation = new THREE.Quaternion(), waistEuler = new THREE.Euler();
+  let waistLean = NaN, waistRoll = NaN;
+  const followGarmentWaist = (lean: number, roll: number) => {
+    if (lean === waistLean && roll === waistRoll) return;
+    waistLean = lean; waistRoll = roll;
+    waistRotation.setFromEuler(waistEuler.set(-lean, 0, roll));
+    for (let i = 0; i < waistPositions.count; i++) {
+      waistPoint.fromArray(waistRest, i * 3).sub(waistHip);
+      // The hidden waistband follows the shirt. The lower seated trousers
+      // keep their original shape and the fixed-length legs are untouched.
+      const blend = THREE.MathUtils.smoothstep(waistPoint.y, -.065, .035);
+      waistBent.copy(waistPoint).applyQuaternion(waistRotation);
+      waistPoint.lerp(waistBent, blend).add(waistHip);
+      waistPositions.setXYZ(i, waistPoint.x, waistPoint.y, waistPoint.z);
+    }
+    waistPositions.needsUpdate = true;
+    trouserSeat.geometry.computeVertexNormals();
+  };
+  followGarmentWaist(pose.torsoLean, 0);
 
   for (const side of [-1, 1]) {
     const shoulder: Point = [
@@ -3194,6 +3204,7 @@ function makeRider(
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);
+    followGarmentWaist(current.lean, current.roll);
     pelvis.position.set(
       current.hip[0] - pose.hip[0],
       current.hip[1] - pose.hip[1],

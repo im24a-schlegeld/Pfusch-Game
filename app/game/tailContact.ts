@@ -41,6 +41,6 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   ),
   scooter: contact([0.065, 0.304, 0.9705], 0.64, 0.231, 'plastic'),
   '450': contact([0, 1.068, 1.045], 0.76, 0.327495, 'plastic'),
-  '701': contact([0, 1.016, 0.885], 0.685, 0.3204, 'plastic'),
+  '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'plastic'),
 };
 export const TAIL_RECOVERY_ANGLE = 0.12;

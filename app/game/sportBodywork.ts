@@ -49,6 +49,12 @@ function finishes(
       metalness: 0.18,
       side: THREE.DoubleSide,
     }),
+    frame: new THREE.MeshStandardMaterial({
+      color: '#343d43',
+      roughness: 0.38,
+      metalness: 0.58,
+      side: THREE.DoubleSide,
+    }),
     cavity: new THREE.MeshStandardMaterial({
       color: '#06090c',
       roughness: 0.94,

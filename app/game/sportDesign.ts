@@ -10,6 +10,7 @@ export type SportSurface = (u: number, v: number) => SportPoint;
 export type SportFinish =
   | 'paint'
   | 'carbon'
+  | 'frame'
   | 'cavity'
   | 'alloy'
   | 'titanium'
@@ -269,10 +270,18 @@ const TANK: readonly Station[] = [
 ];
 const TAIL: readonly Station[] = [
   [0.38, 0.137, 0.039, 0.825],
-  [0.52, 0.158, 0.043, 0.888],
-  [0.66, 0.139, 0.039, 0.952],
-  [0.8, 0.082, 0.024, 0.992],
-  [0.885, 0.024, 0.01, 1.006],
+  [0.5, 0.153, 0.049, 0.897],
+  [0.6, 0.154, 0.043, 0.978],
+  [0.72, 0.125, 0.034, 1.013],
+  [0.82, 0.073, 0.021, 1.035],
+  [0.9, 0.022, 0.009, 1.041],
+];
+const PILLION: readonly Station[] = [
+  [0.565, 0.075, 0.009, 1.0],
+  [0.585, 0.103, 0.026, 1.018],
+  [0.65, 0.115, 0.028, 1.046],
+  [0.74, 0.098, 0.027, 1.065],
+  [0.8, 0.052, 0.009, 1.065],
 ];
 
 function stationAt(stations: readonly Station[], t: number): Station {
@@ -825,11 +834,12 @@ export function createSportDesign(): SportDesign {
       );
     }
 
-    // Tank/fairing join follows the actual tank equator. The shell stays closed
-    // when viewed from above; the upper edge ends before the rider seat.
+    // The exposed upper deck belongs to the Deltabox, not the painted fairing.
+    // Its tank edge follows the real tank equator so no blue bridge hides the
+    // diagonal frame and no artificial gap opens beneath the tank.
     part(
-      `sport-tank-fairing-flank-${s}`,
-      'paint',
+      `sport-frame-upper-deck-${s}`,
+      'frame',
       mirrored((u, v) => {
         const [top, bottom] = tankJoin(v);
         const p = mix(top, bottom, u);
@@ -898,21 +908,25 @@ export function createSportDesign(): SportDesign {
     );
     part(
       `sport-deltabox-beam-${s}`,
-      'carbon',
+      'frame',
       mirrored((u, v) => {
         const upperEdge = spline(
           [
-            [0.106, 1.008, -0.427],
-            [0.175, 0.837, -0.1],
-            [0.154, 0.598, 0.165],
+            [0.111, 1.0, -0.427],
+            [0.181, 0.923, -0.205],
+            [0.202, 0.802, 0.03],
+            [0.177, 0.614, 0.174],
+            [0.17, 0.517, 0.19],
           ],
           v,
         );
         const lowerEdge = spline(
           [
-            [0.121, 0.933, -0.416],
-            [0.183, 0.743, -0.1],
-            [0.154, 0.514, 0.165],
+            [0.127, 0.915, -0.416],
+            [0.192, 0.819, -0.205],
+            [0.209, 0.678, 0.03],
+            [0.18, 0.513, 0.174],
+            [0.17, 0.47, 0.19],
           ],
           v,
         );
@@ -921,7 +935,7 @@ export function createSportDesign(): SportDesign {
       }),
       outward,
       8,
-      20,
+      30,
       0.035,
     );
   }
@@ -1029,24 +1043,9 @@ export function createSportDesign(): SportDesign {
     );
   }
 
-  // Separate compact pillion pad and a finished undertray on the raised tail.
-  part(
-    'sport-pillion-seat',
-    'rubber',
-    (u, v) => {
-      const [z, w, h, y] = tailAt(lerp(0.595, 0.785, v));
-      const x = (u * 2 - 1) * 0.75;
-      return [
-        x * w,
-        y + h * Math.max(0, 1 - x * x) ** 0.3 + 0.007 + 0.01 * Math.sin(PI * v),
-        z,
-      ];
-    },
-    [0, 1, 0],
-    18,
-    18,
-    0.007,
-  );
+  // A closed, thick pillion saddle sits on its own raised step. Its front
+  // return is visible above the lower rider saddle even from a side view.
+  meshPart('sport-pillion-seat', 'rubber', bodyShell(PILLION, tailSection));
   part(
     'sport-tail-undertray',
     'carbon',
@@ -1073,7 +1072,7 @@ export function createSportDesign(): SportDesign {
       `sport-tail-side-scallop-${side}`,
       'carbon',
       (u, v) => {
-        const [z, w, h, y] = tailAt(lerp(0.505, 0.84, v));
+        const [z, w, h, y] = tailAt(lerp(0.505, 0.862, v));
         const taper = Math.sin(PI * v) ** 0.6;
         const a = (PI / 2 + (0.1 + 0.62 * u) * taper) / (PI * 2);
         const [xx, yy] = tailSection(a);
@@ -1088,7 +1087,7 @@ export function createSportDesign(): SportDesign {
       `sport-tail-light-${side}`,
       'tailLight',
       (u, v) => {
-        const [z, w, h, y] = tailAt(lerp(0.812, 0.868, v));
+        const [z, w, h, y] = tailAt(lerp(0.828, 0.887, v));
         const [xx, yy] = tailSection((PI - (0.13 + u * 0.69)) / (PI * 2));
         return [side * xx * w, y + yy * h - 0.003, z];
       },
