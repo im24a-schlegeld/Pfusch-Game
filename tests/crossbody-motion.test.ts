@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Box3, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
+import { Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
@@ -25,6 +25,8 @@ describe('crossbody cloth attachment', () => {
     const bike = makeBike(player, products);
     const pivot = bike.rider.getObjectByName('crossbody-hanging-pivot')!;
     const pouch = bike.rider.getObjectByName('carried-crossbody-bag')!;
+    const rings = pouch.getObjectsByProperty('name', 'crossbody-strap-ring');
+    expect(rings).toHaveLength(2);
     const strap = bike.rider.getObjectByName('crossbody-flat-strap') as Mesh;
     const garment = bike.rider.getObjectByName('tailored-garment') as Mesh;
     const sleeves = bike.rider.getObjectsByProperty(
@@ -47,24 +49,30 @@ describe('crossbody cloth attachment', () => {
       bike.animateAccessories({ reducedMotion: true }, 1 / 60);
       bike.root.updateMatrixWorld(true);
       if (pitch === 0) {
-        const hip = garment.parent!.getWorldPosition(new Vector3());
-        const center = pouch.getWorldPosition(new Vector3());
-        const bounds = new Box3().setFromObject(pouch, true);
-        expect(center.y).toBeLessThan(hip.y - 0.04);
-        expect(bounds.max.y).toBeLessThan(hip.y + 0.09);
-        expect(bounds.min.y).toBeLessThan(hip.y - 0.15);
+        const center = garment.parent!.worldToLocal(
+          pouch.getWorldPosition(new Vector3()),
+        );
+        expect(Math.abs(center.x)).toBeLessThan(0.18);
+        expect(center.y).toBeGreaterThan(0.12);
+        expect(center.y).toBeLessThan(0.3);
+        expect(center.z).toBeGreaterThan(0.15);
+        expect(center.z).toBeLessThan(0.23);
+        expect(
+          new Vector3(0, -1, 0).applyQuaternion(pivot.quaternion).z,
+        ).toBeCloseTo(0, 7);
       }
       const down = new Vector3(0, -1, 0).transformDirection(pivot.matrixWorld);
-      expect(down.distanceTo(new Vector3(0, -1, 0))).toBeLessThan(1e-7);
-      for (const [row, lug] of [
-        [0, [-0.06, 0.09, -0.006]],
-        [112, [0.056, 0.088, 0.006]],
+      if (pitch > 0)
+        expect(down.distanceTo(new Vector3(0, -1, 0))).toBeLessThan(1e-7);
+      for (const [row, ring] of [
+        [0, rings[0]],
+        [112, rings[1]],
       ] as const) {
         const center = new Vector3();
         for (let i = 0; i < 4; i++)
           center.add(point.fromBufferAttribute(position, row * 4 + i));
         center.multiplyScalar(0.25).applyMatrix4(strap.matrixWorld);
-        const attachment = new Vector3(...lug).applyMatrix4(pouch.matrixWorld);
+        const attachment = ring.getWorldPosition(new Vector3());
         expect(center.distanceTo(attachment)).toBeLessThan(0.001);
       }
       for (let row = 8; row < 106; row += 5)

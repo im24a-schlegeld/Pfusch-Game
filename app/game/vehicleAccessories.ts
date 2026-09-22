@@ -273,15 +273,14 @@ export function addCleanCrossbody(torso: THREE.Group) {
   torso.add(group);
   const pivot = new THREE.Group();
   pivot.name = 'crossbody-hanging-pivot';
-  // The strap descends to the outer hip. Its attachment is below the hem,
-  // leaving the pouch free to hang beneath its lugs instead of at the armpit.
-  const mount = new THREE.Vector3(0.3, -0.055, 0.16);
+  // At rest the pouch lies against the lower back. Its upper side rings form
+  // the hinge; gravity can lift the bottom away from the back during a wheelie.
+  const mount = new THREE.Vector3(0.07, 0.29, 0.183);
   pivot.position.copy(mount);
   group.add(pivot);
   const bag = new THREE.Group();
   bag.name = 'carried-crossbody-bag';
-  bag.position.set(0, -0.102, 0);
-  bag.rotation.set(0.08, 0.06, -0.12);
+  bag.position.set(0, -0.088, 0);
   pivot.add(bag);
   const body = put(bag, pouchGeometry(), cloth, 'crossbody-pouch');
   body.scale.set(0.94, 0.98, 0.86);
@@ -295,8 +294,8 @@ export function addCleanCrossbody(torso: THREE.Group) {
   logo.position.set(0, -0.004, 0.03);
   logo.renderOrder = 2;
   const lugs: Point[] = [
-    [-0.06, 0.09, -0.006],
-    [0.056, 0.088, 0.006],
+    [0.084, 0.088, 0],
+    [-0.084, 0.088, 0],
   ];
   for (const p of lugs) {
     const lug = put(
@@ -306,9 +305,21 @@ export function addCleanCrossbody(torso: THREE.Group) {
       'crossbody-strap-ring',
     );
     lug.position.set(...p);
-    lug.rotation.y = Math.PI / 2;
   }
   const motion = createCarriedCapMotion(pivot);
+  const hangingDown = new THREE.Vector3(),
+    down = new THREE.Vector3(0, -1, 0);
+  const backContact = () => {
+    hangingDown.copy(down).applyQuaternion(pivot.quaternion);
+    // Leaning forward presses the bag onto the back, instead of allowing the
+    // gravity solver to rotate it through the rider. Away from the back it is
+    // the unmodified cap pendulum, including lateral and landing impulses.
+    if (hangingDown.z < 0) {
+      hangingDown.z = 0;
+      pivot.quaternion.setFromUnitVectors(down, hangingDown.normalize());
+    }
+  };
+  backContact();
   const clear = garmentClearance(torso);
   const point = new THREE.Vector3(),
     outside = mount.clone().setY(0).normalize();
@@ -345,14 +356,15 @@ export function addCleanCrossbody(torso: THREE.Group) {
     strapGeometry(
       [
         left,
-        [0.218, 0.145, -0.08],
+        [0.232, 0.265, 0.03],
+        [0.17, 0.29, -0.112],
         [0.004, 0.328, -0.154],
         [-0.108, 0.442, -0.154],
         [-0.145, 0.508, -0.112],
         [-0.146, 0.556, -0.034],
         [-0.142, 0.548, 0.072],
         [-0.078, 0.466, 0.154],
-        [0.075, 0.285, 0.176],
+        [-0.045, 0.36, 0.176],
         right,
       ],
       0.022,
@@ -424,6 +436,7 @@ export function addCleanCrossbody(torso: THREE.Group) {
     update(input: CarriedCapMotionInput, dt: number) {
       if (!Number.isFinite(dt) || dt <= 0 || input.paused) return;
       motion.update(input, dt);
+      backContact();
       updateBag();
       leftDelta
         .set(...lugs[0])
