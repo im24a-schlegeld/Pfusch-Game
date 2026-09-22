@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { rendererSessions } from './rendererSession';
 import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
-import { box, disposeUnique, makeTraffic } from './models';
+import { disposeUnique, makeTrafficVariants } from './models';
 import { makeBike } from './vehicle';
 import { ROAD_EVENT_KINDS } from './roadEvents';
 import { makeWorldView } from './worldView';
@@ -73,22 +73,20 @@ export default function SceneView({
   crashCallback.current = onCrashComplete;
   useEffect(() => {
     setRenderReady(false);
+    setError('');
     const { player, products } = appearance.current;
     const el = host.current;
     if (!el) return;
-    let renderer: THREE.WebGLRenderer;
+    let session: ReturnType<typeof rendererSessions.acquire>;
     try {
-      renderer = new THREE.WebGLRenderer({
-        antialias: player.settings.quality !== 'low',
-        alpha: false,
-        powerPreference: 'high-performance',
-      });
+      session = rendererSessions.acquire(player.settings.quality !== 'low');
     } catch {
       setError(
         '3D-Grafik konnte nicht gestartet werden. Aktiviere Hardwarebeschleunigung oder nutze einen anderen Browser.',
       );
       return;
     }
+    const { renderer, environment } = session;
     const low = player.settings.quality === 'low';
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, low ? 1 : 1.6));
     renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#323232');
@@ -99,13 +97,8 @@ export default function SceneView({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    const studio = new RoomEnvironment();
-    const environmentGenerator = new THREE.PMREMGenerator(renderer);
-    const environment = environmentGenerator.fromScene(studio, 0.04);
     scene.environment = environment.texture;
     scene.environmentIntensity = 0.7;
-    studio.dispose();
-    environmentGenerator.dispose();
     scene.fog = new THREE.Fog(
       mode === 'ride' ? DAY_SKY : '#323232',
       mode === 'ride' ? 55 : 16,
@@ -185,8 +178,9 @@ export default function SceneView({
         traffic.push(group);
       }
       for (const kind of [...TRAFFIC_KINDS, ...ROAD_EVENT_KINDS])
-        for (let color = 0; color < 4; color++)
-          templates.set(`${kind}:${color}`, makeTraffic(kind, color));
+        makeTrafficVariants(kind).forEach((model, color) =>
+          templates.set(`${kind}:${color}`, model),
+        );
     } else {
       scene.background = new THREE.Color('#323232');
       scene.fog = null;
@@ -564,6 +558,7 @@ export default function SceneView({
         bike.animateAccessories({ reducedMotion: true }, dt);
       }
       renderer.render(scene, camera);
+      session.afterRender();
       if (crashComplete && !crashNotified) {
         crashNotified = true;
         crashCallback.current?.();
@@ -592,7 +587,19 @@ export default function SceneView({
       signs?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
+      const bikeMaterials = new Set<THREE.Material>();
+      bike.root.traverse((o) => {
+        if (o instanceof THREE.Mesh)
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach(
+            (m) => bikeMaterials.add(m),
+          );
+      });
       scene.traverse((o) => {
+        if (
+          o instanceof THREE.DirectionalLight ||
+          o instanceof THREE.SpotLight ||
+          o instanceof THREE.PointLight
+        ) o.shadow.dispose();
         if (o instanceof THREE.Mesh) {
           geometries.add(o.geometry);
           if (Array.isArray(o.material)) o.material.forEach((m) => mats.add(m));
@@ -610,11 +617,12 @@ export default function SceneView({
         }),
       );
       geometries.forEach((g) => g.dispose());
-      mats.forEach((m) => m.dispose());
-      renderer.dispose();
-      environment.dispose();
-      renderer.forceContextLoss();
-      renderer.domElement.remove();
+      mats.forEach((m) => {
+        if (!bikeMaterials.has(m)) m.dispose();
+      });
+      // Only per-bike materials survive briefly, keeping their shader references.
+      // Scene geometry, particles, traffic and shadow maps are released now.
+      session.release(() => bikeMaterials.forEach((m) => m.dispose()));
     };
   }, [mode, engine, quality]);
   return (

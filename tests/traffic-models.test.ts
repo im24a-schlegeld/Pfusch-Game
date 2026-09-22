@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Box3, Group, Mesh, Raycaster, Vector3 } from 'three';
+import { Box3, Group, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
+import { makeTrafficVariants } from '../app/game/models';
 import { animateTraffic, makeDetailedTraffic } from '../app/game/trafficModels';
 import {
   TRAFFIC_KINDS,
@@ -9,6 +10,33 @@ import {
 } from '../app/game/trafficDomain';
 
 describe('pooled traffic geometry', () => {
+  it('shares geometry across colors while preserving the existing paints and wheel poses', () => {
+    for (const kind of TRAFFIC_KINDS) {
+      const variants = makeTrafficVariants(kind);
+      const meshes = (group: Group) => {
+        const result: Mesh[] = [];
+        group.traverse((object) => { if (object instanceof Mesh) result.push(object); });
+        return result;
+      };
+      const base = meshes(variants[0]);
+      variants.forEach((variant, color) => {
+        const expected = meshes(makeDetailedTraffic(kind, color));
+        meshes(variant).forEach((mesh, i) => {
+          expect(mesh.geometry).toBe(base[i].geometry);
+          expect(mesh.position.toArray()).toEqual(expected[i].position.toArray());
+          expect(mesh.quaternion.toArray()).toEqual(expected[i].quaternion.toArray());
+          expect((mesh.material as MeshStandardMaterial).color.getHex()).toBe(
+            (expected[i].material as MeshStandardMaterial).color.getHex(),
+          );
+        });
+      });
+      const entry = new Group(); entry.add(variants[1].clone(true));
+      animateTraffic(entry, 6, .1);
+      expect(variants.every(v => v.children.filter(o => o.name === 'traffic-wheel')
+        .every(wheel => wheel.rotation.x === 0))).toBe(true);
+    }
+    expect(new Set(makeTrafficVariants('wet')).size).toBe(1);
+  });
   it.each(TRAFFIC_KINDS)(
     'fits the shared visible/contact envelope for %s',
     (kind) => {

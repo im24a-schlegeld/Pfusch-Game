@@ -394,7 +394,7 @@ export function addCleanCrossbody(torso: THREE.Group) {
   pivot.add(bag);
   const body = put(bag, pouchGeometry(), cloth, 'crossbody-pouch');
   body.scale.set(0.94, 0.98, 0.86);
-  const logoMat = headerBagMaterial('/branding/pfusch-logo.png');
+  const logoMat = headerBagMaterial('/branding/pfusch-logo.webp');
   const logo = put(
     bag,
     new THREE.PlaneGeometry(0.118, 0.058),

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { isRoadEvent, ROAD_EVENTS } from './roadEvents';
-import { makeDetailedTraffic } from './trafficModels';
+import { cloneTrafficColor, makeDetailedTraffic } from './trafficModels';
 
 const materials = new Map<string, THREE.MeshStandardMaterial>();
 function mat(color: string, metal = 0, rough = 0.75) {
@@ -191,6 +191,13 @@ export function makeTraffic(kind: string, colorIndex: number) {
     return group;
   }
   return group;
+}
+/** Build each shape once; colors never change a vehicle's geometry or contacts. */
+export function makeTrafficVariants(kind: string): readonly THREE.Group[] {
+  const base = makeTraffic(kind, 0);
+  return kind === 'car' || kind === 'van'
+    ? [base, ...[1, 2, 3].map((color) => cloneTrafficColor(base, color))]
+    : [base, base, base, base];
 }
 export function sign(text: string) {
   const mesh = textPlane(text, 6, 1.5, '#e9ede1', '#272d2f');

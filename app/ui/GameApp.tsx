@@ -23,7 +23,7 @@ import { BIKES, DAILY_CHALLENGES } from '../domain/config';
 import { refreshDaily } from '../domain/progression';
 import { createServices, type Services } from '../services';
 import { GameAudio } from '../game/audio';
-import { Coin, Preview, XpBar, fmt, gameText } from './shared';
+import { Coin, Preview, XpBar, fmt, gameText, preloadScene } from './shared';
 import Ride from './Ride';
 import Garage from './Garage';
 import {
@@ -65,6 +65,7 @@ export default function GameApp() {
   );
   useEffect(() => {
     let alive = true;
+    void preloadScene();
     void Promise.all([
       services.auth.getUser(),
       services.players.load(),
@@ -221,7 +222,7 @@ export default function GameApp() {
     <div className="app-shell" data-screen={screen}>
       <header className="topbar">
         <button className="brand" aria-label="PFUSCH Hauptmenü" onClick={back}>
-          <img className="brand-logo" src="/branding/pfusch-logo.png" alt="Pfusch" />
+          <img className="brand-logo" src="/branding/pfusch-logo.webp" alt="Pfusch" />
           <span className="brand-sub">STREET RUN</span>
         </button>
         <span className="top-status">

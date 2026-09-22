@@ -14,6 +14,7 @@ import {
 import { BIKES, REWARDS } from '../domain/config';
 import { isHelmet, isHelmetColor } from '../domain/helmet';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
+import catalog from '../../public/catalog/products.json';
 
 export interface AuthService {
   getUser(): Promise<{ id: string; kind: 'guest' | 'customer' }>;
@@ -207,13 +208,11 @@ export class LocalPlayerRepository implements PlayerRepository {
 }
 export class LocalProductProvider implements ProductProvider {
   async list() {
-    const response = await fetch('/catalog/products.json');
-    if (!response.ok)
-      throw new Error('Der Kleidungskatalog konnte nicht geladen werden. Bitte neu laden.');
-    const data: unknown = await response.json();
-    if (!Array.isArray(data) || data.length === 0)
+    // The appearance palette already bundles this same central snapshot.
+    // Reuse it instead of delaying startup with a second copy over the network.
+    if (!Array.isArray(catalog) || catalog.length === 0)
       throw new Error('Der Kleidungskatalog ist leer.');
-    return shadeClothingCatalog(data as Product[]);
+    return shadeClothingCatalog(catalog as Product[]);
   }
 }
 export class MockRewardService implements RewardService {

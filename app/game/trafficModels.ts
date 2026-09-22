@@ -12,6 +12,30 @@ type Ring = readonly [
 type Material = THREE.MeshStandardMaterial;
 const PAINTS = ['#657780', '#c3c6bc', '#934d40', '#677b63'];
 
+/** Color variants reuse the same finished geometry, wheels and shadow texture. */
+export function cloneTrafficColor(template: THREE.Group, colorIndex: number) {
+  const variant = template.clone(true);
+  const paints = new Map<Material, Material>();
+  variant.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const recolor = (material: THREE.Material) => {
+      if (!(material instanceof THREE.MeshStandardMaterial) || material.name !== 'paint')
+        return material;
+      let paint = paints.get(material);
+      if (!paint) {
+        paint = material.clone();
+        paint.color.set(PAINTS[colorIndex % PAINTS.length]);
+        paints.set(material, paint);
+      }
+      return paint;
+    };
+    object.material = Array.isArray(object.material)
+      ? object.material.map(recolor)
+      : recolor(object.material);
+  });
+  return variant;
+}
+
 /** The profiles use the same metres as the domain collision/ramp contract. */
 function loft(rings: readonly Ring[]) {
   const positions: number[] = [],
