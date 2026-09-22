@@ -804,6 +804,7 @@ function addGoggles(
   parent: THREE.Object3D,
   trim: THREE.MeshStandardMaterial,
   foam: THREE.MeshStandardMaterial,
+  visorColor: string,
 ) {
   const points: Point[] = [],
     faces: number[] = [];
@@ -829,7 +830,7 @@ function addGoggles(
       faces.push(a, b, a + 1, a + 1, b, b + 1);
     }
   const lens = new THREE.MeshPhysicalMaterial({
-    color: '#2697cc',
+    color: visorColor,
     metalness: 0.72,
     roughness: 0.14,
     clearcoat: 1,
@@ -974,7 +975,7 @@ function addStrap(parent: HelmetMesh) {
 /** Drop-in replacement: the caller still owns center, uniform scale 1.065,
  * head rotation and animation. Goggles and rider anatomy are unchanged.
  * No textures, DOM, external models or additional imports are required. */
-export function createMotocrossHelmet(color: string): HelmetMesh {
+export function createMotocrossHelmet(color: string, visorColor = '#34454d'): HelmetMesh {
   const shell = material(color, 0.08, 0.58);
   const foam = material('#13191b', 0, 0.94);
   const trim = material('#252e32', 0.25, 0.5);
@@ -998,7 +999,7 @@ export function createMotocrossHelmet(color: string): HelmetMesh {
   addLowerBinding(helmet, data.angles, rubber);
   addVentMesh(helmet, data.vents, ventMesh);
   // Preserve the lens, frame, foam seal and breath guard byte-for-byte.
-  addGoggles(helmet, trim, foam);
+  addGoggles(helmet, trim, foam, visorColor);
   addStrap(helmet);
   return helmet;
 }

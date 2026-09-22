@@ -3,6 +3,7 @@ export type Slot =
   | 'lower'
   | 'head'
   | 'accessory'
+  | 'keychain'
   | 'collectible'
   | 'bike';
 export type Ownership =
@@ -97,6 +98,16 @@ export interface ChallengeProgress {
   claimed: string[];
 }
 export type Helmet = 'fullface' | 'motocross';
+export interface StickerPlacement {
+  id: string;
+  productId: string;
+  /** Deterministic mesh path within the motorcycle body, never the rider. */
+  surface: string;
+  point: [number, number, number];
+  normal: [number, number, number];
+  size: number;
+  rotation: number;
+}
 export interface Player {
   version: 1;
   id: string;
@@ -122,6 +133,8 @@ export interface Player {
   rims: string;
   helmet: Helmet;
   helmetColor: string;
+  helmetVisor: string;
+  stickers: Record<string, StickerPlacement[]>;
   challenges: ChallengeProgress;
   redeemedRewards: string[];
   processedRuns: string[];
@@ -145,7 +158,6 @@ export interface ChallengeDefinition {
     | 'distance'
     | 'wheelie'
     | 'nearMisses'
-    | 'combo'
     | 'score'
     | 'jumps';
   target: number;

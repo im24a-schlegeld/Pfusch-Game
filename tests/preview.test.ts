@@ -5,6 +5,7 @@ import { newPlayer } from '../app/domain/progression';
 import { decodePlayer } from '../app/services';
 import {
   canEquip,
+  equipmentSlot,
   equipConfiguration,
   initialConfiguration,
   previewLoadout,
@@ -22,7 +23,7 @@ describe('temporary preview and explicit equip', () => {
     )) {
       const config = initialConfiguration(player, product);
       const preview = previewLoadout(player, product, config);
-      expect(preview.equipped[product.category]).toBe(product.id);
+      expect(preview.equipped[equipmentSlot(product)]).toBe(product.id);
       expect(preview.coins).toBe(0);
       expect(canEquip(player, product)).toBe(false);
       expect(equipConfiguration(player, product, config)).toBeNull();

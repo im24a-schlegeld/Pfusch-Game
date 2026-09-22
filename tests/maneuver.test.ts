@@ -184,7 +184,10 @@ describe('motorcycle weight and road-edge handling', () => {
         expect(e.phase).toBe('playing');
         expect(peak).toBeLessThan(e.balanceProfile.crashAngle);
         expect(e.balancedSeconds).toBeGreaterThan(4);
-        expect(e.bestCombo).toBeGreaterThan(1);
+        expect(e.score).toBeGreaterThan(e.distance * 0.12 * 20);
+        expect(e.scoreGains.some((gain) => gain.group === 'wheelie')).toBe(
+          true,
+        );
         expect(corrections).toBeGreaterThan(0);
         expect(transitions).toBeGreaterThan(10);
       },

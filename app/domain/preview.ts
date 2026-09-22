@@ -1,4 +1,6 @@
-import type { Player, Product, ProductConfiguration } from './types';
+import type { Player, Product, ProductConfiguration, Slot } from './types';
+export const equipmentSlot = (product: Product): Slot =>
+  product.handle === 'schlusselanhanger' ? 'keychain' : product.category;
 export const equippable = (product: Product) =>
   product.category !== 'collectible';
 export const supportsHood = (product: Product) =>
@@ -49,7 +51,7 @@ export function previewLoadout(
   if (!equippable(product) || config.productId !== product.id) return player;
   return {
     ...player,
-    equipped: { ...player.equipped, [product.category]: product.id },
+    equipped: { ...player.equipped, [equipmentSlot(product)]: product.id },
     variants: { ...player.variants, [product.id]: config.variantId },
     customizations: {
       ...player.customizations,

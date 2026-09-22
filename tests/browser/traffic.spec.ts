@@ -424,8 +424,8 @@ for (const low of [false, true]) {
     expect(landing.height).toBe(0);
     expect(landing.jumps).toBe(1);
     expect(landing.airUsed).toBe(false);
-    expect(landing.event).toBe('TOW TRUCK TRANSFER');
-    expect(landing.score).toBeGreaterThan(500);
+    expect(landing.event).toBe('SPRUNG GELANDET');
+    expect(landing.score).toBeGreaterThan(350);
     await page.keyboard.press('ArrowLeft');
     expect(await page.evaluate(() => window.trafficProbe.engine!.lane)).toBe(
       -1,

@@ -143,7 +143,7 @@ export function balanceAccuracy(state: BalanceState, profile: BalanceProfile) {
 }
 
 /** Reward controlled rearward lift throughout the safe angle range.
- * Accuracy around the equilibrium remains a separate balance/combo measure. */
+ * Accuracy around the equilibrium remains a separate control measure. */
 export function wheelieScoreFactor(
   state: Pick<BalanceState, 'wheelieAngle' | 'wheelieAngularVelocity'>,
   profile: BalanceProfile,

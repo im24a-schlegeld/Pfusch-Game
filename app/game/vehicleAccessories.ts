@@ -1,4 +1,5 @@
 import { headerBagMaterial } from './headerBag';
+import { keychainFaceMaterial } from './keychainArtwork';
 import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
 import {
@@ -212,6 +213,10 @@ function garmentClearance(torso: THREE.Group) {
   // Garment-local envelope stays fixed while the rider leans. It excludes the
   // hood deliberately: a crossbody strap is allowed to pass underneath it.
   return (point: THREE.Vector3, clearance = 0.0035, preserveX = false) => {
+    // At the shoulder the actual posed sleeve/torso collider is authoritative.
+    // The last torso ring has a hard upper bound and would otherwise kick the
+    // ribbon sideways immediately before that ring ends.
+    if (point.y >= 0.54) return point;
     if (!rings.length || point.y < rings[0].y || point.y > rings.at(-1)!.y)
       return point;
     let high = 1;
@@ -223,7 +228,8 @@ function garmentClearance(torso: THREE.Group) {
     const radial = Math.hypot(point.x / width, point.z / depth);
     if (radial > 1e-8 && radial < 1) {
       if (preserveX)
-        point.z = Math.sqrt(Math.max(0, 1 - (point.x / width) ** 2)) * depth;
+        point.z = Math.sign(point.z || 1) *
+          Math.sqrt(Math.max(0, 1 - (point.x / width) ** 2)) * depth;
       else {
         point.x /= radial;
         point.z /= radial;
@@ -245,7 +251,8 @@ function garmentStrapFit(
   const ray = new THREE.Raycaster();
   return (point: THREE.Vector3, t: number, edge = false) => {
     const rear = t >= 0.7;
-    if (edge) return clear(point, 0.0035, rear);
+    const front = t >= 0.2 && t <= 0.5;
+    if (edge) return clear(point, 0.0035, rear || front);
     if (rear) {
       const along = (t - 0.7) / 0.3;
       point.set(
@@ -257,28 +264,35 @@ function garmentStrapFit(
     const blend =
       THREE.MathUtils.smoothstep(t, 0.035, 0.14) *
       (1 - THREE.MathUtils.smoothstep(t, 0.86, 0.965));
-    if (!blend || !surfaces.length) return clear(point, 0.0035, rear);
+    if (!blend || !surfaces.length) return clear(point, 0.0035, rear || front);
     const radial = new THREE.Vector3(point.x, 0, point.z).normalize();
     if (radial.lengthSq() < 0.5) return point;
-    if (rear) radial.set(0, 0, 1);
+    if (rear || front) radial.set(0, 0, rear ? 1 : -1);
     const origin = (
-      rear
-        ? point.clone().setZ(0.85)
+      rear || front
+        ? point.clone().setZ(rear ? 0.85 : -0.85)
         : radial.clone().multiplyScalar(0.85).setY(point.y)
     ).applyMatrix4(torso.matrixWorld);
     const target = new THREE.Vector3(
-      rear ? point.x : 0,
+      rear || front ? point.x : 0,
       point.y,
       0,
     ).applyMatrix4(torso.matrixWorld);
     ray.set(origin, target.sub(origin).normalize());
     const hit = ray.intersectObjects(surfaces, false)[0];
-    if (!hit) return clear(point, 0.0035, rear);
+    if (!hit) return clear(point, 0.0035, rear || front);
     const surface = hit.point
       .clone()
       .applyMatrix4(inverse)
       .addScaledVector(radial, 0.0045);
-    return clear(point.lerp(surface, blend), 0.0035, rear);
+    // Clearance only pushes the ribbon out of the garment. Pulling an already
+    // clear shoulder point inward creates a stepped tab when the ray switches
+    // from the front plane to the rounded shoulder surface.
+    if (front) point.z = Math.min(point.z, surface.z);
+    else if (rear) point.z = Math.max(point.z, surface.z);
+    else if (Math.hypot(point.x, point.z) < Math.hypot(surface.x, surface.z))
+      point.lerp(surface, blend);
+    return clear(point, 0.0035, rear || front);
   };
 }
 
@@ -470,11 +484,11 @@ export function addCleanCrossbody(torso: THREE.Group) {
         left,
         [0.232, 0.265, 0.03],
         [0.17, 0.29, -0.112],
-        [0.004, 0.328, -0.154],
-        [-0.108, 0.442, -0.154],
-        [-0.145, 0.508, -0.112],
-        [-0.146, 0.556, -0.034],
-        [-0.142, 0.548, 0.072],
+        [0.065, 0.385, -0.154],
+        [-0.04, 0.48, -0.154],
+        [-0.145, 0.575, -0.075],
+        [-0.147, 0.605, 0.035],
+        [-0.142, 0.548, 0.112],
         [-0.078, 0.466, 0.154],
         [-0.045, 0.36, 0.176],
         right,
@@ -570,7 +584,7 @@ export function addCleanCrossbody(torso: THREE.Group) {
             1 - THREE.MathUtils.smoothstep(t, 0, 0.22),
           )
           .addScaledVector(rightDelta, Math.max(0, (t - 0.7) / 0.3));
-        clear(point, 0.0035, t >= 0.7);
+        clear(point, 0.0035, t >= 0.7 || (t >= 0.2 && t <= 0.5));
         shoulderClearance.fit(point);
         positions.setXYZ(i, point.x, point.y, point.z);
       }
@@ -583,54 +597,65 @@ export function addCleanCrossbody(torso: THREE.Group) {
   return controller;
 }
 
-function selectedColor(p: Product, player: Player) {
-  return (
-    p.preview?.colors.find((c) => c.variantIds.includes(player.variants[p.id]))
-      ?.baseColor ?? p.baseColor
-  );
+/** Locate the actual chassis surface so an ignition never floats beside it. */
+function ignitionMount(body: THREE.Group, bike: string, grip: readonly number[]) {
+  body.updateWorldMatrix(true, true);
+  if (bike === 'scooter') {
+    const shell = body.getObjectByName('scooter-leg-shield');
+    const origin = body.localToWorld(new THREE.Vector3(0.135, 0.86, 0.3));
+    const direction = new THREE.Vector3(0, 0, -1).transformDirection(body.matrixWorld);
+    const hit = shell ? new THREE.Raycaster(origin, direction).intersectObject(shell)[0] : undefined;
+    const support = hit
+      ? body.worldToLocal(hit.point.clone())
+      : new THREE.Vector3(0.135, 0.86, -0.452);
+    return {
+      support,
+      point: support.clone().add(new THREE.Vector3(0, 0, 0.012)),
+      socketPitch: Math.PI / 2,
+      surface: 'scooter-leg-shield',
+    };
+  }
+  const stem = body.getObjectByName('handlebar-stem');
+  const yokes = body.getObjectsByProperty('name', 'fork-yoke');
+  const supportMesh = stem ?? yokes.sort((a, b) => b.position.y - a.position.y)[0];
+  const support = supportMesh
+    ? body.worldToLocal(supportMesh.getWorldPosition(new THREE.Vector3()))
+    : new THREE.Vector3(0, grip[1] - 0.055, grip[2] - 0.075);
+  // A short visible bracket joins the barrel to the existing stem/top yoke.
+  // The position follows authored handlebars without changing the rider grip.
+  return {
+    support,
+    point: support.clone().add(new THREE.Vector3(-0.045, 0.025, 0.032)),
+    socketPitch: 0,
+    surface: supportMesh?.name ?? 'handlebar-support',
+  };
 }
-/** Detailed key and fabric fob at the ignition; never attached to the rider's hip. */
+
+/** Both authentic mockup faces hang from a visible, chassis-mounted key. */
 export function addIgnitionKey(
   body: THREE.Group,
   player: Player,
   products: Product[],
   grip: readonly number[],
 ) {
+  const selected = player.equipped.keychain ?? player.equipped.accessory;
   const product = products.find(
-    (p) =>
-      p.id === player.equipped.accessory && p.handle === 'schlusselanhanger',
+    (p) => p.id === selected && p.handle === 'schlusselanhanger',
   );
   if (!product) return undefined;
+  const mount = ignitionMount(body, player.bike, grip);
   const assembly = new THREE.Group();
   assembly.name = 'ignition-keychain-v38';
-  body.add(assembly);
-  // Chassis-local ignition mounts. The sport fob lies rearward over the tank;
-  // the scooter key faces the rider from its inner leg shield, not from inside
-  // the handlebar nacelle. All mounts move with the motorcycle, never the hip.
-  const mounts: Record<
-    string,
-    { point: Point; socketPitch: number; hangPitch: number }
-  > = {
-    '125': { point: [-0.05, 1.17, -0.35], socketPitch: 0, hangPitch: -0.18 },
-    '450': { point: [-0.055, 1.105, -0.39], socketPitch: 0, hangPitch: -0.24 },
-    '701': { point: [-0.05, 1.05, -0.435], socketPitch: 0, hangPitch: -1.33 },
-    scooter: {
-      point: [0.075, 0.84, -0.16],
-      socketPitch: Math.PI / 2,
-      hangPitch: -Math.PI / 2,
-    },
-  };
-  const mount = mounts[player.bike] ?? {
-    point: [-0.055, grip[1] - 0.025, grip[2] + 0.05] as Point,
-    socketPitch: 0,
-    hangPitch: -0.2,
-  };
-  assembly.position.set(...mount.point);
+  assembly.position.copy(mount.point);
   assembly.rotation.x = mount.socketPitch;
   assembly.userData.mount = 'ignition';
+  assembly.userData.supportSurface = mount.surface;
+  assembly.userData.supportPoint = mount.support.toArray();
+  body.add(assembly);
   const chrome = finish('#aeb5b9', 0.86, 0.25),
     black = finish('#1e2021'),
-    fabric = finish(selectedColor(product, player));
+    ringMetal = finish('#17191a', 0.7, 0.35),
+    fabric = finish('#161718');
   const socket = put(
     assembly,
     new THREE.CylinderGeometry(0.017, 0.019, 0.018, 20),
@@ -645,14 +670,10 @@ export function addIgnitionKey(
     'ignition-bezel',
   );
   bezel.rotation.x = Math.PI / 2;
-  bar(
-    assembly,
-    [0, -0.022, 0],
-    [0.066, -0.032, 0],
-    0.01,
-    black,
-    'ignition-clamp-mount',
-  );
+  const support = mount.support.clone().sub(mount.point)
+    .applyQuaternion(assembly.quaternion.clone().invert());
+  bar(assembly, support.toArray() as Point, [0, -0.014, 0], 0.007,
+    black, 'ignition-clamp-mount');
   const key = put(
     assembly,
     new THREE.BoxGeometry(0.006, 0.025, 0.0025),
@@ -670,145 +691,54 @@ export function addIgnitionKey(
   const pivot = new THREE.Group();
   pivot.name = 'keychain-pivot';
   pivot.position.set(-0.01, 0.034, 0.003);
-  pivot.rotation.set(mount.hangPitch, 0, -0.09);
+  pivot.rotation.y = player.bike === 'scooter' ? -0.25 : 0.28;
   assembly.add(pivot);
   for (const z of [0, 0.0028]) {
     const ring = put(
       pivot,
-      new THREE.TorusGeometry(0.022, 0.00165, 8, 36, Math.PI * 1.9),
-      chrome,
+      new THREE.TorusGeometry(0.021, 0.00165, 8, 32, Math.PI * 1.9),
+      ringMetal,
       'keychain-split-ring',
     );
-    ring.position.set(-0.018, -0.012, z);
+    ring.position.set(-0.015, -0.011, z);
     ring.rotation.z = z ? -0.15 : 0.15;
   }
-  bar(
-    pivot,
-    [-0.025, -0.031, 0.001],
-    [-0.04, -0.048, 0.001],
-    0.0035,
-    chrome,
-    'keychain-connector',
-  );
+  bar(pivot, [-0.03, -0.026, 0.002], [-0.033, -0.041, 0.006],
+    0.002, ringMetal, 'keychain-connector');
   const tag = new THREE.Group();
   tag.name = 'keychain-fabric-tag';
+  tag.position.set(-0.033, -0.112, 0.006);
   pivot.add(tag);
-  tag.position.set(-0.05, -0.108, 0.008);
-  tag.rotation.z = -0.28;
-  tag.rotation.y = -0.45;
   const outline = new THREE.Shape();
-  outline.moveTo(-0.02, -0.068);
-  outline.lineTo(0.018, -0.065);
-  outline.quadraticCurveTo(0.025, -0.063, 0.025, -0.055);
-  outline.lineTo(0.02, 0.057);
-  outline.quadraticCurveTo(0.019, 0.07, 0.008, 0.072);
-  outline.lineTo(-0.014, 0.07);
-  outline.quadraticCurveTo(-0.026, 0.068, -0.025, 0.055);
-  outline.lineTo(-0.027, -0.055);
-  outline.quadraticCurveTo(-0.027, -0.064, -0.02, -0.068);
-  const tagGeometry = new THREE.ExtrudeGeometry(outline, {
+  outline.moveTo(-0.019, -0.08);
+  outline.lineTo(0.019, -0.08);
+  outline.quadraticCurveTo(0.023, -0.08, 0.023, -0.076);
+  outline.lineTo(0.023, 0.076);
+  outline.quadraticCurveTo(0.023, 0.08, 0.019, 0.08);
+  outline.lineTo(-0.019, 0.08);
+  outline.quadraticCurveTo(-0.023, 0.08, -0.023, 0.076);
+  outline.lineTo(-0.023, -0.076);
+  outline.quadraticCurveTo(-0.023, -0.08, -0.019, -0.08);
+  put(tag, new THREE.ExtrudeGeometry(outline, {
     depth: 0.0028,
     bevelEnabled: true,
-    bevelSize: 0.001,
-    bevelThickness: 0.0008,
+    bevelSize: 0.0008,
+    bevelThickness: 0.0005,
     bevelSegments: 2,
     steps: 1,
-    curveSegments: 8,
-  });
-  put(tag, tagGeometry, fabric, 'keychain-fabric-body');
-  for (const x of [-0.02, 0.018])
-    for (let i = 0; i < 11; i++)
-      bar(
-        tag,
-        [x, -0.053 + i * 0.01, 0.004],
-        [x, -0.048 + i * 0.01, 0.004],
-        0.00065,
-        chrome,
-        'keychain-stitch',
-      );
-  const eyelet = put(
-    tag,
-    new THREE.TorusGeometry(0.005, 0.0014, 8, 20),
-    chrome,
-    'keychain-eyelet',
-  );
-  eyelet.position.set(-0.002, 0.058, 0.003);
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = 128;
-    c.height = 512;
-    const ctx = c.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, 128, 512);
-      const map = new THREE.CanvasTexture(c);
-      map.colorSpace = THREE.SRGBColorSpace;
-      const print = new THREE.MeshStandardMaterial({
-        map,
-        transparent: true,
-        alphaTest: 0.1,
-        roughness: 0.96,
-        side: THREE.DoubleSide,
-      });
-      let disposed = false;
-      print.addEventListener('dispose', () => {
-        disposed = true;
-        map.dispose();
-      });
-      // Reuse the supplied real Pfusch artwork; do not imitate its lettering.
-      // The headless geometry verifier intentionally has no Image implementation.
-      if (typeof Image !== 'undefined') {
-        const artwork = new Image();
-        artwork.onload = () => {
-          if (disposed) return;
-          const scale = Math.min(
-            390 / artwork.naturalWidth,
-            90 / artwork.naturalHeight,
-          );
-          const w = artwork.naturalWidth * scale,
-            h = artwork.naturalHeight * scale;
-          ctx.save();
-          ctx.translate(64, 256);
-          ctx.rotate(-Math.PI / 2);
-          ctx.drawImage(artwork, -w / 2, -h / 2, w, h);
-          ctx.restore();
-          map.needsUpdate = true;
-        };
-        artwork.onerror = () => {
-          if (!disposed)
-            console.error('Keychain brand artwork could not load.');
-        };
-        artwork.src = '/images/artwork/ziptie.png';
-      }
-      for (const z of [-0.0015, 0.0045]) {
-        const ink = put(
-          tag,
-          new THREE.PlaneGeometry(0.03, 0.112),
-          print,
-          'keychain-wordmark',
-        );
-        ink.position.set(-0.001, -0.002, z);
-        if (z < 0) ink.rotation.y = Math.PI;
-      }
-    }
+    curveSegments: 6,
+  }), fabric, 'keychain-fabric-body');
+  const eyelet = put(tag,
+    new THREE.TorusGeometry(0.004, 0.001, 6, 16),
+    ringMetal, 'keychain-eyelet');
+  eyelet.position.set(0, 0.071, 0.003);
+  for (const side of ['front', 'back'] as const) {
+    const face = put(tag, new THREE.PlaneGeometry(0.045, 0.1575),
+      keychainFaceMaterial(side), `keychain-mockup-${side}`);
+    face.position.z = side === 'front' ? 0.0036 : -0.0008;
+    if (side === 'back') face.rotation.y = Math.PI;
   }
-  let sway = 0,
-    velocity = 0;
-  return {
-    update(input: CarriedCapMotionInput, dt: number) {
-      if (input.paused || !Number.isFinite(dt) || dt <= 0) return;
-      const step = Math.min(dt, 0.05);
-      const target = input.reducedMotion
-        ? 0
-        : THREE.MathUtils.clamp(
-            (input.longitudinalAcceleration ?? 0) * 0.018,
-            -0.18,
-            0.18,
-          );
-      velocity += (target - sway) * 28 * step;
-      velocity *= Math.exp(-step * 9);
-      sway += velocity * step;
-      pivot.rotation.x = mount.hangPitch + sway;
-      pivot.rotation.z = -0.09;
-    },
-  };
+  // The same bounded, fixed-step gravity/acceleration/landing pendulum as caps.
+  // Only this dedicated pivot rotates; the key, socket and attachment stay fixed.
+  return createCarriedCapMotion(pivot);
 }

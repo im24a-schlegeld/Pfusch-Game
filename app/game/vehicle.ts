@@ -50,6 +50,7 @@ import {
 } from './carriedCapMotion';
 import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
+import { supermotoGripPoint } from './supermotoCockpit';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
 import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe } from './v40ModelFinish';
@@ -399,9 +400,10 @@ function makeHelmet(
   center: Point,
   style: Player['helmet'],
   color: string,
+  visorColor = '#34454d',
 ) {
   if (style === 'motocross') {
-    const helmet = createMotocrossHelmet(color);
+    const helmet = createMotocrossHelmet(color, visorColor);
     helmet.position.set(...center);
     helmet.scale.setScalar(1.065);
     helmet.rotation.x = -0.07;
@@ -409,7 +411,7 @@ function makeHelmet(
     return helmet;
   }
   const shell = material(color, 0.14, 0.31),
-    glass = material('#122027', 0.44, 0.14),
+    glass = material(visorColor, 0.44, 0.14),
     trim = material('#202727', 0.1, 0.65);
   const profile = new THREE.CatmullRomCurve3(
     [
@@ -848,12 +850,12 @@ export function makeBike(player: Player, products: Product[]) {
         dark,
       ).name = 'headlamp-bracket';
     }
-    tube(
+    const mainFrame = tube(
       body,
       [
         [0, 0.33, 0.12],
         [0, 0.42, -0.14],
-        [0, 0.89, -0.42],
+        forkAxisAt(0.895),
       ],
       [0.075, 0.082, 0.065],
       paint,
@@ -861,6 +863,16 @@ export function makeBike(player: Player, products: Product[]) {
       20,
       0.62,
     );
+    mainFrame.name = 'moped-main-frame';
+    const framePositions = mainFrame.geometry.getAttribute('position');
+    for (let i = 0; i < framePositions.count; i++) {
+      const y = framePositions.getY(i);
+      // Widen the upper pressed frame sideways, blending back into its neck.
+      const widen = THREE.MathUtils.smoothstep(y, 0.43, 0.66) *
+        (1 - THREE.MathUtils.smoothstep(y, 0.84, 0.95));
+      framePositions.setX(i, framePositions.getX(i) * (1 + 0.12 * widen));
+    }
+    mainFrame.geometry.computeVertexNormals();
     tube(
       body,
       [
@@ -1618,19 +1630,19 @@ export function makeBike(player: Player, products: Product[]) {
         roughness: 0.15,
       }),
     ).name = 'supermoto-headlight-bulb';
-    // +Z is rearward, toward the rider. Sweep behind the fixed clamps and
-    // finish with straight grip sections at the shared fixed-length IK targets.
+    // +Z is rearward, toward the rider. The riser bend and both outer grip
+    // axes visibly sweep back; the grip centers remain the shared IK targets.
     tube(
       body,
       [
-        [-pose.grip[0] - 0.055, pose.grip[1], pose.grip[2]],
-        [-0.29, pose.grip[1], pose.grip[2]],
-        [-0.2, 1.13, -0.373],
+        supermotoGripPoint(pose.grip, -1, 0.055),
+        supermotoGripPoint(pose.grip, -1, -0.09),
+        [-0.2, 1.13, -0.365],
         [-0.1, 1.124, -0.407],
         [0.1, 1.124, -0.407],
-        [0.2, 1.13, -0.373],
-        [0.29, pose.grip[1], pose.grip[2]],
-        [pose.grip[0] + 0.055, pose.grip[1], pose.grip[2]],
+        [0.2, 1.13, -0.365],
+        supermotoGripPoint(pose.grip, 1, -0.09),
+        supermotoGripPoint(pose.grip, 1, 0.055),
       ],
       [0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016],
       alloy,
@@ -1639,11 +1651,11 @@ export function makeBike(player: Player, products: Product[]) {
     ).name = 'supermoto-handlebar';
     for (const s of [-1, 1]) {
       const control = (x: number, dy: number, dz: number): Point =>
-        [s * x, pose.grip[1] + dy, pose.grip[2] + dz];
+        supermotoGripPoint(pose.grip, s, x - pose.grip[0], dy, dz);
       tube(
         body,
         [
-          control(0.24, 0, -0.012),
+          control(0.29, 0, 0),
           control(0.31, -0.03, -0.16),
           control(0.43, -0.02, -0.15),
           control(0.445, 0, 0),
@@ -1701,7 +1713,7 @@ export function makeBike(player: Player, products: Product[]) {
     tube(
       body,
       [
-        [0.29, pose.grip[1] - 0.005, pose.grip[2] - 0.002],
+        supermotoGripPoint(pose.grip, 1, -0.09, -0.005, -0.002),
         [0.22, 1.0, -0.45],
         [0.11, 0.7, -0.64],
         [0.09, 0.41, -0.68],
@@ -2193,8 +2205,12 @@ export function makeBike(player: Player, products: Product[]) {
   for (const s of [-1, 1]) {
     const grip = rod(
       body,
-      [s * (pose.grip[0] - 0.055), pose.grip[1], pose.grip[2]],
-      [s * (pose.grip[0] + 0.055), pose.grip[1], pose.grip[2]],
+      player.bike === '450'
+        ? supermotoGripPoint(pose.grip, s, -0.055)
+        : [s * (pose.grip[0] - 0.055), pose.grip[1], pose.grip[2]],
+      player.bike === '450'
+        ? supermotoGripPoint(pose.grip, s, 0.055)
+        : [s * (pose.grip[0] + 0.055), pose.grip[1], pose.grip[2]],
       0.024,
       rubber,
     );
@@ -3043,9 +3059,11 @@ function makeRider(
       rider,
       [
         wrist,
-        [wrist[0], pose.grip[1] + 0.044, pose.grip[2]],
-        [wrist[0], pose.grip[1] + 0.016, pose.grip[2] - 0.036],
-        [wrist[0], pose.grip[1] - 0.019, pose.grip[2] - 0.006],
+        ...([
+          [0.044, 0], [0.016, -0.036], [-0.019, -0.006],
+        ] as const).map(([dy, dz]): Point => player.bike === '450'
+          ? supermotoGripPoint(pose.grip, side, 0, dy, dz)
+          : [wrist[0], pose.grip[1] + dy, pose.grip[2] + dz]),
       ],
       [0.045, 0.046, 0.04, 0.03],
       boot,
@@ -3148,6 +3166,7 @@ function makeRider(
     pose.head,
     player.helmet,
     player.helmetColor,
+    player.helmetVisor,
   );
   const accessory = products.find((p) => p.id === player.equipped.accessory);
   if (accessory?.handle === 'logo-crossbody-tasche') {

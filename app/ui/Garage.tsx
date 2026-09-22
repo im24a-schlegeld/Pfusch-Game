@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { ArrowRight, Check, Lock, RotateCw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Player, Product, ProductConfiguration } from '../domain/types';
 import type { Services } from '../services';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
 import { digitalPrice, ownership, unlock } from '../domain/progression';
-import { HELMETS, HELMET_COLORS, equipHelmet } from '../domain/helmet';
+import { HELMETS, HELMET_COLORS, VISOR_COLORS, equipHelmet } from '../domain/helmet';
+import { isSticker, saveStickers } from '../domain/stickers';
 import {
   equipConfiguration,
   equippable,
@@ -27,6 +28,7 @@ import { ProgressContent } from './Screens';
 import ProductPreview from './ProductPreview';
 import ColorSection from './ColorSection';
 import { visiblePalette } from '../domain/paletteView';
+const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
 interface Props {
   player: Player;
   products: Product[];
@@ -51,6 +53,7 @@ export default function Garage({
     Record<string, 'front' | 'back'>
   >({});
   const [draft, setDraft] = useState<Player | null>(null);
+  const [stickerBike, setStickerBike] = useState<Player | null>(null);
   const [selected, setSelected] = useState<Product | null>(null);
   const [configuration, setConfiguration] =
     useState<ProductConfiguration | null>(null);
@@ -108,11 +111,12 @@ export default function Garage({
     setDraft({ ...appearance, ...values });
   }
   function equipHelmetNow(
-    values: Partial<Pick<Player, 'helmet' | 'helmetColor'>>,
+    values: Partial<Pick<Player, 'helmet' | 'helmetColor' | 'helmetVisor'>>,
   ) {
     const next = equipHelmet(player, {
       helmet: values.helmet ?? player.helmet,
       helmetColor: values.helmetColor ?? player.helmetColor,
+      helmetVisor: values.helmetVisor ?? player.helmetVisor,
     });
     if (!next) return;
     update(next);
@@ -421,6 +425,7 @@ export default function Garage({
                     ))}
                   </fieldset>
                 )}
+                {isSticker(p) && <button className="button small" onClick={() => setStickerBike(appearance)}>AUF FAHRZEUG PLATZIEREN</button>}
                 <button
                   className="button small primary compact-buy-button"
                   disabled={
@@ -451,6 +456,13 @@ export default function Garage({
       </div>
     </>
   );
+  if (stickerBike) return <Suspense fallback={<main className="sticker-loading"><span className="spinner"/><output>STICKER-WERKSTATT WIRD GELADEN</output><button className="button" onClick={() => setStickerBike(null)}>ABBRECHEN</button></main>}>
+    <StickerWorkshop player={stickerBike} products={products} onClose={() => setStickerBike(null)} onSave={(placements) => {
+      const next = saveStickers(player, stickerBike.bike, placements, products);
+      if (!next) { notify('Fahrzeug und Sticker zuerst freischalten.'); return; }
+      update(next); setStickerBike(null); setDraft(null); notify('Sticker platziert und gespeichert.');
+    }}/>
+  </Suspense>;
   return (
     <main className="garage-page">
       <div className="garage-layout">
@@ -489,6 +501,7 @@ export default function Garage({
             }
             data-helmet={appearance.helmet}
             data-helmet-color={appearance.helmetColor}
+            data-helmet-visor={appearance.helmetVisor}
           >
             <Preview
               player={appearance}
@@ -549,14 +562,14 @@ export default function Garage({
                 <h2>KLEIDUNG</h2>
               </div>
               <div className="equipped-slots">
-                {(['upper', 'head', 'accessory'] as const).map((slot) => (
+                {(['upper', 'head', 'accessory', 'keychain'] as const).map((slot) => (
                   <div key={slot}>
                     <span className="eyebrow">
                       {slot === 'upper'
                         ? 'OBERTEIL'
                         : slot === 'head'
                           ? 'KOPFBEDECKUNG'
-                          : 'ACCESSOIRE'}
+                          : slot === 'keychain' ? 'SCHLÜSSELANHÄNGER' : 'ACCESSOIRE'}
                     </span>
                     <b>
                       {products.find((p) => p.id === player.equipped[slot])
@@ -584,27 +597,27 @@ export default function Garage({
                     <button
                       key={helmet.id}
                       aria-label={`Vorschau ${helmet.name} Helm`}
-                      aria-pressed={player.helmet === helmet.id}
+                      aria-pressed={appearance.helmet === helmet.id}
                       className={
-                        player.helmet === helmet.id ? 'active' : ''
+                        appearance.helmet === helmet.id ? 'active' : ''
                       }
-                      onClick={() => equipHelmetNow({ helmet: helmet.id })}
+                      onClick={() => setDraft({ ...appearance, helmet: helmet.id })}
                     >
                       {helmet.name.toUpperCase()}
                     </button>
                   ))}
                 </div>
-                <ColorSection title="Helmfarbe" value={player.helmetColor}><div className="swatches" aria-label="Helmfarbe">
-                  {visiblePalette(HELMET_COLORS, player.helmetColor).map((color) => (
+                <ColorSection title="Helmfarbe" value={appearance.helmetColor}><div className="swatches" aria-label="Helmfarbe">
+                  {visiblePalette(HELMET_COLORS, appearance.helmetColor).map((color) => (
                     <button
                       key={color.value}
                       aria-label={`${color.name} helmet color`}
-                      aria-pressed={player.helmetColor === color.value}
+                      aria-pressed={appearance.helmetColor === color.value}
                       className={
-                        player.helmetColor === color.value ? 'selected' : ''
+                        appearance.helmetColor === color.value ? 'selected' : ''
                       }
                       onClick={() =>
-                        equipHelmetNow({ helmetColor: color.value })
+                        setDraft({ ...appearance, helmetColor: color.value })
                       }
                     >
                       <i style={{ background: color.value }} />
@@ -613,10 +626,15 @@ export default function Garage({
                     </button>
                   ))}
                 </div></ColorSection>
+                <ColorSection title="Visier / Brillenglas" value={appearance.helmetVisor}><div className="swatches" aria-label="Visierfarbe">
+                  {VISOR_COLORS.map((color) => <button key={color.value} aria-label={color.name} aria-pressed={appearance.helmetVisor === color.value} className={appearance.helmetVisor === color.value ? 'selected' : ''} onClick={() => setDraft({ ...appearance, helmetVisor: color.value })}><i style={{ background: color.value }}/><b>{color.name}</b><span>VORSCHAU</span></button>)}
+                </div></ColorSection>
+                <button className="button small" disabled={appearance.helmet === player.helmet && appearance.helmetColor === player.helmetColor && appearance.helmetVisor === player.helmetVisor} onClick={() => equipHelmetNow(appearance)}>HELM AUSRÜSTEN</button>
               </section>
               {grid}
             </TabsContent>
             <TabsContent value="bike">
+              <button className="button small sticker-workshop-open" onClick={() => setStickerBike(appearance)}>STICKER-WERKSTATT ÖFFNEN</button>
               <div className="section-intro">
                 <h2>MOTORRÄDER</h2>
               </div>

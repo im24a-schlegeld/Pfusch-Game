@@ -17,6 +17,7 @@ import { createRideParticles, particleAnchors } from './rideParticles';
 import { createCrashTravel } from './crashTravel';
 import { makeSignCollectibleView } from './signCollectibleView';
 import { TAIL_CONTACT } from './tailContact';
+import { applyBikeStickers } from './bikeStickers';
 
 // Match makeBike's body selection, including its default Supermoto geometry.
 const headlightModel = (id: string) =>
@@ -60,6 +61,8 @@ export default function SceneView({
       player.rims,
       player.helmet,
       player.helmetColor,
+      player.helmetVisor,
+      player.stickers,
       player.equipped,
       player.variants,
       player.customizations,
@@ -131,6 +134,7 @@ export default function SceneView({
     fill.position.set(12, 8, -10);
     scene.add(fill);
     let bike = makeBike(player, products);
+    applyBikeStickers(bike.body, bike.rider, player.paint, player.stickers[player.bike] ?? []);
     bike.root.name = 'player-bike';
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;
@@ -267,6 +271,7 @@ export default function SceneView({
         scene.remove(bike.root);
         disposeVehicle(bike.root);
         bike = makeBike(nextAppearance.player, nextAppearance.products);
+        applyBikeStickers(bike.body, bike.rider, nextAppearance.player.paint, nextAppearance.player.stickers[nextAppearance.player.bike] ?? []);
         bike.root.name = 'player-bike';
         crash = undefined;
         crashTravel = undefined;

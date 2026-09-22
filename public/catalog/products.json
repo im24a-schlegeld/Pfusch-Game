@@ -3769,14 +3769,14 @@
           ],
           "baseColor": "#28292c",
           "front": {
-            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/rn-image_picker_lib_temp_f8544efd-a966-4756-b5e9-17647d8a02f4.jpg?v=1759733194",
-            "localImage": "/images/preview/schlusselanhanger-original-front.png",
-            "evidence": "Visually verified Pfusch-logo face; product description identifies this as the front."
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
+            "localImage": "/images/schlusselanhanger.png",
+            "evidence": "Only the first Shopify mockup is used. It shows the authentic black logo face and blue/yellow reverse together."
           },
           "back": {
-            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/rn-image_picker_lib_temp_703cb2f4-6a70-4d9e-ad3c-461b7965f39e.jpg?v=1759733194",
-            "localImage": "/images/preview/schlusselanhanger-original-back.png",
-            "evidence": "Visually verified blue/yellow multifunction-spray motif; product description identifies this as the reverse."
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
+            "localImage": "/images/schlusselanhanger.png",
+            "evidence": "Only the first Shopify mockup is used. It shows the authentic black logo face and blue/yellow reverse together."
           }
         }
       ],

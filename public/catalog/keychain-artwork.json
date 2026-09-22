@@ -1,0 +1,16 @@
+{
+  "productId": "9791913918793",
+  "handle": "schlusselanhanger",
+  "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
+  "localSource": "/images/schlusselanhanger.png",
+  "sourceSize": [640, 640],
+  "description": "Both faces are rectified only from the first Shopify mockup. No artwork from the two later photographs is used.",
+  "front": {
+    "localImage": "/images/artwork/keychain-front.webp",
+    "quadTopLeftBottomLeftBottomRightTopRight": [177, 225, 184, 309, 461, 269, 446, 188]
+  },
+  "back": {
+    "localImage": "/images/artwork/keychain-back.webp",
+    "quadTopLeftBottomLeftBottomRightTopRight": [179, 389, 187, 474, 466, 439, 455, 358]
+  }
+}

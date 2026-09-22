@@ -10,6 +10,7 @@ import {
 import type { CylinderGeometry } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
+import { BIKE_CONTACTS } from '../app/game/riderSkeleton';
 
 // Mechanical meshes are built unchanged; only browser-only fabric painting is
 // replaced. These tests inspect the actual assembled geometry and transforms.
@@ -173,6 +174,41 @@ describe('assembled motorcycle connections', () => {
     ).toHaveLength(4);
     expect(bike.body.getObjectByName('moped-drive-belt')).toBeDefined();
     expect(bike.body.getObjectByName('left-drive-chain')).toBeUndefined();
+  });
+
+  it('joins the moderately widened Töffli upper frame into its actual steering head', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '125' }, []);
+    const frame = bike.body.getObjectByName('moped-main-frame') as Mesh;
+    const neck = rodAxis(bike.body.getObjectByName('steering-head') as Mesh);
+    const frameEnd = ringCenter(frame, 22, 20);
+    expect(neck.closestPointToPoint(frameEnd, true, new Vector3())
+      .distanceTo(frameEnd)).toBeLessThan(0.001);
+    const points = frame.geometry.getAttribute('position');
+    let halfWidth = 0;
+    for (let i = 0; i < points.count; i++)
+      if (points.getY(i) > 0.58 && points.getY(i) < 0.82)
+        halfWidth = Math.max(halfWidth, Math.abs(points.getX(i)));
+    expect(halfWidth).toBeGreaterThan(0.082);
+    expect(halfWidth).toBeLessThan(0.094);
+  });
+
+  it('sweeps both actual Supermoto grip axes toward the rider and keeps their IK centers', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const bar = bike.body.getObjectByName('supermoto-handlebar') as Mesh;
+    const grips = bike.body.getObjectsByProperty('name', 'supermoto-handgrip') as Mesh[];
+    expect(grips).toHaveLength(2);
+    for (const grip of grips) {
+      const axis = rodAxis(grip);
+      const center = axis.getCenter(new Vector3());
+      const side = Math.sign(center.x);
+      const target = BIKE_CONTACTS['450'].grip;
+      expect(center.distanceTo(new Vector3(side * target[0], target[1], target[2])))
+        .toBeLessThan(1e-6);
+      expect(axis.end.z - axis.start.z).toBeGreaterThan(0.03);
+      expect(ringCenter(bar, side < 0 ? 0 : 36, 12).distanceTo(axis.end))
+        .toBeLessThan(1e-6);
+      expect(axis.end.z - ringCenter(bar, 18, 12).z).toBeGreaterThan(0.12);
+    }
   });
 
   it.each(['125', '450', '701'] as const)(

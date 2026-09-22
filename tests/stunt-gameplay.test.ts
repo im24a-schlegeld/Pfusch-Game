@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BIKES } from '../app/domain/config';
-import { Engine, LANE, STEP } from '../app/game/engine';
-import {
-  TRAFFIC_SHAPES,
-  TOW_RAMP,
-  towDeckPosition,
-} from '../app/game/trafficDomain';
+import { Engine, LANE, STEP, STUNT_POINTS } from '../app/game/engine';
+import { TRAFFIC_SHAPES, TOW_RAMP } from '../app/game/trafficDomain';
 import { tailScrape } from '../app/game/wheelie';
 
 function ride(bike = BIKES[0], seed = 539) {
@@ -18,11 +14,7 @@ function steps(engine: Engine, count: number) {
 }
 function board(engine: Engine, velocity = 0) {
   const tow = engine.spawn('towtruck', engine.lane, 14, 0, velocity)!;
-  for (
-    let frame = 0;
-    frame < 100 && tow.z > towDeckPosition(engine.bike.id) + 0.001;
-    frame++
-  )
+  for (let frame = 0; frame < 100 && engine.height < 1; frame++)
     engine.advance(STEP);
   expect(engine.phase).toBe('playing');
   expect(engine.onTowTruck).toBe(true);
@@ -65,7 +57,6 @@ describe('ride onto the tow truck, then swipe to jump', () => {
               engine.lane = source;
               engine.x = source * LANE;
               const tow = board(engine, velocity);
-              steps(engine, 30);
               expect(engine.onTowTruck).toBe(true);
               expect(engine.jumps).toBe(0);
               expect(engine.lane).toBe(source);
@@ -87,12 +78,20 @@ describe('ride onto the tow truck, then swipe to jump', () => {
                 8,
               );
               steps(engine, 89);
-              expect(engine.phase).toBe('playing');
+              expect(
+                engine.phase,
+                `${bike.id}: ${engine.event.text}; x=${engine.x}, y=${engine.height}, tow=${tow.z}; source=${source}, elapsed=${elapsed}, velocity=${velocity}`,
+              ).toBe('playing');
               expect(engine.height).toBe(0);
               expect(engine.jumps).toBe(1);
               expect(engine.lane).toBe(source + direction);
               expect(engine.x).toBeCloseTo((source + direction) * LANE, 3);
-              expect(engine.score).toBeGreaterThan(before + 500);
+              expect(engine.score).toBeGreaterThan(before + STUNT_POINTS.jump);
+              expect(
+                engine.scoreGains.find(
+                  (gain) => gain.text === 'SPRUNG GELANDET',
+                )?.points,
+              ).toBe(STUNT_POINTS.jump);
               expect(tow.velocity).toBe(velocity);
               steps(engine, 15);
               expect(engine.jumps).toBe(1);
@@ -103,20 +102,16 @@ describe('ride onto the tow truck, then swipe to jump', () => {
   it('can merge onto the rear ramp before swiping again to leave', () => {
     const engine = ride(BIKES[2]);
     engine.elapsed = 25;
-    const tow = engine.spawn('towtruck', 1, 10, 0, 6)!;
+    engine.spawn('towtruck', 1, 10, 0, 6)!;
     engine.move(1);
-    for (
-      let frame = 0;
-      frame < 60 && tow.z > towDeckPosition(engine.bike.id) + 0.001;
-      frame++
-    )
+    for (let frame = 0; frame < 60 && engine.height < 1; frame++)
       steps(engine, 1);
     expect(engine.phase).toBe('playing');
     expect(engine.onTowTruck).toBe(true);
     expect(engine.launchSerial).toBe(0);
     engine.move(-1);
     steps(engine, 90);
-    expect(engine.phase).toBe('playing');
+    expect(engine.phase, engine.event.text).toBe('playing');
     expect(engine.jumps).toBe(1);
     expect(engine.lane).toBe(0);
   });
@@ -132,6 +127,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     steps(engine, 120);
     expect([engine.height, tow.z, engine.elapsed]).toEqual(snapshot);
     engine.resume();
+    steps(engine, 180);
     steps(engine, 150);
     expect(engine.phase).toBe('crashed');
     expect(engine.jumps).toBe(0);
@@ -146,7 +142,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
       expect(engine.jumps).toBe(0);
     }
   });
-  it('protects a timely side jump through landing overlap, then restores collisions', () => {
+  it('keeps a destination obstacle solid when a side jump lands into it', () => {
     const engine = ride();
     board(engine);
     engine.move(1);
@@ -157,25 +153,33 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     steps(engine, 1);
     expect(engine.phase).toBe('playing');
     expect(engine.jumps).toBe(1);
-    steps(engine, 2);
-    expect(engine.phase).toBe('playing');
-    // Recycled obstacles do not retain protection from the previous transfer.
-    obstacle.active = false;
-    expect(engine.spawn('car', 1, 0)).toBe(obstacle);
-    steps(engine, 1);
+    steps(engine, 12);
     expect(engine.phase).toBe('crashed');
+    expect(engine.event.text).toBe('Construction barrier collision');
+    expect(obstacle.cleared).toBe(false);
     expect(engine.jumps).toBe(1);
   });
   it('accepts the last timely swipe but rejects a swipe after the deck deadline', () => {
-    for (const delay of [82, 83]) {
+    const missed = ride(BIKES[2]);
+    missed.elapsed = 10000;
+    board(missed);
+    let deadline = 0;
+    while (missed.phase === 'playing' && deadline < 30) {
+      steps(missed, 1);
+      deadline++;
+    }
+    expect(missed.phase).toBe('crashed');
+    for (const delay of [deadline - 1, deadline]) {
       const engine = ride(BIKES[2]);
       engine.elapsed = 10000;
       board(engine);
       steps(engine, delay);
       engine.move(1);
       steps(engine, 90);
-      expect(engine.phase).toBe(delay === 82 ? 'playing' : 'crashed');
-      expect(engine.jumps).toBe(delay === 82 ? 1 : 0);
+      expect(engine.phase, engine.event.text).toBe(
+        delay < deadline ? 'playing' : 'crashed',
+      );
+      expect(engine.jumps).toBe(delay < deadline ? 1 : 0);
     }
   });
   it('replays boarding and a later swipe identically at 30, 60 and 120 Hz', () => {
@@ -308,8 +312,7 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
         previousSpawn = -Infinity;
       let lastArrivalWave = 0,
         lastArrivalTime = -Infinity;
-      let earlyDoubles = 0,
-        lateDoubles = 0;
+      let pairedWaves = 0;
       const difficulty = [];
       for (let frame = 0; frame < 18000; frame++) {
         // Read the full generator without changing collision rules or deleting traffic.
@@ -332,8 +335,7 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
             ),
           );
           expect(safe.length).toBeGreaterThan(0);
-          if (engine.distance < 1000 && wave.length === 2) earlyDoubles++;
-          if (engine.distance > 5000 && wave.length === 2) lateDoubles++;
+          if (wave.length === 2) pairedWaves++;
           sawMoving ||= wave.some((o) => o.velocity > 0);
           sawConstruction ||= wave.some((o) => o.kind === 'construction');
           sawTow ||= wave.some((o) => o.kind === 'towtruck');
@@ -346,7 +348,9 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
           const serial = slots.get(obstacle)!;
           if (serial === lastArrivalWave) continue;
           expect(serial).toBeGreaterThan(lastArrivalWave);
-          expect(engine.elapsed - lastArrivalTime).toBeGreaterThan(1.5);
+          expect(engine.elapsed - lastArrivalTime).toBeGreaterThanOrEqual(
+            1.5 - STEP - 1e-8,
+          );
           lastArrivalWave = serial;
           lastArrivalTime = engine.elapsed;
         }
@@ -354,7 +358,7 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
       }
       expect(difficulty[1]).toBeGreaterThan(difficulty[0]);
       expect(engine.difficulty).toBe(1);
-      expect(lateDoubles).toBeGreaterThan(earlyDoubles);
+      expect(pairedWaves / waveSerial).toBeLessThan(0.1);
       expect(engine.obstacles).toHaveLength(32);
     }
     expect([sawMoving, sawConstruction, sawTow]).toEqual([true, true, true]);

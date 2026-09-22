@@ -12,7 +12,8 @@ import {
   refreshDaily,
 } from '../domain/progression';
 import { BIKES, REWARDS } from '../domain/config';
-import { isHelmet, isHelmetColor } from '../domain/helmet';
+import { isHelmet, isHelmetColor, isVisorColor } from '../domain/helmet';
+import { MAX_STICKERS, validSticker } from '../domain/stickers';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
 import catalog from '../../public/catalog/products.json';
 
@@ -103,6 +104,20 @@ export function decodePlayer(raw: string): Player {
   // Invalid optional helmet values recover independently without losing progress.
   if (isHelmet(v.helmet)) p.helmet = v.helmet;
   if (isHelmetColor(v.helmetColor)) p.helmetColor = v.helmetColor;
+  // Additive v1 migration: previous saves have neither visor tint nor placements.
+  if (isVisorColor(v.helmetVisor)) p.helmetVisor = v.helmetVisor;
+  if (isRecord(v.stickers))
+    for (const bike of BIKES) {
+      const placements = v.stickers[bike.id];
+      if (Array.isArray(placements)) {
+        const ids = new Set<string>();
+        p.stickers[bike.id] = placements.filter(validSticker).filter((placement) => {
+          if (ids.has(placement.id) || !catalog.some((product) => product.id === placement.productId && product.handle === 'chrome-sticker')) return false;
+          ids.add(placement.id);
+          return p.ownedItems.includes(placement.productId) || p.irlItems.includes(placement.productId);
+        }).slice(0, MAX_STICKERS);
+      }
+    }
   // Additive v1 migration: obsolete vehicle registration customization is discarded.
   p.ownedItems = p.ownedItems.filter((id) => !id.startsWith('decal:'));
   p.redeemedRewards = p.redeemedRewards.filter((id) => id !== 'crew-decal');
@@ -112,11 +127,17 @@ export function decodePlayer(raw: string): Player {
       'lower',
       'head',
       'accessory',
+      'keychain',
       'collectible',
       'bike',
     ] as const)
       if (typeof v.equipped[slot] === 'string')
         p.equipped[slot] = v.equipped[slot];
+  // Move the old exclusive accessory selection into its new independent slot.
+  if (catalog.some((product) => product.handle === 'schlusselanhanger' && product.id === p.equipped.accessory)) {
+    p.equipped.keychain ??= p.equipped.accessory;
+    delete p.equipped.accessory;
+  }
   if (isRecord(v.variants))
     for (const [id, value] of Object.entries(v.variants))
       if (typeof value === 'string') p.variants[id] = value;

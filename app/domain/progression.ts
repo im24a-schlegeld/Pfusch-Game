@@ -1,5 +1,6 @@
 import { DAILY_CHALLENGES, LEVELS } from './config';
 import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet';
+import { equipmentSlot } from './preview';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const dayKey = (date = new Date()) => date.toISOString().slice(0, 10);
 export const levelForXp = (xp: number) =>
@@ -41,6 +42,8 @@ export function newPlayer(): Player {
     rims: '#a6acb0',
     helmet: DEFAULT_HELMET,
     helmetColor: DEFAULT_HELMET_COLOR,
+    helmetVisor: '#34454d',
+    stickers: {},
     challenges: { date: dayKey(), values: {}, claimed: [] },
     redeemedRewards: [],
     processedRuns: [],
@@ -78,7 +81,7 @@ export function finishRun(
   );
   const coins = Math.max(
     5,
-    Math.floor(run.distance / 22 + run.nearMisses * 3 + run.bestCombo * 2),
+    Math.floor(run.distance / 22 + run.nearMisses * 3 + run.jumps * 2),
   );
   const values = { ...p.challenges.values };
   const metrics = {
@@ -86,17 +89,11 @@ export function finishRun(
     distance: run.distance,
     wheelie: run.wheelieMeters,
     nearMisses: run.nearMisses,
-    combo: run.bestCombo,
     score: run.score,
     jumps: run.jumps,
   };
   for (const c of DAILY_CHALLENGES)
-    values[c.id] = Math.min(
-      c.target,
-      c.stat === 'combo'
-        ? Math.max(values[c.id] ?? 0, metrics[c.stat])
-        : (values[c.id] ?? 0) + metrics[c.stat],
-    );
+    values[c.id] = Math.min(c.target, (values[c.id] ?? 0) + metrics[c.stat]);
   const completed = DAILY_CHALLENGES.filter(
     (c) => values[c.id] >= c.target && !p.challenges.claimed.includes(c.id),
   );
@@ -132,7 +129,7 @@ export function finishRun(
   };
 }
 export function ownership(p: Player, product: Product): Ownership {
-  if (Object.values(p.equipped).includes(product.id)) return 'EQUIPPED';
+  if (p.equipped[equipmentSlot(product)] === product.id) return 'EQUIPPED';
   if (p.irlItems.includes(product.id)) return 'OWNED_IRL';
   return p.ownedItems.includes(product.id) ? 'UNLOCKED_DIGITAL' : 'LOCKED';
 }

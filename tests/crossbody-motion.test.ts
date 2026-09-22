@@ -152,6 +152,23 @@ describe('crossbody cloth attachment', () => {
       };
       const rearStart = centerAt(86),
         rearEnd = centerAt(112);
+      // The visible chest run is one diagonal, without the previous sideways
+      // elbow. Garment fitting may change depth, never bend its X/Y route.
+      const frontStart = centerAt(27),
+        frontEnd = centerAt(45);
+      for (const row of [31, 36, 41]) {
+        const sample = centerAt(row);
+        const fraction = (sample.y - frontStart.y) / (frontEnd.y - frontStart.y);
+        const expectedX = frontStart.x + (frontEnd.x - frontStart.x) * fraction;
+        expect(Math.abs(sample.x - expectedX)).toBeLessThan(0.008);
+      }
+      // No discontinuity where the shoulder crosses into the straight back.
+      expect(centerAt(79).distanceTo(centerAt(78))).toBeLessThan(0.022);
+      for (let row = 50; row < 78; row++) {
+        const incoming = centerAt(row).sub(centerAt(row - 1));
+        const outgoing = centerAt(row + 1).sub(centerAt(row));
+        expect(incoming.angleTo(outgoing)).toBeLessThan(0.8);
+      }
       for (const row of [91, 98, 105]) {
         const sample = centerAt(row),
           fraction = (sample.y - rearStart.y) / (rearEnd.y - rearStart.y);

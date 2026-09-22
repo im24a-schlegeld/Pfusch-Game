@@ -11,7 +11,7 @@ const ride = () => {
 };
 
 describe('PFUSCH road sign pickups', () => {
-  it('collects the six distinct signs once each, rewards the complete set and starts a new set', () => {
+  it('collects six distinct signs once, rewards the complete set and keeps it complete', () => {
     const engine = ride();
     let expectedMask = 0;
     for (const [index, id] of SIGN_IDS.entries()) {
@@ -21,17 +21,17 @@ describe('PFUSCH road sign pickups', () => {
       expect(engine.lastSignId).toBe(id);
       expect(engine.signPickupSerial).toBe(index + 1);
       expectedMask |= 1 << index;
-      expect(engine.collectedSigns).toBe(index === 5 ? 0 : expectedMask);
+      expect(engine.collectedSigns).toBe(expectedMask);
       const serial = engine.signPickupSerial;
       engine.advance(STEP);
       expect(engine.signPickupSerial).toBe(serial);
     }
     expect(engine.signSetCount).toBe(1);
     expect(engine.event.text).toBe('PFUSCH SET COMPLETE');
-    expect(engine.score).toBeGreaterThan(3000);
-    engine.spawnSign('P', 0, 0);
+    expect(engine.score).toBeCloseTo(5 * 45 + 750 + engine.distance * 0.12, 8);
+    expect(engine.spawnSign('P', 0, 0)).toBeUndefined();
     engine.advance(STEP);
-    expect(engine.collectedSigns).toBe(1);
+    expect(engine.collectedSigns).toBe(63);
     expect(engine.signSetCount).toBe(1);
     const settled = finishRun(newPlayer(), engine.stats())!;
     expect(settled.player.highScore).toBe(Math.floor(engine.score));
@@ -54,16 +54,16 @@ describe('PFUSCH road sign pickups', () => {
 
   it('keeps the pool bounded, freezes it on pause, expires missed signs and resets with the run', () => {
     const engine = ride();
-    for (let index = 0; index < 8; index++)
-      expect(engine.spawnSign('P', 1, 1)).toBeDefined();
+    for (const id of SIGN_IDS) expect(engine.spawnSign(id, 1, 1)).toBeDefined();
     expect(engine.spawnSign('F', 0, 1)).toBeUndefined();
     const refs = [...engine.signs];
     engine.pause();
     engine.advance(1);
-    expect(engine.signs.every((sign) => sign.z === 1 && sign.active)).toBe(
-      true,
-    );
+    expect(
+      engine.signs.filter((sign) => sign.active).every((sign) => sign.z === 1),
+    ).toBe(true);
     engine.resume();
+    for (let frame = 0; frame < 180; frame++) engine.advance(STEP);
     for (let frame = 0; frame < 60; frame++) engine.advance(STEP);
     expect(engine.signs.every((sign) => !sign.active)).toBe(true);
     expect(engine.signs).toEqual(refs);
