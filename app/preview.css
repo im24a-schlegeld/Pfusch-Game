@@ -140,8 +140,33 @@
   border-radius: 50%;
   border: 1px solid #9a9f94;
 }
+.hood-options {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .preview-variant {
   margin-top: 18px;
+}
+.inline-hood-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.inline-hood-picker button {
+  flex: 1 1 80px;
+  min-height: 44px;
+  padding: 6px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #b2b2ae;
+  font-size: 9px;
+  cursor: pointer;
+}
+.inline-hood-picker button[aria-pressed='true'] {
+  border-color: #f4f4f2;
+  color: #f4f4f2;
 }
 .garage-product-panel .variant-select {
   width: 100%;

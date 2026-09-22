@@ -13,6 +13,7 @@ import {
   previewLoadout,
   initialConfiguration,
   productColors,
+  supportsHood,
 } from '../domain/preview';
 import {
   Coin,
@@ -62,6 +63,14 @@ export default function Garage({
     const unlocked = unlock(player, p.id, digitalPrice(p));
     if (!unlocked) {
       notify('Du brauchst mehr Coins.');
+      return;
+    }
+    if (supportsHood(p)) {
+      update(unlocked);
+      setDraft(previewLoadout(unlocked, p, config));
+      notify(
+        `${p.title} freigeschaltet. Mit Ausrüsten wird deine Auswahl gespeichert.`,
+      );
       return;
     }
     if (equippable(p)) {
@@ -168,6 +177,12 @@ export default function Garage({
           const config: ProductConfiguration = {
             ...baseConfig,
             variantId,
+            ...(supportsHood(p)
+              ? {
+                  hoodEnabled:
+                    appearance.customizations[p.id]?.hoodEnabled === true,
+                }
+              : {}),
             ...(p.preview?.numberCustomization
               ? {
                   customNumber:
@@ -192,6 +207,11 @@ export default function Garage({
           );
           const isOwned = state !== 'LOCKED';
           const isEquipped = state === 'EQUIPPED';
+          const exact =
+            isEquipped &&
+            baseConfig.variantId === config.variantId &&
+            baseConfig.customNumber === config.customNumber &&
+            baseConfig.hoodEnabled === config.hoodEnabled;
           const canWear = equippable(p);
           return (
             <article
@@ -327,7 +347,7 @@ export default function Garage({
                               ...views,
                               [p.id]: 'front',
                             }));
-                            if (isOwned && canWear) {
+                            if (isOwned && canWear && !supportsHood(p)) {
                               equipProduct(p, nextConfig);
                             } else if (canWear) {
                               setDraft(previewLoadout(player, p, nextConfig));
@@ -380,6 +400,27 @@ export default function Garage({
                     <small>1–2 ZIFFERN</small>
                   </div>
                 )}
+                {supportsHood(p) && (
+                  <fieldset
+                    className="inline-hood-picker hood-options"
+                    aria-label="Windbreaker Kapuze · kostenlose Vorschau"
+                  >
+                    {[false, true].map((hoodEnabled) => (
+                      <button
+                        key={String(hoodEnabled)}
+                        aria-pressed={(config.hoodEnabled === true) === hoodEnabled}
+                        onClick={() => {
+                          const nextConfig = { ...config, hoodEnabled };
+                          setConfiguration(nextConfig);
+                          setSelected(p);
+                          setDraft(previewLoadout(appearance, p, nextConfig));
+                        }}
+                      >
+                        {hoodEnabled ? 'Mit Kapuze' : 'Ohne Kapuze'}
+                      </button>
+                    ))}
+                  </fieldset>
+                )}
                 <button
                   className="button small primary compact-buy-button"
                   disabled={
@@ -390,12 +431,12 @@ export default function Garage({
                   onClick={() => {
                     if (state === 'LOCKED') {
                       unlockProduct(p, config);
-                    } else if (canWear && !isEquipped) {
+                    } else if (canWear && !exact) {
                       equipProduct(p, config);
                     }
                   }}
                 >
-                  {isEquipped
+                  {exact
                     ? 'AUSGERÜSTET'
                     : state === 'LOCKED'
                       ? `KAUFEN · ${digitalPrice(p)} COINS`
@@ -441,6 +482,10 @@ export default function Garage({
             data-number={
               appearance.customizations[appearance.equipped.upper ?? '']
                 ?.customNumber ?? ''
+            }
+            data-hood={
+              appearance.customizations[appearance.equipped.upper ?? '']
+                ?.hoodEnabled === true
             }
             data-helmet={appearance.helmet}
             data-helmet-color={appearance.helmetColor}

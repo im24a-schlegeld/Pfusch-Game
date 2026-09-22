@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
+import {
+  Mesh,
+  MeshStandardMaterial,
+  Raycaster,
+  SkinnedMesh,
+  Vector3,
+} from 'three';
 import { newPlayer } from '../app/domain/progression';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
@@ -48,6 +54,8 @@ describe('crossbody cloth attachment', () => {
       bike.animateSuspension(pitch, 0.015);
       bike.animateAccessories({ reducedMotion: true }, 1 / 60);
       bike.root.updateMatrixWorld(true);
+      for (const sleeve of sleeves)
+        if (sleeve instanceof SkinnedMesh) sleeve.computeBoundingSphere();
       if (pitch === 0) {
         const center = garment.parent!.worldToLocal(
           pouch.getWorldPosition(new Vector3()),
@@ -113,6 +121,43 @@ describe('crossbody cloth attachment', () => {
                 Math.hypot(hit.point.x, hit.point.z),
             ).toBeGreaterThan(0.002);
         }
+      let shoulderSamples = 0;
+      for (let row = 0; row <= 112; row += 2)
+        for (let corner = 0; corner < 4; corner++) {
+          point.fromBufferAttribute(position, row * 4 + corner);
+          if (point.y < 0.48 || point.y > 0.7) continue;
+          const origin = point
+            .clone()
+            .setY(0.9)
+            .applyMatrix4(garment.parent!.matrixWorld);
+          const direction = new Vector3(0, -1, 0).transformDirection(
+            garment.parent!.matrixWorld,
+          );
+          ray.set(origin, direction);
+          const hit = ray.intersectObjects([garment, ...sleeves], false)[0];
+          if (!hit) continue;
+          const surfacePoint = garment.parent!.worldToLocal(hit.point.clone());
+          expect(point.y - surfacePoint.y).toBeGreaterThan(0.003);
+          shoulderSamples++;
+        }
+      expect(shoulderSamples).toBeGreaterThan(4);
+      // The exposed rear run has no sideways detour before either bag pose.
+      const centerAt = (row: number) => {
+        const center = new Vector3();
+        for (let corner = 0; corner < 4; corner++)
+          center.add(
+            new Vector3().fromBufferAttribute(position, row * 4 + corner),
+          );
+        return center.multiplyScalar(0.25);
+      };
+      const rearStart = centerAt(86),
+        rearEnd = centerAt(112);
+      for (const row of [91, 98, 105]) {
+        const sample = centerAt(row),
+          fraction = (sample.y - rearStart.y) / (rearEnd.y - rearStart.y);
+        const expectedX = rearStart.x + (rearEnd.x - rearStart.x) * fraction;
+        expect(Math.abs(sample.x - expectedX)).toBeLessThan(0.003);
+      }
     }
     const frozen = position.array.slice();
     const orientation = pivot.quaternion.toArray();

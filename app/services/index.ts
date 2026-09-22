@@ -119,15 +119,21 @@ export function decodePlayer(raw: string): Player {
   if (isRecord(v.variants))
     for (const [id, value] of Object.entries(v.variants))
       if (typeof value === 'string') p.variants[id] = value;
-  // Additive v1 migration: earlier saves have no garment customization map.
+  // Additive v1 migration: earlier saves have no customization map or hood flag.
+  // Missing/invalid hood flags stay off; recover each optional field independently.
   if (isRecord(v.customizations))
-    for (const [id, value] of Object.entries(v.customizations))
+    for (const [id, value] of Object.entries(v.customizations)) {
+      if (!isRecord(value)) continue;
+      const customization: Player['customizations'][string] = {};
       if (
-        isRecord(value) &&
         typeof value.customNumber === 'string' &&
         /^\d{1,2}$/.test(value.customNumber)
       )
-        p.customizations[id] = { customNumber: value.customNumber };
+        customization.customNumber = value.customNumber;
+      if (typeof value.hoodEnabled === 'boolean')
+        customization.hoodEnabled = value.hoodEnabled;
+      if (Object.keys(customization).length) p.customizations[id] = customization;
+    }
   if (isRecord(v.settings)) {
     for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const)
       if (typeof v.settings[field] === 'boolean')

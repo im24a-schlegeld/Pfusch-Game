@@ -46,16 +46,39 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   const band=add(group,new THREE.CylinderGeometry(.049,.049,.016,32,1,true),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a).addScaledVector(axis,len*.42);
   tube(group,[[.046,.724,-.238],[.103,.700,-.248],[.138,.680,-.188],[.108,.702,.04],[.104,.734,.29],[e.x,e.startY+.018,e.startZ+.02]],.019,silver,'connected-exhaust-pipe');
-  tube(group,[[.11,.976,.62],[e.x,.94,.64],[e.x,exhaustAxisY(.64)+.045,.64]],.008,carbon,'exhaust-frame-hanger');
+  tube(group,[[.075,.976,.62],[e.x,.94,.64],[e.x,exhaustAxisY(.64)+.045,.64]],.008,carbon,'exhaust-frame-hanger');
   const liner=body.getObjectByName('supermoto-under-tail-liner');
   if(!(liner instanceof THREE.Mesh))throw new Error('Supermoto liner is missing');
   const p=liner.geometry.getAttribute('position');let raised=0;
   const original=Float32Array.from(p.array as ArrayLike<number>),half=p.count/2;
   if(!Number.isInteger(half))throw new Error('Expected a two-sided liner sheet');
+  // Raising the liner also moves it into a narrower part of the side cover.
+  // Fit its width to that actual inner wall, not the former low outer edge.
+  const wallTriangles: THREE.Triangle[]=[];
+  body.traverse(object=>{
+    if(!(object instanceof THREE.Mesh)||object.name!=='supermoto-side-cover')return;
+    const pos=object.geometry.getAttribute('position'),ix=object.geometry.index!;
+    for(let i=0;i<ix.count;i+=3){
+      const triangle=new THREE.Triangle(...[0,1,2].map(j=>new THREE.Vector3().fromBufferAttribute(pos,ix.getX(i+j))) as [THREE.Vector3,THREE.Vector3,THREE.Vector3]);
+      if(triangle.getMidpoint(new THREE.Vector3()).x>0)wallTriangles.push(triangle);
+    }
+  });
+  const wallRay=new THREE.Ray(),wallHit=new THREE.Vector3(),inward=new THREE.Vector3(-1,0,0);
+  const innerWallX=(y:number,z:number)=>{
+    wallRay.set(new THREE.Vector3(1,y,z),inward);let x=Infinity;
+    for(const t of wallTriangles)if(wallRay.intersectTriangle(t.a,t.b,t.c,false,wallHit))x=Math.min(x,wallHit.x);
+    return x;
+  };
   for(let i=0;i<p.count;i++){
     const j=i%half,baseY=original[j*3+1],oldY=original[i*3+1];
-    const newY=raisedLinerY(original[j*3],baseY,original[j*3+2])+(oldY-baseY);
-    if(newY>oldY+1e-7){p.setY(i,newY);raised++;}
+    let x=original[j*3],newY=raisedLinerY(x,baseY,original[j*3+2])+(oldY-baseY);
+    const z=original[j*3+2];
+    if(x>0)for(let pass=0;pass<8;pass++){
+      x=Math.min(x,innerWallX(newY,z)-.007);
+      newY=Math.max(newY,raisedLinerY(x,baseY,z)+(oldY-baseY));
+    }
+    p.setXYZ(i,x,newY,z);
+    if(newY>oldY+1e-7)raised++;
   }
   p.needsUpdate=true;liner.geometry.computeVertexNormals();liner.geometry.computeBoundingBox();liner.geometry.computeBoundingSphere();
   liner.userData.exhaustChannelRaised=raised;group.userData.sideCutouts=0;group.userData.boxPanels=0;
@@ -170,13 +193,5 @@ export function darkenWardrobe(root:THREE.Object3D,factor=.82){
       wardrobeTinted.add(m);m.color.multiplyScalar(factor);
       // Do not alter emissiveMap, callbacks, emissiveIntensity, or identity.
     }
-  });
-}
-/** Pull the supermoto cockpit slightly upward/back instead of forward-bent. */
-export function tiltHandlebarBack(body:THREE.Object3D){
-  const names = new Set(['supermoto-handlebar', 'supermoto-handguard', 'supermoto-lever']);
-  const hit=(name:string)=>names.has(name);
-  body.traverse(o=>{if(!(o instanceof THREE.Mesh||o instanceof THREE.Group))return;if(!hit(o.name))return;
-    o.rotation.x += .16; o.rotation.z -= .035; o.position.z -= .01; o.position.y += .008;
   });
 }

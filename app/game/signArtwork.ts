@@ -18,7 +18,12 @@ export interface SignArtwork {
   height: number;
   fallbacks: number;
 }
+export interface OriginalSignArtwork {
+  canvas: HTMLCanvasElement;
+  fallback: boolean;
+}
 let cached: Promise<SignArtwork> | undefined;
+let originals: Promise<OriginalSignArtwork[]> | undefined;
 const makeCanvas = (w: number, h: number) => {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.ceil(w));
@@ -107,8 +112,12 @@ async function original(d: SignCollectibleDefinition) {
   const c = makeCanvas(rawW * k, rawH * k),
     ctx = context(c);
   ctx.save();
-  boundary(ctx, d, c.width, c.height);
-  ctx.clip();
+  // The supplied triangle already has alpha, including its rounded tips.
+  // An ideal triangle mask would trim those original edges.
+  if (!im || d.shape !== 'triangle') {
+    boundary(ctx, d, c.width, c.height);
+    ctx.clip();
+  }
   if (im)
     ctx.drawImage(
       im,
@@ -145,6 +154,14 @@ async function original(d: SignCollectibleDefinition) {
   o.rotate(angle);
   o.drawImage(c, -c.width / 2, -c.height / 2);
   return { canvas: out, fallback: !im };
+}
+/** Complete independent signs for world pickups, with tilt and clear padding. */
+export function loadOriginalSignArtwork(): Promise<OriginalSignArtwork[]> {
+  originals ??= Promise.all(SIGN_COLLECTIBLES.map(original)).catch((error) => {
+    originals = undefined;
+    throw error;
+  });
+  return originals;
 }
 // Masks follow the supplied Signs print, including the round U/C outlines.
 // Layer order matters: revealing F must never brighten the U overlapping it.
@@ -211,7 +228,7 @@ export function loadSignArtwork(): Promise<SignArtwork> {
   if (cached) return cached;
   cached = suppliedPrint()
     .catch(() =>
-      Promise.all(SIGN_COLLECTIBLES.map(original)).then((loaded) => {
+      loadOriginalSignArtwork().then((loaded) => {
         const width = 660,
           height = 205,
           image = makeCanvas(width, height),

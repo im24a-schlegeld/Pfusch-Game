@@ -29,6 +29,7 @@ import {
   SPORT_GEOMETRY,
   sportTireGeometry,
   sportBoxBeamGeometry,
+  sportRearHuggerGeometry,
   roadTireGeometry,
 } from './sportGeometry';
 import {
@@ -51,7 +52,7 @@ import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from '.
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
-import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, tiltHandlebarBack } from './v40ModelFinish';
+import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe } from './v40ModelFinish';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -1617,43 +1618,49 @@ export function makeBike(player: Player, products: Product[]) {
         roughness: 0.15,
       }),
     ).name = 'supermoto-headlight-bulb';
+    // +Z is rearward, toward the rider. Sweep behind the fixed clamps and
+    // finish with straight grip sections at the shared fixed-length IK targets.
     tube(
       body,
       [
-        [-pose.grip[0], pose.grip[1], pose.grip[2]],
-        [-0.22, 1.13, -0.48],
+        [-pose.grip[0] - 0.055, pose.grip[1], pose.grip[2]],
+        [-0.29, pose.grip[1], pose.grip[2]],
+        [-0.2, 1.13, -0.373],
         [-0.1, 1.124, -0.407],
         [0.1, 1.124, -0.407],
-        [0.22, 1.13, -0.48],
-        [pose.grip[0], pose.grip[1], pose.grip[2]],
+        [0.2, 1.13, -0.373],
+        [0.29, pose.grip[1], pose.grip[2]],
+        [pose.grip[0] + 0.055, pose.grip[1], pose.grip[2]],
       ],
-      [0.016, 0.016, 0.016, 0.016, 0.016, 0.016],
+      [0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016],
       alloy,
-      28,
+      36,
       12,
-    );
+    ).name = 'supermoto-handlebar';
     for (const s of [-1, 1]) {
+      const control = (x: number, dy: number, dz: number): Point =>
+        [s * x, pose.grip[1] + dy, pose.grip[2] + dz];
       tube(
         body,
         [
-          [s * 0.23, 1.12, -0.48],
-          [s * 0.31, 1.1, -0.6],
-          [s * 0.43, 1.11, -0.59],
-          [s * 0.445, 1.13, -0.44],
+          control(0.24, 0, -0.012),
+          control(0.31, -0.03, -0.16),
+          control(0.43, -0.02, -0.15),
+          control(0.445, 0, 0),
         ],
         [0.008, 0.008, 0.009, 0.008],
         alloy,
         20,
         12,
         0.65,
-      );
+      ).name = 'supermoto-handguard-support';
       const guardOutline: Point[] = [
-        [s * 0.246, 1.126, -0.555],
-        [s * 0.292, 1.187, -0.595],
-        [s * 0.437, 1.179, -0.582],
-        [s * 0.468, 1.135, -0.55],
-        [s * 0.422, 1.095, -0.575],
-        [s * 0.311, 1.104, -0.611],
+        control(0.246, -0.004, -0.115),
+        control(0.292, 0.057, -0.155),
+        control(0.437, 0.049, -0.142),
+        control(0.468, 0.005, -0.11),
+        control(0.422, -0.035, -0.135),
+        control(0.311, -0.026, -0.171),
       ];
       const guardTriangles = THREE.ShapeUtils.triangulateShape(
         guardOutline.map((p) => new THREE.Vector2(p[0], p[1])),
@@ -1681,21 +1688,21 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          [s * 0.24, 1.125, -0.46],
-          [s * 0.32, 1.12, -0.5],
-          [s * 0.4, 1.12, -0.51],
+          control(0.29, -0.005, -0.002),
+          control(0.32, -0.01, -0.06),
+          control(0.4, -0.01, -0.07),
         ],
         [0.007, 0.007, 0.009],
         alloy,
         12,
         8,
-      );
+      ).name = 'supermoto-lever';
     }
     tube(
       body,
       [
-        [0.13, 1.13, -0.46],
-        [0.16, 1.0, -0.53],
+        [0.29, pose.grip[1] - 0.005, pose.grip[2] - 0.002],
+        [0.22, 1.0, -0.45],
         [0.11, 0.7, -0.64],
         [0.09, 0.41, -0.68],
       ],
@@ -1703,7 +1710,7 @@ export function makeBike(player: Player, products: Product[]) {
       rubber,
       24,
       8,
-    );
+    ).name = 'supermoto-control-cable';
   } else {
     for (const s of [-1, 1])
       rod(body, forkAxisAt(0.995), [s * 0.1, 1.03, -0.43], 0.035, alloy).name =
@@ -1935,6 +1942,44 @@ export function makeBike(player: Player, products: Product[]) {
         dark,
       );
     }
+    // The forward wedge and its continuous side returns sit on the cast arms;
+    // only the short rear lip follows the tire crown.
+    const huggerFinish = material('#202629', 0.08, 0.7);
+    huggerFinish.side = THREE.DoubleSide;
+    mesh(body, sportRearHuggerGeometry(), huggerFinish).name = 'sport-rear-hugger';
+    for (const s of [-1, 1]) {
+      sidePanel(body, s, [
+        [0.150, 0.574, 0.340],
+        [0.150, 0.546, 0.430],
+        [0.123, 0.562, 0.530],
+        [0.163, 0.493, 0.535],
+        [0.164, 0.542, 0.400],
+        [0.164, 0.566, 0.265],
+      ], huggerFinish, 0.006).name = 'sport-hugger-swingarm-foot';
+    }
+    // Short, forward-inclined monoshock under the saddle. Both eyelets have
+    // real transverse supports, well ahead of the tire and rear bodywork.
+    const shockTop = new THREE.Vector3(0, 0.730, 0.205);
+    const shockBottom = new THREE.Vector3(0, 0.508, 0.335);
+    const shockAt = (t: number) => shockTop.clone().lerp(shockBottom, t).toArray() as Point;
+    rod(body, [-0.148, 0.734, 0.205], [0.148, 0.734, 0.205], 0.021, dark).name = 'sport-shock-frame-bridge';
+    rod(body, [CHAIN_DRIVE.leftSwingarmX, 0.508, 0.335], [CHAIN_DRIVE.rightSwingarmX, 0.508, 0.335], 0.026, dark).name = 'sport-shock-swingarm-bridge';
+    for (const p of [shockTop, shockBottom])
+      rod(body, [-0.034, p.y, p.z], [0.034, p.y, p.z], 0.016, alloy).name = 'sport-shock-eyelet';
+    rod(body, shockAt(0.08), shockAt(0.73), 0.021, alloy).name = 'sport-shock-damper';
+    rod(body, shockAt(0.68), shockAt(0.96), 0.009, alloy).name = 'sport-shock-piston';
+    for (const t of [0.19, 0.79])
+      rod(body, shockAt(t - 0.022), shockAt(t + 0.022), 0.038, dark).name = 'sport-shock-spring-seat';
+    const shockAxis = shockBottom.clone().sub(shockTop).normalize();
+    const shockRadial = new THREE.Vector3(1, 0, 0);
+    const shockCross = new THREE.Vector3().crossVectors(shockAxis, shockRadial);
+    const shockCoil = Array.from({ length: 73 }, (_, i) => {
+      const t = i / 72, angle = t * Math.PI * 12;
+      return shockTop.clone().lerp(shockBottom, 0.21 + t * 0.56)
+        .addScaledVector(shockRadial, Math.cos(angle) * 0.030)
+        .addScaledVector(shockCross, Math.sin(angle) * 0.030).toArray() as Point;
+    });
+    tube(body, shockCoil, shockCoil.map(() => 0.0055), material('#b6b9b6', 0.46, 0.43), 84, 7).name = 'sport-rear-shock-spring';
     makeSportFender(frontAssembly, radius, front, paint);
   }
   if (!moped) {
@@ -2146,13 +2191,14 @@ export function makeBike(player: Player, products: Product[]) {
     outlet.name = 'open-silencer-outlet';
   }
   for (const s of [-1, 1]) {
-    rod(
+    const grip = rod(
       body,
       [s * (pose.grip[0] - 0.055), pose.grip[1], pose.grip[2]],
       [s * (pose.grip[0] + 0.055), pose.grip[1], pose.grip[2]],
       0.024,
       rubber,
     );
+    if (player.bike === '450') grip.name = 'supermoto-handgrip';
     if (sport)
       sidePanel(
         body,
@@ -2188,7 +2234,6 @@ export function makeBike(player: Player, products: Product[]) {
   const rider = makeRider(body, riderPose, player, products);
   // V41-FIX: makeRider returns a controller; its group exists only after construction.
   darkenWardrobe(rider.group);
-  if (player.bike === '450') tiltHandlebarBack(body);
   // Bike dimensions grow relative to the same adult. Counter-scale only this
   // parent transform; every rider mesh and fixed bone retains its world length.
   body.scale.setScalar(modelScale);
@@ -2551,7 +2596,11 @@ function makeRider(
   if (upper?.handle === 'unisex-windbreaker')
     addWindbreakerDetails(torsoGroup, torso, stitching);
   foldGarmentHem(torsoGroup, torso, 24, hoodie ? 0.045 : 0.022, stitching);
-  if (hoodie) {
+  if (
+    hoodie ||
+    (upper?.handle === 'unisex-windbreaker' &&
+      player.customizations[upper.id]?.hoodEnabled === true)
+  ) {
     loft(
       torsoGroup,
       [

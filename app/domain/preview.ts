@@ -1,6 +1,8 @@
 import type { Player, Product, ProductConfiguration } from './types';
 export const equippable = (product: Product) =>
   product.category !== 'collectible';
+export const supportsHood = (product: Product) =>
+  product.handle === 'unisex-windbreaker';
 export const canEquip = (player: Player, product: Product) =>
   equippable(product) &&
   (player.ownedItems.includes(product.id) ||
@@ -15,6 +17,9 @@ export function initialConfiguration(
   return {
     productId: product.id,
     variantId: variant?.id ?? '',
+    ...(supportsHood(product)
+      ? { hoodEnabled: player.customizations[product.id]?.hoodEnabled === true }
+      : {}),
     ...(product.preview?.numberCustomization
       ? {
           customNumber: player.customizations[product.id]?.customNumber ?? '',
@@ -29,6 +34,8 @@ export function validConfiguration(
   return (
     config.productId === product.id &&
     product.variants.some((v) => v.id === config.variantId) &&
+    (config.hoodEnabled === undefined ||
+      (supportsHood(product) && typeof config.hoodEnabled === 'boolean')) &&
     (!product.preview?.numberCustomization ||
       /^\d{1,2}$/.test(config.customNumber ?? ''))
   );
@@ -46,7 +53,12 @@ export function previewLoadout(
     variants: { ...player.variants, [product.id]: config.variantId },
     customizations: {
       ...player.customizations,
-      [product.id]: { customNumber: config.customNumber },
+      [product.id]: {
+        customNumber: config.customNumber,
+        ...(supportsHood(product)
+          ? { hoodEnabled: config.hoodEnabled === true }
+          : {}),
+      },
     },
   };
 }

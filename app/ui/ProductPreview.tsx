@@ -14,6 +14,7 @@ import {
   equippable,
   imagePath,
   productColors,
+  supportsHood,
   validConfiguration,
 } from '../domain/preview';
 import { ownership, digitalPrice } from '../domain/progression';
@@ -86,7 +87,10 @@ export default function ProductPreview({
     player.variants[product.id] === configuration.variantId &&
     (!numberEnabled ||
       player.customizations[product.id]?.customNumber ===
-        configuration.customNumber);
+        configuration.customNumber) &&
+    (!supportsHood(product) ||
+      (player.customizations[product.id]?.hoodEnabled === true) ===
+        (configuration.hoodEnabled === true));
   function chooseColor(id: string) {
     const next = colors.find((c) => c.id === id);
     if (next) {
@@ -222,6 +226,29 @@ export default function ProductPreview({
               </SelectContent>
             </Select>
           </div>
+        )}
+        {supportsHood(product) && (
+          <fieldset
+            className="preview-colors preview-variant hood-options"
+            aria-label="Windbreaker Kapuze"
+          >
+            <p className="preview-field-label">KAPUZE · KOSTENLOSE VORSCHAU</p>
+            <div>
+              {[false, true].map((hoodEnabled) => (
+                <button
+                  key={String(hoodEnabled)}
+                  aria-pressed={
+                    (configuration.hoodEnabled === true) === hoodEnabled
+                  }
+                  onClick={() =>
+                    onConfiguration({ ...configuration, hoodEnabled })
+                  }
+                >
+                  {hoodEnabled ? 'Mit Kapuze' : 'Ohne Kapuze'}
+                </button>
+              ))}
+            </div>
+          </fieldset>
         )}
         {numberEnabled && (
           <div className="number-customization">

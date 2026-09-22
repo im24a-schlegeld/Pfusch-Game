@@ -77,6 +77,90 @@ export function sportBoxBeamGeometry(
   return geometry;
 }
 
+/** Folded R6-style swingarm cover: long forward wedge and a short tire lip. */
+export function sportRearHuggerGeometry() {
+  const vertices: number[] = [],
+    indices: number[] = [];
+  // z, half width, crown, shoulder, lower side edge. These broad side returns
+  // descend onto the arms rather than making a separate round fender above them.
+  const sections = [
+    [0.34, 0.15, 0.6, 0.586, 0.571],
+    [0.43, 0.15, 0.614, 0.591, 0.543],
+    [0.53, 0.123, 0.64, 0.611, 0.559],
+    [0.61, 0.113, 0.651, 0.631, 0.614],
+    [0.685, 0.104, 0.654, 0.638, 0.632],
+  ];
+  const arcs = sections.length - 1,
+    across = 6,
+    stride = (arcs + 1) * (across + 1);
+  for (let layer = 0; layer < 2; layer++)
+    for (let i = 0; i <= arcs; i++) {
+      const [z, width, crown, shoulder, edge] = sections[i];
+      const row = [
+        [-width, edge],
+        [-width * 0.84, shoulder],
+        [-width * 0.58, crown],
+        [0, crown],
+        [width * 0.58, crown],
+        [width * 0.84, shoulder],
+        [width, edge],
+      ];
+      for (let j = 0; j <= across; j++) {
+        vertices.push(row[j][0], row[j][1] - (1 - layer) * 0.0035, z);
+      }
+    }
+  for (let layer = 0; layer < 2; layer++)
+    for (let i = 0; i < arcs; i++)
+      for (let j = 0; j < across; j++) {
+        const a = layer * stride + i * (across + 1) + j,
+          b = a + across + 1;
+        if (layer) indices.push(a, a + 1, b, a + 1, b + 1, b);
+        else indices.push(a, b, a + 1, a + 1, b, b + 1);
+      }
+  for (let i = 0; i < arcs; i++)
+    for (const j of [0, across]) {
+      const a = i * (across + 1) + j,
+        b = a + across + 1;
+      indices.push(a, a + stride, b, b, a + stride, b + stride);
+    }
+  for (const i of [0, arcs])
+    for (let j = 0; j < across; j++) {
+      const a = i * (across + 1) + j;
+      indices.push(a, a + 1, a + stride, a + 1, a + stride + 1, a + stride);
+    }
+  // Each longitudinal facet owns its edge vertices. Recomputing normals in
+  // the renderer cannot round the flat deck into its downturned side panels.
+  const creasedVertices: number[] = [],
+    creasedIndices: number[] = [];
+  const creaseMap = new Map<string, number>();
+  const skinTriangles = 2 * arcs * across * 2;
+  for (let i = 0; i < indices.length; i++) {
+    const triangle = Math.floor(i / 3);
+    const facet =
+      triangle < skinTriangles
+        ? Math.floor(triangle / (arcs * across * 2)) * across +
+          (Math.floor(triangle / 2) % across)
+        : triangle + across * 2;
+    const source = indices[i],
+      key = `${facet}:${source}`;
+    let target = creaseMap.get(key);
+    if (target === undefined) {
+      target = creasedVertices.length / 3;
+      creasedVertices.push(...vertices.slice(source * 3, source * 3 + 3));
+      creaseMap.set(key, target);
+    }
+    creasedIndices.push(target);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(creasedVertices, 3),
+  );
+  geometry.setIndex(creasedIndices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 /** A road tire has a broad crown and thin sidewalls around a full-size rim.
  * A circular torus incorrectly makes wider rear tires radially thicker too. */
 export function sportTireGeometry(rear: boolean) {

@@ -59,6 +59,7 @@ export interface ProductConfiguration {
   productId: string;
   variantId: string;
   customNumber?: string;
+  hoodEnabled?: boolean;
 }
 export interface Bike {
   id: string;
@@ -112,7 +113,10 @@ export interface Player {
   irlItems: string[];
   equipped: Partial<Record<Slot, string>>;
   variants: Record<string, string>;
-  customizations: Record<string, { customNumber?: string }>;
+  customizations: Record<
+    string,
+    { customNumber?: string; hoodEnabled?: boolean }
+  >;
   bike: string;
   paint: string;
   rims: string;

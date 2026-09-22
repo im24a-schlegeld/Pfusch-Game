@@ -20,8 +20,12 @@ export const SUPERMOTO_SHROUD: FitPoint[] = [
 // rather than flaring outward around it; both sides share the same boundary.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.136, 0.944, 0.112],
-  [0.112, 0.988, 0.642],
-  [0.062, 1.016, 0.838],
+  // The top seam enters the fender's actual cross section at each station.
+  [0.105, 0.946, 0.170],
+  [0.111, 0.952, 0.330],
+  [0.099, 0.997, 0.570],
+  [0.083, 1.030, 0.790],
+  [0.062, 1.036, 0.838],
   [0.148, 0.873, 0.742],
   [0.162, 0.808, 0.582],
   [0.174, 0.744, 0.408],

@@ -211,7 +211,7 @@ function garmentClearance(torso: THREE.Group) {
     }
   // Garment-local envelope stays fixed while the rider leans. It excludes the
   // hood deliberately: a crossbody strap is allowed to pass underneath it.
-  return (point: THREE.Vector3, clearance = 0.0035) => {
+  return (point: THREE.Vector3, clearance = 0.0035, preserveX = false) => {
     if (!rings.length || point.y < rings[0].y || point.y > rings.at(-1)!.y)
       return point;
     let high = 1;
@@ -222,8 +222,12 @@ function garmentClearance(torso: THREE.Group) {
       depth = Math.max(a.depth, b.depth) + clearance;
     const radial = Math.hypot(point.x / width, point.z / depth);
     if (radial > 1e-8 && radial < 1) {
-      point.x /= radial;
-      point.z /= radial;
+      if (preserveX)
+        point.z = Math.sqrt(Math.max(0, 1 - (point.x / width) ** 2)) * depth;
+      else {
+        point.x /= radial;
+        point.z /= radial;
+      }
     }
     return point;
   };
@@ -231,6 +235,7 @@ function garmentClearance(torso: THREE.Group) {
 function garmentStrapFit(
   torso: THREE.Group,
   clear: ReturnType<typeof garmentClearance>,
+  rearEnd: Point,
 ) {
   const surfaces = ['tailored-garment', 'stand-collar']
     .map((name) => torso.getObjectByName(name))
@@ -239,30 +244,134 @@ function garmentStrapFit(
   const inverse = torso.matrixWorld.clone().invert();
   const ray = new THREE.Raycaster();
   return (point: THREE.Vector3, t: number, edge = false) => {
-    if (edge) return clear(point);
+    const rear = t >= 0.7;
+    if (edge) return clear(point, 0.0035, rear);
+    if (rear) {
+      const along = (t - 0.7) / 0.3;
+      point.set(
+        THREE.MathUtils.lerp(-0.142, rearEnd[0], along),
+        THREE.MathUtils.lerp(0.548, rearEnd[1], along),
+        THREE.MathUtils.lerp(0.112, rearEnd[2], along),
+      );
+    }
     const blend =
       THREE.MathUtils.smoothstep(t, 0.035, 0.14) *
       (1 - THREE.MathUtils.smoothstep(t, 0.86, 0.965));
-    if (!blend || !surfaces.length) return clear(point);
+    if (!blend || !surfaces.length) return clear(point, 0.0035, rear);
     const radial = new THREE.Vector3(point.x, 0, point.z).normalize();
     if (radial.lengthSq() < 0.5) return point;
-    const origin = radial
-      .clone()
-      .multiplyScalar(0.85)
-      .setY(point.y)
-      .applyMatrix4(torso.matrixWorld);
-    const target = new THREE.Vector3(0, point.y, 0).applyMatrix4(
-      torso.matrixWorld,
-    );
+    if (rear) radial.set(0, 0, 1);
+    const origin = (
+      rear
+        ? point.clone().setZ(0.85)
+        : radial.clone().multiplyScalar(0.85).setY(point.y)
+    ).applyMatrix4(torso.matrixWorld);
+    const target = new THREE.Vector3(
+      rear ? point.x : 0,
+      point.y,
+      0,
+    ).applyMatrix4(torso.matrixWorld);
     ray.set(origin, target.sub(origin).normalize());
     const hit = ray.intersectObjects(surfaces, false)[0];
-    if (!hit) return clear(point);
+    if (!hit) return clear(point, 0.0035, rear);
     const surface = hit.point
       .clone()
       .applyMatrix4(inverse)
       .addScaledVector(radial, 0.0045);
-    return clear(point.lerp(surface, blend));
+    return clear(point.lerp(surface, blend), 0.0035, rear);
   };
+}
+
+/** A small posed shoulder collider, excluding the hood. Skin each candidate
+ * vertex once per update; ribbon samples then share the resulting plain mesh. */
+function shoulderStrapClearance(torso: THREE.Group) {
+  const source = (
+    torso.parent?.getObjectsByProperty('name', 'garment-sleeve') ?? []
+  ).filter(
+    (mesh): mesh is THREE.SkinnedMesh => mesh instanceof THREE.SkinnedMesh,
+  );
+  const point = new THREE.Vector3(),
+    inverse = new THREE.Matrix4(),
+    transform = new THREE.Matrix4();
+  torso.updateWorldMatrix(true, true);
+  inverse.copy(torso.matrixWorld).invert();
+  const sleeves = source.flatMap((mesh) => {
+    const positions = mesh.geometry.getAttribute('position'),
+      indices = mesh.geometry.getIndex();
+    if (!indices) return [];
+    transform.multiplyMatrices(inverse, mesh.matrixWorld);
+    const selected: number[] = [];
+    for (let i = 0; i < indices.count; i += 3) {
+      let near = false;
+      for (let j = 0; j < 3; j++) {
+        point
+          .fromBufferAttribute(positions, indices.getX(i + j))
+          .applyMatrix4(transform);
+        if (point.x < -0.08 && point.x > -0.24 && point.y > 0.4) near = true;
+      }
+      if (near)
+        selected.push(
+          indices.getX(i),
+          indices.getX(i + 1),
+          indices.getX(i + 2),
+        );
+    }
+    if (!selected.length) return [];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(
+        new Float32Array(positions.count * 3),
+        3,
+      ),
+    );
+    geometry.setIndex(selected);
+    const collider = new THREE.Mesh(geometry, mesh.material);
+    collider.updateMatrixWorld(true);
+    return [{ mesh, collider, vertices: [...new Set(selected)] }];
+  });
+  const surfaces: THREE.Mesh[] = [];
+  for (const name of ['tailored-garment', 'stand-collar']) {
+    const mesh = torso.getObjectByName(name);
+    if (mesh instanceof THREE.Mesh) {
+      const copy = new THREE.Mesh(mesh.geometry, mesh.material);
+      copy.updateMatrixWorld(true);
+      surfaces.push(copy);
+    }
+  }
+  surfaces.push(...sleeves.map((s) => s.collider));
+  const ray = new THREE.Raycaster(),
+    origin = new THREE.Vector3(),
+    down = new THREE.Vector3(0, -1, 0);
+  const refresh = () => {
+    torso.parent?.updateWorldMatrix(true, true);
+    inverse.copy(torso.matrixWorld).invert();
+    for (const { mesh, collider, vertices } of sleeves) {
+      // SkinnedMesh updates its attached bind inverse in updateMatrixWorld;
+      // Object3D.updateWorldMatrix alone leaves the previous frame's inverse.
+      mesh.updateMatrixWorld(true);
+      mesh.skeleton.update();
+      transform.multiplyMatrices(inverse, mesh.matrixWorld);
+      const position = collider.geometry.getAttribute('position');
+      for (const i of vertices) {
+        mesh.getVertexPosition(i, point).applyMatrix4(transform);
+        position.setXYZ(i, point.x, point.y, point.z);
+      }
+      collider.geometry.computeBoundingSphere();
+    }
+  };
+  const fit = (point: THREE.Vector3) => {
+    if (point.y < 0.46 || point.y > 0.7) return point;
+    ray.set(origin.copy(point).setY(0.9), down);
+    const hit = ray.intersectObjects(surfaces, false)[0];
+    if (hit) point.y = Math.max(point.y, hit.point.y + 0.005);
+    return point;
+  };
+  refresh();
+  torso.addEventListener('removed', () => {
+    for (const s of sleeves) s.collider.geometry.dispose();
+  });
+  return { refresh, fit };
 }
 export function addCleanCrossbody(torso: THREE.Group) {
   const cloth = finish('#1b1c1f'),
@@ -352,6 +461,8 @@ export function addCleanCrossbody(torso: THREE.Group) {
   const right = new THREE.Vector3(...lugs[1])
     .applyMatrix4(bagMatrix)
     .toArray() as Point;
+  const shoulderClearance = shoulderStrapClearance(torso);
+  const fitStrap = garmentStrapFit(torso, clear, right);
   const strap = put(
     group,
     strapGeometry(
@@ -370,7 +481,7 @@ export function addCleanCrossbody(torso: THREE.Group) {
       ],
       0.022,
       0.0021,
-      garmentStrapFit(torso, clear),
+      (point, t, edge) => shoulderClearance.fit(fitStrap(point, t, edge)),
     ),
     cloth,
     'crossbody-flat-strap',
@@ -447,6 +558,7 @@ export function addCleanCrossbody(torso: THREE.Group) {
         .set(...lugs[1])
         .applyMatrix4(bagMatrix)
         .sub(point.set(...right));
+      shoulderClearance.refresh();
       // Keep the shoulder/chest run fitted; only the short hanging sections
       // deform. Reuse buffers and the cap's bounded fixed-step pendulum.
       for (let i = 0; i < positions.count; i++) {
@@ -457,8 +569,9 @@ export function addCleanCrossbody(torso: THREE.Group) {
             leftDelta,
             1 - THREE.MathUtils.smoothstep(t, 0, 0.22),
           )
-          .addScaledVector(rightDelta, THREE.MathUtils.smoothstep(t, 0.78, 1));
-        clear(point);
+          .addScaledVector(rightDelta, Math.max(0, (t - 0.7) / 0.3));
+        clear(point, 0.0035, t >= 0.7);
+        shoulderClearance.fit(point);
         positions.setXYZ(i, point.x, point.y, point.z);
       }
       positions.needsUpdate = true;

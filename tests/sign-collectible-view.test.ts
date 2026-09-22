@@ -1,43 +1,72 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ImageBitmapLoader, Mesh, Texture } from 'three';
-import { makeSignCollectibleView } from '../app/game/signCollectibleView';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type BufferGeometry, type Mesh, type MeshBasicMaterial } from 'three';
 import { SIGN_COLLECTIBLES, SIGN_IDS } from '../app/game/signCollectibles';
 
-afterEach(() => vi.restoreAllMocks());
+beforeEach(() => vi.resetModules());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
-function loaderStub() {
-  const pending: {
-    url: string;
-    ready: (bitmap: ImageBitmap) => void;
-    options: ImageBitmapOptions;
-  }[] = [];
-  vi.spyOn(ImageBitmapLoader.prototype, 'load').mockImplementation(
-    function (this: ImageBitmapLoader, url, ready) {
-      pending.push({ url, ready: ready!, options: { ...this.options } });
+function artworkStub() {
+  const pending: TestImage[] = [];
+  const contexts: { rotate: ReturnType<typeof vi.fn> }[] = [];
+  class TestImage {
+    src = '';
+    naturalWidth = 0;
+    naturalHeight = 0;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor() {
+      pending.push(this);
+    }
+  }
+  vi.stubGlobal('Image', TestImage);
+  vi.stubGlobal('document', {
+    createElement: () => {
+      const context = {
+        save: vi.fn(), restore: vi.fn(), beginPath: vi.fn(), ellipse: vi.fn(),
+        moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(),
+        quadraticCurveTo: vi.fn(), rect: vi.fn(), clip: vi.fn(),
+        drawImage: vi.fn(), translate: vi.fn(), rotate: vi.fn(),
+      };
+      contexts.push(context);
+      return { width: 0, height: 0, getContext: () => context };
     },
-  );
-  return pending;
+  });
+  return {
+    pending,
+    contexts,
+    complete() {
+      pending.forEach((image, i) => {
+        [image.naturalWidth, image.naturalHeight] = SIGN_COLLECTIBLES[i].sourceSize;
+        image.onload?.();
+      });
+    },
+  };
 }
 
 describe('bounded original-artwork sign renderer', () => {
-  it('shares six bounded textures and mesh resources while recycling every pool slot', () => {
-    const pending = loaderStub();
+  it('uses all six complete standalone signs and shares resources across recycled slots', async () => {
+    const artwork = artworkStub();
+    const { makeSignCollectibleView } = await import('../app/game/signCollectibleView');
+    const { loadOriginalSignArtwork } = await import('../app/game/signArtwork');
     const view = makeSignCollectibleView(8, 2.8);
-    expect(pending).toHaveLength(6);
-    expect(pending.map((entry) => entry.url)).toEqual(
-      SIGN_COLLECTIBLES.map((entry) => entry.asset),
+    // The overlapped hoodie print must never supply isolated world pickups.
+    expect(artwork.pending.map((image) => image.src)).toEqual(
+      SIGN_COLLECTIBLES.map((definition) => definition.asset),
     );
-    const bitmaps = pending.map((entry) => {
-      expect(entry.options.resizeWidth).toBeLessThanOrEqual(512);
-      expect(entry.options.resizeHeight).toBeLessThanOrEqual(512);
-      expect(entry.options.imageOrientation).toBe('flipY');
-      const close = vi.fn();
-      const bitmap = { close } as unknown as ImageBitmap;
-      entry.ready(bitmap);
-      return { bitmap, close };
-    });
-    const seenGeometry = new Set(),
-      seenMaterials = new Set();
+    artwork.complete();
+    const originals = await loadOriginalSignArtwork();
+    expect(await loadOriginalSignArtwork()).toBe(originals);
+    expect(artwork.pending).toHaveLength(6);
+    for (const definition of SIGN_COLLECTIBLES) {
+      expect(artwork.contexts.some((ctx) =>
+        ctx.rotate.mock.calls.some(([angle]) => angle === -definition.rotation),
+      )).toBe(true);
+    }
+    const seenGeometry = new Set<BufferGeometry>(),
+      seenMaterials = new Set<MeshBasicMaterial>();
     for (let step = 0; step < 60; step++) {
       const signs = Array.from({ length: 8 }, (_, i) => ({
         active: true,
@@ -51,9 +80,10 @@ describe('bounded original-artwork sign renderer', () => {
         expect(group.visible).toBe(true);
         expect(group.position.x).toBe(signs[i].lane * 2.8);
         expect(group.position.z).toBe(-signs[i].z);
-        const definition = SIGN_COLLECTIBLES.find((d) => d.id === signs[i].id)!;
-        expect(group.rotation.z).toBe(definition.rotation);
-        const face = group.getObjectByName('sign-original-artwork') as Mesh;
+        // Original canvases already contain the intended sign rotation.
+        expect(group.rotation.z).toBe(0);
+        const face = group.getObjectByName('sign-original-artwork') as Mesh<BufferGeometry, MeshBasicMaterial>;
+        expect(face.material.map?.image).toBe(originals[SIGN_IDS.indexOf(signs[i].id)].canvas);
         seenGeometry.add(face.geometry);
         seenMaterials.add(face.material);
       });
@@ -62,29 +92,29 @@ describe('bounded original-artwork sign renderer', () => {
     expect(seenMaterials.size).toBe(6);
     view.update([], 100);
     expect(view.root.children.every((group) => !group.visible)).toBe(true);
-    const textures = [...seenMaterials].map((material) =>
-      vi.spyOn((material as { map: Texture }).map, 'dispose'),
-    );
+    const disposals = [
+      ...[...seenGeometry].map((geometry) => vi.spyOn(geometry, 'dispose')),
+      ...[...seenMaterials].flatMap((material) => [
+        vi.spyOn(material, 'dispose'),
+        vi.spyOn(material.map!, 'dispose'),
+      ]),
+    ];
     view.dispose();
     view.dispose();
-    for (const dispose of textures) expect(dispose).toHaveBeenCalledTimes(1);
-    for (const { close } of bitmaps) expect(close).toHaveBeenCalledTimes(1);
+    for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps pending assets invisible and closes late decodes after unmount', () => {
-    const pending = loaderStub();
+  it('keeps pending signs invisible and ignores late artwork after disposal', async () => {
+    const artwork = artworkStub();
+    const { makeSignCollectibleView } = await import('../app/game/signCollectibleView');
+    const { loadOriginalSignArtwork } = await import('../app/game/signArtwork');
     const view = makeSignCollectibleView(8, 2.8, true);
     view.update([{ active: true, id: 'P', lane: 0, z: 10 }], 0);
     expect(view.root.children[0].visible).toBe(false);
     view.dispose();
-    for (const entry of pending) {
-      expect(entry.options.resizeWidth).toBeLessThanOrEqual(256);
-      expect(entry.options.resizeHeight).toBeLessThanOrEqual(256);
-      const close = vi.fn();
-      entry.ready({ close } as unknown as ImageBitmap);
-      expect(close).toHaveBeenCalledTimes(1);
-    }
+    artwork.complete();
+    await loadOriginalSignArtwork();
     view.update([{ active: true, id: 'P', lane: 0, z: 10 }], 1);
-    expect(view.root.children[0].visible).toBe(false);
+    expect(view.root.children.every((group) => !group.visible && group.children.length === 0)).toBe(true);
   });
 });
