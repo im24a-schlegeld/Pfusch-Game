@@ -58,121 +58,120 @@ function addMesh(
   return mesh;
 }
 
-// Keep this envelope unchanged: the existing goggles and strap use it.
-// Only equipment surfaces below/above the strap are sculpted by moldedPoint.
+// Equipment dimensions in metres, in the caller's unchanged head space.
+// Unlike v2 there is no frozen "strap belt" surrounded by a differently
+// deformed shell. The shell, edge binding and band share one continuous loft.
 const sections: [number, number, number, number][] = [
-  [-0.162, 0.035, 0.218, 0.081],
-  [-0.134, 0.08, 0.217, 0.107],
-  [-0.1, 0.109, 0.209, 0.133],
-  [-0.063, 0.123, 0.18, 0.147],
-  [0, 0.127, 0.151, 0.153],
-  [0.065, 0.123, 0.14, 0.14],
-  [0.117, 0.096, 0.098, 0.105],
-  [0.146, 0.047, 0.048, 0.052],
-  [0.154, 0.002, 0.004, 0.004],
+  [-0.180, 0.036, 0.207, 0.083],
+  [-0.165, 0.055, 0.212, 0.096],
+  [-0.140, 0.078, 0.222, 0.113],
+  [-0.108, 0.098, 0.229, 0.129],
+  [-0.074, 0.113, 0.205, 0.136],
+  [-0.040, 0.123, 0.174, 0.138],
+  [0.000, 0.127, 0.151, 0.138],
+  [0.048, 0.124, 0.143, 0.137],
+  [0.085, 0.114, 0.130, 0.129],
+  [0.116, 0.096, 0.105, 0.113],
+  [0.139, 0.064, 0.072, 0.081],
+  [0.151, 0.028, 0.031, 0.037],
+  [0.154, 0.001, 0.002, 0.003],
 ];
-
-function shellPoint(y: number, angle: number): Point {
-  const a = Math.atan2(Math.sin(angle), Math.cos(angle));
-  const theta = Math.abs(a);
-  let i = 1;
-  while (i < sections.length - 1 && sections[i][0] < y) i++;
-  const low = sections[i - 1],
-    high = sections[i];
-  const t = THREE.MathUtils.clamp((y - low[0]) / (high[0] - low[0]), 0, 1);
-  const width = THREE.MathUtils.lerp(low[1], high[1], t);
-  const depth = THREE.MathUtils.lerp(
-    low[theta < Math.PI / 2 ? 2 : 3],
-    high[theta < Math.PI / 2 ? 2 : 3],
-    t,
-  );
-  let sx = Math.sin(a),
-    cz = Math.cos(a);
-  if (theta < Math.PI / 2) {
-    const corners = [0, 0.35, 0.7, 1.13, Math.PI / 2];
-    let j = 1;
-    while (corners[j] < theta) j++;
-    const blend = (theta - corners[j - 1]) / (corners[j] - corners[j - 1]);
-    const angular = 1 - THREE.MathUtils.smoothstep(y, -0.075, 0.025);
-    sx = THREE.MathUtils.lerp(
-      sx,
-      Math.sign(a) *
-        THREE.MathUtils.lerp(
-          Math.sin(corners[j - 1]),
-          Math.sin(corners[j]),
-          blend,
-        ),
-      angular,
-    );
-    cz = THREE.MathUtils.lerp(
-      cz,
-      THREE.MathUtils.lerp(
-        Math.cos(corners[j - 1]),
-        Math.cos(corners[j]),
-        blend,
-      ),
-      angular,
-    );
-  }
-  return [sx * width, y, -cz * depth + (theta < Math.PI / 2 ? -0.005 : 0.006)];
-}
 
 const lerp = THREE.MathUtils.lerp;
 const smooth = THREE.MathUtils.smoothstep;
 const wrappedAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+const apertureAngle = 1.25;
 
-/** Chin/neck contours are equipment, not a rescaled rider head. */
+// Shape-preserving cubic slopes avoid the horizontal ridges of the previous
+// piecewise-linear dome, without overshooting the measured equipment bounds.
+const sectionSlopes = [1, 2, 3].map((column) => {
+  const secant = sections.slice(1).map((p, i) =>
+    (p[column] - sections[i][column]) / (p[0] - sections[i][0]));
+  return sections.map((_, i) => {
+    if (i === 0) return secant[0];
+    if (i === sections.length - 1) return secant[secant.length - 1];
+    const before = secant[i - 1], after = secant[i];
+    if (before * after <= 0) return 0;
+    const h0 = sections[i][0] - sections[i - 1][0];
+    const h1 = sections[i + 1][0] - sections[i][0];
+    const w0 = 2 * h1 + h0, w1 = h1 + 2 * h0;
+    return (w0 + w1) / (w0 / before + w1 / after);
+  });
+});
+
+function sectionValue(y: number, column: number) {
+  let i = 1;
+  while (i < sections.length - 1 && sections[i][0] < y) i++;
+  const a = sections[i - 1], b = sections[i];
+  const h = b[0] - a[0];
+  const t = THREE.MathUtils.clamp((y - a[0]) / h, 0, 1);
+  const t2 = t * t, t3 = t2 * t;
+  const slopes = sectionSlopes[column - 1];
+  return (2 * t3 - 3 * t2 + 1) * a[column] +
+    (t3 - 2 * t2 + t) * h * slopes[i - 1] +
+    (-2 * t3 + 3 * t2) * b[column] +
+    (t3 - t2) * h * slopes[i];
+}
+
+function shellPoint(y: number, angle: number): Point {
+  const a = wrappedAngle(angle);
+  const theta = Math.abs(a);
+  const width = sectionValue(y, 1);
+  const front = sectionValue(y, 2);
+  const rear = sectionValue(y, 3);
+  let sx = Math.sin(a), cz = Math.cos(a);
+  if (theta < Math.PI / 2) {
+    const corners = [0, 0.24, 0.56, 0.85, apertureAngle, Math.PI / 2];
+    let j = 1;
+    while (corners[j] < theta) j++;
+    const t = (theta - corners[j - 1]) / (corners[j] - corners[j - 1]);
+    const angular = 1 - smooth(y, -0.076, -0.03);
+    sx = lerp(sx, Math.sign(a) * lerp(Math.sin(corners[j - 1]),
+      Math.sin(corners[j]), t), angular);
+    cz = lerp(cz, lerp(Math.cos(corners[j - 1]), Math.cos(corners[j]), t), angular);
+  }
+  // Blend the hemispheres continuously through the temples. The former
+  // front/rear Z offset jumped by 11 mm at PI/2 and made a visible side seam.
+  const depth = lerp(front, rear, smooth(theta, 1.3, 1.85));
+  return [sx * width, y, 0.003 - cz * depth];
+}
+
+/** The chin is equipment, not a change to the rider's skeleton or scale. */
 function contours(a: number) {
   const theta = Math.abs(wrappedAngle(a));
-  const corner = smooth(theta, 0.35, 1.13);
+  const lowerProfile: [number, number][] = [
+    [0, -0.177], [0.24, -0.174], [0.56, -0.161], [0.85, -0.144],
+    [1.25, -0.123], [1.65, -0.109], [2.05, -0.100],
+    [2.55, -0.090], [Math.PI, -0.087],
+  ];
+  let i = 1;
+  while (i < lowerProfile.length - 1 && lowerProfile[i][0] < theta) i++;
+  const a0 = lowerProfile[i - 1], a1 = lowerProfile[i];
+  const t = (theta - a0[0]) / (a1[0] - a0[0]);
+  const corner = smooth(theta, 0.35, apertureAngle);
   return {
-    // The neck cut rises toward the rear. Do not drop the rear skirt to the
-    // chin's height: that made the back round and excessively deep.
-    bottom: -0.111 - 0.051 * (1 - smooth(theta, 0.24, 1.2)) +
-      0.02 * smooth(theta, 1.45, 2.55) +
-      0.007 * smooth(theta, 2.7, Math.PI),
-    lower: -0.073 + 0.041 * corner,
-    upper: 0.065 - 0.019 * corner,
+    bottom: lerp(a0[1], a1[1], t),
+    lower: -0.065 + 0.025 * corner,
+    upper: 0.067 - 0.016 * corner,
   };
 }
 
-/** The leading chin face is straight below its break at the intake. The
- * bottom returns toward the rider rather than curling forward into a hook. */
+/** Straight folded chin face; the bottom returns gently toward the neck. */
 function chinFrontZ(y: number) {
-  return y <= -0.105
-    ? -0.230 - 0.16 * (y + 0.105)
-    : -0.230 + 0.57 * (y + 0.105);
+  return y <= -0.108
+    ? -0.226 - 0.28 * (y + 0.108)
+    : -0.226 + 0.59 * (y + 0.108);
 }
 
 function moldedPoint(y: number, angle: number): Point {
   const p = shellPoint(y, angle);
   const theta = Math.abs(wrappedAngle(angle));
-  // Neither the eye seat nor the unmodified strap's contact belt is moved.
-  const chin = (1 - smooth(y, -0.073, -0.036)) *
-    (1 - smooth(theta, 0.24, 1.25));
+  const chin = (1 - smooth(y, -0.073, -0.041)) *
+    (1 - smooth(theta, 0.24, apertureAngle));
   p[2] += (chinFrontZ(y) - shellPoint(y, 0)[2]) * chin;
-  p[0] *= 1 - 0.04 * chin;
-  const jawWidth = (1 - smooth(y, -0.148, -0.103)) *
-    (1 - smooth(theta, 0.85, 1.4));
-  p[0] += Math.sin(angle) * 0.014 * jawWidth;
-
-  // A more upright occipital wall with a short, clipped lower edge. The
-  // deformation is zero throughout the original goggle/strap corridor.
-  const rear = smooth(theta, 1.9, 2.8) *
-    (y > 0 ? smooth(y, 0.024, 0.047) : smooth(-y, 0.022, 0.047));
-  if (rear > 0) {
-    const profile: [number, number][] = [
-      [-0.17, 0.147], [-0.085, 0.15], [-0.055, 0.153],
-      [-0.024, 0.158], [0.024, 0.158], [0.06, 0.1535],
-      [0.091, 0.141], [0.113, 0.125], [0.13, 0.097],
-      [0.146, 0.052], [0.154, 0.01],
-    ];
-    let i = 1;
-    while (i < profile.length - 1 && profile[i][0] < y) i++;
-    const a = profile[i - 1], b = profile[i];
-    const t = THREE.MathUtils.clamp((y - a[0]) / (b[0] - a[0]), 0, 1);
-    p[2] = lerp(p[2], lerp(a[1], b[1], t), rear);
-  }
+  // A narrow, faceted chin instead of an inflated muzzle. The cranium, eye
+  // opening and all caller-owned transforms remain independent of this taper.
+  p[0] *= 1 - 0.035 * chin;
   return p;
 }
 
@@ -185,23 +184,25 @@ type ShellData = {
 
 function shellGeometry(): ShellData {
   const angles = [...new Set([
-    ...Array.from({ length: 64 }, (_, i) => -Math.PI + i * Math.PI / 32),
+    ...Array.from({ length: 96 }, (_, i) => -Math.PI + i * Math.PI / 48),
     ...[-1, 1].flatMap((side) =>
-      [0.14, 0.22, 0.35, 0.56, 0.7, 1.13, 1.35, 1.73, 1.94, 2.15]
-        .map((a) => a * side)),
+      [0.14, 0.22, 0.24, 0.35, 0.56, 0.7, 0.85, 1.13,
+        apertureAngle, 1.35, 1.65, 1.73, 1.94, 2.15].map((a) => a * side)),
   ])].sort((a, b) => a - b);
-  const outer: Point[] = [];
-  const faces: number[] = [];
-  const vents: VentQuad[] = [];
-  const rows = 14;
+  const outer: Point[] = [], faces: number[] = [], vents: VentQuad[] = [];
+  const lowerRows = [0, 0.08, 0.20, 0.34, 0.48, 0.63, 0.78, 0.90, 1];
+  const eyeRows = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+  const upperRows = [0.14, 0.29, 0.46, 0.62, 0.76, 0.87, 0.95, 1];
+  const eyeStart = lowerRows.length - 1;
+  const upperStart = eyeStart + eyeRows.length;
+  const rows = lowerRows.length + eyeRows.length + upperRows.length;
   const count = angles.length;
-  const lowerRows = [0, 0.2, 0.43, 0.66, 0.86, 1];
-  const upperRows = [0.14, 0.29, 0.46, 0.65, 0.82, 0.95, 1];
   for (let row = 0; row < rows; row++) {
     for (const angle of angles) {
       const { bottom, lower, upper } = contours(angle);
-      const y = row <= 5 ? lerp(bottom, lower, lowerRows[row]) :
-        row === 6 ? upper : lerp(upper, 0.154, upperRows[row - 7]);
+      const y = row <= eyeStart ? lerp(bottom, lower, lowerRows[row]) :
+        row <= upperStart ? lerp(lower, upper, eyeRows[row - eyeStart - 1]) :
+        lerp(upper, 0.154, upperRows[row - upperStart - 1]);
       outer.push(moldedPoint(y, angle));
     }
   }
@@ -210,31 +211,28 @@ function shellGeometry(): ShellData {
       const next = (j + 1) % count;
       const theta = Math.abs(j === count - 1 ? Math.PI :
         (angles[j] + angles[next]) / 2);
-      const a = row * count + j;
-      const b = (row + 1) * count + j;
-      const c = row * count + next;
-      const d = (row + 1) * count + next;
-      if (row === 5 && theta < 1.13) continue; // Actual eye opening.
-      const chinVent = (row === 1 || row === 2) && theta < 0.14;
-      const chinSideVent = row === 1 && theta > 0.22 && theta < 0.56;
-      const cheekVent = row === 1 && theta > 1.35 && theta < 1.73;
-      const browVent = row === 7 && theta > 0.35 && theta < 0.56;
-      const exhaustVent = row === 9 && theta > 1.94 && theta < 2.15;
+      const a = row * count + j, b = (row + 1) * count + j;
+      const c = row * count + next, d = (row + 1) * count + next;
+      if (row >= eyeStart && row < upperStart && theta < apertureAngle) continue;
+      const chinVent = (row === 2 || row === 3) && theta < 0.14;
+      const chinSideVent = (row === 2 || row === 3) && theta > 0.22 && theta < 0.56;
+      const cheekVent = (row === 2 || row === 3) && theta > 1.35 && theta < 1.65;
+      const browVent = row === upperStart + 1 && theta > 0.35 && theta < 0.56;
+      const exhaustVent = row === upperStart + 3 && theta > 1.94 && theta < 2.15;
       if (chinVent || chinSideVent || cheekVent || browVent || exhaustVent) {
         vents.push([outer[a], outer[b], outer[d], outer[c]]);
         continue;
       }
-      faces.push(a, b, c, c, b, d);
+      // Mirror the quad diagonal as well as the vertices. Surface-fitted
+      // parts then sample exactly the same triangulation on both sides.
+      const positiveSide = j === count - 1 || (angles[j] + angles[next]) >= 0;
+      faces.push(...(positiveSide ? [a, b, c, c, b, d] : [a, b, d, a, d, c]));
     }
   }
   const crown = outer.length;
   outer.push([0, 0.154, 0.003]);
-  for (let j = 0; j < count; j++) {
-    faces.push(crown, (rows - 1) * count + ((j + 1) % count),
-      (rows - 1) * count + j);
-  }
-  // Remove unused vertices inside multi-cell vents. Both skins and all rims
-  // remain one connected indexed surface, with no isolated vertices.
+  for (let j = 0; j < count; j++)
+    faces.push(crown, (rows - 1) * count + ((j + 1) % count), (rows - 1) * count + j);
   const remap = new Map<number, number>();
   const points: Point[] = [];
   const compact = faces.map((index) => {
@@ -369,9 +367,9 @@ function polygonFaces(points: Point[], projection: [number, number],
 // The widest station is ABOVE the brow, not at the front of the peak.
 // Every station after it narrows: the two wings meet in one closed nose.
 const peakStations: readonly [number, number][] = [
-  [-0.030, 0.018], [-0.061, 0.052], [-0.098, 0.112],
-  [-0.130, 0.101], [-0.169, 0.087], [-0.207, 0.074],
-  [-0.241, 0.062], [-0.267, 0.052], [-0.278, 0.043],
+  [-0.030, 0.095], [-0.061, 0.106], [-0.098, 0.115],
+  [-0.130, 0.108], [-0.166, 0.097], [-0.202, 0.083],
+  [-0.232, 0.070], [-0.252, 0.058], [-0.266, 0.050],
 ];
 const peakColumns = [-1, -0.88, -0.7, -0.56, -0.4, -0.26, -0.12,
   0, 0.12, 0.26, 0.4, 0.56, 0.7, 0.88, 1];
@@ -379,20 +377,17 @@ const peakColumns = [-1, -0.88, -0.7, -0.56, -0.4, -0.26, -0.12,
 function peakPoint(row: number, u: number): Point {
   const [z, width] = peakStations[row];
   const across = Math.abs(u);
-  const front = THREE.MathUtils.clamp((-z - 0.11) / 0.168, 0, 1);
-  const sweptZ = z + 0.009 * across * front;
-  // One linear Y/Z profile, including the leading edge. No sinusoidal bend,
-  // squared longitudinal term, upturned wings or downturned front lip.
+  const progress = (-z - 0.03) / 0.236;
+  const sweptZ = z - 0.024 * across * (1 - progress) + 0.009 * across * progress;
+  // Continuous molded peak with side roots, rather than a flat top with
+  // disconnected triangular fins below it. Each longitudinal rail is linear.
   const sideProfile = 0.148 + 0.135 * (sweptZ + 0.03);
-  const spine = 0.003 * Math.max(0, 1 - across / 0.26);
-  const channel = 0.0012 * Math.max(0, 1 - Math.abs(across - 0.56) / 0.16);
-  const shoulder = across <= 0.7 ? 0.0014 * across / 0.7 :
-    0.0014 + 0.0036 * (across - 0.7) / 0.3;
-  // The shallow ribs close into the common nose instead of leaving several
-  // raised tips. Linear fade keeps each longitudinal profile a straight line.
-  const molding = (sweptZ + 0.278) / 0.248;
-  return [width * u,
-    sideProfile + (spine - channel - shoulder) * molding, sweptZ];
+  const spine = 0.0034 * Math.max(0, 1 - across / 0.22);
+  const channel = 0.0018 * Math.max(0, 1 - Math.abs(across - 0.55) / 0.14);
+  const wing = across <= 0.58 ? 0.004 * across / 0.58 :
+    0.004 + 0.055 * (across - 0.58) / 0.42;
+  const molding = (sweptZ + 0.266) / 0.236;
+  return [width * u, sideProfile + (spine - channel - wing) * molding, sweptZ];
 }
 
 function addPeak(parent: HelmetMesh, finishes: THREE.MeshStandardMaterial[]) {
@@ -416,24 +411,27 @@ function addPeak(parent: HelmetMesh, finishes: THREE.MeshStandardMaterial[]) {
     finishes, 'motocross-peak');
 
   for (const side of [-1, 1]) {
-    // The cheek tabs terminate on the actual peak edge and shell. They no
-    // longer extend outward below the front tip or leave detached corners.
+    // A small root plate follows the shell; the main peak itself supplies
+    // the side wing. No large non-planar polygon can stick through the roof.
     const tab: Point[] = [
-      moldedPoint(0.082, side * 1.13),
-      moldedPoint(0.113, side * 1.13),
-      peakPoint(2, side), peakPoint(3, side), peakPoint(4, side),
-      [side * 0.102, 0.109, -0.145],
-      [side * 0.109, 0.082, -0.078],
+      moldedPoint(0.090, side * 0.98),
+      moldedPoint(0.108, side * 0.98),
+      moldedPoint(0.112, side * 1.18),
+      moldedPoint(0.089, side * 1.18),
     ];
-    const indices = polygonFaces(tab, [2, 1], new THREE.Vector3(side, 0, 0));
-    addMesh(parent, crisp(thickGeometry(tab, indices,
-      tab.map(([x, y, z]): Point => [x - side * 0.0028, y, z])), 0.3),
+    const radial = (p: Point) => new THREE.Vector3(p[0], 0, p[2] - 0.003).normalize();
+    const outerTab = tab.map((p): Point =>
+      vector(p).addScaledVector(radial(p), 0.0012).toArray() as Point);
+    const innerTab = tab.map((p): Point =>
+      vector(p).addScaledVector(radial(p), -0.0015).toArray() as Point);
+    addMesh(parent, crisp(thickGeometry(outerTab,
+      polygonFaces(outerTab, [2, 1], new THREE.Vector3(side, 0, 0)), innerTab), 0.45),
       finishes, 'peak-temple-mount');
-    const start = moldedPoint(0.102, side * 1.13);
+    const start = moldedPoint(0.100, side * 1.08);
     const bolt = new THREE.Mesh(
       new THREE.CylinderGeometry(0.0062, 0.0067, 0.004, 12), screwMaterial);
     bolt.rotation.z = Math.PI / 2;
-    bolt.position.set(start[0] + side * 0.005, 0.102, start[2]);
+    bolt.position.set(start[0] + side * 0.003, 0.100, start[2]);
     bolt.name = 'peak-pivot-bolt';
     bolt.castShadow = true;
     parent.add(bolt);
@@ -568,62 +566,108 @@ function batch(geometries: THREE.BufferGeometry[]) {
 
 function addSculptedPanels(parent: HelmetMesh, finishes: THREE.MeshStandardMaterial[]) {
   const sample = shellSampler(parent);
+  const crownSample: SurfaceSampler = (p) =>
+    sample(p, new THREE.Vector3(0, 1, 0), 0.22);
   const pieces: THREE.BufferGeometry[] = [];
-  // Jaw planes sit above the side intake. Their long diagonal lower edge
-  // defines the chin-to-cheek transition instead of a round bulbous muzzle.
+
   for (const side of [-1, 1]) {
     const jaw = (u: number, a: number) => {
       const { bottom, lower } = contours(a);
       return moldedPoint(lerp(bottom, lower, u), a * side);
     };
-    pieces.push(moldedPanel([
-      [0.82, 0.35], [0.98, 0.75], [0.91, 1.4], [0.73, 1.98],
-      [0.59, 1.88], [0.58, 1.06], [0.43, 0.56],
-    ], jaw, sample, 0.0035));
-    pieces.push(moldedPanel([
-      [0.08, 0.36], [0.2, 0.66], [0.24, 1.2], [0.19, 1.91],
-      [0.055, 2.16], [0.035, 1.31],
-    ], jaw, sample, 0.0019));
-    // Swept temple / rear shoulder. The goggle strap corridor stays clear.
     const upper = (y: number, a: number) => moldedPoint(y, side * a);
+    const top = (x: number, z: number): Point => [x, 0.155, z];
+
+    // Main lower side panel.
     pieces.push(moldedPanel([
-      [0.054, 1.18], [0.089, 1.34], [0.12, 1.65],
-      [0.127, 1.84], [0.096, 1.91], [0.056, 1.79],
-    ], upper, sample, 0.003));
-    // Thin crown rail rather than an extra inflated dome.
-    const top = (x: number, z: number): Point => [x * side, 0.155, z];
-    const topSample: SurfaceSampler = (p) => sample(p, new THREE.Vector3(0, 1, 0), 0.22);
+      [0.80, 0.34], [0.97, 0.74], [0.92, 1.08], [0.86, 1.42],
+      [0.75, 1.84], [0.61, 1.99], [0.55, 1.58], [0.56, 1.06], [0.44, 0.54],
+    ], jaw, sample, 0.0032));
+
+    // Lower jaw blade below the main panel.
     pieces.push(moldedPanel([
-      [0.016, -0.077], [0.03, -0.047], [0.039, 0.012],
-      [0.046, 0.068], [0.032, 0.092], [0.027, 0.04],
-      [0.021, -0.01],
-    ], top, topSample, 0.0021));
+      [0.56, 0.42], [0.68, 0.88], [0.63, 1.44], [0.52, 1.88],
+      [0.40, 2.02], [0.35, 1.24], [0.42, 0.62],
+    ], jaw, sample, 0.0023));
+
+    // Intake surround / cheek detail.
+    pieces.push(moldedPanel([
+      [0.09, 0.34], [0.20, 0.63], [0.24, 1.03], [0.22, 1.42],
+      [0.16, 1.88], [0.07, 2.08], [0.03, 1.28],
+    ], jaw, sample, 0.002));
+
+    // Brow line above the eye opening.
+    pieces.push(moldedPanel([
+      [0.055, 0.82], [0.073, 0.97], [0.081, 1.13],
+      [0.072, 1.25], [0.055, 1.21], [0.047, 1.02],
+    ], upper, sample, 0.0021));
+
+    // Temple shoulder and rear exhaust surround.
+    pieces.push(moldedPanel([
+      [0.050, 1.30], [0.076, 1.42], [0.104, 1.66],
+      [0.112, 1.88], [0.089, 2.03], [0.055, 1.90],
+    ], upper, sample, 0.0021));
+    pieces.push(moldedPanel([
+      [0.066, 1.94], [0.084, 2.08], [0.105, 2.23],
+      [0.096, 2.38], [0.074, 2.36], [0.058, 2.18],
+    ], upper, sample, 0.0018));
+
+    // Crown wing above the strap corridor.
+    pieces.push(moldedPanel([
+      [side * 0.016, -0.085], [side * 0.030, -0.050], [side * 0.041, -0.002],
+      [side * 0.046, 0.053], [side * 0.039, 0.090], [side * 0.022, 0.072],
+      [side * 0.018, 0.018],
+    ], top, crownSample, 0.0022));
+
+    // Small rear crown shoulder.
+    pieces.push(moldedPanel([
+      [side * 0.030, 0.040], [side * 0.043, 0.082], [side * 0.040, 0.124],
+      [side * 0.026, 0.136], [side * 0.018, 0.098], [side * 0.020, 0.060],
+    ], top, crownSample, 0.0017));
   }
+
+  // Center roof spine to sharpen the crown silhouette.
+  const top = (x: number, z: number): Point => [x, 0.155, z];
+  pieces.push(moldedPanel([
+    [-0.012, -0.094], [-0.024, -0.040], [-0.020, 0.024],
+    [0, 0.108], [0.020, 0.024], [0.024, -0.040], [0.012, -0.094],
+  ], top, crownSample, 0.0023));
+
   addMesh(parent, batch(pieces), finishes, 'motocross-molded-panels');
 
-  // A single folded chin spine, seated on the new front planes. Its upper
-  // crest is angular and its narrow lower tip returns toward the rider.
+  // Multi-break chin spine for a sharper front view.
   const splitter: Point[] = [];
   const rows: [number, number, number][] = [
-    [-0.158, -0.162, 0.0045], [-0.108, -0.105, 0.009],
-    [-0.079, -0.07, 0.014],
+    [-0.173, -0.179, 0.0042],
+    [-0.132, -0.132, 0.0073],
+    [-0.098, -0.093, 0.0112],
+    [-0.071, -0.058, 0.0142],
   ];
   for (const [edgeY, centerY, halfWidth] of rows) {
     for (const side of [-1, 0, 1]) {
       const y = side === 0 ? centerY : edgeY;
-      splitter.push([side * halfWidth, y,
-        moldedPoint(y, 0)[2] - (side === 0 ? 0.0018 : 0.0004)]);
+      splitter.push([
+        side * halfWidth,
+        y,
+        moldedPoint(y, 0)[2] - (side === 0 ? 0.0023 : 0.0005),
+      ]);
     }
   }
   const faces: number[] = [];
   for (let row = 0; row < rows.length - 1; row++) {
     const a = row * 3;
-    faces.push(a, a + 3, a + 1, a + 1, a + 3, a + 4,
-      a + 1, a + 4, a + 2, a + 2, a + 4, a + 5);
+    faces.push(
+      a, a + 3, a + 1,
+      a + 1, a + 3, a + 4,
+      a + 1, a + 4, a + 2,
+      a + 2, a + 4, a + 5,
+    );
   }
-  addMesh(parent, crisp(thickGeometry(splitter, faces,
-    splitter.map(([x, y, z]): Point => [x, y, z + 0.006])), 0.22),
-    finishes, 'motocross-chin-splitter');
+  addMesh(parent, crisp(thickGeometry(
+    splitter,
+    faces,
+    splitter.map(([x, y, z]): Point => [x, y, z + 0.006]),
+  ), 0.18), finishes, 'motocross-chin-splitter');
 }
 
 function addRearRidge(parent: HelmetMesh, finishes: THREE.MeshStandardMaterial[]) {
@@ -643,7 +687,7 @@ function addRearRidge(parent: HelmetMesh, finishes: THREE.MeshStandardMaterial[]
       const radial = new THREE.Vector3(guess[0], 0, guess[2] - 0.006).normalize();
       const { p } = sample(guess, radial);
       // A short molded break, not a long hooked spoiler.
-      const projection = row === 1 ? 0.0075 * taper : -0.0012;
+      const projection = row === 1 ? 0.0055 * taper : -0.0012;
       outer.push(p.clone().addScaledVector(radial, projection).toArray() as Point);
       inner.push(p.clone().addScaledVector(radial, -0.004).toArray() as Point);
     }
@@ -840,59 +884,95 @@ function addGoggles(
   );
 }
 
-function addStrap(
-  parent: THREE.Object3D,
-  trim: THREE.MeshStandardMaterial,
-  foam: THREE.MeshStandardMaterial,
-) {
-  const outer: Point[] = [],
-    inner: Point[] = [],
-    faces: number[] = [];
-  const steps = 64;
-  for (let i = 0; i <= steps; i++)
-    for (const y of [-0.022, 0.024]) {
-      const angle = 1.13 + (i / steps) * (Math.PI * 2 - 2.26);
-      const p = vector(shellPoint(y, angle));
-      const normal = new THREE.Vector3(p.x, 0, p.z - 0.003).normalize();
-      inner.push(p.clone().addScaledVector(normal, 0.0025).toArray() as Point);
-      outer.push(p.addScaledVector(normal, 0.005).toArray() as Point);
+/** A thin, surface-fitted textile band. The old two-row ring was generated
+ * from a different shell and intersected the rear wall. Sample the actual
+ * triangles at every height, and carry the same cross-section into the mounts. */
+function addStrap(parent: HelmetMesh) {
+  const sample = shellSampler(parent);
+  const fabric = material('#171b1e', 0, 0.96);
+  const edging = material('#14181a', 0, 0.98);
+  const startAngle = apertureAngle + 0.025;
+  const endAngle = 2 * Math.PI - startAngle;
+  const steps = 128;
+  const across = [-1, -0.94, -0.78, -0.4, 0, 0.4, 0.78, 0.94, 1];
+  const halfWidth = 0.0185;
+  const centerY = (a: number) => 0.003 +
+    0.0035 * smooth(Math.abs(wrappedAngle(a)), startAngle, 2.8);
+  const lift = (v: number) => Math.abs(v) > 0.94 ? 0.0010 :
+    Math.abs(v) > 0.78 ? 0.0016 : 0.0019;
+  const onShell = (a: number, v: number) => {
+    const y = centerY(a) + v * halfWidth;
+    const guess = moldedPoint(y, a);
+    const direction = new THREE.Vector3(guess[0], 0, guess[2] - 0.003).normalize();
+    const { p } = sample(guess, direction);
+    return { p, direction };
+  };
+  const surface: Point[] = [], inside: Point[] = [], faces: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const a = lerp(startAngle, endAngle, i / steps);
+    for (const v of across) {
+      const { p, direction } = onShell(a, v);
+      surface.push(p.clone().addScaledVector(direction, lift(v)).toArray() as Point);
+      inside.push(p.addScaledVector(direction, 0.00035).toArray() as Point);
     }
-  for (let i = 0; i < steps; i++) {
-    const a = i * 2,
-      b = a + 2;
-    faces.push(a, a + 1, b, b, a + 1, b + 1);
   }
-  addMesh(
-    parent,
-    thickGeometry(outer, faces, inner),
-    [foam, foam, trim],
-    'goggle-strap',
-  );
+  const cols = across.length;
+  for (let i = 0; i < steps; i++) {
+    for (let j = 0; j < cols - 1; j++) {
+      const a = i * cols + j, b = a + cols;
+      faces.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+  }
+  const band = addMesh(parent, crisp(thickGeometry(surface, faces, inside), 0.62),
+    [fabric, fabric, edging], 'goggle-strap');
+  band.userData.width = 2 * halfWidth;
+  band.userData.surfaceFitted = true;
+
+  // Ruled textile transitions from the frame to the band; no floating box
+  // brackets, exposed side caps or discontinuities in width at the join.
   for (const side of [-1, 1]) {
-    const temple = vector(shellPoint(0.002, side * 1.13));
-    temple.addScaledVector(
-      new THREE.Vector3(temple.x, 0, temple.z).normalize(),
-      0.0035,
-    );
-    const front = new THREE.Vector3(side * 0.103, 0.003, -0.096);
-    const direction = temple.clone().sub(front);
-    const bracket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 0.042, direction.length() + 0.008),
-      trim,
-    );
-    bracket.position.copy(front).add(temple).multiplyScalar(0.5);
-    bracket.quaternion.setFromUnitVectors(
-      new THREE.Vector3(0, 0, 1),
-      direction.normalize(),
-    );
-    bracket.name = 'goggle-strap-outrigger';
-    bracket.castShadow = true;
-    parent.add(bracket);
+    const a = side > 0 ? startAngle : endAngle;
+    const outer: Point[] = [], inner: Point[] = [], triangles: number[] = [];
+    const rows = 8;
+    for (let row = 0; row <= rows; row++) {
+      const t = row / rows;
+      for (const v of across) {
+        const { p, direction } = onShell(a, v);
+        const front = new THREE.Vector3(side * 0.102, 0.003 + v * halfWidth, -0.096);
+        const tangent = new THREE.Vector3(side * 0.26, 0, 1).normalize();
+        const distance = front.distanceTo(p);
+        const control1 = front.clone().addScaledVector(tangent, distance / 3);
+        const contactTangent = new THREE.Vector3(side * Math.cos(startAngle), 0,
+          Math.sin(startAngle)).normalize();
+        const control2 = p.clone().addScaledVector(contactTangent, -distance / 3);
+        const u = 1 - t;
+        const point = front.clone().multiplyScalar(u * u * u)
+          .addScaledVector(control1, 3 * u * u * t)
+          .addScaledVector(control2, 3 * u * t * t)
+          .addScaledVector(p, t * t * t);
+        const normal = new THREE.Vector3(side, 0, 0).lerp(direction, t).normalize();
+        outer.push(point.clone().addScaledVector(normal, lift(v)).toArray() as Point);
+        inner.push(point.addScaledVector(normal, 0.00035).toArray() as Point);
+      }
+    }
+    for (let row = 0; row < rows; row++) {
+      for (let j = 0; j < cols - 1; j++) {
+        const a0 = row * cols + j, b = a0 + cols;
+        const quad = [a0, a0 + 1, b, b, a0 + 1, b + 1];
+        if (side < 0)
+          for (let k = 0; k < quad.length; k += 3)
+            [quad[k + 1], quad[k + 2]] = [quad[k + 2], quad[k + 1]];
+        triangles.push(...quad);
+      }
+    }
+    const mount = addMesh(parent, crisp(thickGeometry(outer, triangles, inner), 0.62),
+      [fabric, fabric, edging], 'goggle-strap-outrigger');
+    mount.userData.integratedStrapTransition = true;
   }
 }
 
 /** Drop-in replacement: the caller still owns center, uniform scale 1.065,
- * head rotation and animation. Goggles, strap and rider anatomy are unchanged.
+ * head rotation and animation. Goggles and rider anatomy are unchanged.
  * No textures, DOM, external models or additional imports are required. */
 export function createMotocrossHelmet(color: string): HelmetMesh {
   const shell = material(color, 0.08, 0.58);
@@ -909,7 +989,7 @@ export function createMotocrossHelmet(color: string): HelmetMesh {
   const helmet = new THREE.Mesh(data.geometry, [shell, foam, trim]);
   helmet.name = 'motocross-helmet';
   helmet.userData.helmetStyle = 'motocross';
-  helmet.userData.geometryRevision = 'reference-cross-v2-straight-tapered-peak';
+  helmet.userData.geometryRevision = 'reference-cross-v4-detailed-faceted-shell';
   helmet.castShadow = helmet.receiveShadow = true;
   helmet.updateMatrixWorld(true);
   addPeak(helmet, [shell, foam, trim]);
@@ -917,8 +997,8 @@ export function createMotocrossHelmet(color: string): HelmetMesh {
   addSculptedPanels(helmet, [panel, foam, panelEdge]);
   addLowerBinding(helmet, data.angles, rubber);
   addVentMesh(helmet, data.vents, ventMesh);
-  // Keep these two assemblies and their original materials exactly as before.
+  // Preserve the lens, frame, foam seal and breath guard byte-for-byte.
   addGoggles(helmet, trim, foam);
-  addStrap(helmet, trim, foam);
+  addStrap(helmet);
   return helmet;
 }

@@ -1,5 +1,29 @@
 import * as THREE from 'three';
 
+/** Closed alloy section: the visible inner barrel faces the hub, not the tire. */
+export function rimBarrelGeometry(radius: number, halfWidth: number) {
+  const geometry = new THREE.LatheGeometry(
+    [
+      [radius - 0.009, -halfWidth],
+      [radius + 0.001, -halfWidth],
+      [radius + 0.003, -halfWidth * 0.86],
+      [radius - 0.006, -halfWidth * 0.64],
+      [radius - 0.01, 0],
+      [radius - 0.006, halfWidth * 0.64],
+      [radius + 0.003, halfWidth * 0.86],
+      [radius + 0.001, halfWidth],
+      [radius - 0.009, halfWidth],
+      [radius - 0.014, halfWidth * 0.64],
+      [radius - 0.018, 0],
+      [radius - 0.014, -halfWidth * 0.64],
+      [radius - 0.009, -halfWidth],
+    ].map(([r, x]) => new THREE.Vector2(r, x)),
+    72,
+  );
+  geometry.rotateZ(Math.PI / 2);
+  return geometry;
+}
+
 /** A rim has a dished barrel; spokes terminate in its inner bed, not in the tire. */
 export function motorcycleRim(
   wheel: THREE.Group,
@@ -9,23 +33,9 @@ export function motorcycleRim(
   finish: THREE.Material,
   metal: THREE.Material,
 ) {
-  const barrel = new THREE.LatheGeometry(
-    [
-      new THREE.Vector2(radius - 0.009, -halfWidth),
-      new THREE.Vector2(radius + 0.001, -halfWidth),
-      new THREE.Vector2(radius + 0.003, -halfWidth * 0.86),
-      new THREE.Vector2(radius - 0.009, -halfWidth * 0.7),
-      new THREE.Vector2(radius - 0.015, 0),
-      new THREE.Vector2(radius - 0.009, halfWidth * 0.7),
-      new THREE.Vector2(radius + 0.003, halfWidth * 0.86),
-      new THREE.Vector2(radius + 0.001, halfWidth),
-      new THREE.Vector2(radius - 0.009, halfWidth),
-    ],
-    72,
-  );
-  barrel.rotateZ(Math.PI / 2);
-  // Polished alloy bed remains visible inside the colored outer lips.
-  const rim = new THREE.Mesh(barrel, sport ? finish : metal);
+  const barrel = rimBarrelGeometry(radius, halfWidth);
+  // The continuous rim body uses the selected finish; wire spokes stay metal.
+  const rim = new THREE.Mesh(barrel, finish);
   rim.name = 'formed-rim-barrel';
   rim.castShadow = rim.receiveShadow = true;
   wheel.add(rim);

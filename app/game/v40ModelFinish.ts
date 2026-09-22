@@ -10,13 +10,13 @@ function tube(root:THREE.Object3D, points:P[], radius:number, mat:THREE.Material
   const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)),false,'centripetal');
   return add(root,new THREE.TubeGeometry(curve,40,radius,12,false),mat,name);
 }
-function panel(root:THREE.Object3D, vertices:number[], indices:number[], mat:THREE.Material,name:string) {
+function _panel(root:THREE.Object3D, vertices:number[], indices:number[], mat:THREE.Material,name:string) {
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);
   return add(root,g,mat,name);
 }
-function clonePaint(base:THREE.MeshStandardMaterial){const m=base.clone();m.side=THREE.DoubleSide;return m;}
+function _clonePaint(base:THREE.MeshStandardMaterial){const m=base.clone();m.side=THREE.DoubleSide;return m;}
 /** Only the pipe/silencer and a raised channel in the EXISTING liner. No box panels. */
-export function fitRearExitExhaust(body:THREE.Group, paint:THREE.MeshStandardMaterial) {
+export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMaterial) {
   if(body.getObjectByName('v42-tube-exhaust'))return;
   const names=new Set(['single-exhaust','exhaust-mount-band','exhaust-frame-hanger','open-silencer-outlet','connected-exhaust-pipe']);
   const old:THREE.Mesh[]=[];
@@ -76,7 +76,7 @@ export function finishWheelColors(body:THREE.Group, value:string) {
   });
 }
 /** Small bounded cloth fairing. No deleted faces, no anatomy scaling or torso edits. */
-export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number) {
+export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number,torso?:THREE.Mesh,torsoFrame?:THREE.Group) {
   const g=mesh.geometry,p=g.getAttribute('position');if(p.count!==(rings+1)*(sides+1))throw new Error('Unexpected sleeve grid');
   const original=Float32Array.from(p.array as ArrayLike<number>),stride=sides+1;
   for(let pass=0;pass<3;pass++){
@@ -94,6 +94,63 @@ export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number) {
     }
   }
   p.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();
+  // Fair the LIGHTING separately from the silhouette. The sleeve's duplicated
+  // UV seam and tight shoulder rings otherwise show as glossy triangular patches.
+  const normal=g.getAttribute('normal'),value=new THREE.Vector3();
+  for(let pass=0;pass<6;pass++) {
+    const prev=Float32Array.from(normal.array as ArrayLike<number>);
+    for(let r=1;r<rings;r++) {
+      const weight=1-THREE.MathUtils.smoothstep(r/rings,.30,.60);
+      if(!weight)continue;
+      for(let j=0;j<sides;j++) {
+        value.set(0,0,0);
+        for(const [row,col,factor] of [[r,j,2],[r-1,j,1],[r+1,j,1],[r,(j+sides-1)%sides,1],[r,(j+1)%sides,1]]) {
+          const k=(row*stride+col)*3;
+          value.x+=prev[k]*factor;value.y+=prev[k+1]*factor;value.z+=prev[k+2]*factor;
+        }
+        value.normalize();const i=r*stride+j;
+        value.lerp(new THREE.Vector3().fromArray(prev,i*3),1-weight).normalize();
+        normal.setXYZ(i,value.x,value.y,value.z);
+      }
+    }
+    for(let r=0;r<=rings;r++) {
+      const first=r*stride,last=first+sides;
+      value.fromBufferAttribute(normal,first).add(new THREE.Vector3().fromBufferAttribute(normal,last)).normalize();
+      normal.setXYZ(first,value.x,value.y,value.z);normal.setXYZ(last,value.x,value.y,value.z);
+    }
+  }
+  normal.needsUpdate=true;
+  if(torso && torsoFrame) {
+    torsoFrame.updateMatrix();
+    const inverse=torsoFrame.matrix.clone().invert();
+    const inverseRotation=torsoFrame.quaternion.clone().invert();
+    const sample=new THREE.Vector3(),existing=new THREE.Vector3(),shared=new THREE.Vector3();
+    // Torso and sleeve are overlapping cloth shells. Smoothing each shell alone
+    // still leaves their intersecting edges visible. Shade the upper back from
+    // the SAME continuous field, independent of either shell's depth/triangles.
+    // This modifies normals only; every vertex, UV and bone weight stays intact.
+    for(const surface of [torso,mesh]) {
+      const position=surface.geometry.getAttribute('position'),normals=surface.geometry.getAttribute('normal');
+      for(let i=0;i<position.count;i++) {
+        sample.fromBufferAttribute(position,i);
+        existing.fromBufferAttribute(normals,i);
+        if(surface===mesh) {sample.applyMatrix4(inverse);existing.applyQuaternion(inverseRotation);}
+        const weight=THREE.MathUtils.smoothstep(sample.y,.29,.36)
+          *(1-THREE.MathUtils.smoothstep(sample.y,.60,.65))
+          *(1-THREE.MathUtils.smoothstep(Math.abs(sample.x),.28,.38))
+          *THREE.MathUtils.smoothstep(sample.z,.005,.040);
+        if(weight<=0)continue;
+        shared.set(sample.x*2.5,.10+.72*THREE.MathUtils.smoothstep(sample.y,.45,.62),1).normalize();
+        existing.lerp(shared,weight).normalize();
+        if(surface===mesh)existing.applyQuaternion(torsoFrame.quaternion);
+        normals.setXYZ(i,existing.x,existing.y,existing.z);
+      }
+      normals.needsUpdate=true;
+    }
+  }
+  for(const m of Array.isArray(mesh.material)?mesh.material:[mesh.material]) {
+    if(m instanceof THREE.MeshStandardMaterial) {m.roughness=1;m.metalness=0;m.envMapIntensity=0;}
+  }
 }
 export function blackSprings(body:THREE.Group){
   const names=new Set(['rear-shock-spring','fork-stanchion','fork-dust-seal']);

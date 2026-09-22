@@ -110,8 +110,8 @@ it.each(['125', 'scooter', '450', '701'] as const)(
           bones.push({ bone: object, length, scale: object.scale.toArray() });
       }
     });
-    // Each of the four two-bone IK chains has one explicit parent/child link.
-    expect(bones.length).toBe(4);
+    // The legs have linked bones; the sleeve rig uses sibling torso/arm bones.
+    expect(bones.length).toBe(2);
     bike.animateRider(
       { wheelie: contact.angle, steer: 0.3, launch: 0.6, landing: 0 },
       1 / 30,

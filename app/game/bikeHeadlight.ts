@@ -1,18 +1,16 @@
 import { Vector3, type Object3D, type SpotLight } from 'three';
 import type { BikeModelId } from './vehicleScale';
+import { SPORT_LENS_FACES } from './sportDesign';
 
 type Point = readonly [number, number, number];
 
-// Raw visible lens faces, before model/display scale. Sport's two points include
-// the final Z compression baked into sportBodywork's assembled nose geometry.
+// Raw visible optical faces, before model/display scale. Sport shares the
+// exact authored projector face centres with sportDesign; no stale offsets.
 const LENS_FACES: Readonly<Record<BikeModelId, readonly Point[]>> = {
   '125': [[0, 0.967, -0.604]],
   scooter: [[0, 0.611, -0.785]],
   '450': [[0, 0.99, -0.641]],
-  '701': [
-    [-0.166, 0.797, -0.7801],
-    [0.166, 0.797, -0.7801],
-  ],
+  '701': SPORT_LENS_FACES,
 };
 
 // Preserve the former road beam's slight downward angle: 1.22 m over 23 m.

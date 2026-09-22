@@ -39,6 +39,7 @@ import {
 import { suspensionPose } from './bikeMotion';
 import { makeSportBodywork } from './sportBodywork';
 import { motorcycleRim } from './wheelDetails';
+import { MOPED_REAR_FENDER_ANGLE } from './tailContact';
 import { makeScooter } from './scooterGeometry';
 import { createMotocrossHelmet } from './motocrossHelmet';
 import {
@@ -263,6 +264,7 @@ function makeFender(
   tireRadius: number,
   z: number,
   m: THREE.MeshStandardMaterial,
+  endAngle = 1.25,
 ) {
   const positions: number[] = [],
     indices: number[] = [];
@@ -274,7 +276,7 @@ function makeFender(
   for (let layer = 0; layer < 2; layer++)
     for (let i = 0; i <= arc; i++)
       for (let j = 0; j <= across; j++) {
-        const angle = -1.03 + (i / arc) * 2.28;
+        const angle = -1.03 + (i / arc) * (endAngle + 1.03);
         const x = (j / across - 0.5) * 0.102;
         const r =
           tireRadius +
@@ -626,13 +628,13 @@ export function makeBike(player: Player, products: Product[]) {
     for (const x of moped ? [0] : [-width * 0.81, width * 0.81]) {
       const lip = mesh(
         wheel,
-        new THREE.TorusGeometry(rimRadius, 0.007, 10, 64),
+        new THREE.TorusGeometry(rimRadius, moped ? 0.015 : sport ? 0.011 : 0.014, 12, 72),
         rim,
       );
       lip.rotation.y = Math.PI / 2;
       lip.position.x = x;
     }
-    rod(wheel, [-0.06, 0, 0], [0.06, 0, 0], 0.055, dark);
+    rod(wheel, [-0.06, 0, 0], [0.06, 0, 0], 0.055, rim);
     if (!moped)
       motorcycleRim(wheel, sport, rimRadius, width * 0.81, rim, alloy);
     const spokes = 5;
@@ -970,7 +972,7 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
     );
     makeFender(frontAssembly, radius, front, dark);
-    makeFender(body, radius, rear, dark);
+    makeFender(body, radius, rear, dark, MOPED_REAR_FENDER_ANGLE);
     tube(
       body,
       [
@@ -1706,20 +1708,6 @@ export function makeBike(player: Player, products: Product[]) {
       rod(body, forkAxisAt(0.995), [s * 0.1, 1.03, -0.43], 0.035, alloy).name =
         'frame-head-brace';
     // The lower wrapper hangs below the crankcases and rises behind the collector.
-    const radiator = mesh(body, new THREE.BoxGeometry(0.285, 0.3, 0.042), dark);
-    radiator.position.set(0, 0.645, -0.388);
-    radiator.rotation.x = 0.16;
-    radiator.name = 'sport-radiator';
-    for (let k = 0; k < 13; k++) {
-      const y = 0.51 + k * 0.022;
-      rod(
-        body,
-        [-0.131, y, -0.416 + (y - 0.645) * 0.16],
-        [0.131, y, -0.416 + (y - 0.645) * 0.16],
-        0.0028,
-        engine,
-      );
-    }
     loft(
       body,
       [
@@ -1769,10 +1757,10 @@ export function makeBike(player: Player, products: Product[]) {
     loft(
       body,
       [
-        [0.12, 0.105, 0.022, 0.83],
-        [0.31, 0.14, 0.035, 0.835],
-        [0.51, 0.115, 0.031, 0.88],
-        [0.62, 0.073, 0.019, 0.925],
+        [0.12, 0.1, 0.02, 0.831],
+        [0.27, 0.135, 0.025, 0.837],
+        [0.39, 0.132, 0.025, 0.854],
+        [0.47, 0.098, 0.023, 0.886],
       ],
       seat,
       'z',
@@ -1790,6 +1778,9 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
     );
     tailShell.name = 'sport-tail-shell';
+    // Build the new exterior first; the mechanical mounts below terminate
+    // on its actual underside triangles instead of the former placeholder.
+    makeSportBodywork(body, paint, tank);
     oval(body, [0.015, 0.52, -0.02], [0.13, 0.185, 0.25], engine).name =
       'engine-crankcase';
     loft(
@@ -1898,18 +1889,6 @@ export function makeBike(player: Player, products: Product[]) {
       return nearest;
     };
     for (const s of [-1, 1]) {
-      tube(
-        body,
-        [
-          [s * 0.1, 1.03, -0.43],
-          [s * 0.18, 0.79, -0.12],
-          [s * 0.16, 0.56, 0.15],
-        ],
-        [0.04, 0.046, 0.044],
-        dark,
-        22,
-        14,
-      );
       const subframe = tube(
         body,
         [
@@ -1938,7 +1917,7 @@ export function makeBike(player: Player, products: Product[]) {
       rod(
         body,
         railContact.point
-          .addScaledVector(underside.normal, 0.005)
+          .addScaledVector(underside.normal, 0.012)
           .toArray() as Point,
         underside.point.toArray() as Point,
         0.005,
@@ -1968,19 +1947,7 @@ export function makeBike(player: Player, products: Product[]) {
         dark,
       );
     }
-    makeSportBodywork(body, paint, tank);
     makeSportFender(frontAssembly, radius, front, paint);
-    const rearLamp = loft(
-      body,
-      [
-        [0.8, 0.055, 0.01, 0.966],
-        [0.837, 0.042, 0.011, 0.969],
-      ],
-      material('#b64232', 0.1, 0.35),
-      'z',
-      16,
-    );
-    rearLamp.name = 'tail-light';
   }
   if (!moped) {
     makeDrive(body, wheels[1], 0.08, 0.49, engine);
@@ -2001,10 +1968,10 @@ export function makeBike(player: Player, products: Product[]) {
   } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
   const exhaustX = moped ? 0.15 : sport ? 0.215 : 0.130;
-  const exhaustY = moped ? 0.22 : sport ? 0.34 : 0.754;
-  const mufflerStartZ = moped ? 0.38 : sport ? 0.55 : 0.415;
+  const exhaustY = moped ? 0.22 : sport ? 0.31 : 0.754;
+  const mufflerStartZ = moped ? 0.38 : sport ? 0.43 : 0.415;
   const mufflerEndZ = moped ? 0.76 : sport ? 0.82 : 0.785;
-  const mufflerRise = moped ? 0.025 : sport ? 0.155 : 0.133;
+  const mufflerRise = moped ? 0.025 : sport ? 0.15 : 0.133;
   const mufflerY = (z: number) =>
     exhaustY +
     ((z - mufflerStartZ) / (mufflerEndZ - mufflerStartZ)) * mufflerRise;
@@ -2021,9 +1988,9 @@ export function makeBike(player: Player, products: Product[]) {
         ? [
             [0.16, 0.355, -0.15],
             [0.2, 0.33, -0.02],
-            [exhaustX, 0.304, 0.3],
-            [exhaustX, 0.328, 0.52],
-            [exhaustX, mufflerY(0.6), 0.6],
+            [exhaustX, 0.279, 0.26],
+            [exhaustX, 0.297, 0.39],
+            [exhaustX, mufflerY(0.48), 0.48],
           ]
         : [
             [0.045, 0.724, -0.234],
@@ -2143,7 +2110,8 @@ export function makeBike(player: Player, products: Product[]) {
   if (moped || sport)
     rod(
       body,
-      [moped ? 0.105 : 0.075, moped ? 0.337 : 0.85, moped ? 0.55 : 0.58],
+      // Sport silencer support shares the lower rearset carrier, not the tail.
+      [moped ? 0.105 : 0.205, moped ? 0.337 : 0.47, moped ? 0.55 : 0.4],
       [exhaustX, mufflerY(moped ? 0.591 : 0.691), moped ? 0.591 : 0.691],
       moped ? 0.009 : 0.012,
       dark,
@@ -2335,7 +2303,7 @@ function trimTeeSleeveTorsoOverlap(
 }
 
 
-function moveTeeShoulderForward(
+function _moveTeeShoulderForward(
   sleeve: THREE.Mesh,
   rings: number,
   sides: number,
@@ -2578,6 +2546,9 @@ function makeRider(
     garmentMaterial(upper, player, color),
   );
   torso.name = 'tailored-garment';
+  const torsoCloth = torso.material as THREE.MeshStandardMaterial;
+  torsoCloth.roughness = 1;
+  torsoCloth.envMapIntensity = 0;
   torso.castShadow = false;
   torso.receiveShadow = false;
   torsoDrape(torso.geometry, hem, hoodie || zipper, hoodie);
@@ -2986,7 +2957,10 @@ function makeRider(
       tee ? 24 : 20,
       side as -1 | 1,
     );
-    fairShoulder(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20);
+    // Wardrobe shading must include the sleeve clones as well as the torso.
+    // Unnamed clones stayed brighter and exposed patch-like armhole overlaps.
+    armMeshes[0].name = 'garment-sleeve';
+    fairShoulder(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20, torso, torsoGroup);
     if (upper && !tee && !outerwear) {
       const seams = sleeveSeams(
         armMeshes[0],
@@ -3118,7 +3092,7 @@ function makeRider(
   );
   const accessory = products.find((p) => p.id === player.equipped.accessory);
   if (accessory?.handle === 'logo-crossbody-tasche') {
-    addCleanCrossbody(torsoGroup, accessoryMaterial(accessory, player, productColor(accessory)));
+    addCleanCrossbody(torsoGroup);
   }
   let capMotion: ReturnType<typeof createCarriedCapMotion> | undefined;
   const cap = products.find((p) => p.id === player.equipped.head);

@@ -1,3 +1,4 @@
+import { SPORT_LENS_FACES } from '../app/game/sportDesign';
 import { describe, expect, it } from 'vitest';
 import { Group, Scene, SpotLight, Vector3 } from 'three';
 import { createBikeHeadlightRig } from '../app/game/bikeHeadlight';
@@ -46,10 +47,7 @@ const fixtures: readonly Fixture[] = [
     rear: 0.685,
     front: -0.72,
     radius: 0.3204,
-    emitters: [
-      [-0.166, 0.797, -0.7801],
-      [0.166, 0.797, -0.7801],
-    ],
+    emitters: SPORT_LENS_FACES,
   },
 ];
 

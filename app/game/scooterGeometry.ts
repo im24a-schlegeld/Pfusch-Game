@@ -5,6 +5,7 @@ import type { RiderMotion } from './riderMotion';
 import { suspensionPose } from './bikeMotion';
 import { brakeRotorGeometry } from './driveGeometry';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
+import { rimBarrelGeometry } from './wheelDetails';
 
 type Point = [number, number, number];
 type Section = [number, number, number, number]; // z, half width, half height, center y
@@ -241,37 +242,23 @@ function castWheel(
   wheel: THREE.Group,
   width: number,
   rim: THREE.Material,
-  alloy: THREE.Material,
+  _alloy: THREE.Material,
 ) {
   const radius = SCOOTER_GEOMETRY.rimRadius,
     half = width * 0.36;
-  const barrel = new THREE.LatheGeometry(
-    [
-      [radius - 0.012, -half],
-      [radius + 0.001, -half],
-      [radius + 0.002, -half * 0.84],
-      [radius - 0.012, -half * 0.6],
-      [radius - 0.018, 0],
-      [radius - 0.012, half * 0.6],
-      [radius + 0.002, half * 0.84],
-      [radius + 0.001, half],
-      [radius - 0.012, half],
-    ].map(([r, x]) => new THREE.Vector2(r, x)),
-    48,
-  );
-  barrel.rotateZ(Math.PI / 2);
+  const barrel = rimBarrelGeometry(radius, half);
   mesh(wheel, barrel, rim, 'formed-rim-barrel');
   for (const side of [-1, 1]) {
     const lip = mesh(
       wheel,
-      new THREE.TorusGeometry(radius - 0.002, 0.004, 8, 48),
+      new THREE.TorusGeometry(radius - 0.002, 0.009, 10, 56),
       rim,
       'rim-lip',
     );
     lip.rotation.y = Math.PI / 2;
     lip.position.x = side * half;
   }
-  rod(wheel, [-half, 0, 0], [half, 0, 0], 0.04, alloy, 'wheel-hub');
+  rod(wheel, [-half, 0, 0], [half, 0, 0], 0.04, rim, 'wheel-hub');
   const shape = new THREE.Shape();
   shape.moveTo(0.025, -0.017);
   shape.quadraticCurveTo(0.077, -0.005, radius - 0.013, -0.027);
@@ -368,70 +355,6 @@ function fender(
   );
   geometry.setIndex(indices);
   return mesh(parent, geometry, material, name);
-}
-
-type ApronSection = [number, number, number, number, number, number, number];
-
-/** Closed molded volume: y, inner/outer x, three face depths and material thickness. */
-function formedApron(
-  parent: THREE.Object3D,
-  sections: ApronSection[],
-  material: THREE.Material,
-  name: string,
-  side = 1,
-) {
-  const rows = (sections.length - 1) * 3,
-    columns = 8,
-    count = (rows + 1) * (columns + 1);
-  const vertices: number[] = [],
-    indices: number[] = [];
-  for (let face = 0; face < 2; face++)
-    for (let i = 0; i <= rows; i++) {
-      const at = (i / rows) * (sections.length - 1),
-        index = Math.min(sections.length - 2, Math.floor(at));
-      const [y, inside, outside, zi, zm, zo, depth] = sections[index].map(
-        (n, j) => THREE.MathUtils.lerp(n, sections[index + 1][j], at - index),
-      );
-      for (let j = 0; j <= columns; j++) {
-        const u = j / columns;
-        const z =
-          u < 0.5
-            ? THREE.MathUtils.lerp(zi, zm, u * 2)
-            : THREE.MathUtils.lerp(zm, zo, (u - 0.5) * 2);
-        vertices.push(
-          THREE.MathUtils.lerp(inside, outside, u),
-          y,
-          z + face * depth,
-        );
-      }
-    }
-  for (let face = 0; face < 2; face++)
-    for (let i = 0; i < rows; i++)
-      for (let j = 0; j < columns; j++) {
-        const a = face * count + i * (columns + 1) + j,
-          b = a + columns + 1;
-        if (face) indices.push(a, a + 1, b, b, a + 1, b + 1);
-        else indices.push(a, b, a + 1, b, b + 1, a + 1);
-      }
-  const edge: number[] = [];
-  for (let j = 0; j <= columns; j++) edge.push(j);
-  for (let i = 1; i <= rows; i++) edge.push(i * (columns + 1) + columns);
-  for (let j = columns - 1; j >= 0; j--) edge.push(rows * (columns + 1) + j);
-  for (let i = rows - 1; i > 0; i--) edge.push(i * (columns + 1));
-  for (let i = 0; i < edge.length; i++) {
-    const a = edge[i],
-      b = edge[(i + 1) % edge.length];
-    indices.push(a, b, a + count, b, b + count, a + count);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(vertices, 3),
-  );
-  geometry.setIndex(indices);
-  const result = mesh(parent, geometry, material, name);
-  result.scale.x = side;
-  return result;
 }
 
 /** A proud faceted lens or cover with a closed rear housing. */
@@ -550,125 +473,130 @@ function legShield(
   geometry.setIndex(indices);
   mesh(parent, geometry, [paint, inner], 'scooter-leg-shield');
 
-  // Narrow recessed channels separate two closed, curved molding volumes.
-  // Their 2–23 mm gaps replace the former broad rectangular windows.
-  const cheeks: ApronSection[] = [
-    [0.556, 0.068, 0.181, -0.752, -0.704, -0.455, 0.036],
-    [0.626, 0.108, 0.236, -0.728, -0.693, -0.437, 0.032],
-    [0.695, 0.075, 0.247, -0.71, -0.682, -0.437, 0.03],
-    [0.77, 0.087, 0.24, -0.636, -0.634, -0.425, 0.028],
-    [0.845, 0.114, 0.218, -0.56, -0.578, -0.408, 0.028],
-    [0.915, 0.07, 0.18, -0.494, -0.532, -0.394, 0.029],
-    [0.939, 0.042, 0.148, -0.465, -0.448, -0.383, 0.028],
-  ];
-  for (const side of [-1, 1]) {
-    const blade: ApronSection[] = [],
-      wing: ApronSection[] = [],
-      slot: ApronSection[] = [];
-    for (let i = 0; i < cheeks.length; i++) {
-      const [y, x0, x1, z0, zm, z1, depth] = cheeks[i];
-      const gap = i === 2 || i === 3 ? 0.023 : i === 4 ? 0.016 : 0.002;
-      const a = THREE.MathUtils.lerp(x0, x1, 0.59),
-        b = a + gap;
-      const crossZ = (x: number) => {
-        const u = (x - x0) / (x1 - x0);
-        return u < 0.5
-          ? THREE.MathUtils.lerp(z0, zm, u * 2)
-          : THREE.MathUtils.lerp(zm, z1, (u - 0.5) * 2);
-      };
-      blade.push([y, x0, a, z0, crossZ((x0 + a) / 2), crossZ(a), depth]);
-      wing.push([y, b, x1, crossZ(b), crossZ((b + x1) / 2), z1, depth]);
-      slot.push([
-        y,
-        a,
-        b,
-        crossZ(a) + 0.018,
-        crossZ((a + b) / 2) + 0.018,
-        crossZ(b) + 0.018,
-        0.012,
+  // One molded face carries three inset slots. Shared edges replace the old
+  // overlapping cheeks, grille ribs and crown that produced doubled highlights.
+  const profile = new THREE.CatmullRomCurve3(
+    [
+      new THREE.Vector3(0.53, 0.22, -0.746),
+      new THREE.Vector3(0.6, 0.238, -0.75),
+      new THREE.Vector3(0.69, 0.249, -0.725),
+      new THREE.Vector3(0.77, 0.242, -0.658),
+      new THREE.Vector3(0.845, 0.22, -0.585),
+      new THREE.Vector3(0.915, 0.18, -0.521),
+      new THREE.Vector3(0.973, 0.121, -0.459),
+    ],
+    false,
+    'catmullrom',
+    0.15,
+  );
+  const sampleCount = 56,
+    crossCount = 24;
+  const surface: Point[] = [];
+  const materialIndices: number[][] = [[], [], []];
+  const face = new THREE.BufferGeometry();
+  const rowPoints = profile.getPoints(sampleCount);
+  for (let row = 0; row <= sampleCount; row++) {
+    const p = rowPoints[row];
+    const edgeZ = THREE.MathUtils.lerp(-0.425, -0.371, (p.x - 0.53) / 0.443);
+    for (let column = 0; column <= crossCount; column++) {
+      const u = (column / crossCount) * 2 - 1;
+      surface.push([
+        u * p.y,
+        p.x + 0.006 * u * u,
+        THREE.MathUtils.lerp(p.z, edgeZ, Math.abs(u) ** 2.25),
       ]);
     }
-    formedApron(parent, blade, paint, 'scooter-prow-cheek', side);
-    formedApron(parent, wing, paint, 'scooter-swept-apron-shoulder', side);
-    formedApron(parent, slot, intake, 'scooter-apron-intake', side);
   }
-  const grilleSections: ApronSection[] = [
-    [0.681, -0.049, 0.049, -0.701, -0.715, -0.701, 0.019],
-    [0.747, -0.089, 0.089, -0.639, -0.66, -0.639, 0.019],
-    [0.815, -0.115, 0.115, -0.57, -0.593, -0.57, 0.019],
-    [0.864, -0.122, 0.122, -0.532, -0.549, -0.532, 0.019],
-  ];
-  formedApron(parent, grilleSections, intake, 'scooter-central-grille-recess');
-  // Painted ribs share the curved prow envelope, leaving only three narrow
-  // swept openings over the black intake cavity, as on the grey reference.
-  const grilleRib = (y: number): ApronSection => {
-    const index = Math.min(
-      grilleSections.length - 2,
-      Math.max(0, grilleSections.findIndex((section) => section[0] >= y) - 1),
+  const ventCell = (row: number, column: number) => {
+    if (row < 0 || row >= sampleCount || column < 0 || column >= crossCount)
+      return false;
+    const y = (rowPoints[row].x + rowPoints[row + 1].x) / 2;
+    return (
+      Math.abs(((column + 0.5) / crossCount) * 2 - 1) < 0.43 &&
+      ((y > 0.73 && y < 0.746) ||
+        (y > 0.785 && y < 0.801) ||
+        (y > 0.838 && y < 0.854))
     );
-    const a = grilleSections[index],
-      b = grilleSections[index + 1];
-    const at = (y - a[0]) / (b[0] - a[0]);
-    const section = a.map((n, j) =>
-      THREE.MathUtils.lerp(n, b[j], at),
-    ) as ApronSection;
-    for (const i of [3, 4, 5]) section[i] -= 0.009;
-    section[6] = 0.022;
-    return section;
   };
-  for (const [low, high] of [
-    [0.681, 0.722],
-    [0.744, 0.768],
-    [0.79, 0.814],
-    [0.837, 0.864],
-  ])
-    formedApron(
-      parent,
-      [grilleRib(low), grilleRib(high)],
-      paint,
-      'scooter-molded-grille-rib',
-    );
-  for (const side of [-1, 1])
-    for (const [y, width, centerZ, outerZ] of [
-      [0.729, 0.073, -0.68, -0.66],
-      [0.775, 0.099, -0.63, -0.606],
-      [0.82, 0.117, -0.586, -0.552],
-    ]) {
-      facetedCover(
-        parent,
+  const frontCount = surface.length;
+  for (const point of surface.slice())
+    surface.push([point[0], point[1], point[2] + 0.027]);
+  const add = (indices: number[], material = 0) => {
+    materialIndices[material].push(...indices);
+  };
+  for (let row = 0; row < sampleCount; row++)
+    for (let column = 0; column < crossCount; column++) {
+      const a = row * (crossCount + 1) + column,
+        b = a + crossCount + 1;
+      if (ventCell(row, column)) {
+        // The cavity is real depth; its dark floor stays behind the painted rim.
+        const first = surface.length;
+        for (const index of [a, b, b + 1, a + 1]) {
+          const point = surface[index];
+          surface.push([point[0], point[1], point[2] + 0.018]);
+        }
+        add([first, first + 1, first + 3, first + 1, first + 2, first + 3], 1);
+        for (const [edge, neighbor] of [
+          [
+            [a, b],
+            [row, column - 1],
+          ],
+          [
+            [b, b + 1],
+            [row + 1, column],
+          ],
+          [
+            [b + 1, a + 1],
+            [row, column + 1],
+          ],
+          [
+            [a + 1, a],
+            [row - 1, column],
+          ],
+        ]) {
+          if (ventCell(neighbor[0], neighbor[1])) continue;
+          const offset = [a, b, b + 1, a + 1].indexOf(edge[0]);
+          const n = first + offset,
+            next = first + ((offset + 1) % 4);
+          add([edge[0], next, edge[1], edge[0], n, next]);
+        }
+      } else add([a, b, a + 1, b, b + 1, a + 1]);
+      add(
         [
-          [0, y - 0.006, centerZ],
-          [side * width, y + 0.008, outerZ],
-          [side * width, y + 0.02, outerZ + 0.006],
-          [0, y + 0.007, centerZ + 0.006],
+          a + frontCount,
+          a + 1 + frontCount,
+          b + frontCount,
+          b + frontCount,
+          a + 1 + frontCount,
+          b + 1 + frontCount,
         ],
-        [(side * width) / 2, y + 0.008, (centerZ + outerZ) / 2 - 0.004],
-        inner,
-        'scooter-apron-intake-louver',
-        0.013,
+        2,
       );
     }
-  formedApron(
-    parent,
-    [
-      [0.656, -0.012, 0.012, -0.751, -0.765, -0.751, 0.031],
-      [0.697, -0.041, 0.041, -0.716, -0.735, -0.716, 0.027],
-      [0.721, -0.07, 0.07, -0.685, -0.708, -0.685, 0.026],
-    ],
-    paint,
-    'scooter-central-prow-ridge',
+  const border: number[] = [];
+  for (let column = 0; column <= crossCount; column++) border.push(column);
+  for (let row = 1; row <= sampleCount; row++)
+    border.push(row * (crossCount + 1) + crossCount);
+  for (let column = crossCount - 1; column >= 0; column--)
+    border.push(sampleCount * (crossCount + 1) + column);
+  for (let row = sampleCount - 1; row > 0; row--)
+    border.push(row * (crossCount + 1));
+  for (let i = 0; i < border.length; i++) {
+    const a = border[i],
+      b = border[(i + 1) % border.length];
+    add([a, b, a + frontCount, b, b + frontCount, a + frontCount]);
+  }
+  face.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(surface.flat(), 3),
   );
-  formedApron(
-    parent,
-    [
-      [0.854, -0.118, 0.118, -0.537, -0.578, -0.537, 0.023],
-      [0.902, -0.19, 0.19, -0.412, -0.533, -0.412, 0.025],
-      [0.949, -0.146, 0.146, -0.409, -0.486, -0.409, 0.025],
-      [0.973, -0.122, 0.122, -0.385, -0.456, -0.385, 0.024],
-    ],
-    paint,
-    'scooter-apron-upper-crown',
-  );
+  const surfaceIndices: number[] = [];
+  materialIndices.forEach((indices, material) => {
+    face.addGroup(surfaceIndices.length, indices.length, material);
+    surfaceIndices.push(...indices);
+  });
+  face.setIndex(surfaceIndices);
+  mesh(parent, face, [paint, intake, inner], 'scooter-continuous-front-apron');
 }
 
 export function makeScooter(
@@ -1467,16 +1395,16 @@ export function makeScooter(
     facetedCover(
       body,
       [
-        [s * 0.09, 1.125, -0.595],
-        [s * 0.174, 1.14, -0.563],
-        [s * 0.231, 1.105, -0.487],
-        [s * 0.211, 1.07, -0.525],
-        [s * 0.107, 1.058, -0.586],
+        [s * 0.113, 1.121, -0.568],
+        [s * 0.176, 1.131, -0.545],
+        [s * 0.214, 1.106, -0.49],
+        [s * 0.2, 1.081, -0.518],
+        [s * 0.126, 1.074, -0.561],
       ],
-      [s * 0.161, 1.103, -0.593],
+      [s * 0.165, 1.103, -0.566],
       indicatorLens,
       'scooter-front-indicator',
-      0.025,
+      0.018,
     );
   }
   // Cable enters the fork-mounted caliper from the protected apron cavity.

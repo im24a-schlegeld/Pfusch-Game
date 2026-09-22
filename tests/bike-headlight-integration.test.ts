@@ -1,3 +1,4 @@
+import { SPORT_LENS_FACES } from '../app/game/sportDesign';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DirectionalLight,
@@ -35,12 +36,8 @@ const lensFaces: Readonly<Record<BikeModelId, readonly Point[]>> = {
   '125': [[0, 0.967, -0.604]],
   scooter: [[0, 0.611, -0.785]],
   '450': [[0, 0.99, -0.641]],
-  // These are the visible projector faces after sportBodywork's baked nose
-  // compression, rather than the now-zero mesh positions or the lens centers.
-  '701': [
-    [-0.166, 0.797, -0.7801],
-    [0.166, 0.797, -0.7801],
-  ],
+  // Shared S1 optical faces; the assertions below also verify the actual mesh vertices.
+  '701': SPORT_LENS_FACES,
 };
 
 function lightingFixture() {
