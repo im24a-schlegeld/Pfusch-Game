@@ -1,4 +1,5 @@
 import { BIKE_MODEL_SCALES } from './vehicleScale';
+import { SUPERMOTO_CHASSIS } from './supermotoFit';
 
 /** Shared metres for deterministic contacts and the pooled traffic meshes. */
 export type TrafficKind = 'car' | 'van' | 'towtruck' | 'construction';
@@ -41,8 +42,8 @@ export const TOW_RAMP = Object.freeze({
   frontHeight: 1.05,
   deckThickness: 0.09,
   halfWidth: 1.25,
-  launchVelocity: 8.4,
-  gravity: 21,
+  launchVelocity: 5.85,
+  gravity: 26,
   cabRearZ: -1.2,
 });
 /** World-space front tire contacts, checked against the assembled bike meshes. */
@@ -52,8 +53,8 @@ export const RAMP_FRONT_CONTACT: Readonly<
   '125': { axle: -0.7 * 1.45, radius: 0.305 * 1.45 },
   scooter: { axle: -0.65 * 1.45, radius: 0.224 * 1.45 },
   '450': {
-    axle: -0.77 * BIKE_MODEL_SCALES['450'] * 1.45,
-    radius: 0.2999 * 1.05 * BIKE_MODEL_SCALES['450'] * 1.45,
+    axle: SUPERMOTO_CHASSIS.frontAxle * BIKE_MODEL_SCALES['450'] * 1.45,
+    radius: SUPERMOTO_CHASSIS.wheelRadius * BIKE_MODEL_SCALES['450'] * 1.45,
   },
   '701': {
     axle: -0.72 * BIKE_MODEL_SCALES['701'] * 1.45,
@@ -66,8 +67,8 @@ const RAMP_REAR_CONTACT: Readonly<
   '125': { axle: 0.55 * 1.45, radius: 0.305 * 1.45 },
   scooter: { axle: 0.64 * 1.45, radius: 0.231 * 1.45 },
   '450': {
-    axle: 0.76 * BIKE_MODEL_SCALES['450'] * 1.45,
-    radius: 0.3119 * 1.05 * BIKE_MODEL_SCALES['450'] * 1.45,
+    axle: SUPERMOTO_CHASSIS.rearAxle * BIKE_MODEL_SCALES['450'] * 1.45,
+    radius: SUPERMOTO_CHASSIS.wheelRadius * BIKE_MODEL_SCALES['450'] * 1.45,
   },
   '701': {
     axle: 0.685 * BIKE_MODEL_SCALES['701'] * 1.45,
@@ -159,8 +160,12 @@ export function towRampPose(bikeId: string, localZ: number, minimumPitch = 0) {
       else high = pitch;
     }
   } else high = 0;
-  const pitch = Math.max((low + high) / 2,
-    Number.isFinite(minimumPitch) ? Math.max(0, Math.min(Math.PI * 0.49, minimumPitch)) : 0);
+  const pitch = Math.max(
+    (low + high) / 2,
+    Number.isFinite(minimumPitch)
+      ? Math.max(0, Math.min(Math.PI * 0.49, minimumPitch))
+      : 0,
+  );
   return {
     height:
       Math.max(0, clearance(pitch, true), clearance(pitch, false)) + 0.018,

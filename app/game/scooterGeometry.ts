@@ -3,7 +3,7 @@ import type { Player, Product } from '../domain/types';
 import { POSES, type RiderPose } from './riderSkeleton';
 import type { RiderMotion } from './riderMotion';
 import type { RagdollPose } from './ragdoll';
-import { suspensionPose } from './bikeMotion';
+import { activeSuspensionPose, createRearSuspension } from './activeSuspension';
 import { brakeRotorGeometry } from './driveGeometry';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
 import { rimBarrelGeometry } from './wheelDetails';
@@ -1436,16 +1436,18 @@ export function makeScooter(
   );
 
   const rider = riderFactory(body, POSES.scooter, player, products);
+  const rearSuspension = createRearSuspension(body, 'scooter');
   const movedLower = new THREE.Vector3(),
     direction = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0),
     xAxis = new THREE.Vector3(1, 0, 0);
-  const animateSuspension = (pitch: number, travel: number) => {
-    const pose = suspensionPose(pitch, travel, rear, front, rearRadius);
+  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0) => {
+    const pose = activeSuspensionPose('scooter', pitch, travel, rear, front, rearRadius, wheelieLoad);
     body.rotation.x = pose.pitch;
     body.position.copy(pose.position);
     frontAssembly.rotation.x = pose.axleAngle;
     frontAssembly.position.copy(pose.axlePosition);
+    rearSuspension.update(pose.rearAngle, pose.rearPosition);
     for (const fork of forkSliders) {
       movedLower
         .copy(fork.lower)

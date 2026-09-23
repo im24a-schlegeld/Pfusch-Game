@@ -106,6 +106,14 @@ export function advanceBalance(
   state.forwardLoad +=
     (Number(forward) - state.forwardLoad) * (1 - Math.exp(-dt * 12));
   const speedPower = Math.max(0.85, Math.min(1.22, speed / 22));
+  // Ahead of the tipping point the released front end returns decisively.
+  // Retain the launch response and the unstable rearward side of the balance.
+  const returnGravity =
+    state.wheelieAngle < profile.balancePoint
+      ? 1 +
+        2.5 *
+          (1 - Math.max(state.throttleLoad, state.liftPull, Number(throttle)))
+      : 1;
   const torque =
     state.liftPull *
       profile.launchTorque *
@@ -116,7 +124,9 @@ export function advanceBalance(
       speedPower *
       (1 - state.forwardLoad * 0.7) -
     state.forwardLoad * profile.forwardWeightTorque +
-    profile.gravity * Math.sin(state.wheelieAngle - profile.balancePoint) -
+    profile.gravity *
+      returnGravity *
+      Math.sin(state.wheelieAngle - profile.balancePoint) -
     profile.damping * state.wheelieAngularVelocity;
   state.wheelieAngularVelocity += torque * dt;
   const next = state.wheelieAngle + state.wheelieAngularVelocity * dt;

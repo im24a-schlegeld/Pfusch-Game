@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { BIKE_MODEL_SCALES, type BikeModelId } from './vehicleScale';
-import { SUPERMOTO_PEG } from './supermotoFit';
+import { SUPERMOTO_GRIP, SUPERMOTO_PEG } from './supermotoFit';
 export type Point = [number, number, number];
 export const RIDER_DIMENSIONS = Object.freeze({
   torsoLength: 0.53,
@@ -127,7 +127,7 @@ export const BIKE_CONTACTS: Readonly<Record<BikeModelId, RiderTarget>> =
     },
     '450': {
       hip: [0, 1.0, 0.18],
-      grip: [0.35, 1.157, -0.3],
+      grip: SUPERMOTO_GRIP,
       peg: SUPERMOTO_PEG,
       torsoLean: 0.3,
     },

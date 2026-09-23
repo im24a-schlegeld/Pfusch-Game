@@ -1,4 +1,4 @@
-import { SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 
 export interface TailContact {
   readonly point: readonly [number, number, number];
@@ -45,8 +45,8 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   scooter: contact([0.065, 0.304, 0.9705], 0.64, 0.231, 'plastic'),
   '450': contact(
     [0, supermotoTailTip[3] + supermotoTailTip[2], supermotoTailTip[0]],
-    0.76,
-    0.327495,
+    SUPERMOTO_CHASSIS.rearAxle,
+    SUPERMOTO_CHASSIS.wheelRadius,
     'plastic',
   ),
   '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'metal'),

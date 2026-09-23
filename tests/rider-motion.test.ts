@@ -81,7 +81,7 @@ describe('animated immutable rider', () => {
     for (const base of Object.values(POSES)) {
       const neutral = riderMotionPose(base, rest);
       const launch = riderMotionPose(base, { ...rest, launch: 1 });
-      expect(launch.hip[2] - neutral.hip[2]).toBeCloseTo(0.004, 10);
+      expect(launch.hip[2] - neutral.hip[2]).toBeCloseTo(0.013, 10);
       expect(launch.shoulder[2]).toBeGreaterThan(neutral.shoulder[2]);
       expect(launch.lean).toBeLessThan(neutral.lean);
       for (const sign of [-1, 1]) {
@@ -133,6 +133,53 @@ describe('animated immutable rider', () => {
           );
         }
       }
+    }
+  });
+  it('gives a brief rearward launch cue and a restrained mirrored weight shift during wheelie lane changes', () => {
+    for (const base of Object.values(POSES)) {
+      const neutral = riderMotionPose(base, {
+        wheelie: 0,
+        steer: 0,
+        landing: 0,
+      });
+      const launch = riderMotionPose(base, {
+        wheelie: 0,
+        steer: 0,
+        landing: 0,
+        launch: 0.7,
+      });
+      // This is the rider's visible shoulder displacement, not a skeleton resize.
+      expect(launch.shoulder[2] - neutral.shoulder[2]).toBeGreaterThan(0.02);
+      expect(launch.shoulder[2] - neutral.shoulder[2]).toBeLessThan(0.055);
+      const straight = riderMotionPose(base, {
+        wheelie: 0.85,
+        steer: 0,
+        landing: 0,
+      });
+      const left = riderMotionPose(base, {
+        wheelie: 0.85,
+        steer: -0.28,
+        landing: 0,
+      });
+      const right = riderMotionPose(base, {
+        wheelie: 0.85,
+        steer: 0.28,
+        landing: 0,
+      });
+      expect(right.hip[0] - straight.hip[0]).toBeGreaterThan(0.007);
+      expect(right.hip[0] - straight.hip[0]).toBeLessThan(0.01);
+      expect(left.hip[0] - straight.hip[0]).toBeCloseTo(
+        -(right.hip[0] - straight.hip[0]),
+        10,
+      );
+      expect(left.roll).toBeCloseTo(-right.roll, 10);
+      expect(Math.abs(left.roll)).toBeLessThan(0.027);
+      expect(left.limbs.map((limb) => limb.arm.end)).toEqual(
+        straight.limbs.map((limb) => limb.arm.end),
+      );
+      expect(right.limbs.map((limb) => limb.leg.end)).toEqual(
+        straight.limbs.map((limb) => limb.leg.end),
+      );
     }
   });
   it('bounds motion inputs and treats nonfinite input as neutral', () => {

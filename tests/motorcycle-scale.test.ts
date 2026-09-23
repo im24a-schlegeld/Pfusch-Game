@@ -5,6 +5,7 @@ import { makeBike } from '../app/game/vehicle';
 import { BIKE_MODEL_SCALES } from '../app/game/vehicleScale';
 import { SPORT_GEOMETRY } from '../app/game/sportGeometry';
 import { createSportDesign } from '../app/game/sportDesign';
+import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -58,11 +59,12 @@ describe('larger motorcycles with one unchanged adult', () => {
       expect(clearance).toBeGreaterThan(.005);
     }
   });
-  it('enlarges both Supermoto tires and rims together while keeping both tires on the ground', () => {
+  it('uses equal 17-inch Supermoto wheels with wider tires that both stay grounded', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     bike.root.scale.setScalar(1);
     for (const [i, wheel] of bike.wheels.entries()) {
-      const radius = [0.2999, 0.3119][i] * 1.05;
+      bike.animateSuspension(0, 0);
+      const radius = SUPERMOTO_CHASSIS.wheelRadius;
       const tire = wheel.getObjectByName('tire') as Mesh;
       const rim = wheel.getObjectByName('formed-rim-barrel') as Mesh;
       tire.geometry.computeBoundingBox();
@@ -72,10 +74,14 @@ describe('larger motorcycles with one unchanged adult', () => {
       expect(tire.geometry.boundingBox!.max.y).toBeCloseTo(radius, 5);
       expect(tire.geometry.boundingBox!.min.y).toBeCloseTo(-radius, 5);
       expect(rim.geometry.boundingBox!.max.y).toBeCloseTo(
-        SPORT_GEOMETRY.rimRadius * 1.05 + 0.003,
+        SUPERMOTO_CHASSIS.rimRadius + 0.003,
         5,
       );
       expect(wheel.position.y).toBeCloseTo(radius, 12);
+      const width = tire.geometry.boundingBox!.max.x - tire.geometry.boundingBox!.min.x;
+      const nominalWidth = i === 0 ? SUPERMOTO_CHASSIS.frontTireWidth : SUPERMOTO_CHASSIS.rearTireWidth;
+      // The existing moulded sidewall detail protrudes less than a millimetre.
+      expect(Math.abs(width - nominalWidth)).toBeLessThan(0.0015);
       for (const travel of [-0.008, 0, 0.024]) {
         bike.animateSuspension(0, travel);
         bike.root.updateMatrixWorld(true);

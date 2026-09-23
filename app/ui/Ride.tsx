@@ -286,23 +286,25 @@ export default function Ride({
               {gameText(engine.event.text)}
             </div>
           )}
-          {engine.scoreGains.map((gain) => (
-            <div
-              key={gain.serial}
-              className="score-gain"
-              data-kind={gain.group ?? 'stunt'}
-              data-points={gain.points}
-              style={{
-                opacity: Math.min(
-                  1,
-                  (1.25 - engine.elapsed + gain.updatedAt) / 0.25,
-                ),
-              }}
-            >
-              <span>{gameText(gain.text)}</span>
-              <strong>+{gain.points.toLocaleString('de-CH')}</strong>
-            </div>
-          ))}
+          {engine.scoreGains
+            .filter((gain) => gain.group !== 'ride')
+            .map((gain) => (
+              <div
+                key={gain.serial}
+                className="score-gain"
+                data-kind={gain.group ?? 'stunt'}
+                data-points={gain.points}
+                style={{
+                  opacity: Math.min(
+                    1,
+                    (1.25 - engine.elapsed + gain.updatedAt) / 0.25,
+                  ),
+                }}
+              >
+                <span>{gameText(gain.text)}</span>
+                <strong>+{gain.points.toLocaleString('de-CH')}</strong>
+              </div>
+            ))}
         </div>
       )}
       {countdown > 0 && (
@@ -328,23 +330,6 @@ export default function Ride({
           <span className="touch-control-tip">
             DEUTLICH WISCHEN = SPURWECHSEL · ZWEI FINGER = PAUSE
           </span>
-        </div>
-      )}
-      {engine.phase === 'playing' && (
-        <div className="ride-balance" aria-label="Wheelie-Winkel">
-          <small>GLEICHGEWICHT</small>
-          <div className="balance-meter">
-            <b
-              style={{
-                left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
-              }}
-            />
-            <i
-              style={{
-                width: `${Math.min(100, (engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100)}%`,
-              }}
-            />
-          </div>
         </div>
       )}
       <Dialog

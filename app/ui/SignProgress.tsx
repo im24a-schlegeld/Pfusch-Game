@@ -42,20 +42,15 @@ export default function SignProgress({ mask }: { mask: number }) {
     Number(!!(mask & (1 << i))),
   ).reduce((a, b) => a + b, 0);
   return (
-    <div
+    <figure
       className="sign-set-v38 v42-signs"
       data-testid="sign-progress"
       data-mask={mask}
       data-ready={!!art}
       data-fallbacks={art?.fallbacks ?? 0}
-      aria-label={`${count} von 6 Schildern gesammelt`}
+      aria-label={`${count} von 6 Schildern gesammelt${failed ? '. Bild nicht verfügbar' : ''}`}
     >
-      <div className="sign-set-caption">
-        <span>{count === 6 ? 'SET KOMPLETT' : 'SAMMELSET'}</span>
-        <b>{count}/6</b>
-      </div>
       <canvas ref={ref} width={660} height={205} aria-hidden="true" />
-      {failed && <small className="v42-asset-note">{count}/6 gesammelt</small>}
-    </div>
+    </figure>
   );
 }

@@ -26,27 +26,6 @@ function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number) {
   return lowest;
 }
 
-/** Lowest point of the already-built tubular subframe at a longitudinal station. */
-function frameBottomAt(geometry: THREE.BufferGeometry, z: number) {
-  const p = geometry.getAttribute('position');
-  const index = geometry.getIndex();
-  if (!index) return Infinity;
-  let lowest = Infinity;
-  for (let i = 0; i < index.count; i += 3) {
-    const tri = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
-    for (let j = 0; j < 3; j++) {
-      const a = tri[j], b = tri[(j + 1) % 3];
-      const az = p.getZ(a), bz = p.getZ(b);
-      if (Math.abs(bz - az) < 1e-9) continue;
-      const t = (z - az) / (bz - az);
-      if (t >= 0 && t <= 1) {
-        lowest = Math.min(lowest, p.getY(a) + t * (p.getY(b) - p.getY(a)));
-      }
-    }
-  }
-  return lowest;
-}
-
 /** sidePanel() stores two copies of its ordered boundary, one per wall face. */
 function readSideBoundary(cover: THREE.Mesh): Point[] {
   const p = cover.geometry.getAttribute('position');
@@ -137,11 +116,10 @@ export function addSupermotoRearProtection(
 
   const tail = body.getObjectByName('supermoto-tail-fender');
   const cover = body.getObjectByName('supermoto-side-cover');
-  const rail = body.getObjectByName('supermoto-rear-subframe');
   const airbox = body.getObjectByName('supermoto-airbox');
 
   if (!(tail instanceof THREE.Mesh) || !(cover instanceof THREE.Mesh) ||
-      !(rail instanceof THREE.Mesh) || !(airbox instanceof THREE.Mesh)) {
+      !(airbox instanceof THREE.Mesh)) {
     throw new Error('Build the Supermoto side covers and tail before its inner liner');
   }
 
@@ -161,12 +139,12 @@ export function addSupermotoRearProtection(
     const edge = lowerEdgeAt(boundary, z);
     const roof = undersideAt(tail.geometry, 0, z);
 
-    // Keep the liner close to the lowered side plastics, with more visible drop.
+    // Close the slim plastics directly underneath the seat. The diagonal
+    // lower subframe stays exposed instead of pulling this sheet into a bowl.
     const edgeY = edge.y + 0.004;
     const crown = Math.min(
-      edgeY + 0.026,
+      edgeY + 0.014,
       roof - 0.002,
-      frameBottomAt(rail.geometry, z) - 0.004,
     );
     const result = { halfWidth: edge.x + 0.001, edgeY, crown };
     sections.set(z, result);
@@ -192,8 +170,8 @@ export function addSupermotoRearProtection(
   linerFinish.roughness = 0.92;
   const liner = new THREE.Mesh(
     sheet(
-      56,
-      22,
+      28,
+      12,
       (u, v) => linerPoint(frontZ + (endZ - frontZ) * u, v),
       [0, -0.003, 0],
     ),

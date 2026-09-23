@@ -1,11 +1,12 @@
 /** All distances are metres; speeds are metres/second. No km/h/m/s mixing. */
 export const TRAFFIC_FLOW = Object.freeze({
-  density: 0.74,
+  density: 0.52,
   maximumTrafficSpeed: 23,
   maximumCarSpeed: 16,
   towClosingSpeed: 12,
-  reactionSeconds: 0.62,
-  laneChangeSeconds: 0.35,
+  reactionSeconds: 0.5,
+  laneChangeSeconds: 0.38,
+  minimumArrivalGap: 1.22,
   pairedTrafficChance: 0.07,
   towCarPairChance: 0.16,
 });
@@ -28,7 +29,7 @@ export function trafficArrivalGap(
   const previousClosing = Math.max(5, riderSpeed - previousSpeed);
   const nextClosing = Math.max(5, riderSpeed - nextSpeed);
   return Math.max(
-    1.5,
+    TRAFFIC_FLOW.minimumArrivalGap,
     TRAFFIC_FLOW.reactionSeconds +
       TRAFFIC_FLOW.laneChangeSeconds +
       previousHalfLength / previousClosing +

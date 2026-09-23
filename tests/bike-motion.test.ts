@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import { suspensionPose } from '../app/game/bikeMotion';
 import { SPORT_GEOMETRY } from '../app/game/sportGeometry';
+import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 
 const geometries = [
   {
@@ -16,11 +17,11 @@ const geometries = [
   },
   {
     name: '450',
-    rear: 0.76,
-    front: -0.77,
-    radius: 0.2999,
-    rearRadius: 0.3119,
-    topY: 1.1,
+    rear: SUPERMOTO_CHASSIS.rearAxle,
+    front: SUPERMOTO_CHASSIS.frontAxle,
+    radius: SUPERMOTO_CHASSIS.wheelRadius,
+    rearRadius: SUPERMOTO_CHASSIS.wheelRadius,
+    topY: SUPERMOTO_CHASSIS.forkTopY,
     topZ: -0.4,
     forkX: 0.08,
   },

@@ -11,6 +11,7 @@ import {
 } from '../app/game/roadEvents';
 import { distanceAtTime, type WorldKind } from '../app/game/world';
 import { TRAFFIC_SHAPES } from '../app/game/trafficDomain';
+import { TRAFFIC_FLOW } from '../app/game/trafficFlow';
 
 function ride(bike = BIKES[0], seed = 539) {
   const engine = new Engine(bike, seed);
@@ -244,15 +245,16 @@ describe('world integration and readable traffic', () => {
     expect(values[0]).toEqual(values[1]);
     expect(values[1]).toEqual(values[2]);
   });
-  it('leaves a clean adjacent route and sufficient reaction time through many generated waves', () => {
-    const observedKinds = new Set<string>(),
-      observedEnvironments = new Set<WorldKind>();
-    let waves = 0;
-    for (const bike of BIKES)
+  it.each(BIKES)(
+    '$name leaves a clean adjacent route and sufficient reaction time through many generated waves',
+    (bike) => {
+      const observedKinds = new Set<string>(),
+        observedEnvironments = new Set<WorldKind>();
+      let waves = 0;
       for (let seed = 1; seed <= 16; seed++) {
         const engine = ride(bike, seed);
         let reachable = [0],
-          lastSpawnDistance = -Infinity;
+          previousWaveExit = -Infinity;
         for (let frame = 0; frame < 12000; frame++) {
           engine.advance(STEP);
           const wave = engine.obstacles.filter((o) => o.active && o.z === 145);
@@ -263,10 +265,62 @@ describe('world integration and readable traffic', () => {
             observedEnvironments.add(environment);
             expect(wave.length).toBeLessThanOrEqual(2);
             expect(wave[0].z / engine.bike.maxSpeed).toBeGreaterThan(3);
-            if (Number.isFinite(lastSpawnDistance))
+            // Predict actual bumper contact times from additive world travel,
+            // independently of the generator's centre-arrival/gap helper.
+            // Moving traffic may spawn less than 20 m after another wave yet
+            // still leave more time to react than a distant stationary car.
+            const contactTime = (obstacle: Obstacle, contactZ: number) => {
+              const startDistance = distanceAtTime(engine.elapsed, bike);
+              const relativeTravel = (seconds: number) =>
+                distanceAtTime(engine.elapsed + seconds, bike) -
+                startDistance -
+                obstacle.velocity * seconds;
+              const distance = obstacle.z - contactZ;
+              let low = 0,
+                high = 1;
+              for (
+                let expansion = 0;
+                expansion < 8 && relativeTravel(high) < distance;
+                expansion++
+              )
+                high *= 2;
+              expect(relativeTravel(high)).toBeGreaterThanOrEqual(distance);
+              for (let iteration = 0; iteration < 40; iteration++) {
+                const middle = (low + high) / 2;
+                if (relativeTravel(middle) < distance) low = middle;
+                else high = middle;
+              }
+              return engine.elapsed + (low + high) / 2;
+            };
+            const firstContact = Math.min(
+              ...wave.map((obstacle) =>
+                contactTime(
+                  obstacle,
+                  isRoadEvent(obstacle.kind)
+                    ? ROAD_EVENTS[obstacle.kind].contactHalfLength
+                    : TRAFFIC_SHAPES[obstacle.kind].rearZ + 1,
+                ),
+              ),
+            );
+            if (Number.isFinite(previousWaveExit))
               expect(
-                engine.distance - lastSpawnDistance,
-              ).toBeGreaterThanOrEqual(20 - 1e-6);
+                firstContact - previousWaveExit,
+                `${bike.id} seed ${seed}: time between physical traffic envelopes`,
+              ).toBeGreaterThanOrEqual(
+                TRAFFIC_FLOW.reactionSeconds +
+                  TRAFFIC_FLOW.laneChangeSeconds -
+                  1e-6,
+              );
+            previousWaveExit = Math.max(
+              ...wave.map((obstacle) =>
+                contactTime(
+                  obstacle,
+                  isRoadEvent(obstacle.kind)
+                    ? -ROAD_EVENTS[obstacle.kind].contactHalfLength
+                    : TRAFFIC_SHAPES[obstacle.kind].frontZ - 1,
+                ),
+              ),
+            );
             const safe = [-1, 0, 1].filter((lane) =>
               wave.every((o) => clearance(o, lane) > 0.1),
             );
@@ -284,7 +338,6 @@ describe('world integration and readable traffic', () => {
                 'car',
               ]).toContain(o.kind);
             }
-            lastSpawnDistance = engine.distance;
             waves++;
           }
           // Read the generator over long runs without inventing an invulnerability mode.
@@ -295,15 +348,17 @@ describe('world integration and readable traffic', () => {
         expect(engine.phase).toBe('playing');
         expect(engine.obstacles).toHaveLength(32);
       }
-    expect(waves).toBeGreaterThan(2000);
-    expect([...observedKinds].sort()).toEqual([
-      'car',
-      'construction',
-      'towtruck',
-      'van',
-    ]);
-    expect(observedEnvironments.size).toBeGreaterThanOrEqual(9);
-  }, 30000);
+      expect(waves).toBeGreaterThan(500);
+      expect([...observedKinds].sort()).toEqual([
+        'car',
+        'construction',
+        'towtruck',
+        'van',
+      ]);
+      expect(observedEnvironments.size).toBeGreaterThanOrEqual(9);
+    },
+    30000,
+  );
   it('makes the center risk line optional and awards its actual offset near miss once', () => {
     for (const side of [-1, 1]) {
       const risk = ride(),

@@ -1,48 +1,63 @@
 /** Supermoto-only dimensions, in unscaled motorcycle coordinates. Front is -Z. */
 export type FitPoint = [number, number, number];
 
+/** Shared physical contact dimensions; front is -Z, both rims are 17 inches. */
+export const SUPERMOTO_CHASSIS = Object.freeze({
+  frontAxle: -0.690,
+  rearAxle: 0.700,
+  wheelRadius: 0.318,
+  rimRadius: 0.2159,
+  frontTireWidth: 0.146,
+  rearTireWidth: 0.180,
+  forkTopY: 1.02,
+});
+
 // One contact datum for the actual pegs AND the existing rider IK/boot generator.
 export const SUPERMOTO_PEG: FitPoint = [0.26, 0.385, 0.105];
+export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.112, -0.335];
 
-// Keep the tank/seat attachment edge; extend the radiator plastics downward.
+// Thin radiator wings leave the black fuel tank visible behind their rear seam.
 export const SUPERMOTO_SHROUD: FitPoint[] = [
-  [0.138, 0.965, -0.408],
-  [0.194, 0.965, -0.265],
-  [0.182, 0.927, -0.045],
-  [0.142, 0.946, 0.12],
-  [0.147, 0.817, 0.073],
-  [0.172, 0.645, -0.075],
-  [0.194, 0.632, -0.292],
-  [0.201, 0.817, -0.355],
+  [0.150, 0.913, -0.395],
+  [0.165, 0.963, -0.305],
+  [0.174, 0.977, -0.260],
+  [0.164, 0.935, -0.025],
+  [0.130, 0.944, 0.165],
+  [0.147, 0.877, 0.040],
+  [0.176, 0.812, -0.060],
+  [0.181, 0.655, -0.175],
+  [0.183, 0.718, -0.285],
+  [0.187, 0.825, -0.342],
 ];
 
-// Deep lower tip retained. Narrower cheeks sit ABOVE the existing silencer,
-// rather than flaring outward around it; both sides share the same boundary.
+// Separate triangular number-panel plastics under the seat. Their high rear
+// edge follows the fender, leaving room for the silencer below, not inside it.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
-  [0.136, 0.944, 0.112],
-  // The top seam enters the fender's actual cross section at each station.
-  [0.105, 0.946, 0.170],
-  [0.111, 0.952, 0.330],
-  [0.099, 0.997, 0.570],
-  [0.083, 1.030, 0.790],
-  [0.062, 1.036, 0.838],
-  [0.148, 0.873, 0.742],
-  [0.162, 0.808, 0.582],
-  [0.174, 0.744, 0.408],
-  [0.166, 0.626, 0.246],
-  [0.151, 0.668, 0.176],
-  [0.146, 0.836, 0.126],
+  [0.125, 0.944, 0.169],
+  [0.107, 0.955, 0.330],
+  [0.100, 0.989, 0.530],
+  [0.097, 1.022, 0.690],
+  [0.090, 1.050, 0.820],
+  [0.107, 0.992, 0.718],
+  [0.137, 0.874, 0.468],
+  [0.148, 0.666, 0.276],
+  [0.137, 0.726, 0.205],
+  [0.130, 0.869, 0.174],
 ];
 
-/** Wider rear mudguard. Tail-contact physics reads the final station's upper tip. */
+/** Sheet cross-sections: z, half width, crown height, edge height.
+ * Tail-contact physics reads the final station's upper center tip. */
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
-  [0.17, 0.108, 0.011, 0.946],
-  [0.33, 0.117, 0.014, 0.952],
-  [0.57, 0.104, 0.017, 0.997],
-  [0.79, 0.088, 0.017, 1.030],
-  [0.97, 0.066, 0.013, 1.049],
-  [1.045, 0.051, 0.011, 1.056],
+  [0.17, 0.123, 0.013, 0.946],
+  [0.33, 0.108, 0.014, 0.955],
+  [0.53, 0.102, 0.016, 0.989],
+  [0.69, 0.099, 0.017, 1.022],
+  [0.83, 0.090, 0.018, 1.052],
+  [0.90, 0.073, 0.019, 1.065],
 ];
+
+export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];
+export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.500, 0.430];
 
 export interface FitSurface {
   name: string;

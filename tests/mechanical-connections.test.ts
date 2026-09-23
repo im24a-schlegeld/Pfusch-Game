@@ -12,6 +12,7 @@ import type { TubeGeometry } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
 import { BIKE_CONTACTS } from '../app/game/riderSkeleton';
+import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 
 // Mechanical meshes are built unchanged; only browser-only fabric painting is
 // replaced. These tests inspect the actual assembled geometry and transforms.
@@ -152,7 +153,7 @@ describe('assembled motorcycle connections', () => {
       }
       // A yoke may not substitute for/relocate a wheel or stretch the fork.
       expect(bike.wheels[0].position.z).toBe(
-        bikeId === '125' ? -0.7 : bikeId === '450' ? -0.77 : -0.72,
+        bikeId === '125' ? -0.7 : bikeId === '450' ? SUPERMOTO_CHASSIS.frontAxle : -0.72,
       );
       const upper = rodAxis(forks[0]).end;
       bike.animateSuspension(0.035, 0.02);
@@ -218,47 +219,22 @@ describe('assembled motorcycle connections', () => {
       expect(axis.end.z - axis.start.z).toBeLessThan(0.027);
       expect(ringCenter(bar, side < 0 ? 0 : 36, 12).distanceTo(axis.end))
         .toBeLessThan(1e-6);
-      expect(axis.end.z - ringCenter(bar, 18, 12).z).toBeGreaterThan(0.1);
+      const rearwardSweep = axis.end.z - ringCenter(bar, 18, 12).z;
+      expect(rearwardSweep).toBeGreaterThan(0.07);
+      expect(rearwardSweep).toBeLessThan(0.105);
     }
   });
 
-  it('connects the Supermoto handguard frames and applies the requested finishes', () => {
+  it('leaves the Supermoto grips and levers open and applies the requested finishes', () => {
     const player = { ...newPlayer(), bike: '450' as const };
     const bike = makeBike(player, []);
     bike.root.updateMatrixWorld(true);
     const guards = bike.body.getObjectsByProperty('name', 'formed-handguard') as Mesh[];
     const supports = bike.body.getObjectsByProperty('name', 'supermoto-handguard-support') as Mesh[];
-    expect(guards).toHaveLength(2);
-    expect(supports).toHaveLength(2);
-    for (const support of supports) {
-      const supportBounds = new Box3().setFromObject(support);
-      const supportSide = Math.sign(supportBounds.getCenter(new Vector3()).x);
-      const guard = guards.find((candidate) => {
-        const guardBounds = new Box3().setFromObject(candidate);
-        return Math.sign(guardBounds.getCenter(new Vector3()).x) === supportSide;
-      });
-      expect(guard).toBeDefined();
-      const guardBounds = new Box3().setFromObject(guard!);
-      expect(supportBounds.intersectsBox(guardBounds)).toBe(true);
-      expect(supportBounds.max.y).toBeLessThan(guardBounds.max.y - 0.02);
-      expect(supportBounds.min.y).toBeGreaterThan(guardBounds.min.y + 0.008);
-      expect(supportBounds.getCenter(new Vector3()).z).toBeGreaterThan(
-        guardBounds.getCenter(new Vector3()).z,
-      );
-      let shieldedRings = 0;
-      for (let ring = 9; ring <= 27; ring++) {
-        const center = ringCenter(support, ring, 12)
-          .applyMatrix4(support.matrixWorld);
-        const hit = new Raycaster(
-          new Vector3(center.x, center.y, guardBounds.min.z - 0.1),
-          new Vector3(0, 0, 1),
-        ).intersectObject(guard!, false)[0];
-        if (!hit) continue;
-        expect(center.z - hit.point.z).toBeGreaterThan(0.012);
-        shieldedRings++;
-      }
-      expect(shieldedRings).toBeGreaterThan(8);
-    }
+    expect(guards).toHaveLength(0);
+    expect(supports).toHaveLength(0);
+    expect(bike.body.getObjectsByProperty('name', 'supermoto-lever')).toHaveLength(2);
+    expect(bike.body.getObjectsByProperty('name', 'supermoto-handgrip')).toHaveLength(2);
     const colorOf = (mesh: Mesh) => {
       const material = Array.isArray(mesh.material)
         ? mesh.material[0]
@@ -277,8 +253,7 @@ describe('assembled motorcycle connections', () => {
     const spring = bike.body.getObjectByName('rear-shock-spring') as Mesh;
     expect(colorOf(spring)).toBe(new Color(player.paint).getHexString());
     const tank = bike.body.getObjectByName('supermoto-fuel-tank') as Mesh;
-    expect(Array.isArray(tank.material)).toBe(true);
-    expect((tank.material as MeshStandardMaterial[])[0].color.getHexString()).toBe('101214');
+    expect(colorOf(tank)).toBe('101214');
   });
 
   it.each(['125', '701'] as const)('%s receives black fork tubes and clamps', (model) => {

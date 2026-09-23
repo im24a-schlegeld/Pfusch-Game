@@ -49,12 +49,12 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
       ? Math.max(-1, Math.min(1, motion.crashSide))
       : 1;
   const hip: Point = [
-    base.hip[0] + 0.022 * steer,
+    base.hip[0] + (0.022 + 0.008 * wheelie) * steer,
     base.hip[1] - 0.015 * landing + 0.0025 * road + 0.025 * crash,
     base.hip[2] +
       0.035 * wheelie -
       0.025 * forward +
-      0.004 * launch +
+      0.013 * launch +
       0.004 * load +
       0.055 * crash,
   ];
@@ -63,12 +63,12 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
     0.06 * wheelie +
     0.04 * landing +
     0.09 * forward +
-    -0.045 * launch +
+    -0.115 * launch +
     0.012 * balance +
     0.008 * load +
     0.003 * road +
     0.12 * crash;
-  const roll = -0.06 * steer + crashSide * 0.08 * crash;
+  const roll = -(0.06 + 0.025 * wheelie) * steer + crashSide * 0.08 * crash;
   const orientation = new Quaternion().setFromEuler(new Euler(-lean, 0, roll));
   const onTorso = (p: Point) =>
     point(vector(p).applyQuaternion(orientation).add(vector(hip)));

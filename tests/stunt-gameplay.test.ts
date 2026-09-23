@@ -3,6 +3,8 @@ import { BIKES } from '../app/domain/config';
 import { Engine, LANE, STEP, STUNT_POINTS } from '../app/game/engine';
 import { TRAFFIC_SHAPES, TOW_RAMP } from '../app/game/trafficDomain';
 import { BALANCE, tailScrape } from '../app/game/wheelie';
+import { TRAFFIC_FLOW } from '../app/game/trafficFlow';
+import { TOW_TRANSFER } from '../app/game/towTransfer';
 
 function ride(bike = BIKES[0], seed = 539) {
   const engine = new Engine(bike, seed);
@@ -14,7 +16,11 @@ function steps(engine: Engine, count: number) {
 }
 function board(engine: Engine, velocity = 0) {
   const tow = engine.spawn('towtruck', engine.lane, 14, 0, velocity)!;
-  for (let frame = 0; frame < 100 && engine.height < 1; frame++)
+  for (
+    let frame = 0;
+    frame < 100 && engine.height < TOW_TRANSFER.minimumTakeoffHeight;
+    frame++
+  )
     engine.advance(STEP);
   expect(engine.phase).toBe('playing');
   expect(engine.onTowTruck).toBe(true);
@@ -145,9 +151,9 @@ describe('ride onto the tow truck, then swipe to jump', () => {
   });
   it('emits metal sparks for Sport scrapes', () => {
     const profile = BALANCE['701'];
-    expect(
-      tailScrape('701', profile.crashAngle - 0.03, profile).material,
-    ).toBe('metal');
+    expect(tailScrape('701', profile.crashAngle - 0.03, profile).material).toBe(
+      'metal',
+    );
   });
   it('keeps a destination obstacle solid when a side jump lands into it', () => {
     const engine = ride();
@@ -357,7 +363,7 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
           if (serial === lastArrivalWave) continue;
           expect(serial).toBeGreaterThan(lastArrivalWave);
           expect(engine.elapsed - lastArrivalTime).toBeGreaterThanOrEqual(
-            1.5 - STEP - 1e-8,
+            TRAFFIC_FLOW.minimumArrivalGap - STEP - 1e-8,
           );
           lastArrivalWave = serial;
           lastArrivalTime = engine.elapsed;

@@ -57,6 +57,7 @@ export interface Obstacle {
   velocity: number;
   rampUsed: boolean;
   airNearMiss: boolean;
+  lateEvade: boolean;
 }
 export interface GameEvent {
   text: string;
@@ -151,11 +152,13 @@ export class Engine {
     velocity: 0,
     rampUsed: false,
     airNearMiss: false,
+    lateEvade: false,
   }));
   readonly world: World;
   private rng: number;
   private spawnIn = 28;
   private nextSafe = 0;
+  private safeDirection = 1;
   private pendingWave: {
     section: string;
     kinds: TrafficKind[];
@@ -164,6 +167,7 @@ export class Engine {
   private scoreGainSerial = 0;
   private accumulator = 0;
   private towCarrier: Obstacle | null = null;
+  private pendingTowLane: number | null = null;
   private towSafeObstacles = new Set<Obstacle>();
   private signSequence = 0;
   private nextSignAttempt = 300;
@@ -201,6 +205,37 @@ export class Engine {
       this.crash('Missed the side jump', this.towCarrier);
       return;
     }
+    if (this.towCarrier && this.height < TOW_TRANSFER.minimumTakeoffHeight) {
+      // Keep the rider on the ramp until there is enough height to cross the
+      // neighbouring car. The queued swipe still chooses the landing lane.
+      this.pendingTowLane = next;
+      return;
+    }
+    if (!airborne && !this.towCarrier) {
+      for (const obstacle of this.obstacles) {
+        if (
+          !obstacle.active ||
+          obstacle.passed ||
+          (isRoadEvent(obstacle.kind) && obstacle.kind !== 'barrier')
+        )
+          continue;
+        const shape = isRoadEvent(obstacle.kind)
+          ? ROAD_EVENTS[obstacle.kind]
+          : TRAFFIC_SHAPES[obstacle.kind];
+        const rear = isRoadEvent(obstacle.kind)
+          ? shape.contactHalfLength
+          : TRAFFIC_SHAPES[obstacle.kind].rearZ + 1;
+        const time =
+          (obstacle.z - rear) / Math.max(1, this.speed - obstacle.velocity);
+        if (
+          time > -0.05 &&
+          time <= 0.65 &&
+          Math.abs(this.x - (obstacle.lane * LANE + obstacle.offsetX)) <
+            shape.contactHalfWidth
+        )
+          obstacle.lateEvade = true;
+      }
+    }
     this.laneChangeDirection = next - this.lane;
     this.laneChangeAge = 0;
     this.laneChangeSerial++;
@@ -211,6 +246,7 @@ export class Engine {
       const carrier = this.towCarrier;
       this.towSafeObstacles.add(carrier);
       this.towCarrier = null;
+      this.pendingTowLane = null;
       this.velocityY = TOW_TRANSFER.launchVelocity;
       if (this.wheelieAngle < this.balanceProfile.balancePoint)
         this.wheelieAngularVelocity -= 0.58;
@@ -426,10 +462,15 @@ export class Engine {
       this.spawnIn = 7;
       return;
     }
-    const change = this.random() < 0.72 ? (this.random() < 0.5 ? -1 : 1) : 0;
-    this.nextSafe = Math.max(-1, Math.min(1, this.nextSafe + change));
-    const lanes = candidates.filter((l) => l !== this.nextSafe);
-    if (this.random() < 0.5) lanes.reverse();
+    // Each new wave closes the previous safe lane. Sweep through adjacent
+    // lanes, so no lane can be camped and the next opening is always reachable.
+    const previousSafe = this.nextSafe;
+    if (Math.abs(this.nextSafe) === 1) this.safeDirection = -this.nextSafe;
+    this.nextSafe += this.safeDirection;
+    const lanes = [
+      previousSafe,
+      ...candidates.filter((l) => l !== this.nextSafe && l !== previousSafe),
+    ];
     for (let i = 0; i < count; i++)
       this.spawn(nextKinds[i], lanes[i], 145, 0, velocity);
     this.pendingWave = null;
@@ -557,6 +598,7 @@ export class Engine {
               ),
         rampUsed: false,
         airNearMiss: false,
+        lateEvade: false,
       });
     }
     return o;
@@ -686,12 +728,23 @@ export class Engine {
       this.towPitch = pose.pitch;
       this.velocityY = 0;
       if (queuedTowLane !== null) this.move(queuedTowLane - this.lane);
+      if (
+        this.pendingTowLane !== null &&
+        this.height >= TOW_TRANSFER.minimumTakeoffHeight
+      )
+        this.move(this.pendingTowLane - this.lane);
     } else this.towPitch *= Math.exp(-dt * 8);
     let landedTowJump = false;
     if (!this.towCarrier && (this.height > 0 || this.velocityY > 0)) {
-      // Exact constant-gravity step: do not lose height before lateral clearance.
-      this.height += this.velocityY * dt - 0.5 * TOW_RAMP.gravity * dt * dt;
-      this.velocityY -= TOW_RAMP.gravity * dt;
+      // A low, broad arc just clears the roof; settle promptly after crossing.
+      // Its timing is fixed at takeoff and never steers around nearby traffic.
+      const gravity = this.towJumpActive
+        ? this.transferAge < TOW_TRANSFER.landingAfter
+          ? TOW_TRANSFER.gravity
+          : TOW_TRANSFER.landingGravity
+        : TOW_RAMP.gravity;
+      this.height += this.velocityY * dt - 0.5 * gravity * dt * dt;
+      this.velocityY -= gravity * dt;
       if (this.height <= 0) {
         this.landingSpeed = Math.abs(this.velocityY);
         this.landingSerial++;
@@ -862,10 +915,17 @@ export class Engine {
         o.passed = true;
         if (o.cleared && o.rewardPoints > 0)
           this.skill(o.rewardText, o.rewardPoints);
-        else if ((!road || o.kind === 'barrier') && o.closest < 0.6) {
+        else if (
+          (!road || o.kind === 'barrier') &&
+          (o.closest < 0.6 || o.lateEvade)
+        ) {
           this.nearMisses++;
           this.skill(
-            o.airNearMiss ? 'IN DER LUFT AUSGEWICHEN' : 'KNAPP VORBEI',
+            o.airNearMiss
+              ? 'IN DER LUFT AUSGEWICHEN'
+              : o.lateEvade
+                ? 'CLOSE CALL'
+                : 'KNAPP VORBEI',
             o.airNearMiss ? STUNT_POINTS.airEvade : STUNT_POINTS.nearMiss,
           );
         }

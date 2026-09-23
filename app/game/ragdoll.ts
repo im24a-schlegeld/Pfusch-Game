@@ -16,6 +16,7 @@ interface Particle {
   previous: Vector3;
   radius: number;
   inverseMass: number;
+  upwardLimit: number;
 }
 
 interface Bone {
@@ -64,6 +65,7 @@ export function createRagdoll(
       previous: point.clone().addScaledVector(motion, -STEP),
       radius: radius * scale,
       inverseMass,
+      upwardLimit: Math.max(0.6, Math.min(2, motion.y + 0.5)),
     });
     return index;
   };
@@ -165,7 +167,7 @@ export function createRagdoll(
   }
 
   /** Sphere contact projection, including an interior point's nearest face. */
-  function contact(point: Vector3, radius: number) {
+  function contact(point: Vector3, radius: number, approach?: Vector3) {
     const before = a.copy(point);
     if (point.y < GROUND + radius) point.y = GROUND + radius;
     for (const box of obstacles) {
@@ -179,8 +181,10 @@ export function createRagdoll(
         const distances = [
           point.x - box.min.x,
           box.max.x - point.x,
-          point.y - box.min.y,
-          box.max.y - point.y,
+          Infinity,
+          // A side/rear collision must resolve against that side. Choosing
+          // the roof merely because it is closer launches embedded riders.
+          approach && approach.y >= box.max.y ? box.max.y - point.y : Infinity,
           point.z - box.min.z,
           box.max.z - point.z,
         ];
@@ -197,8 +201,16 @@ export function createRagdoll(
   }
 
   function contacts() {
-    for (const particle of particles)
-      contact(particle.position, particle.radius);
+    for (const particle of particles) {
+      const correction = contact(
+        particle.position,
+        particle.radius,
+        particle.previous,
+      );
+      // Penetration repair changes position, not momentum. Otherwise even a
+      // modest overlap turns into a large upward speed on the next fixed step.
+      particle.previous.add(correction);
+    }
     // Capsule samples stop the middle of a shin/forearm passing through an edge
     // even when its two joints happen to be outside the vehicle.
     for (const bone of bones) {
@@ -218,6 +230,14 @@ export function createRagdoll(
             (p.inverseMass * (1 - weight)) / denominator,
           );
           q.position.addScaledVector(
+            correction,
+            (q.inverseMass * weight) / denominator,
+          );
+          p.previous.addScaledVector(
+            correction,
+            (p.inverseMass * (1 - weight)) / denominator,
+          );
+          q.previous.addScaledVector(
             correction,
             (q.inverseMass * weight) / denominator,
           );
@@ -274,6 +294,10 @@ export function createRagdoll(
     // reflected slightly, so a rider hits a bonnet instead of tunnelling in.
     for (const particle of particles) {
       delta.subVectors(particle.position, particle.previous);
+      // Joint constraints can transfer impact energy but may not create an
+      // upward blast. Keep a small physical rebound and bound extreme overlaps.
+      delta.y = Math.min(delta.y, particle.upwardLimit * STEP);
+      if (delta.lengthSq() > (12 * STEP) ** 2) delta.setLength(12 * STEP);
       const groundContact =
         particle.position.y < GROUND + particle.radius + 0.012;
       let touching = groundContact;
@@ -290,8 +314,8 @@ export function createRagdoll(
         const incoming = delta.dot(normal);
         if (incoming < 0) delta.addScaledVector(normal, -1.12 * incoming);
         delta.multiplyScalar(0.82);
-        particle.previous.copy(particle.position).sub(delta);
       }
+      particle.previous.copy(particle.position).sub(delta);
     }
     elapsed += STEP;
   }

@@ -25,6 +25,24 @@ const length = (a: Point, b: Point) =>
   new Vector3(...a).distanceTo(new Vector3(...b));
 
 describe('physical immutable ragdoll', () => {
+  it('does not turn a deep side or road-edge contact into an upward launch', () => {
+    for (const obstacle of [
+      new Box3(new Vector3(-0.5, 0, -1), new Vector3(0.5, 1.25, 0.55)),
+      new Box3(new Vector3(-1.1, 0, -1.8), new Vector3(1.1, 2.9, 0.2)),
+      new Box3(new Vector3(-1, 0, -0.7), new Vector3(1, 0.18, 0.8)),
+    ]) {
+      const start = initial('450');
+      const ragdoll = createRagdoll(start, {
+        obstacles: [obstacle],
+        velocity: [1, 0, -3],
+      });
+      for (let step = 0; step < 144; step++) {
+        const pose = ragdoll.advance(1 / 120);
+        expect(pose.hip[1]).toBeLessThan(start.hip[1] + 0.4);
+        expect(pose.head[1]).toBeLessThan(start.head[1] + 0.35);
+      }
+    }
+  });
   it.each(['125', 'scooter', '450', '701'] as const)(
     '%s releases riding contacts without changing human anatomy',
     (model) => {

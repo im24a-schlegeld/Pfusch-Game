@@ -18,6 +18,7 @@ import {
   makeDrive,
 } from '../app/game/driveGeometry';
 import { SPORT_GEOMETRY, roadTireGeometry } from '../app/game/sportGeometry';
+import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 
 /** Includes every plate/roller instance, rather than only their base geometry. */
 function vertexBounds(object: Mesh) {
@@ -58,7 +59,7 @@ it('keeps both chain runs tangent, closes the loop and never cuts through either
 });
 
 it.each([
-  ['supermoto', 0.76, 0.3119, 0.16],
+  ['supermoto', SUPERMOTO_CHASSIS.rearAxle, SUPERMOTO_CHASSIS.wheelRadius, SUPERMOTO_CHASSIS.rearTireWidth],
   [
     'sport',
     SPORT_GEOMETRY.rearAxle,

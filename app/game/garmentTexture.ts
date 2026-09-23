@@ -131,7 +131,7 @@ function printedCrop(
   img: HTMLImageElement,
   crop: number[],
   maskImage = img,
-  emissionInkOnly = false,
+  brightInkOnly = false,
 ) {
   const [x, y, w, h] = crop,
     canvas = document.createElement('canvas');
@@ -160,9 +160,10 @@ function printedCrop(
       const k = (j * w + i) * 4,
         dist = Math.hypot(...base.map((b, c) => mask.data[k + c] - b)),
         edge = Math.min(i, j, w - 1 - i, h - 1 - j) / 4;
-      // Keep Up's photographed silver ink is brighter than its black fabric.
-      // Washed-fabric variation survives the soft diffuse mask, but must not glow.
-      const ink = emissionInkOnly
+      // Silver ink is brighter than the black source fabric. Its luminance
+      // mask excludes the photographed hood shadows and cloth grain as well
+      // as keeping washed fabric out of the Keep Up emission layer.
+      const ink = brightInkOnly
         ? THREE.MathUtils.smoothstep(
             base.reduce((sum, b, c) => sum + mask.data[k + c] - b, 0) / 3,
             40,
@@ -238,7 +239,14 @@ export function garmentMaterial(
             load(maskSource.localImage),
           ]);
           if (disposed) return;
-          const cropped = printedCrop(img, spec.crop, maskImage),
+          const silverStreetPrint =
+            product?.handle.startsWith('streetphotographer-') === true;
+          const cropped = printedCrop(
+              img,
+              spec.crop,
+              maskImage,
+              silverStreetPrint,
+            ),
             p = spec.texturePlacement;
 
           // keep-up tee back print clearance:

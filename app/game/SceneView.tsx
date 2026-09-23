@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { suspensionTarget } from './activeSuspension';
 import { rendererSessions } from './rendererSession';
 import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
@@ -134,7 +135,12 @@ export default function SceneView({
     fill.position.set(12, 8, -10);
     scene.add(fill);
     let bike = makeBike(player, products);
-    applyBikeStickers(bike.body, bike.rider, player.paint, player.stickers[player.bike] ?? []);
+    applyBikeStickers(
+      bike.body,
+      bike.rider,
+      player.paint,
+      player.stickers[player.bike] ?? [],
+    );
     bike.root.name = 'player-bike';
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;
@@ -274,7 +280,12 @@ export default function SceneView({
         scene.remove(bike.root);
         disposeVehicle(bike.root);
         bike = makeBike(nextAppearance.player, nextAppearance.products);
-        applyBikeStickers(bike.body, bike.rider, nextAppearance.player.paint, nextAppearance.player.stickers[nextAppearance.player.bike] ?? []);
+        applyBikeStickers(
+          bike.body,
+          bike.rider,
+          nextAppearance.player.paint,
+          nextAppearance.player.stickers[nextAppearance.player.bike] ?? [],
+        );
         bike.root.name = 'player-bike';
         crash = undefined;
         crashTravel = undefined;
@@ -402,12 +413,14 @@ export default function SceneView({
             },
             dt,
           );
-          const compression =
-            landing * 0.022 +
-            engine.forwardLoad * 0.003 -
-            launch * 0.006 +
-            road * 0.002 +
-            engine.roadRoughness * 0.014;
+          const compression = suspensionTarget({
+            landing,
+            launch,
+            forward: engine.forwardLoad,
+            road,
+            roughness: engine.roadRoughness,
+            airborne: engine.height > 0 && !engine.onTowTruck,
+          });
           if (engine.onTowTruck) suspension = 0;
           else
             suspension += (compression - suspension) * (1 - Math.exp(-dt * 18));
@@ -460,7 +473,13 @@ export default function SceneView({
             bike.animateSuspension(tilt, suspension);
             const impactIndex = engine.obstacles.indexOf(engine.crashObstacle!);
             impactTraffic = impactIndex >= 0 ? traffic[impactIndex] : undefined;
-            if (impactTraffic?.visible) {
+            const solidImpact =
+              engine.crashObstacle &&
+              (TRAFFIC_KINDS.some(
+                (kind) => kind === engine.crashObstacle!.kind,
+              ) ||
+                engine.crashObstacle.kind === 'barrier');
+            if (impactTraffic?.visible && solidImpact) {
               impactTraffic.updateWorldMatrix(true, true);
             } else {
               impactTraffic = undefined;
@@ -469,8 +488,12 @@ export default function SceneView({
             // crash simulation resolves rider and motorcycle contacts.
             engine.obstacles.forEach((obstacle, index) => {
               const group = traffic[index];
-              if (group.visible && Math.abs(group.position.z) < 16 &&
-                  (TRAFFIC_KINDS.some((kind) => kind === obstacle.kind) || obstacle.kind === 'barrier'))
+              if (
+                group.visible &&
+                Math.abs(group.position.z) < 16 &&
+                (TRAFFIC_KINDS.some((kind) => kind === obstacle.kind) ||
+                  obstacle.kind === 'barrier')
+              )
                 collisionTraffic.set(group, group.position.clone());
             });
             crash = createCrashAnimation(bike, {
@@ -484,7 +507,8 @@ export default function SceneView({
             });
           }
           crashComplete = crash.advance(dt, crashActive);
-        } else bike.animateSuspension(tilt, suspension);
+        } else bike.animateSuspension(tilt, suspension,
+          engine.onTowTruck ? 0 : Math.min(1, engine.wheelieAngle / engine.balanceProfile.balancePoint));
         // Final ordinary/crash pose: accessory gravity and both light endpoints
         // consume these same transforms before the scene is rendered.
         bike.animateAccessories(
@@ -620,8 +644,8 @@ export default function SceneView({
       const bikeMaterials = new Set<THREE.Material>();
       bike.root.traverse((o) => {
         if (o instanceof THREE.Mesh)
-          (Array.isArray(o.material) ? o.material : [o.material]).forEach(
-            (m) => bikeMaterials.add(m),
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) =>
+            bikeMaterials.add(m),
           );
       });
       scene.traverse((o) => {
@@ -629,7 +653,8 @@ export default function SceneView({
           o instanceof THREE.DirectionalLight ||
           o instanceof THREE.SpotLight ||
           o instanceof THREE.PointLight
-        ) o.shadow.dispose();
+        )
+          o.shadow.dispose();
         if (o instanceof THREE.Mesh) {
           geometries.add(o.geometry);
           if (Array.isArray(o.material)) o.material.forEach((m) => mats.add(m));

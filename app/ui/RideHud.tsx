@@ -2,7 +2,7 @@ import type { Engine } from '../game/engine';
 import { Pause } from 'lucide-react';
 import SignProgress from './SignProgress';
 const number = (n: number) => Math.floor(n).toLocaleString('de-CH');
-/** Compact, opaque panels reserve their layout while the set artwork loads. */
+/** Keep the riding instruments at the top without obscuring the road. */
 export default function RideHud({
   engine,
   best,
@@ -12,16 +12,6 @@ export default function RideHud({
   best: number;
   pause: () => void;
 }) {
-  const state =
-    engine.scrapeIntensity > 0
-      ? 'SCRAPE'
-      : engine.towJumpActive
-        ? 'AIRTIME'
-        : engine.onTowTruck
-          ? 'RAMPE'
-          : engine.wheelie
-            ? 'WHEELIE'
-            : 'STREET RUN';
   return (
     <div className="v42-hud" aria-label="Fahrdaten">
       <div className="v42-score">
@@ -31,9 +21,23 @@ export default function RideHud({
         </strong>
         <small>BESTE {number(best)}</small>
       </div>
-      <div className="v42-sign-slot">
-        <SignProgress mask={engine.collectedSigns} />
-      </div>
+      {engine.phase === 'playing' && (
+        <div className="ride-balance" aria-label="Wheelie-Winkel und Kippunkt">
+          <small>KIPPUNKT</small>
+          <div className="balance-meter">
+            <b
+              style={{
+                left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
+              }}
+            />
+            <i
+              style={{
+                width: `${Math.min(100, (engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
       <div className="v42-metrics">
         <b>
           {number(engine.distance)} <small>M</small>
@@ -42,12 +46,16 @@ export default function RideHud({
           {Math.round(engine.speed * 3.6)} <small>KM/H</small>
         </b>
       </div>
-      <div className="v42-right-bottom">
-        <span className="ride-state" data-active={state !== 'STREET RUN'}>
-          <i aria-hidden="true" />
-          <span>{state}</span>
-        </span>
-        <button type="button" onClick={pause} aria-label="Fahrt pausieren">
+      <div className="v42-top-actions">
+        <div className="v42-sign-slot">
+          <SignProgress mask={engine.collectedSigns} />
+        </div>
+        <button
+          className="v42-pause"
+          type="button"
+          onClick={pause}
+          aria-label="Fahrt pausieren"
+        >
           <Pause
             size={21}
             fill="currentColor"

@@ -1,8 +1,8 @@
 /** Unscaled chassis coordinates. +Z points to the back. */
 export const TUBE_EXHAUST = Object.freeze({
   x: 0.091,
-  startZ: 0.46,
-  endZ: 0.89,
+  startZ: 0.45,
+  endZ: 0.80,
   startY: 0.773,
   endY: 0.902,
   radius: 0.047,

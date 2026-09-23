@@ -45,7 +45,12 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   endRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);endRing.position.copy(b).addScaledVector(axis,.007);
   const band=add(group,new THREE.CylinderGeometry(.049,.049,.016,32,1,true),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a).addScaledVector(axis,len*.42);
-  tube(group,[[.046,.724,-.238],[.103,.700,-.248],[.138,.680,-.188],[.108,.702,.04],[.104,.734,.29],[e.x,e.startY+.018,e.startZ+.02]],.019,silver,'connected-exhaust-pipe');
+  // Four-stroke header: short outlet from the head, tight downward bend ahead
+  // of the cylinder, then a continuous return up the right side to the can.
+  tube(group,[[.046,.724,-.238],[.135,.709,-.247],[.190,.664,-.286],
+    [.197,.610,-.295],[.196,.570,-.252],[.191,.580,-.173],
+    [.170,.656,-.119],[.129,.746,-.055],[.105,.776,.130],[.103,.782,.310],
+    [e.x,e.startY+.018,e.startZ+.02]],.0175,silver,'connected-exhaust-pipe');
   tube(group,[[.075,.976,.62],[e.x,.94,.64],[e.x,exhaustAxisY(.64)+.045,.64]],.008,carbon,'exhaust-frame-hanger');
   const liner=body.getObjectByName('supermoto-under-tail-liner');
   if(!(liner instanceof THREE.Mesh))throw new Error('Supermoto liner is missing');
@@ -99,7 +104,7 @@ export function finishWheelColors(body:THREE.Group, value:string) {
   });
 }
 /** Small bounded cloth fairing. No deleted faces, no anatomy scaling or torso edits. */
-export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number,torso?:THREE.Mesh,torsoFrame?:THREE.Group) {
+export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number,torso?:THREE.Mesh,torsoFrame?:THREE.Group,softTeeFront=false) {
   const g=mesh.geometry,p=g.getAttribute('position');if(p.count!==(rings+1)*(sides+1))throw new Error('Unexpected sleeve grid');
   const original=Float32Array.from(p.array as ArrayLike<number>),stride=sides+1;
   for(let pass=0;pass<3;pass++){
@@ -151,6 +156,8 @@ export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number,torso?:TH
     // Torso and sleeve are overlapping cloth shells. Smoothing each shell alone
     // still leaves their intersecting edges visible. Shade the upper back from
     // the SAME continuous field, independent of either shell's depth/triangles.
+    // Loose tees use the same treatment at the front armhole so the shoulder
+    // reads as cloth rather than a separately highlighted deltoid.
     // This modifies normals only; every vertex, UV and bone weight stays intact.
     for(const surface of [torso,mesh]) {
       const position=surface.geometry.getAttribute('position'),normals=surface.geometry.getAttribute('normal');
@@ -158,12 +165,13 @@ export function fairShoulder(mesh:THREE.Mesh,rings:number,sides:number,torso?:TH
         sample.fromBufferAttribute(position,i);
         existing.fromBufferAttribute(normals,i);
         if(surface===mesh) {sample.applyMatrix4(inverse);existing.applyQuaternion(inverseRotation);}
+        const face=softTeeFront&&sample.z<0?-1:1;
         const weight=THREE.MathUtils.smoothstep(sample.y,.29,.36)
           *(1-THREE.MathUtils.smoothstep(sample.y,.60,.65))
           *(1-THREE.MathUtils.smoothstep(Math.abs(sample.x),.28,.38))
-          *THREE.MathUtils.smoothstep(sample.z,.005,.040);
+          *THREE.MathUtils.smoothstep(sample.z*face,.005,.040);
         if(weight<=0)continue;
-        shared.set(sample.x*2.5,.10+.72*THREE.MathUtils.smoothstep(sample.y,.45,.62),1).normalize();
+        shared.set(sample.x*2.5,.10+.72*THREE.MathUtils.smoothstep(sample.y,.45,.62),face).normalize();
         existing.lerp(shared,weight).normalize();
         if(surface===mesh)existing.applyQuaternion(torsoFrame.quaternion);
         normals.setXYZ(i,existing.x,existing.y,existing.z);
