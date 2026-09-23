@@ -50,47 +50,38 @@ function sectionAt(sections: readonly Section[], u: number): Section {
   ];
 }
 
-/** Slim, tapered tail with a narrow seat continuing into its pointed tip. */
+/** Broad, gently squared-off tail, with a narrow seat continuing into its root. */
 export function supermotoTailFenderGeometry() {
   return formedSheet(40, 16, (u, v) => {
     const [z, width, crown, edgeY] = sectionAt(SUPERMOTO_TAIL_FENDER, u);
-    const tip = MathUtils.smoothstep(u, 0.80, 1);
-    const point = MathUtils.smoothstep(Math.abs(v), 0.32, 1) * tip;
-    return [
-      v * width,
-      edgeY + crown * (1 - v * v),
-      z - point * 0.018,
-    ];
+    const corner = MathUtils.smoothstep(u, 0.94, 1) * MathUtils.smoothstep(Math.abs(v), 0.66, 1);
+    return [v * width, edgeY + crown * (1 - v * v), z - corner * 0.013];
   }, [0, -0.007, 0]);
 }
 
 const FRONT_FENDER: readonly Section[] = [
-  [-1.300, 0.040, 0.005, 0.792],
-  [-1.200, 0.060, 0.011, 0.807],
-  [-1.080, 0.088, 0.025, 0.831],
-  [-0.930, 0.118, 0.040, 0.858],
-  [-0.760, 0.112, 0.043, 0.872],
-  [-0.640, 0.098, 0.030, 0.867],
-  [-0.535, 0.078, 0.018, 0.842],
-  [-0.462, 0.058, 0.010, 0.782],
-  [-0.428, 0.042, 0.005, 0.704],
+  // Preserve the fork-side stations and extend only the nose by about 25%.
+  [-1.190, 0.044, 0.007, 0.779],
+  [-1.060, 0.068, 0.014, 0.793],
+  [-0.900, 0.084, 0.025, 0.817],
+  [-0.792, 0.092, 0.036, 0.849],
+  [-0.684, 0.089, 0.037, 0.858],
+  [-0.595, 0.080, 0.026, 0.857],
+  [-0.520, 0.067, 0.016, 0.835],
+  [-0.462, 0.054, 0.010, 0.782],
+  [-0.428, 0.038, 0.005, 0.704],
 ];
 
 /** Thin arched front blade: raised over the tyre, with its nose bending down. */
-export function supermotoFrontFenderGeometry(zShift = 0) {
+export function supermotoFrontFenderGeometry() {
   return formedSheet(48, 20, (u, v) => {
     const [z, width, crown, edgeY] = sectionAt(FRONT_FENDER, u);
-    const noseCorner =
-      (1 - MathUtils.smoothstep(u, 0, 0.12)) *
-      (1 - Math.sqrt(Math.max(0, 1 - v * v)));
+    const noseCorner = (1 - MathUtils.smoothstep(u, 0, 0.09)) * (1 - Math.sqrt(Math.max(0, 1 - v * v)));
     // The center spine is high, with folded shoulders on either side. This
     // gives the blade its moulded trough section without making its wall thick.
     const shoulder = 1 - 0.58 * v * v - 0.42 * Math.pow(v, 6);
-    return [
-      width * v,
-      edgeY + crown * shoulder - 0.025,
-      -0.390 + (z + 0.428 + noseCorner * 0.020) * 0.65 + zShift,
-    ];
+    return [width * v, edgeY + crown * shoulder - 0.025,
+      -0.390 + (z + 0.428 + noseCorner * 0.023) * 0.65];
   }, [0, -0.004, 0]);
 }
 
@@ -135,11 +126,9 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
   g.setIndex(indices);
   const vertex = g.getAttribute('position');
   for (let i = 0; i < vertex.count; i++) {
-    // Keep the mask close to the fork while giving it the slightly taller,
-    // broader presence of a compact MX/supermoto number plate.
-    const y = 0.943 + (vertex.getY(i) - 0.98) * 0.90;
-    vertex.setXYZ(i, vertex.getX(i) * 1.38, y,
-      vertex.getZ(i) + 0.1585 + (y - 0.926) * 0.30);
+    const y = 0.930 + (vertex.getY(i) - 0.98) * 0.78;
+    vertex.setXYZ(i, vertex.getX(i) * 1.20, y,
+      vertex.getZ(i) + 0.1445 + (y - 0.94) * 0.30);
   }
   g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
   return g;

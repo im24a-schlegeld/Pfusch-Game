@@ -49,7 +49,7 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
-import { SUPERMOTO_CHASSIS, SUPERMOTO_FRONT_FENDER_SHIFT, SUPERMOTO_RENDER_FRONT_AXLE, SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry } from './supermotoBodywork';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { supermotoGripPoint } from './supermotoCockpit';
@@ -595,7 +595,7 @@ export function makeBike(player: Player, products: Product[]) {
   const moped = player.bike === '125',
     sport = player.bike === '701';
   const rear = moped ? 0.55 : sport ? SPORT_GEOMETRY.rearAxle : SUPERMOTO_CHASSIS.rearAxle,
-    front = moped ? -0.7 : sport ? SPORT_GEOMETRY.frontAxle : SUPERMOTO_RENDER_FRONT_AXLE,
+    front = moped ? -0.7 : sport ? SPORT_GEOMETRY.frontAxle : SUPERMOTO_CHASSIS.frontAxle,
     radius = moped
       ? 0.305
       : sport
@@ -1277,15 +1277,6 @@ export function makeBike(player: Player, products: Product[]) {
         paint,
         0.004,
       ).name = 'supermoto-side-cover';
-      // Small structural bridge at the tail tip: it links the outer cover to
-      // the dark wheel-arch liner without turning the whole side into a wall.
-      sidePanel(body, s, [
-        [0.091, 1.044, 0.752],
-        [0.090, 1.035, 0.832],
-        [0.099, 0.975, 0.875],
-        [0.109, 0.900, 0.800],
-        [0.104, 0.900, 0.746],
-      ], matteBlack, 0.004).name = 'supermoto-tail-bridge';
       // A separate airbox access panel follows the front edge of the white
       // number panel, with a small parting line and the black tank above it.
       sidePanel(body, s, [
@@ -1296,6 +1287,13 @@ export function makeBike(player: Player, products: Product[]) {
         [0.120, 0.713, 0.117],
         [0.112, 0.833, 0.067],
       ], matteBlack, 0.004).name = 'supermoto-airbox-access-panel';
+      // Fill the triangular opening directly below the saddle, between the
+      // existing front and rear plastics, rather than extending toward the engine.
+      sidePanel(body, s, [
+        [0.130, 0.938, 0.169],
+        [0.173, 0.815, -0.052],
+        [0.136, 0.806, 0.189],
+      ], paint, 0.004).name = 'supermoto-middle-side-cover';
       // The inner liner closes the under-seat body at its sides, leaving
       // clearance around the forward-inclined spring and its travel.
       sidePanel(
@@ -1575,10 +1573,6 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
     );
     tank.name = 'supermoto-fuel-tank';
-    // Render-only presence increase: keep the same tank profile and contact
-    // points while giving the Supermoto body the adult scale requested by the
-    // new silhouette pass.
-    tank.scale.set(1.08, 1.05, 1.05);
     rod(body, [0, 1.01, -0.299], [0, 1.024, -0.299], 0.027, dark).name =
       'fuel-cap';
     loft(
@@ -1594,11 +1588,11 @@ export function makeBike(player: Player, products: Product[]) {
       seat,
       'z',
     ).name = 'supermoto-seat';
-    mesh(body, supermotoFrontFenderGeometry(SUPERMOTO_FRONT_FENDER_SHIFT), paint).name = 'supermoto-front-fender';
+    mesh(body, supermotoFrontFenderGeometry(), paint).name = 'supermoto-front-fender';
     for (const s of [-1, 1]) {
       rod(
         body,
-      [s * 0.034, 0.850, -0.480 + SUPERMOTO_FRONT_FENDER_SHIFT],
+        [s * 0.034, 0.850, -0.480],
         [s * 0.034, 0.959, forkAxisAt(0.959)[2]],
         0.014,
         dark,
@@ -1632,7 +1626,7 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoLampGeometry('glass'), glass).name = 'supermoto-headlight-glass';
     oval(
       body,
-      [0, 0.95624, -0.476628],
+      [0, 0.93624, -0.507628],
       [0.014, 0.016, 0.007],
       new THREE.MeshStandardMaterial({
         color: '#f7fcff',

@@ -1,4 +1,4 @@
-import { SUPERMOTO_CHASSIS, SUPERMOTO_TAIL_CONTACT_TIP } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 
 export interface TailContact {
   readonly point: readonly [number, number, number];
@@ -23,12 +23,11 @@ function contact(
     angle: Math.acos(-rearRadius / Math.hypot(y, z)) - Math.atan2(z, y),
   });
 }
-// The extended steel mudguard wraps just behind the rear axle height. The
-// Supermoto visual tail has its own render-only refinement below, so the
-// gameplay contact datum stays stable while its silhouette is adjusted.
+// The extended steel mudguard wraps just behind the rear axle height. Share
+// its tip with the renderer so sparks and loop-out follow actual contact.
 export const MOPED_REAR_FENDER_ANGLE = 1.68;
 const mopedGuardRadius = 0.305 + 0.038 + 0.008 + 0.005;
-const supermotoTailTip = SUPERMOTO_TAIL_CONTACT_TIP;
+const supermotoTailTip = SUPERMOTO_TAIL_FENDER[SUPERMOTO_TAIL_FENDER.length - 1];
 /** Raw chassis coordinates, before the shared vehicle/world scale. */
 export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   // Earliest rendered rear vertices, including the Ciao's steel mudguard and

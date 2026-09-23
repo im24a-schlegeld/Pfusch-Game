@@ -12,22 +12,15 @@ export const SUPERMOTO_CHASSIS = Object.freeze({
   forkTopY: 1.02,
 });
 
-// Rendering-only stance adjustment. Gameplay collision/ramp datums continue
-// to use SUPERMOTO_CHASSIS; the visible front wheel sits a little farther out
-// so the Supermoto reads slim instead of compressed.
-export const SUPERMOTO_RENDER_FRONT_AXLE = -0.768;
-export const SUPERMOTO_FRONT_FENDER_SHIFT =
-  SUPERMOTO_RENDER_FRONT_AXLE - SUPERMOTO_CHASSIS.frontAxle;
-
 // One contact datum for the actual pegs AND the existing rider IK/boot generator.
 export const SUPERMOTO_PEG: FitPoint = [0.26, 0.385, 0.105];
 export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.112, -0.335];
 
 // Thin radiator wings leave the black fuel tank visible behind their rear seam.
 export const SUPERMOTO_SHROUD: FitPoint[] = [
-  [0.160, 0.925, -0.500],
-  [0.173, 0.970, -0.345],
-  [0.182, 0.980, -0.285],
+  [0.150, 0.913, -0.460],
+  [0.165, 0.963, -0.305],
+  [0.174, 0.977, -0.260],
   [0.164, 0.935, -0.025],
   [0.130, 0.944, 0.165],
   [0.147, 0.877, 0.040],
@@ -37,37 +30,31 @@ export const SUPERMOTO_SHROUD: FitPoint[] = [
   [0.187, 0.825, -0.342],
 ];
 
-// One slim continuous outer side/tail cover. Its lower edge only masks the
-// upper frame rail; the shock, swingarm and airbox remain readable below it.
+// Separate triangular number-panel plastics under the seat. Their high rear
+// edge follows the fender, leaving room for the silencer below, not inside it.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.125, 0.944, 0.169],
   [0.107, 0.955, 0.330],
   [0.100, 0.989, 0.530],
   [0.097, 1.022, 0.690],
-  [0.088, 1.050, 0.850],
-  [0.096, 1.012, 0.890],
-  [0.105, 0.946, 0.790],
-  [0.113, 0.905, 0.620],
-  [0.120, 0.880, 0.450],
-  [0.125, 0.870, 0.300],
-  [0.129, 0.890, 0.205],
-  [0.130, 0.900, 0.174],
+  [0.090, 1.050, 0.820],
+  [0.107, 0.992, 0.718],
+  [0.137, 0.874, 0.468],
+  [0.148, 0.666, 0.276],
+  [0.137, 0.726, 0.205],
+  [0.130, 0.869, 0.174],
 ];
 
-/** Rendered sheet cross-sections: z, half width, crown height, edge height. */
+/** Sheet cross-sections: z, half width, crown height, edge height.
+ * Tail-contact physics reads the final station's upper center tip. */
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.17, 0.123, 0.013, 0.946],
   [0.33, 0.108, 0.014, 0.955],
   [0.53, 0.102, 0.016, 0.989],
-  [0.69, 0.095, 0.017, 1.022],
-  [0.82, 0.086, 0.018, 1.052],
-  [0.90, 0.064, 0.016, 1.064],
+  [0.69, 0.099, 0.017, 1.022],
+  [0.83, 0.090, 0.018, 1.052],
+  [0.90, 0.073, 0.019, 1.065],
 ];
-
-// Keep tail-contact gameplay on the previous physical datum while the visible
-// moulding is refined independently.
-export const SUPERMOTO_TAIL_CONTACT_TIP: [number, number, number, number] =
-  [0.90, 0.073, 0.019, 1.065];
 
 export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];
 export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.500, 0.430];
