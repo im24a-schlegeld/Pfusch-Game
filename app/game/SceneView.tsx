@@ -18,11 +18,29 @@ import { createRideParticles, particleAnchors } from './rideParticles';
 import { createCrashTravel } from './crashTravel';
 import { makeSignCollectibleView } from './signCollectibleView';
 import { TAIL_CONTACT } from './tailContact';
-import { applyBikeStickers } from './bikeStickers';
+import { applyBikeStickers, clearBikeStickers } from './bikeStickers';
 
 // Match makeBike's body selection, including its default Supermoto geometry.
 const headlightModel = (id: string) =>
   id === '125' || id === 'scooter' || id === '701' ? id : '450';
+
+/** A stale sticker placement must never prevent the motorcycle from rendering. */
+function applyStickersSafely(
+  bike: ReturnType<typeof makeBike>,
+  player: Player,
+) {
+  try {
+    applyBikeStickers(
+      bike.body,
+      bike.rider,
+      player.paint,
+      player.stickers[player.bike] ?? [],
+    );
+  } catch (error) {
+    console.error('Gespeicherte Sticker konnten nicht angewendet werden.', error);
+    clearBikeStickers(bike.body);
+  }
+}
 
 interface Props {
   player: Player;
@@ -137,12 +155,6 @@ export default function SceneView({
     let bike: ReturnType<typeof makeBike>;
     try {
       bike = makeBike(player, products);
-      applyBikeStickers(
-        bike.body,
-        bike.rider,
-        player.paint,
-        player.stickers[player.bike] ?? [],
-      );
     } catch (error) {
       console.error('Motorrad-Vorschau konnte nicht erstellt werden.', error);
       session.release();
@@ -150,6 +162,7 @@ export default function SceneView({
       setError(`Motorrad-Vorschau konnte nicht erstellt werden.${detail}`);
       return;
     }
+    applyStickersSafely(bike, player);
     bike.root.name = 'player-bike';
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;
@@ -289,12 +302,7 @@ export default function SceneView({
         scene.remove(bike.root);
         disposeVehicle(bike.root);
         bike = makeBike(nextAppearance.player, nextAppearance.products);
-        applyBikeStickers(
-          bike.body,
-          bike.rider,
-          nextAppearance.player.paint,
-          nextAppearance.player.stickers[nextAppearance.player.bike] ?? [],
-        );
+        applyStickersSafely(bike, nextAppearance.player);
         bike.root.name = 'player-bike';
         crash = undefined;
         crashTravel = undefined;
