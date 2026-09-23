@@ -16,9 +16,9 @@ export function stickerArtwork() {
       if (!context) return;
       context.fillStyle = '#111315';
       context.beginPath();
-      context.roundRect(8, 8, 496, 496, 108);
+      context.roundRect(8, 8, 496, 496, 132);
       context.fill();
-      const width = 270, height = width * print.height / print.width;
+      const width = 292, height = width * print.height / print.width;
       context.drawImage(print, (512 - width) / 2, (512 - height) / 2, width, height);
       texture.image = canvas;
       texture.needsUpdate = true;

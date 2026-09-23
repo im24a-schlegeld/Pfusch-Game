@@ -573,6 +573,10 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
 .inline-color-swatches {
   display: flex !important;
   flex-wrap: wrap !important;
+  width: 100% !important;
+  justify-content: center !important;
+  align-content: center !important;
+  margin-inline: auto !important;
   gap: 8px !important;
   align-items: center !important;
   min-height: 30px !important;

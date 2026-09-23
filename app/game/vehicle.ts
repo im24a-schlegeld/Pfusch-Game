@@ -1657,8 +1657,8 @@ export function makeBike(player: Player, products: Product[]) {
         body,
         [
           control(-0.09, 0, 0),
-          control(-0.07, -0.03, -0.16),
-          control(0.05, -0.02, -0.15),
+          control(-0.07, -0.03, -0.055),
+          control(0.05, -0.02, -0.055),
           control(0.065, 0, 0),
         ],
         [0.008, 0.008, 0.009, 0.008],
