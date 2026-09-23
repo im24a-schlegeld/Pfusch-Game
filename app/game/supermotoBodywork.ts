@@ -125,9 +125,9 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
   g.setIndex(indices);
   const vertex = g.getAttribute('position');
   for (let i = 0; i < vertex.count; i++) {
-    const y = 0.945 + (vertex.getY(i) - 0.98) * 0.78;
+    const y = 0.930 + (vertex.getY(i) - 0.98) * 0.78;
     vertex.setXYZ(i, vertex.getX(i) * 1.20, y,
-      vertex.getZ(i) + 0.125 + (y - 0.94) * 0.30);
+      vertex.getZ(i) + 0.1445 + (y - 0.94) * 0.30);
   }
   g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
   return g;

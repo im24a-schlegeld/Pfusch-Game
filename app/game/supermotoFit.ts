@@ -18,7 +18,7 @@ export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.112, -0.335];
 
 // Thin radiator wings leave the black fuel tank visible behind their rear seam.
 export const SUPERMOTO_SHROUD: FitPoint[] = [
-  [0.150, 0.913, -0.395],
+  [0.150, 0.913, -0.460],
   [0.165, 0.963, -0.305],
   [0.174, 0.977, -0.260],
   [0.164, 0.935, -0.025],

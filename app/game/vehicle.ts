@@ -1208,7 +1208,7 @@ export function makeBike(player: Player, products: Product[]) {
       // The shoulder folds inward onto the tank. This shallow closed strip
       // gives the shroud a supported upper surface instead of a flat sign.
       const shoulderStations: [number, number, number, number, number][] = [
-        [-0.395, 0.140, 0.913, 0.150, 0.913],
+        [-0.460, 0.140, 0.913, 0.150, 0.913],
         [-0.305, 0.098, 0.965, 0.165, 0.963],
         [-0.260, 0.098, 0.982, 0.174, 0.977],
         [-0.025, 0.091, 0.951, 0.164, 0.935],
@@ -1598,8 +1598,8 @@ export function makeBike(player: Player, products: Product[]) {
         dark,
       ).name = 'front-fender-mount';
       for (const [y, z] of [
-        [0.900, -0.515],
-        [1.035, -0.435],
+        [0.885, -0.500],
+        [1.020, -0.420],
       ])
         rod(
           body,
@@ -1626,7 +1626,7 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoLampGeometry('glass'), glass).name = 'supermoto-headlight-glass';
     oval(
       body,
-      [0, 0.95124, -0.522628],
+      [0, 0.93624, -0.507628],
       [0.014, 0.016, 0.007],
       new THREE.MeshStandardMaterial({
         color: '#f7fcff',

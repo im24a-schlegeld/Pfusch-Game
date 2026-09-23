@@ -1,2 +1,66 @@
 <!doctype html>
-<html lang="en" class="dark"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/><meta name="theme-color" content="#101112"/><meta name="description" content="The PFUSCH Clothing motorcycle game. Ride the streets, build your combo and make the garage yours."/><title>PFUSCH Street Run</title><link rel="icon" href="/favicon.svg"/></head><body><div id="root"></div><script type="module" src="/app/main.tsx"></script></body></html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#101112" />
+    <meta name="description" content="The PFUSCH Clothing motorcycle game. Ride the streets, build your combo and make the garage yours." />
+    <title>PFUSCH Street Run</title>
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      /* Keep a useful recovery surface visible if the app bundle or WebGL boot
+         fails before React can render its own loading/error screen. React
+         replaces this node on a successful boot. */
+      #boot-fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 18px;
+        padding: 24px;
+        background: #323232;
+        color: #f4f4f2;
+        font: 600 12px/1.4 Arial, Helvetica, sans-serif;
+        letter-spacing: .1em;
+        text-align: center;
+      }
+      #boot-fallback strong {
+        font-size: clamp(38px, 8vw, 72px);
+        letter-spacing: -.06em;
+      }
+      #boot-fallback span { color: #bdbdb9; }
+      #boot-fallback .boot-spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #5e5e5e;
+        border-top-color: #f0f0ed;
+        border-radius: 50%;
+        animation: boot-spin .72s linear infinite;
+      }
+      #boot-fallback button {
+        min-height: 42px;
+        padding: 10px 16px;
+        border: 1px solid #f0f0ed;
+        background: #f0f0ed;
+        color: #323232;
+        font: inherit;
+        letter-spacing: .08em;
+        cursor: pointer;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <main id="boot-fallback" aria-live="polite">
+        <strong>PFUSCH.</strong>
+        <span>GARAGE WIRD GELADEN</span>
+        <i class="boot-spinner" aria-hidden="true"></i>
+        <button type="button" onclick="window.location.reload()">NEU LADEN</button>
+      </main>
+    </div>
+    <script type="module" src="/app/main.tsx"></script>
+  </body>
+</html>
