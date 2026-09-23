@@ -53,7 +53,7 @@ import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { supermotoGripPoint } from './supermotoCockpit';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
-import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe } from './v40ModelFinish';
+import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, finishRequestedModelParts } from './v40ModelFinish';
 
 type Point = [number, number, number];
 type Ring = [number, number, number, number]; // axis coordinate, half width, half depth, center offset
@@ -557,9 +557,18 @@ function makeHelmet(
 export function makeBike(player: Player, products: Product[]) {
   if (player.bike === 'scooter') {
     const scooter = makeScooter(player, products, makeRider);
+    finishRequestedModelParts(scooter.body, player.bike, player.paint);
     const key = addIgnitionKey(scooter.body, player, products, BIKE_CONTACTS.scooter.grip);
     return { ...scooter, animateAccessories(input: CarriedCapMotionInput, dt: number) {
       scooter.animateAccessories(input, dt); key?.update(input, dt);
+    }, animateCrashPose(progress: number, side: number, dt: number) {
+      scooter.animateRider({
+        wheelie: 0,
+        steer: 0,
+        landing: 0,
+        crash: progress,
+        crashSide: side,
+      }, dt);
     }};
   }
   const root = new THREE.Group();
@@ -576,6 +585,7 @@ export function makeBike(player: Player, products: Product[]) {
   const rubber = material('#111719', 0, 0.97),
     alloy = material('#a3abad', 0.82, 0.28),
     dark = material('#20282b', 0.55, 0.44),
+    matteBlack = material('#101214', 0.16, 0.72),
     seat = material('#171c20', 0, 0.9),
     paint = material(player.paint, 0.18, 0.32),
     rim = material(player.rims, 0.7, 0.35),
@@ -816,7 +826,7 @@ export function makeBike(player: Player, products: Product[]) {
         [forkX, forkTop[1], forkTop[2]],
         sport ? 0.028 : 0.038,
         dark,
-      );
+      ).name = 'fork-stanchion';
     if (moped)
       rod(
         body,
@@ -1135,7 +1145,7 @@ export function makeBike(player: Player, products: Product[]) {
           [rear - 0.04, 0.028, 0.034, rearRadius + 0.01],
           [rear + 0.03, 0.023, 0.026, rearRadius],
         ],
-        alloy,
+        matteBlack,
         'z',
         16,
       );
@@ -1507,7 +1517,7 @@ export function makeBike(player: Player, products: Product[]) {
       100,
       8,
     ).name = 'rear-shock-spring';
-    loft(
+    const tank = loft(
       body,
       [
         [-0.415, 0.076, 0.042, 0.962],
@@ -1517,7 +1527,23 @@ export function makeBike(player: Player, products: Product[]) {
       ],
       paint,
       'z',
-    ).name = 'supermoto-fuel-tank';
+    );
+    tank.name = 'supermoto-fuel-tank';
+    // Split the leading tank crown by material on the molded surface itself.
+    const tankSegments = 24,
+      tankFaceIndices = 12 * tankSegments * 6,
+      tankBandIndices = 4 * tankSegments * 6,
+      tankCapIndices = (tankSegments - 2) * 3;
+    tank.geometry.clearGroups();
+    tank.geometry.addGroup(0, tankBandIndices, 0);
+    tank.geometry.addGroup(tankBandIndices, tankFaceIndices - tankBandIndices, 1);
+    tank.geometry.addGroup(tankFaceIndices, tankCapIndices, 0);
+    tank.geometry.addGroup(tankFaceIndices + tankCapIndices, tankCapIndices, 1);
+    const groupedTank = tank as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.Material | THREE.Material[]
+    >;
+    groupedTank.material = [matteBlack, paint];
     rod(body, [0, 1.01, -0.299], [0, 1.024, -0.299], 0.027, dark).name =
       'fuel-cap';
     loft(
@@ -1646,7 +1672,7 @@ export function makeBike(player: Player, products: Product[]) {
         supermotoGripPoint(pose.grip, 1, 0.055),
       ],
       [0.012, 0.012, 0.013, 0.014, 0.014, 0.014, 0.013, 0.012, 0.012],
-      alloy,
+      matteBlack,
       36,
       12,
     ).name = 'supermoto-handlebar';
@@ -1657,13 +1683,15 @@ export function makeBike(player: Player, products: Product[]) {
         body,
         [
           control(-0.09, 0, 0),
-          control(-0.07, -0.03, -0.055),
-          control(0.05, -0.02, -0.055),
+          control(-0.11, 0.016, -0.095),
+          control(-0.088, 0.057, -0.163),
+          control(0.057, 0.049, -0.15),
+          control(0.088, 0.005, -0.118),
           control(0.065, 0, 0),
         ],
-        [0.008, 0.008, 0.009, 0.008],
+        [0.008, 0.008, 0.008, 0.008, 0.008, 0.008],
         alloy,
-        20,
+        28,
         12,
         0.65,
       ).name = 'supermoto-handguard-support';
@@ -2243,7 +2271,7 @@ export function makeBike(player: Player, products: Product[]) {
         0.014,
       ).name = 'frame-mounted-rearset';
     if (player.bike === '450') {
-      addSupermotoFootpeg(body, s, pose.peg, alloy, dark);
+      addSupermotoFootpeg(body, s, pose.peg, matteBlack, matteBlack);
     } else {
       rod(
         body,
@@ -2259,6 +2287,7 @@ export function makeBike(player: Player, products: Product[]) {
   const ignitionKey = addIgnitionKey(body, player, products, pose.grip);
   if (player.bike === '450') fitRearExitExhaust(body, paint);
   finishWheelColors(body, player.rims); blackSprings(body);
+  finishRequestedModelParts(body, player.bike, player.paint);
   const rider = makeRider(body, riderPose, player, products);
   // V41-FIX: makeRider returns a controller; its group exists only after construction.
   darkenWardrobe(rider.group);
@@ -2301,6 +2330,17 @@ export function makeBike(player: Player, products: Product[]) {
     wheels,
     rider: rider.group,
     animateRider: rider.animate,
+    animateCrashPose: (progress: number, side: number, dt: number) =>
+      rider.animate(
+        {
+          wheelie: 0,
+          steer: 0,
+          landing: 0,
+          crash: progress,
+          crashSide: side,
+        },
+        dt,
+      ),
     animateAccessories: (input: CarriedCapMotionInput, dt: number) => {
       rider.animateAccessories(input, dt);
       updateCrossbodyMotion(rider.group, input, dt); ignitionKey?.update(input, dt);
@@ -3265,6 +3305,8 @@ function makeRider(
     balance: 0,
     load: 0,
     road: 0,
+    crash: 0,
+    crashSide: 1,
   };
   const animate = (target: RiderMotion, dt: number) => {
     for (const key of [
@@ -3276,11 +3318,15 @@ function makeRider(
       'balance',
       'load',
       'road',
+      'crash',
     ] as const) {
       const blend =
         1 - Math.exp(-(key === 'launch' || key === 'landing' ? 20 : 12) * dt);
       motion[key] += ((target[key] ?? 0) - motion[key]) * blend;
     }
+    motion.crashSide +=
+      ((target.crashSide ?? 1) - motion.crashSide) *
+      (1 - Math.exp(-18 * dt));
     const current = riderMotionPose(pose, motion);
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);

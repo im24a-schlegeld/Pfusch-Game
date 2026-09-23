@@ -98,6 +98,43 @@ describe('animated immutable rider', () => {
       }
     }
   });
+  it('lifts the rider off the controls in a crash while preserving fixed bone lengths', () => {
+    const rest: RiderMotion = { wheelie: 0, steer: 0, landing: 0 };
+    for (const base of Object.values(POSES)) {
+      const seated = riderMotionPose(base, rest);
+      for (const side of [-1, 1]) {
+        const thrown = riderMotionPose(base, {
+          ...rest,
+          crash: 1,
+          crashSide: side,
+        });
+        expect(thrown.hip[2]).toBeGreaterThan(seated.hip[2]);
+        for (const [index, limb] of thrown.limbs.entries()) {
+          const before = seated.limbs[index];
+          expect(limb.arm.end[1]).toBeGreaterThan(before.arm.end[1]);
+          expect(limb.arm.end[2]).toBeGreaterThan(before.arm.end[2]);
+          expect(limb.leg.end[1]).toBeGreaterThan(before.leg.end[1]);
+          expect(limb.leg.end[2]).toBeGreaterThan(before.leg.end[2]);
+          expect(distance(limb.arm.start, limb.arm.joint)).toBeCloseTo(
+            d.upperArm,
+            10,
+          );
+          expect(distance(limb.arm.joint, limb.arm.end)).toBeCloseTo(
+            d.forearm,
+            10,
+          );
+          expect(distance(limb.leg.start, limb.leg.joint)).toBeCloseTo(
+            d.thigh,
+            10,
+          );
+          expect(distance(limb.leg.joint, limb.leg.end)).toBeCloseTo(
+            d.shin,
+            10,
+          );
+        }
+      }
+    }
+  });
   it('bounds motion inputs and treats nonfinite input as neutral', () => {
     const rest: RiderMotion = { wheelie: 0, steer: 0, landing: 0 };
     const keys: (keyof RiderMotion)[] = [

@@ -106,7 +106,7 @@ function finishes(
       depthWrite: false,
     }),
     screen: new THREE.MeshPhysicalMaterial({
-      color: '#30424e',
+      color: '#26333d',
       transparent: true,
       opacity: SPORT_STYLE.windshieldOpacity,
       roughness: 0.09,

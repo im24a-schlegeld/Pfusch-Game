@@ -6,8 +6,8 @@ export const TRAFFIC_FLOW = Object.freeze({
   towClosingSpeed: 12,
   reactionSeconds: 0.62,
   laneChangeSeconds: 0.35,
-  pairedTrafficChance: 0.045,
-  towCarPairChance: 0.12,
+  pairedTrafficChance: 0.07,
+  towCarPairChance: 0.16,
 });
 export function trafficWaveSpacing(
   initial: number,

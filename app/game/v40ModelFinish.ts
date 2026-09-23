@@ -182,6 +182,58 @@ export function blackSprings(body:THREE.Group){
     o.material=Array.isArray(o.material)?o.material.map(tint):tint(o.material);
   });
 }
+/** Apply the requested model-specific black hardware and livery-color shock coils. */
+export function finishRequestedModelParts(
+  body: THREE.Group,
+  model: string,
+  paintColor: THREE.ColorRepresentation,
+) {
+  const black = (source: THREE.Material): THREE.Material => {
+    if (!(source instanceof THREE.MeshStandardMaterial)) return source;
+    const next = source.clone();
+    next.color.set('#101214');
+    next.metalness = 0.16;
+    next.roughness = 0.72;
+    return next;
+  };
+  const blackNames =
+    model === '450'
+      ? new Set(['box-section-swingarm', 'supermoto-handlebar'])
+      : model === '125' || model === '701'
+        ? new Set([
+            'telescopic-fork-slider',
+            'fork-stanchion',
+            'fork-yoke',
+            'fork-yoke-collar',
+          ])
+        : new Set<string>();
+  const springNames = new Set([
+    'rear-shock-spring',
+    'sport-rear-shock-spring',
+    'scooter-rear-spring',
+  ]);
+  body.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const isPeg = model === '450' && object.name.startsWith('supermoto-footpeg-');
+    if (blackNames.has(object.name) || isPeg) {
+      object.material = Array.isArray(object.material)
+        ? object.material.map(black)
+        : black(object.material);
+    }
+    if (!springNames.has(object.name)) return;
+    const finishSpring = (source: THREE.Material): THREE.Material => {
+      if (!(source instanceof THREE.MeshStandardMaterial)) return source;
+      const finish = source.clone();
+      finish.color.set(paintColor);
+      finish.metalness = Math.max(0.3, finish.metalness);
+      finish.roughness = Math.min(0.48, finish.roughness);
+      return finish;
+    };
+    object.material = Array.isArray(object.material)
+      ? object.material.map(finishSpring)
+      : finishSpring(object.material);
+  });
+}
 /** Keep the ORIGINAL materials: cloning detaches them from the glow registry and async ink loaders. */
 const wardrobeTinted=new WeakSet<THREE.MeshStandardMaterial>();
 export function darkenWardrobe(root:THREE.Object3D,factor=.82){

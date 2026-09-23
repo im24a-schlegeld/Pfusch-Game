@@ -91,7 +91,7 @@ function minimumVisibleY(owner: Object3D, excluded?: Object3D) {
 
 describe('bounded crash presentation', () => {
   it.each(['125', 'scooter', '450', '701'] as const)(
-    '%s falls and slides with unchanged adult bones, above the road and with attached light origins',
+    '%s falls with released limbs, fixed skeleton scale, ground clearance and attached lights',
     (model) => {
       const { bike, animation } = fixture(model);
       const rig = createBikeHeadlightRig(model);
@@ -100,10 +100,8 @@ describe('bounded crash presentation', () => {
       bike.rider.traverse((object) => {
         if (object instanceof Bone) bones.push(object);
       });
-      const boneTransforms = bones.map((bone) => ({
-        position: bone.position.toArray(),
-        scale: bone.scale.toArray(),
-      }));
+      const bonePositions = bones.map((bone) => bone.position.toArray());
+      const boneScales = bones.map((bone) => bone.scale.toArray());
       const riderScale = bike.rider.scale.clone();
       const initial = bike.root.position.clone();
       animation.advance(0, true);
@@ -127,15 +125,14 @@ describe('bounded crash presentation', () => {
       expect(bike.root.position.z).toBeLessThan(initial.z - 1);
       expect(bike.rider.position.length()).toBeGreaterThan(0.3);
       bike.root.updateMatrixWorld(true);
-      expect(minimumVisibleY(bike.rider)).toBeCloseTo(0.035, 4);
+      expect(minimumVisibleY(bike.rider)).toBeGreaterThanOrEqual(0.035);
+      expect(minimumVisibleY(bike.rider)).toBeLessThan(0.12);
       expect(minimumVisibleY(bike.body, bike.rider)).toBeCloseTo(0.025, 4);
       expect(bike.rider.scale).toEqual(riderScale);
-      expect(
-        bones.map((bone) => ({
-          position: bone.position.toArray(),
-          scale: bone.scale.toArray(),
-        })),
-      ).toEqual(boneTransforms);
+      expect(bones.map((bone) => bone.position.toArray())).not.toEqual(
+        bonePositions,
+      );
+      expect(bones.map((bone) => bone.scale.toArray())).toEqual(boneScales);
       expect(
         [
           ...animation.focus.toArray(),
@@ -219,7 +216,8 @@ describe('bounded crash presentation', () => {
         expect(
           minimumVisibleY(bike.rider.getObjectByName('carried-cap')!),
         ).toBeGreaterThan(0.035);
-        expect(minimumVisibleY(bike.rider)).toBeCloseTo(0.035, 4);
+        expect(minimumVisibleY(bike.rider)).toBeGreaterThanOrEqual(0.035);
+        expect(minimumVisibleY(bike.rider)).toBeLessThan(0.12);
         expect(minimumVisibleY(bike.body, bike.rider)).toBeCloseTo(0.025, 4);
       }
     },

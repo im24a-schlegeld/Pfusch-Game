@@ -140,26 +140,26 @@ export interface TrafficEnvironment {
 }
 const city: TrafficEnvironment = {
   doubleChance: 0.58,
-  minimumSpacing: 56,
-  initialSpacing: 78,
+  minimumSpacing: 50,
+  initialSpacing: 70,
   kinds: ['car', 'car', 'car', 'van', 'towtruck'],
 };
 const industrial: TrafficEnvironment = {
   doubleChance: 0.52,
-  minimumSpacing: 60,
-  initialSpacing: 86,
+  minimumSpacing: 54,
+  initialSpacing: 76,
   kinds: ['van', 'van', 'car', 'towtruck'],
 };
 const open: TrafficEnvironment = {
   doubleChance: 0.25,
-  minimumSpacing: 80,
-  initialSpacing: 110,
+  minimumSpacing: 72,
+  initialSpacing: 96,
   kinds: ['car', 'car', 'van', 'towtruck'],
 };
 const tunnel: TrafficEnvironment = {
   doubleChance: 0.38,
-  minimumSpacing: 66,
-  initialSpacing: 92,
+  minimumSpacing: 58,
+  initialSpacing: 80,
   kinds: ['car', 'car', 'van'],
 };
 export const TRAFFIC_ENVIRONMENTS: Readonly<
@@ -169,15 +169,15 @@ export const TRAFFIC_ENVIRONMENTS: Readonly<
   industrial,
   construction: {
     doubleChance: 0.48,
-    minimumSpacing: 64,
-    initialSpacing: 90,
+    minimumSpacing: 56,
+    initialSpacing: 78,
     kinds: ['construction', 'construction', 'construction', 'van'],
   },
   open,
   waterfront: {
     doubleChance: 0.3,
-    minimumSpacing: 74,
-    initialSpacing: 100,
+    minimumSpacing: 64,
+    initialSpacing: 86,
     kinds: ['car', 'car', 'van', 'towtruck'],
   },
   'tunnel-approach': tunnel,

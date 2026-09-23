@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   Box3,
+  Color,
   Line3,
   Mesh,
   MeshStandardMaterial,
@@ -210,6 +211,65 @@ describe('assembled motorcycle connections', () => {
         .toBeLessThan(1e-6);
       expect(axis.end.z - ringCenter(bar, 18, 12).z).toBeGreaterThan(0.1);
     }
+  });
+
+  it('connects the Supermoto handguard frames and applies the requested finishes', () => {
+    const player = { ...newPlayer(), bike: '450' as const };
+    const bike = makeBike(player, []);
+    bike.root.updateMatrixWorld(true);
+    const guards = bike.body.getObjectsByProperty('name', 'formed-handguard') as Mesh[];
+    const supports = bike.body.getObjectsByProperty('name', 'supermoto-handguard-support') as Mesh[];
+    expect(guards).toHaveLength(2);
+    expect(supports).toHaveLength(2);
+    for (const support of supports) {
+      const supportBounds = new Box3().setFromObject(support);
+      const supportSide = Math.sign(supportBounds.getCenter(new Vector3()).x);
+      const guard = guards.find((candidate) => {
+        const guardBounds = new Box3().setFromObject(candidate);
+        return Math.sign(guardBounds.getCenter(new Vector3()).x) === supportSide;
+      });
+      expect(guard).toBeDefined();
+      expect(supportBounds.intersectsBox(new Box3().setFromObject(guard!))).toBe(true);
+    }
+    const colorOf = (mesh: Mesh) => {
+      const material = Array.isArray(mesh.material)
+        ? mesh.material[0]
+        : mesh.material;
+      expect(material).toBeInstanceOf(MeshStandardMaterial);
+      return (material as MeshStandardMaterial).color.getHexString();
+    };
+    expect((bike.body.getObjectsByProperty('name', 'box-section-swingarm') as Mesh[]).map(colorOf)).toEqual(['101214', '101214']);
+    expect(colorOf(bike.body.getObjectByName('supermoto-handlebar') as Mesh)).toBe('101214');
+    const pegs: Mesh[] = [];
+    bike.body.traverse((object) => {
+      if (object instanceof Mesh && object.name.startsWith('supermoto-footpeg-')) pegs.push(object);
+    });
+    expect(pegs.length).toBeGreaterThan(0);
+    expect(pegs.every((peg) => colorOf(peg) === '101214')).toBe(true);
+    const spring = bike.body.getObjectByName('rear-shock-spring') as Mesh;
+    expect(colorOf(spring)).toBe(new Color(player.paint).getHexString());
+    const tank = bike.body.getObjectByName('supermoto-fuel-tank') as Mesh;
+    expect(Array.isArray(tank.material)).toBe(true);
+    expect((tank.material as MeshStandardMaterial[])[0].color.getHexString()).toBe('101214');
+  });
+
+  it.each(['125', '701'] as const)('%s receives black fork tubes and clamps', (model) => {
+    const bike = makeBike({ ...newPlayer(), bike: model }, []);
+    const forks = bike.body.getObjectsByProperty('name', 'telescopic-fork-slider') as Mesh[];
+    expect(forks).toHaveLength(2);
+    expect(forks.every((fork) => (fork.material as MeshStandardMaterial).color.getHexString() === '101214')).toBe(true);
+    const stanchions = bike.body.getObjectsByProperty('name', 'fork-stanchion') as Mesh[];
+    if (model === '701') {
+      expect(stanchions).toHaveLength(2);
+      expect(stanchions.every((part) => (part.material as MeshStandardMaterial).color.getHexString() === '101214')).toBe(true);
+    }
+  });
+
+  it('matches the Scooter rear spring to the selected livery', () => {
+    const player = { ...newPlayer(), bike: 'scooter' as const, paint: '#e33126' };
+    const bike = makeBike(player, []);
+    const spring = bike.body.getObjectByName('scooter-rear-spring') as Mesh;
+    expect((spring.material as MeshStandardMaterial).color.getHexString()).toBe('e33126');
   });
 
   it.each(['125', '450', '701'] as const)(

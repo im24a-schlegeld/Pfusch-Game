@@ -15,6 +15,7 @@ interface CrashBike {
   body: Object3D;
   rider: Object3D;
   animateSuspension(pitch: number, travel: number): void;
+  animateCrashPose?(progress: number, side: number, dt: number): void;
 }
 
 export const crashDuration = (cause: string, reducedMotion: boolean) =>
@@ -87,13 +88,22 @@ export function createCrashAnimation(
 ) {
   const duration = crashDuration(options.cause, options.reducedMotion);
   const chassis = contacts(bike.body, bike.rider);
-  const rider = contacts(bike.rider);
   const initialRoot = bike.root.position.clone();
   const initialRoll = bike.root.rotation.z;
   // Keep the left hip's hanging cap on the upper side of this staged fall, so
   // gravity can keep acting on it without pushing its brim through the road.
   const cap = bike.rider.getObjectByName('carried-cap');
   const side = !cap && initialRoll > 0.025 ? -1 : 1;
+  const riderAtImpact = contacts(bike.rider);
+  // Cache a conservative support envelope for both the riding and thrown
+  // poses. This avoids scanning the full skinned rider every crash frame.
+  bike.animateCrashPose?.(1, side, 1);
+  const riderThrown = contacts(bike.rider);
+  bike.animateCrashPose?.(0, side, 1);
+  const riderBox = new Box3();
+  const riderPoints = [...riderAtImpact.points, ...riderThrown.points];
+  riderPoints.forEach((support) => riderBox.expandByPoint(support));
+  const rider = { points: riderPoints, center: riderBox.getCenter(new Vector3()) };
   const initialRiderRotation = bike.rider.getWorldQuaternion(new Quaternion());
   const riderScale = bike.rider.getWorldScale(new Vector3());
   const initialPivot = bike.rider.localToWorld(rider.center.clone());
@@ -116,12 +126,14 @@ export function createCrashAnimation(
     riderBounds = new Box3();
   const focus = new Vector3();
   let elapsed = 0;
+  let finalGroundSettled = false;
 
   function advance(dt: number, active: boolean) {
     if (active && Number.isFinite(dt))
       elapsed = Math.min(duration, elapsed + Math.max(0, Math.min(dt, 0.1)));
     if (duration === 0) return true;
     const fall = options.reducedMotion ? 1 : smooth(elapsed / 0.68);
+    bike.animateCrashPose?.(fall, side, active ? dt : 0);
     const slide = options.reducedMotion
       ? 1
       : 1 - (1 - Math.min(1, elapsed / duration)) ** 3;
@@ -182,6 +194,24 @@ export function createCrashAnimation(
       .add(riderBounds.min)
       .add(riderBounds.max)
       .multiplyScalar(0.25);
+    if (active && elapsed >= duration && !finalGroundSettled) {
+      const finalSupport = contacts(bike.rider).points;
+      let minimumY = Infinity;
+      for (const support of finalSupport)
+        minimumY = Math.min(
+          minimumY,
+          support.applyMatrix4(bike.rider.matrixWorld).y,
+        );
+      const correction = 0.035 - minimumY;
+      if (Math.abs(correction) > 1e-6 && bike.rider.parent) {
+        const parent = bike.rider.parent;
+        const localOrigin = parent.worldToLocal(new Vector3(0, 0, 0));
+        const localTarget = parent.worldToLocal(new Vector3(0, correction, 0));
+        bike.rider.position.add(localTarget.sub(localOrigin));
+        focus.y += correction * 0.5;
+      }
+      finalGroundSettled = true;
+    }
     return elapsed >= duration;
   }
 

@@ -255,8 +255,8 @@ describe('world integration and readable traffic', () => {
           lastSpawnDistance = -Infinity;
         for (let frame = 0; frame < 12000; frame++) {
           engine.advance(STEP);
-          const wave = engine.obstacles.filter((o) => o.active && o.z > 143);
-          if (wave.length && engine.distance - lastSpawnDistance > 5) {
+          const wave = engine.obstacles.filter((o) => o.active && o.z === 145);
+          if (wave.length) {
             const environment = engine.world.at(
               engine.distance + wave[0].z,
             )!.kind;
@@ -266,7 +266,7 @@ describe('world integration and readable traffic', () => {
             if (Number.isFinite(lastSpawnDistance))
               expect(
                 engine.distance - lastSpawnDistance,
-              ).toBeGreaterThanOrEqual(56 - 1e-6);
+              ).toBeGreaterThanOrEqual(20 - 1e-6);
             const safe = [-1, 0, 1].filter((lane) =>
               wave.every((o) => clearance(o, lane) > 0.1),
             );

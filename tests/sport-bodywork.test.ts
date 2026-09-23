@@ -67,7 +67,10 @@ describe('600 cc Sport fairing and optics', () => {
     expect(material.transparent).toBe(true);
     expect(material.opacity).toBeGreaterThan(0.5);
     expect(material.opacity).toBeLessThan(0.85);
+    expect(material.color.getHexString()).toBe('26333d');
     screen.geometry.computeBoundingBox();
+    expect(screen.geometry.boundingBox!.min.y).toBeGreaterThan(0.96);
+    expect(screen.geometry.boundingBox!.max.y).toBeGreaterThan(1.16);
     expect(
       screen.geometry.boundingBox!.max.y - screen.geometry.boundingBox!.min.y,
     ).toBeGreaterThan(0.15);

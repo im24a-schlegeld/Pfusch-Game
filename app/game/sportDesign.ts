@@ -40,7 +40,7 @@ export const SPORT_STYLE = Object.freeze({
   /** Real exterior skin thickness, not a scale multiplier on the whole nose. */
   skinThickness: 0.0035,
   ventDepth: 0.037,
-  windshieldOpacity: 0.6,
+  windshieldOpacity: 0.68,
   clearcoat: 0.62,
 });
 
@@ -364,9 +364,9 @@ function bodyShell(
 }
 
 const SHOULDER: readonly SportPoint[] = [
-  [0.239, 0.888, -0.701],
-  [0.258, 0.916, -0.619],
-  [0.247, 0.918, -0.523],
+  [0.239, 0.938, -0.701],
+  [0.258, 0.966, -0.619],
+  [0.247, 0.968, -0.523],
 ];
 const FLANK_REAR: readonly SportPoint[] = [
   SHOULDER[2],
@@ -408,7 +408,7 @@ const nose: SportSurface = (u, v) => {
   const width = lerp(0.05, 0.148, Math.sin((v * PI) / 2));
   return [
     x * width,
-    0.776 + 0.137 * v + 0.01 * (1 - x * x) * (1 - 0.35 * v),
+    0.776 + 0.192 * v + 0.01 * (1 - x * x) * (1 - 0.35 * v),
     -0.855 +
       0.116 * v +
       0.01 * x * x -
@@ -422,7 +422,7 @@ const screen: SportSurface = (u, v) => {
   // bows forward across its width; the top remains below the rider's sightline.
   return [
     x * (0.149 - 0.019 * v + 0.02 * Math.sin(PI * v)),
-    0.921 + 0.2 * (0.9 * v + 0.1 * v * v) - 0.035 * v * x * x - 0.005 * x * x,
+    0.976 + 0.2 * (0.9 * v + 0.1 * v * v) - 0.035 * v * x * x - 0.005 * x * x,
     -0.73 + 0.184 * (v + 0.08 * Math.sin(PI * v)) + (0.023 + 0.028 * v) * x * x,
   ];
 };

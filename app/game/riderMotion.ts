@@ -17,6 +17,9 @@ export interface RiderMotion {
   balance?: number;
   load?: number;
   road?: number;
+  /** Crash-only pose releases hands and boots from bike contact points. */
+  crash?: number;
+  crashSide?: number;
 }
 export interface LimbPose {
   start: Point;
@@ -40,14 +43,20 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
   const balance = bounded(motion.balance, -1);
   const load = bounded(motion.load, -1);
   const road = bounded(motion.road, -1);
+  const crash = bounded(motion.crash);
+  const crashSide =
+    typeof motion.crashSide === 'number' && Number.isFinite(motion.crashSide)
+      ? Math.max(-1, Math.min(1, motion.crashSide))
+      : 1;
   const hip: Point = [
     base.hip[0] + 0.022 * steer,
-    base.hip[1] - 0.015 * landing + 0.0025 * road,
+    base.hip[1] - 0.015 * landing + 0.0025 * road + 0.025 * crash,
     base.hip[2] +
       0.035 * wheelie -
       0.025 * forward +
       0.004 * launch +
-      0.004 * load,
+      0.004 * load +
+      0.055 * crash,
   ];
   let lean =
     base.torsoLean +
@@ -57,18 +66,24 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
     -0.045 * launch +
     0.012 * balance +
     0.008 * load +
-    0.003 * road;
-  const roll = -0.06 * steer;
+    0.003 * road +
+    0.12 * crash;
+  const roll = -0.06 * steer + crashSide * 0.08 * crash;
   const orientation = new Quaternion().setFromEuler(new Euler(-lean, 0, roll));
   const onTorso = (p: Point) =>
     point(vector(p).applyQuaternion(orientation).add(vector(hip)));
   // Rearward weight transfer stops where the fixed arms reach their grips.
   // Solve a contact-limited torso angle, never lengthen the rider's bones.
+  const crashWrist = (side: number): Point => [
+    side * base.wrist[0],
+    base.wrist[1] + 0.09 * crash,
+    base.wrist[2] + 0.14 * crash,
+  ];
   const reachesGrips = () =>
     [-1, 1].every(
       (side) =>
         vector(onTorso([side * d.shoulderHalf, d.torsoLength, 0])).distanceTo(
-          new Vector3(side * base.wrist[0], base.wrist[1], base.wrist[2]),
+          vector(crashWrist(side)),
         ) <
         d.upperArm + d.forearm - 0.001,
     );
@@ -92,9 +107,13 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
   ];
   const limbs = [-1, 1].map((side) => {
     const start = onTorso([side * d.shoulderHalf, d.torsoLength, 0]);
-    const end: Point = [side * base.wrist[0], base.wrist[1], base.wrist[2]];
+    const end = crashWrist(side);
     const legStart: Point = [hip[0] + side * d.hipHalf, hip[1] - 0.01, hip[2]];
-    const ankle: Point = [side * base.ankle[0], base.ankle[1], base.ankle[2]];
+    const ankle: Point = [
+      side * base.ankle[0],
+      base.ankle[1] + 0.035 * crash,
+      base.ankle[2] + 0.13 * crash,
+    ];
     return {
       arm: {
         start,
