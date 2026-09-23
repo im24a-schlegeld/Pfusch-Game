@@ -129,7 +129,9 @@ export function addSupermotoRearProtection(
   });
   if (covers.length !== 2) throw new Error('Expected two Supermoto side covers');
   const boundary = readSideBoundary(cover);
-  const frontZ = 0.44;
+  // Start the dark wheel-arch liner farther forward so rear-view gaps expose
+  // less of the subframe and suspension without changing collision geometry.
+  const frontZ = 0.32;
   const endZ = Math.max(...boundary.map(p => p[2]));
   const sections = new Map<number, { halfWidth: number; edgeY: number; crown: number }>();
 

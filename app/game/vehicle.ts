@@ -1287,13 +1287,6 @@ export function makeBike(player: Player, products: Product[]) {
         [0.120, 0.713, 0.117],
         [0.112, 0.833, 0.067],
       ], matteBlack, 0.004).name = 'supermoto-airbox-access-panel';
-      // Fill the triangular opening directly below the saddle, between the
-      // existing front and rear plastics, rather than extending toward the engine.
-      sidePanel(body, s, [
-        [0.130, 0.938, 0.169],
-        [0.173, 0.815, -0.052],
-        [0.136, 0.806, 0.189],
-      ], paint, 0.004).name = 'supermoto-middle-side-cover';
       // The inner liner closes the under-seat body at its sides, leaving
       // clearance around the forward-inclined spring and its travel.
       sidePanel(
@@ -1573,6 +1566,10 @@ export function makeBike(player: Player, products: Product[]) {
       'z',
     );
     tank.name = 'supermoto-fuel-tank';
+    // Render-only presence increase: keep the same tank profile and contact
+    // points while giving the Supermoto body the adult scale requested by the
+    // new silhouette pass.
+    tank.scale.set(1.08, 1.05, 1.05);
     rod(body, [0, 1.01, -0.299], [0, 1.024, -0.299], 0.027, dark).name =
       'fuel-cap';
     loft(
@@ -1626,7 +1623,7 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoLampGeometry('glass'), glass).name = 'supermoto-headlight-glass';
     oval(
       body,
-      [0, 0.95024, -0.479628],
+      [0, 0.95624, -0.476628],
       [0.014, 0.016, 0.007],
       new THREE.MeshStandardMaterial({
         color: '#f7fcff',

@@ -37,18 +37,19 @@ export const SUPERMOTO_SHROUD: FitPoint[] = [
   [0.187, 0.825, -0.342],
 ];
 
-// Separate triangular number-panel plastics under the seat. Their high rear
-// edge follows the fender, leaving room for the silencer below, not inside it.
+// One continuous outer side/tail cover. Its descending lower edge closes the
+// rear triangle while leaving the silencer and swingarm readable below it.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.125, 0.944, 0.169],
   [0.107, 0.955, 0.330],
   [0.100, 0.989, 0.530],
   [0.097, 1.022, 0.690],
-  [0.086, 1.050, 0.890],
-  [0.103, 0.992, 0.780],
-  [0.137, 0.874, 0.468],
-  [0.148, 0.666, 0.276],
-  [0.137, 0.726, 0.205],
+  [0.094, 1.050, 0.900],
+  [0.118, 0.950, 0.850],
+  [0.150, 0.840, 0.620],
+  [0.160, 0.760, 0.400],
+  [0.150, 0.750, 0.250],
+  [0.132, 0.850, 0.185],
   [0.130, 0.869, 0.174],
 ];
 
@@ -58,8 +59,8 @@ export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.33, 0.108, 0.014, 0.955],
   [0.53, 0.102, 0.016, 0.989],
   [0.69, 0.095, 0.017, 1.022],
-  [0.84, 0.080, 0.018, 1.052],
-  [0.94, 0.050, 0.016, 1.064],
+  [0.82, 0.086, 0.018, 1.052],
+  [0.90, 0.064, 0.016, 1.064],
 ];
 
 // Keep tail-contact gameplay on the previous physical datum while the visible
