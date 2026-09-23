@@ -5,14 +5,15 @@ import type { Player, Product, StickerPlacement } from '../domain/types';
 import { BIKES } from '../domain/config';
 import { isSticker, MAX_STICKERS } from '../domain/stickers';
 import { imagePath } from '../domain/preview';
+import { digitalPrice } from '../domain/progression';
 import { makeBike } from '../game/vehicle';
 import { rendererSessions } from '../game/rendererSession';
 import { applyBikeStickers, stickerSurfaces } from '../game/bikeStickers';
 import './stickerWorkshop.css';
 
-interface Props { player: Player; products: Product[]; onClose: () => void; onSave: (placements: StickerPlacement[]) => void }
+interface Props { player: Player; account: Player; products: Product[]; onClose: () => void; onBuySticker: () => void; onSave: (placements: StickerPlacement[]) => void }
 /** Imported only after the explicit workshop action. No renderer or physics on garage entry. */
-export default function StickerWorkshop({ player, products, onClose, onSave }: Props) {
+export default function StickerWorkshop({ player, account, products, onClose, onBuySticker, onSave }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [placements, setPlacements] = useState<StickerPlacement[]>(() => structuredClone(player.stickers[player.bike] ?? []));
   const [selected, setSelected] = useState<string | null>(null);
@@ -26,7 +27,12 @@ export default function StickerWorkshop({ player, products, onClose, onSave }: P
   state.current = { placements, tool, size, rotation, selected };
   const view = useRef<((angle: number) => void) | null>(null);
   const product = products.find(isSticker);
-  const owned = Boolean(product && (player.ownedItems.includes(product.id) || player.irlItems.includes(product.id)) && player.ownedItems.includes(`bike:${player.bike}`));
+  // Inventory updates independently of the frozen preview: buying must not reset
+  // the camera, renderer or unsaved sticker positions.
+  const stickerOwned = Boolean(product && (account.ownedItems.includes(product.id) || account.irlItems.includes(product.id)));
+  const bikeOwned = account.ownedItems.includes(`bike:${player.bike}`);
+  const owned = stickerOwned && bikeOwned;
+  const price = product ? digitalPrice(product) : 0;
   const close = useRef(onClose); close.current = onClose;
   useEffect(() => {
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') close.current(); };
@@ -131,7 +137,16 @@ export default function StickerWorkshop({ player, products, onClose, onSave }: P
       <output className="sticker-hint">{hint}</output>
       <div className="sticker-adjust"><label>GRÖSSE <input aria-label="Stickergröße" type="range" min="0.04" max="0.4" step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label></div>
       <div className="sticker-items" aria-label="Platzierte Sticker">{placements.map((p, index) => <button key={p.id} aria-pressed={selected === p.id} onClick={() => { setSelected(p.id); setSize(p.size); setRotation(p.rotation); setTool('place'); }}>STICKER {index + 1}</button>)}<button disabled={placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setTool('place'); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ NEUER STICKER</button>{selected && <button onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); }}>AUSWAHL ENTFERNEN</button>}</div>
-      <div className="sticker-footer">{product && <a href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>{product.title}<small>ORIGINAL IM SHOP</small></span></a>}<div>{!owned && <p>Kostenlose Vorschau · Zum Speichern Fahrzeug und Sticker in der Garage freischalten.</p>}<button className="button primary" disabled={!owned || !ready || Boolean(error)} onClick={() => onSave(placements)}>POSITIONEN SPEICHERN & ANWENDEN</button></div></div>
+      <div className="sticker-footer">{product && <a href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>{product.title}<small>ORIGINAL IM SHOP</small></span></a>}<div>
+        {product && !stickerOwned && <div className="sticker-purchase">
+          <p>Digitaler Sticker · Guthaben: {account.coins.toLocaleString('de-CH')} Coins</p>
+          <button className="button" disabled={account.coins < price} onClick={onBuySticker}>STICKER KAUFEN · {price} COINS</button>
+          {account.coins < price && <p>Dir fehlen {price - account.coins} Coins.</p>}
+        </div>}
+        {!bikeOwned && <p>Kostenlose Vorschau · Zum Speichern dieses Fahrzeug zuerst in der Garage freischalten.</p>}
+        {stickerOwned && <p>Sticker freigeschaltet · Platzierung mit Speichern übernehmen.</p>}
+        <button className="button primary" disabled={!owned || !ready || Boolean(error)} onClick={() => onSave(placements)}>POSITIONEN SPEICHERN & ANWENDEN</button>
+      </div></div>
     </section>
   </main>;
 }

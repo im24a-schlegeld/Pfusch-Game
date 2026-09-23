@@ -1630,21 +1630,22 @@ export function makeBike(player: Player, products: Product[]) {
         roughness: 0.15,
       }),
     ).name = 'supermoto-headlight-bulb';
-    // +Z is rearward, toward the rider. The riser bend and both outer grip
-    // axes visibly sweep back; the grip centers remain the shared IK targets.
+    // Rise from the fixed clamps toward the helmet before sweeping rearward
+    // (+Z). The elevated outer sections keep the shared hand/IK targets.
     tube(
       body,
       [
         supermotoGripPoint(pose.grip, -1, 0.055),
         supermotoGripPoint(pose.grip, -1, -0.09),
-        [-0.2, 1.13, -0.365],
+        [-0.2, 1.172, -0.356],
         [-0.1, 1.124, -0.407],
+        [0, 1.124, -0.407],
         [0.1, 1.124, -0.407],
-        [0.2, 1.13, -0.365],
+        [0.2, 1.172, -0.356],
         supermotoGripPoint(pose.grip, 1, -0.09),
         supermotoGripPoint(pose.grip, 1, 0.055),
       ],
-      [0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016],
+      [0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016],
       alloy,
       36,
       12,
@@ -1710,19 +1711,30 @@ export function makeBike(player: Player, products: Product[]) {
         8,
       ).name = 'supermoto-lever';
     }
-    tube(
-      body,
-      [
-        supermotoGripPoint(pose.grip, 1, -0.09, -0.005, -0.002),
-        [0.22, 1.0, -0.45],
-        [0.11, 0.7, -0.64],
-        [0.09, 0.41, -0.68],
-      ],
-      [0.005, 0.005, 0.005, 0.005],
-      rubber,
-      24,
-      8,
-    ).name = 'supermoto-control-cable';
+    // Cross behind the lamp once, then hold the brake hose against the rear
+    // of the left fork. Only the short upper bend needs steering slack.
+    const hoseAt = (y: number): Point => [-forkHalfWidth - 0.027, y, forkAxisAt(y)[2] + 0.038];
+    const hosePoints: Point[] = [
+      supermotoGripPoint(pose.grip, 1, -0.09, -0.005, -0.002),
+      [0.19, pose.grip[1] - 0.065, pose.grip[2] - 0.072],
+      [0.015, 1.035, -0.37],
+      hoseAt(1.005),
+      hoseAt(0.96),
+      hoseAt(0.74),
+      hoseAt(0.55),
+      hoseAt(0.43),
+      [-0.1, radius + 0.09, front + 0.07],
+      [-0.094, radius + 0.055, front + 0.121],
+    ];
+    tube(body, hosePoints, hosePoints.map(() => 0.004), rubber, 40, 8)
+      .name = 'supermoto-control-cable';
+    for (const y of [0.96, 0.74]) {
+      const collarA = forkAxisAt(y - 0.005), collarB = forkAxisAt(y + 0.005);
+      collarA[0] = collarB[0] = -forkHalfWidth;
+      rod(body, collarA, collarB, 0.041, rubber).name = 'supermoto-hose-clamp';
+      rod(body, [-forkHalfWidth, y, forkAxisAt(y)[2]], hoseAt(y), 0.006, rubber)
+        .name = 'supermoto-hose-retainer';
+    }
   } else {
     for (const s of [-1, 1])
       rod(body, forkAxisAt(0.995), [s * 0.1, 1.03, -0.43], 0.035, alloy).name =

@@ -457,7 +457,14 @@ export default function Garage({
     </>
   );
   if (stickerBike) return <Suspense fallback={<main className="sticker-loading"><span className="spinner"/><output>STICKER-WERKSTATT WIRD GELADEN</output><button className="button" onClick={() => setStickerBike(null)}>ABBRECHEN</button></main>}>
-    <StickerWorkshop player={stickerBike} products={products} onClose={() => setStickerBike(null)} onSave={(placements) => {
+    <StickerWorkshop player={stickerBike} account={player} products={products} onClose={() => setStickerBike(null)} onBuySticker={() => {
+      const product = products.find(isSticker);
+      if (!product) return;
+      const next = unlock(player, product.id, digitalPrice(product));
+      if (!next) { notify('Du brauchst mehr Coins.'); return; }
+      update(next);
+      notify('Sticker gekauft. Deine Platzierung bleibt in der Vorschau.');
+    }} onSave={(placements) => {
       const next = saveStickers(player, stickerBike.bike, placements, products);
       if (!next) { notify('Fahrzeug und Sticker zuerst freischalten.'); return; }
       update(next); setStickerBike(null); setDraft(null); notify('Sticker platziert und gespeichert.');

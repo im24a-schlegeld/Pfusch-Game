@@ -2,6 +2,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import type { StickerPlacement } from '../app/domain/types';
 import { applyBikeStickers, clearBikeStickers, stickerSurfaces } from '../app/game/bikeStickers';
+import { newPlayer } from '../app/domain/progression';
+import { makeBike } from '../app/game/vehicle';
+
+vi.mock('../app/game/garmentTexture', () => ({
+  garmentMaterial: () => new THREE.MeshStandardMaterial(),
+  fabricMaterial: () => new THREE.MeshStandardMaterial(),
+  sleeveMaterial: () => new THREE.MeshStandardMaterial(),
+  accessoryMaterial: () => new THREE.MeshStandardMaterial(),
+}));
 
 const paint = '#d4ad26';
 beforeAll(() => {
@@ -36,6 +45,63 @@ function decal(shell: THREE.Mesh, id = 'chrome-1') {
 }
 
 describe('bike sticker geometry', () => {
+  it.each([
+    ['125', 'moped-main-frame'], ['450', 'radiator-shroud'],
+    ['701', 'sport-paint-surfaces'], ['scooter', 'scooter-tail-side-panel'],
+  ] as const)('renders saved stickers from both outside views of the actual %s bodywork', (model, name) => {
+    const player = { ...newPlayer(), bike: model, paint };
+    const bike = makeBike(player, []);
+    bike.root.updateMatrixWorld(true);
+    const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
+    for (const side of [-1, 1]) {
+      const candidates = [...surfaces].filter(([, mesh]) => mesh.name === name);
+      candidates.sort((a, b) => side * (new THREE.Box3().setFromObject(b[1]).getCenter(new THREE.Vector3()).x - new THREE.Box3().setFromObject(a[1]).getCenter(new THREE.Vector3()).x));
+      const [surface, shell] = candidates[0];
+      shell.geometry.computeBoundingBox();
+      const target = shell.geometry.boundingBox!.getCenter(new THREE.Vector3());
+      // The bent moped frame does not pass through its bounding-box center.
+      // Aim at a real frame triangle near its wide upper part instead.
+      if (model === '125') {
+        const positions = shell.geometry.getAttribute('position'), indices = shell.geometry.getIndex()!;
+        let best = -Infinity;
+        for (let i = 0; i < indices.count; i += 3) {
+          const center = new THREE.Vector3();
+          for (let j = 0; j < 3; j++) center.add(new THREE.Vector3().fromBufferAttribute(positions, indices.getX(i + j)));
+          center.divideScalar(3);
+          const score = side * center.x - Math.abs(center.y - 0.7);
+          if (score > best) { best = score; target.copy(center); }
+        }
+      }
+      shell.localToWorld(target);
+      const ray = new THREE.Raycaster(target.clone().add(new THREE.Vector3(side * 3, 0, 0)), new THREE.Vector3(-side, 0, 0));
+      const hit = ray.intersectObject(shell, false)[0];
+      expect(hit?.face).toBeTruthy();
+      const saved: StickerPlacement = {
+        id: `actual-${side}`, productId: 'chrome-product', surface,
+        point: shell.worldToLocal(hit.point.clone()).toArray(), normal: hit.face!.normal.toArray(), size: 0.18, rotation: 0,
+      };
+      applyBikeStickers(bike.body, bike.rider, paint, [structuredClone(saved)]);
+      bike.root.updateMatrixWorld(true);
+      const sticker = decal(shell, saved.id);
+      expect(ray.intersectObject(sticker, false).length).toBeGreaterThan(0);
+      // Keep the supplied colors visible on pale and dark paint: the artwork
+      // already contains chrome highlights and must not be relit or tone mapped.
+      expect(sticker.material).toBeInstanceOf(THREE.MeshBasicMaterial);
+      expect((sticker.material as THREE.MeshBasicMaterial).toneMapped).toBe(false);
+      expect((sticker.material as THREE.MeshBasicMaterial).map).toBeTruthy();
+      const uv = sticker.geometry.getAttribute('uv'), positions = sticker.geometry.getAttribute('position');
+      const indices = sticker.geometry.getIndex()!;
+      let horizontalDirection = 0;
+      for (let i = 0; i < indices.count; i++) {
+        const index = indices.getX(i);
+        horizontalDirection += (uv.getX(index) - 0.5) * (positions.getZ(index) - saved.point[2]);
+      }
+      // Viewed from outside, increasing U points toward -Z on the right and +Z
+      // on the left; fixing visibility must not mirror the PFUSCH lettering.
+      expect(horizontalDirection * side).toBeLessThan(0);
+    }
+  });
+
   it('renders a sticker only on the selected side of thin bodywork', () => {
     const { body, rider, shell, placement } = fixture();
     applyBikeStickers(body, rider, paint, [placement]);
