@@ -27,7 +27,7 @@ export default function Ride({
   const engine = useMemo(
     () =>
       new Engine(
-        BIKES.find((b) => b.id === player.bike)!,
+        BIKES.find((b) => b.id === player.bike) ?? BIKES[0],
         Math.floor(Math.random() * 0xffffffff),
       ),
     [player.bike],

@@ -134,13 +134,21 @@ export default function SceneView({
     const fill = new THREE.DirectionalLight('#a4bcd1', 0.9);
     fill.position.set(12, 8, -10);
     scene.add(fill);
-    let bike = makeBike(player, products);
-    applyBikeStickers(
-      bike.body,
-      bike.rider,
-      player.paint,
-      player.stickers[player.bike] ?? [],
-    );
+    let bike: ReturnType<typeof makeBike>;
+    try {
+      bike = makeBike(player, products);
+      applyBikeStickers(
+        bike.body,
+        bike.rider,
+        player.paint,
+        player.stickers[player.bike] ?? [],
+      );
+    } catch (error) {
+      console.error('Motorrad-Vorschau konnte nicht erstellt werden.', error);
+      session.release();
+      setError('Motorrad-Vorschau konnte nicht erstellt werden.');
+      return;
+    }
     bike.root.name = 'player-bike';
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;

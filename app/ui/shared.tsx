@@ -1,4 +1,10 @@
-import { lazy, Suspense } from 'react';
+import {
+  Component,
+  lazy,
+  Suspense,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react';
 import { ArrowUpRight, Coins, ChevronLeft } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import type { Player } from '../domain/types';
@@ -14,6 +20,30 @@ function SceneLoadError() {
       </button>
     </div>
   );
+}
+
+interface SceneBoundaryState {
+  failed: boolean;
+}
+
+/** A WebGL preview must never take the menu or ride navigation down with it. */
+class SceneErrorBoundary extends Component<
+  { children: ReactNode },
+  SceneBoundaryState
+> {
+  state: SceneBoundaryState = { failed: false };
+
+  static getDerivedStateFromError(): SceneBoundaryState {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('3D-Vorschau konnte nicht gestartet werden.', error, info.componentStack);
+  }
+
+  render() {
+    return this.state.failed ? <SceneLoadError /> : this.props.children;
+  }
 }
 /** Preload code only; the renderer is still created by the mounted Scene. */
 export function preloadScene(): Promise<SceneModule> {
@@ -60,9 +90,11 @@ export function SceneLoading() {
 }
 export function Preview(props: React.ComponentProps<typeof Scene>) {
   return (
-    <Suspense fallback={<SceneLoading />}>
-      <Scene {...props} />
-    </Suspense>
+    <SceneErrorBoundary>
+      <Suspense fallback={<SceneLoading />}>
+        <Scene {...props} />
+      </Suspense>
+    </SceneErrorBoundary>
   );
 }
 export function Coin({ value }: { value: number }) {

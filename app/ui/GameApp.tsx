@@ -216,7 +216,7 @@ export default function GameApp() {
         onMute={mute}
       />
     );
-  const equippedBike = BIKES.find((b) => b.id === player.bike)!;
+  const equippedBike = BIKES.find((b) => b.id === player.bike) ?? BIKES[0];
   const back = () => navigate('menu');
   return (
     <div className="app-shell" data-screen={screen}>

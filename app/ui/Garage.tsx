@@ -60,7 +60,7 @@ export default function Garage({
   const [angle, setAngle] = useState(2.35);
   const [inspectionRevision, setInspectionRevision] = useState(0);
   const appearance = draft ?? player;
-  const bike = BIKES.find((b) => b.id === appearance.bike)!;
+  const bike = BIKES.find((b) => b.id === appearance.bike) ?? BIKES[0];
   const owned = (id: string) => player.ownedItems.includes(id);
   function unlockProduct(p: Product, config: ProductConfiguration) {
     const unlocked = unlock(player, p.id, digitalPrice(p));
