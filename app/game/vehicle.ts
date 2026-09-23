@@ -49,7 +49,7 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
-import { SUPERMOTO_CHASSIS, SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_FRONT_FENDER_SHIFT, SUPERMOTO_RENDER_FRONT_AXLE, SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry } from './supermotoBodywork';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { supermotoGripPoint } from './supermotoCockpit';
@@ -595,7 +595,7 @@ export function makeBike(player: Player, products: Product[]) {
   const moped = player.bike === '125',
     sport = player.bike === '701';
   const rear = moped ? 0.55 : sport ? SPORT_GEOMETRY.rearAxle : SUPERMOTO_CHASSIS.rearAxle,
-    front = moped ? -0.7 : sport ? SPORT_GEOMETRY.frontAxle : SUPERMOTO_CHASSIS.frontAxle,
+    front = moped ? -0.7 : sport ? SPORT_GEOMETRY.frontAxle : SUPERMOTO_RENDER_FRONT_AXLE,
     radius = moped
       ? 0.305
       : sport
@@ -1277,6 +1277,15 @@ export function makeBike(player: Player, products: Product[]) {
         paint,
         0.004,
       ).name = 'supermoto-side-cover';
+      // A second outer return hides the upper subframe behind the tail plastic
+      // while keeping the frame present underneath for believable structure.
+      sidePanel(body, s, [
+        [0.101, 0.936, 0.520],
+        [0.108, 0.986, 0.690],
+        [0.086, 1.040, 0.890],
+        [0.064, 1.018, 0.940],
+        [0.060, 0.925, 0.805],
+      ], paint, 0.004).name = 'supermoto-rear-side-shield';
       // A separate airbox access panel follows the front edge of the white
       // number panel, with a small parting line and the black tank above it.
       sidePanel(body, s, [
@@ -1588,11 +1597,11 @@ export function makeBike(player: Player, products: Product[]) {
       seat,
       'z',
     ).name = 'supermoto-seat';
-    mesh(body, supermotoFrontFenderGeometry(), paint).name = 'supermoto-front-fender';
+    mesh(body, supermotoFrontFenderGeometry(SUPERMOTO_FRONT_FENDER_SHIFT), paint).name = 'supermoto-front-fender';
     for (const s of [-1, 1]) {
       rod(
         body,
-        [s * 0.034, 0.850, -0.480],
+      [s * 0.034, 0.850, -0.480 + SUPERMOTO_FRONT_FENDER_SHIFT],
         [s * 0.034, 0.959, forkAxisAt(0.959)[2]],
         0.014,
         dark,
@@ -1626,7 +1635,7 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoLampGeometry('glass'), glass).name = 'supermoto-headlight-glass';
     oval(
       body,
-      [0, 0.93624, -0.507628],
+      [0, 0.92224, -0.493628],
       [0.014, 0.016, 0.007],
       new THREE.MeshStandardMaterial({
         color: '#f7fcff',

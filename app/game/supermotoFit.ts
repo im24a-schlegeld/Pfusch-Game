@@ -12,6 +12,13 @@ export const SUPERMOTO_CHASSIS = Object.freeze({
   forkTopY: 1.02,
 });
 
+// Rendering-only stance adjustment. Gameplay collision/ramp datums continue
+// to use SUPERMOTO_CHASSIS; the visible front wheel sits a little farther out
+// so the Supermoto reads slim instead of compressed.
+export const SUPERMOTO_RENDER_FRONT_AXLE = -0.768;
+export const SUPERMOTO_FRONT_FENDER_SHIFT =
+  SUPERMOTO_RENDER_FRONT_AXLE - SUPERMOTO_CHASSIS.frontAxle;
+
 // One contact datum for the actual pegs AND the existing rider IK/boot generator.
 export const SUPERMOTO_PEG: FitPoint = [0.26, 0.385, 0.105];
 export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.112, -0.335];
@@ -37,8 +44,8 @@ export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.107, 0.955, 0.330],
   [0.100, 0.989, 0.530],
   [0.097, 1.022, 0.690],
-  [0.090, 1.050, 0.820],
-  [0.107, 0.992, 0.718],
+  [0.086, 1.050, 0.890],
+  [0.103, 0.992, 0.780],
   [0.137, 0.874, 0.468],
   [0.148, 0.666, 0.276],
   [0.137, 0.726, 0.205],
@@ -51,9 +58,9 @@ export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.17, 0.123, 0.013, 0.946],
   [0.33, 0.108, 0.014, 0.955],
   [0.53, 0.102, 0.016, 0.989],
-  [0.69, 0.099, 0.017, 1.022],
-  [0.83, 0.090, 0.018, 1.052],
-  [0.90, 0.073, 0.019, 1.065],
+  [0.69, 0.095, 0.017, 1.022],
+  [0.84, 0.073, 0.018, 1.052],
+  [0.96, 0.030, 0.016, 1.064],
 ];
 
 export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];
