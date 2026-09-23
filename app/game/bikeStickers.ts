@@ -5,20 +5,21 @@ import type { StickerPlacement } from '../domain/types';
 let artwork: THREE.Texture | undefined;
 export function stickerArtwork() {
   if (!artwork) {
-    // The physical 6 × 6 cm sticker has a rounded black backing. Keep the
-    // supplied chrome print intact and centered inside that backing.
+    // Match the supplied nearly-square decal with deeply rounded corners.
+    // Keep the official chrome wordmark smaller and centered on the black
+    // 6 × 6 cm backing instead of stretching it to the sticker's silhouette.
     artwork = new THREE.TextureLoader().load('/branding/pfusch-logo.webp', (texture: THREE.Texture) => {
       const print = texture.image as HTMLImageElement;
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 512;
       const context = canvas.getContext('2d');
       if (!context) return;
-      context.fillStyle = '#101010';
+      context.fillStyle = '#111315';
       context.beginPath();
-      context.roundRect(4, 4, 504, 504, 76);
+      context.roundRect(8, 8, 496, 496, 108);
       context.fill();
-      const width = 432, height = width * print.height / print.width;
-      context.drawImage(print, 40, (512 - height) / 2, width, height);
+      const width = 270, height = width * print.height / print.width;
+      context.drawImage(print, (512 - width) / 2, (512 - height) / 2, width, height);
       texture.image = canvas;
       texture.needsUpdate = true;
     });
