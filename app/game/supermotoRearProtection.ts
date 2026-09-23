@@ -131,7 +131,7 @@ export function addSupermotoRearProtection(
   const boundary = readSideBoundary(cover);
   // Start the dark wheel-arch liner farther forward so rear-view gaps expose
   // less of the subframe and suspension without changing collision geometry.
-  const frontZ = 0.32;
+  const frontZ = 0.38;
   const endZ = Math.max(...boundary.map(p => p[2]));
   const sections = new Map<number, { halfWidth: number; edgeY: number; crown: number }>();
 

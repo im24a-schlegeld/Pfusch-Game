@@ -25,9 +25,9 @@ export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.112, -0.335];
 
 // Thin radiator wings leave the black fuel tank visible behind their rear seam.
 export const SUPERMOTO_SHROUD: FitPoint[] = [
-  [0.150, 0.913, -0.460],
-  [0.165, 0.963, -0.305],
-  [0.174, 0.977, -0.260],
+  [0.160, 0.925, -0.500],
+  [0.173, 0.970, -0.345],
+  [0.182, 0.980, -0.285],
   [0.164, 0.935, -0.025],
   [0.130, 0.944, 0.165],
   [0.147, 0.877, 0.040],
@@ -37,20 +37,21 @@ export const SUPERMOTO_SHROUD: FitPoint[] = [
   [0.187, 0.825, -0.342],
 ];
 
-// One continuous outer side/tail cover. Its descending lower edge closes the
-// rear triangle while leaving the silencer and swingarm readable below it.
+// One slim continuous outer side/tail cover. Its lower edge only masks the
+// upper frame rail; the shock, swingarm and airbox remain readable below it.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.125, 0.944, 0.169],
   [0.107, 0.955, 0.330],
   [0.100, 0.989, 0.530],
   [0.097, 1.022, 0.690],
-  [0.094, 1.050, 0.900],
-  [0.118, 0.950, 0.850],
-  [0.150, 0.840, 0.620],
-  [0.160, 0.760, 0.400],
-  [0.150, 0.750, 0.250],
-  [0.132, 0.850, 0.185],
-  [0.130, 0.869, 0.174],
+  [0.088, 1.050, 0.850],
+  [0.096, 1.012, 0.890],
+  [0.105, 0.946, 0.790],
+  [0.113, 0.905, 0.620],
+  [0.120, 0.880, 0.450],
+  [0.125, 0.870, 0.300],
+  [0.129, 0.890, 0.205],
+  [0.130, 0.900, 0.174],
 ];
 
 /** Rendered sheet cross-sections: z, half width, crown height, edge height. */

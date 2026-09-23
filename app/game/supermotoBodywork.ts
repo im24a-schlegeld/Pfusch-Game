@@ -65,10 +65,10 @@ export function supermotoTailFenderGeometry() {
 }
 
 const FRONT_FENDER: readonly Section[] = [
-  [-1.480, 0.044, 0.005, 0.792],
-  [-1.330, 0.066, 0.011, 0.807],
-  [-1.150, 0.094, 0.025, 0.831],
-  [-0.940, 0.118, 0.040, 0.858],
+  [-1.300, 0.040, 0.005, 0.792],
+  [-1.200, 0.060, 0.011, 0.807],
+  [-1.080, 0.088, 0.025, 0.831],
+  [-0.930, 0.118, 0.040, 0.858],
   [-0.760, 0.112, 0.043, 0.872],
   [-0.640, 0.098, 0.030, 0.867],
   [-0.535, 0.078, 0.018, 0.842],
@@ -138,7 +138,7 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
     // Keep the mask close to the fork while giving it the slightly taller,
     // broader presence of a compact MX/supermoto number plate.
     const y = 0.943 + (vertex.getY(i) - 0.98) * 0.90;
-    vertex.setXYZ(i, vertex.getX(i) * 1.55, y,
+    vertex.setXYZ(i, vertex.getX(i) * 1.38, y,
       vertex.getZ(i) + 0.1585 + (y - 0.926) * 0.30);
   }
   g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();

@@ -1277,6 +1277,15 @@ export function makeBike(player: Player, products: Product[]) {
         paint,
         0.004,
       ).name = 'supermoto-side-cover';
+      // Small structural bridge at the tail tip: it links the outer cover to
+      // the dark wheel-arch liner without turning the whole side into a wall.
+      sidePanel(body, s, [
+        [0.091, 1.044, 0.752],
+        [0.090, 1.035, 0.832],
+        [0.099, 0.975, 0.875],
+        [0.109, 0.900, 0.800],
+        [0.104, 0.900, 0.746],
+      ], matteBlack, 0.004).name = 'supermoto-tail-bridge';
       // A separate airbox access panel follows the front edge of the white
       // number panel, with a small parting line and the black tank above it.
       sidePanel(body, s, [
