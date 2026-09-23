@@ -52,16 +52,20 @@ export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.130, 0.869, 0.174],
 ];
 
-/** Sheet cross-sections: z, half width, crown height, edge height.
- * Tail-contact physics reads the final station's upper center tip. */
+/** Rendered sheet cross-sections: z, half width, crown height, edge height. */
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.17, 0.123, 0.013, 0.946],
   [0.33, 0.108, 0.014, 0.955],
   [0.53, 0.102, 0.016, 0.989],
   [0.69, 0.095, 0.017, 1.022],
-  [0.84, 0.073, 0.018, 1.052],
-  [0.96, 0.030, 0.016, 1.064],
+  [0.84, 0.080, 0.018, 1.052],
+  [0.94, 0.050, 0.016, 1.064],
 ];
+
+// Keep tail-contact gameplay on the previous physical datum while the visible
+// moulding is refined independently.
+export const SUPERMOTO_TAIL_CONTACT_TIP: [number, number, number, number] =
+  [0.90, 0.073, 0.019, 1.065];
 
 export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];
 export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.500, 0.430];

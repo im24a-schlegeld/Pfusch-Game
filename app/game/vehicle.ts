@@ -1277,15 +1277,6 @@ export function makeBike(player: Player, products: Product[]) {
         paint,
         0.004,
       ).name = 'supermoto-side-cover';
-      // A second outer return hides the upper subframe behind the tail plastic
-      // while keeping the frame present underneath for believable structure.
-      sidePanel(body, s, [
-        [0.101, 0.936, 0.520],
-        [0.108, 0.986, 0.690],
-        [0.086, 1.040, 0.890],
-        [0.064, 1.018, 0.940],
-        [0.060, 0.925, 0.805],
-      ], paint, 0.004).name = 'supermoto-rear-side-shield';
       // A separate airbox access panel follows the front edge of the white
       // number panel, with a small parting line and the black tank above it.
       sidePanel(body, s, [
@@ -1635,7 +1626,7 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoLampGeometry('glass'), glass).name = 'supermoto-headlight-glass';
     oval(
       body,
-      [0, 0.92224, -0.493628],
+      [0, 0.95024, -0.479628],
       [0.014, 0.016, 0.007],
       new THREE.MeshStandardMaterial({
         color: '#f7fcff',

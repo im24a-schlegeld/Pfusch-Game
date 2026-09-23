@@ -54,20 +54,20 @@ function sectionAt(sections: readonly Section[], u: number): Section {
 export function supermotoTailFenderGeometry() {
   return formedSheet(40, 16, (u, v) => {
     const [z, width, crown, edgeY] = sectionAt(SUPERMOTO_TAIL_FENDER, u);
-    const tip = MathUtils.smoothstep(u, 0.72, 1);
-    const point = MathUtils.smoothstep(Math.abs(v), 0.22, 1) * tip;
+    const tip = MathUtils.smoothstep(u, 0.82, 1);
+    const point = MathUtils.smoothstep(Math.abs(v), 0.32, 1) * tip;
     return [
       v * width,
       edgeY + crown * (1 - v * v),
-      z - point * 0.045,
+      z - point * 0.018,
     ];
   }, [0, -0.007, 0]);
 }
 
 const FRONT_FENDER: readonly Section[] = [
-  [-1.180, 0.026, 0.004, 0.775],
-  [-1.075, 0.052, 0.009, 0.789],
-  [-0.950, 0.079, 0.021, 0.812],
+  [-1.180, 0.045, 0.004, 0.775],
+  [-1.075, 0.062, 0.009, 0.789],
+  [-0.950, 0.084, 0.021, 0.812],
   [-0.815, 0.095, 0.034, 0.844],
   [-0.684, 0.089, 0.037, 0.858],
   [-0.595, 0.080, 0.026, 0.857],
@@ -89,7 +89,7 @@ export function supermotoFrontFenderGeometry(zShift = 0) {
     return [
       width * v,
       edgeY + crown * shoulder - 0.025,
-      -0.390 + (z + 0.428 + noseCorner * 0.038) * 0.65 + zShift,
+      -0.390 + (z + 0.428 + noseCorner * 0.020) * 0.65 + zShift,
     ];
   }, [0, -0.004, 0]);
 }
@@ -135,8 +135,10 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
   g.setIndex(indices);
   const vertex = g.getAttribute('position');
   for (let i = 0; i < vertex.count; i++) {
-    const y = 0.916 + (vertex.getY(i) - 0.98) * 0.78;
-    vertex.setXYZ(i, vertex.getX(i) * 1.20, y,
+    // Keep the mask close to the fork while giving it the slightly taller,
+    // broader presence of a compact MX/supermoto number plate.
+    const y = 0.944 + (vertex.getY(i) - 0.98) * 0.78;
+    vertex.setXYZ(i, vertex.getX(i) * 1.25, y,
       vertex.getZ(i) + 0.1585 + (y - 0.926) * 0.30);
   }
   g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
