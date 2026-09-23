@@ -1853,11 +1853,16 @@ export function makeBike(player: Player, products: Product[]) {
       const positions = part.geometry.getAttribute('position'),
         index = part.geometry.index!;
       const triangle = new THREE.Triangle(),
-        hit = new THREE.Vector3();
+        hit = new THREE.Vector3(),
+        closest = new THREE.Vector3();
       let nearest:
         | { point: THREE.Vector3; normal: THREE.Vector3; face: THREE.Triangle }
         | undefined;
-      let distance = Infinity;
+      let nearestSurface:
+        | { point: THREE.Vector3; normal: THREE.Vector3; face: THREE.Triangle }
+        | undefined;
+      let distance = Infinity,
+        nearestSurfaceDistance = Infinity;
       for (let i = 0; i < index.count; i += 3) {
         triangle.a.fromBufferAttribute(positions, index.getX(i));
         triangle.b.fromBufferAttribute(positions, index.getX(i + 1));
@@ -1875,10 +1880,54 @@ export function makeBike(player: Player, products: Product[]) {
             };
           }
         }
+        // A proportion change can leave the mount origin just outside the
+        // panel, so its support ray may miss both sides of the generated
+        // triangle. Keep the mount on the nearest surface in that case
+        // instead of aborting the complete motorcycle preview.
+        triangle.closestPointToPoint(origin, closest);
+        const surfaceDistance = closest.distanceToSquared(origin);
+        if (surfaceDistance < nearestSurfaceDistance) {
+          nearestSurfaceDistance = surfaceDistance;
+          nearestSurface = {
+            point: closest.clone(),
+            normal: triangle.getNormal(new THREE.Vector3()),
+            face: triangle.clone(),
+          };
+        }
       }
-      if (!nearest)
-        throw new Error('Sport tail mount has no supporting surface');
-      return nearest;
+      if (nearest) return nearest;
+      if (nearestSurface) return nearestSurface;
+
+      // Indexed bodywork normally has at least one triangle. Keep a defensive
+      // anchor for custom/corrupted geometry so the menu can still render and
+      // refresh the model once valid geometry is available.
+      if (index.count >= 3) {
+        triangle.a.fromBufferAttribute(positions, index.getX(0));
+        triangle.b.fromBufferAttribute(positions, index.getX(1));
+        triangle.c.fromBufferAttribute(positions, index.getX(2));
+        triangle.closestPointToPoint(origin, closest);
+        return {
+          point: closest.clone(),
+          normal: triangle.getNormal(new THREE.Vector3()),
+          face: triangle.clone(),
+        };
+      }
+      const fallbackPoint = origin.clone(),
+        fallbackNormal = direction.clone().normalize(),
+        tangent = new THREE.Vector3(1, 0, 0);
+      if (Math.abs(tangent.dot(fallbackNormal)) > 0.9)
+        tangent.set(0, 1, 0);
+      return {
+        point: fallbackPoint,
+        normal: fallbackNormal,
+        face: new THREE.Triangle(
+          fallbackPoint,
+          fallbackPoint.clone().add(tangent),
+          fallbackPoint
+            .clone()
+            .add(new THREE.Vector3().crossVectors(fallbackNormal, tangent)),
+        ),
+      };
     };
     for (const s of [-1, 1]) {
       const subframe = mesh(body, sportBoxBeamGeometry([

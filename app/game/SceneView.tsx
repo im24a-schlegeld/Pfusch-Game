@@ -146,7 +146,8 @@ export default function SceneView({
     } catch (error) {
       console.error('Motorrad-Vorschau konnte nicht erstellt werden.', error);
       session.release();
-      setError('Motorrad-Vorschau konnte nicht erstellt werden.');
+      const detail = error instanceof Error ? ` ${error.message}` : '';
+      setError(`Motorrad-Vorschau konnte nicht erstellt werden.${detail}`);
       return;
     }
     bike.root.name = 'player-bike';
