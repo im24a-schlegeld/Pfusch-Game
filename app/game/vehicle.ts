@@ -1630,36 +1630,36 @@ export function makeBike(player: Player, products: Product[]) {
         roughness: 0.15,
       }),
     ).name = 'supermoto-headlight-bulb';
-    // Rise from the fixed clamps toward the helmet before sweeping rearward
-    // (+Z). The elevated outer sections keep the shared hand/IK targets.
+    // A low, gradual MX-bar rise above the fixed clamps, with mild rearward
+    // (+Z) grip sweep. Controls and hands share these compact contact targets.
     tube(
       body,
       [
         supermotoGripPoint(pose.grip, -1, 0.055),
         supermotoGripPoint(pose.grip, -1, -0.09),
-        [-0.2, 1.172, -0.356],
-        [-0.1, 1.124, -0.407],
+        [-0.17, 1.135, -0.383],
+        [-0.08, 1.124, -0.407],
         [0, 1.124, -0.407],
-        [0.1, 1.124, -0.407],
-        [0.2, 1.172, -0.356],
+        [0.08, 1.124, -0.407],
+        [0.17, 1.135, -0.383],
         supermotoGripPoint(pose.grip, 1, -0.09),
         supermotoGripPoint(pose.grip, 1, 0.055),
       ],
-      [0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016, 0.016],
+      [0.012, 0.012, 0.013, 0.014, 0.014, 0.014, 0.013, 0.012, 0.012],
       alloy,
       36,
       12,
     ).name = 'supermoto-handlebar';
     for (const s of [-1, 1]) {
-      const control = (x: number, dy: number, dz: number): Point =>
-        supermotoGripPoint(pose.grip, s, x - pose.grip[0], dy, dz);
+      const control = (outward: number, dy: number, dz: number): Point =>
+        supermotoGripPoint(pose.grip, s, outward, dy, dz);
       tube(
         body,
         [
-          control(0.29, 0, 0),
-          control(0.31, -0.03, -0.16),
-          control(0.43, -0.02, -0.15),
-          control(0.445, 0, 0),
+          control(-0.09, 0, 0),
+          control(-0.07, -0.03, -0.16),
+          control(0.05, -0.02, -0.15),
+          control(0.065, 0, 0),
         ],
         [0.008, 0.008, 0.009, 0.008],
         alloy,
@@ -1668,12 +1668,12 @@ export function makeBike(player: Player, products: Product[]) {
         0.65,
       ).name = 'supermoto-handguard-support';
       const guardOutline: Point[] = [
-        control(0.246, -0.004, -0.115),
-        control(0.292, 0.057, -0.155),
-        control(0.437, 0.049, -0.142),
-        control(0.468, 0.005, -0.11),
-        control(0.422, -0.035, -0.135),
-        control(0.311, -0.026, -0.171),
+        control(-0.134, -0.004, -0.115),
+        control(-0.088, 0.057, -0.155),
+        control(0.057, 0.049, -0.142),
+        control(0.088, 0.005, -0.11),
+        control(0.042, -0.035, -0.135),
+        control(-0.069, -0.026, -0.171),
       ];
       const guardTriangles = THREE.ShapeUtils.triangulateShape(
         guardOutline.map((p) => new THREE.Vector2(p[0], p[1])),
@@ -1701,9 +1701,9 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          control(0.29, -0.005, -0.002),
-          control(0.32, -0.01, -0.06),
-          control(0.4, -0.01, -0.07),
+          control(-0.09, -0.005, -0.002),
+          control(-0.06, -0.01, -0.06),
+          control(0.02, -0.01, -0.07),
         ],
         [0.007, 0.007, 0.009],
         alloy,

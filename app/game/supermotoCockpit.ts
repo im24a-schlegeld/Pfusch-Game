@@ -1,7 +1,7 @@
 import type { Point } from './riderSkeleton';
 
 // Both outer grip sections sweep rearward (+Z), including their controls.
-const sweep = 17 * Math.PI / 180;
+const sweep = 12 * Math.PI / 180;
 const across = Math.cos(sweep), rearward = Math.sin(sweep);
 
 export function supermotoGripPoint(

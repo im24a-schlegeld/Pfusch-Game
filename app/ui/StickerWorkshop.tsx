@@ -47,12 +47,12 @@ export default function StickerWorkshop({ player, account, products, onClose, on
     catch { setError('3D-Werkstatt konnte nicht gestartet werden. Bitte neu öffnen.'); return; }
     const { renderer, environment } = session;
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
-    renderer.setClearColor('#161a1c'); renderer.shadowMap.enabled = false;
+    renderer.setClearColor('#323232'); renderer.shadowMap.enabled = false;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.25;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene(); scene.environment = environment.texture;
-    scene.add(new THREE.HemisphereLight('#ffffff', '#313c42', 2));
+    scene.add(new THREE.HemisphereLight('#ffffff', '#323232', 2));
     const key = new THREE.DirectionalLight('#ffffff', 3); key.position.set(3, 5, -4); scene.add(key);
     const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 30);
     const bike = makeBike(player, products); bike.rider.visible = false; scene.add(bike.root);

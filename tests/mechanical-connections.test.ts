@@ -204,10 +204,11 @@ describe('assembled motorcycle connections', () => {
       const target = BIKE_CONTACTS['450'].grip;
       expect(center.distanceTo(new Vector3(side * target[0], target[1], target[2])))
         .toBeLessThan(1e-6);
-      expect(axis.end.z - axis.start.z).toBeGreaterThan(0.03);
+      expect(axis.end.z - axis.start.z).toBeGreaterThan(0.018);
+      expect(axis.end.z - axis.start.z).toBeLessThan(0.027);
       expect(ringCenter(bar, side < 0 ? 0 : 36, 12).distanceTo(axis.end))
         .toBeLessThan(1e-6);
-      expect(axis.end.z - ringCenter(bar, 18, 12).z).toBeGreaterThan(0.12);
+      expect(axis.end.z - ringCenter(bar, 18, 12).z).toBeGreaterThan(0.1);
     }
   });
 

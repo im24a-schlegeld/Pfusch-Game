@@ -5,8 +5,23 @@ import type { StickerPlacement } from '../domain/types';
 let artwork: THREE.Texture | undefined;
 export function stickerArtwork() {
   if (!artwork) {
-    // Reuse the supplied transparent chrome artwork, never a product-photo rectangle.
-    artwork = new THREE.TextureLoader().load('/branding/pfusch-logo.webp');
+    // The physical 6 × 6 cm sticker has a rounded black backing. Keep the
+    // supplied chrome print intact and centered inside that backing.
+    artwork = new THREE.TextureLoader().load('/branding/pfusch-logo.webp', (texture: THREE.Texture) => {
+      const print = texture.image as HTMLImageElement;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 512;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.fillStyle = '#101010';
+      context.beginPath();
+      context.roundRect(4, 4, 504, 504, 76);
+      context.fill();
+      const width = 432, height = width * print.height / print.width;
+      context.drawImage(print, 40, (512 - height) / 2, width, height);
+      texture.image = canvas;
+      texture.needsUpdate = true;
+    });
     artwork.colorSpace = THREE.SRGBColorSpace;
   }
   return artwork;
@@ -68,7 +83,7 @@ export function applyBikeStickers(body: THREE.Object3D, rider: THREE.Object3D, p
     rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), placement.rotation));
     const localSource = new THREE.Mesh(source.geometry, source.material);
     localSource.updateMatrixWorld(true);
-    const geometry = new DecalGeometry(localSource, point, new THREE.Euler().setFromQuaternion(rotation), new THREE.Vector3(placement.size, placement.size * 1282 / 2090, 0.035));
+    const geometry = new DecalGeometry(localSource, point, new THREE.Euler().setFromQuaternion(rotation), new THREE.Vector3(placement.size, placement.size, 0.035));
     // Keep the clicked skin even when its source winding points inward, then
     // turn that skin outward so the print is visible and reads the right way.
     const normals = geometry.getAttribute('normal'), indices: number[] = [];

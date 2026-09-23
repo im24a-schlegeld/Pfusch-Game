@@ -127,7 +127,7 @@ export const BIKE_CONTACTS: Readonly<Record<BikeModelId, RiderTarget>> =
     },
     '450': {
       hip: [0, 1.0, 0.18],
-      grip: [0.38, 1.215, -0.255],
+      grip: [0.35, 1.157, -0.3],
       peg: SUPERMOTO_PEG,
       torsoLean: 0.3,
     },
