@@ -25,16 +25,22 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
     geometry.setAttribute(key, attribute);
   });
   const material = new THREE.ShaderMaterial({
+    uniforms: {
+      viewportHeight: { value: 1 },
+      pixelRatio: { value: 1 },
+    },
     transparent: true,
     depthWrite: false,
     vertexColors: true,
     // These unlit tints retain the selected paint/display colors. They still
     // require the renderer's output conversion from THREE.Color's linear RGB.
     toneMapped: false,
-    vertexShader: `attribute float particleSize; attribute float particleOpacity; attribute float particleKind;
+    // Project world-sized particles like the bike itself. CSS-pixel limits also
+    // scale with DPR, keeping a fullscreen/high-DPI scrape as legible as a phone.
+    vertexShader: `uniform float viewportHeight; uniform float pixelRatio; attribute float particleSize; attribute float particleOpacity; attribute float particleKind;
       varying vec3 tint; varying float fade; varying float kind;
       void main(){vec4 p=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*p;
-      gl_PointSize=clamp(particleSize*(particleKind>.5?850.:340.)/max(1.,-p.z),1.,48.);
+      gl_PointSize=clamp(particleSize*viewportHeight*(particleKind>.5?.56:.22)*projectionMatrix[1][1]/max(1.,-p.z),pixelRatio,48.*pixelRatio);
       tint=color; fade=particleOpacity; kind=particleKind;}`,
     fragmentShader: `varying vec3 tint; varying float fade; varying float kind;
       void main(){vec2 p=gl_PointCoord*2.-1.; float edge;
@@ -59,7 +65,12 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
   };
   const paint = new THREE.Color();
   const white = new THREE.Color('#ffffff');
-  const spawn = (origin: THREE.Vector3, kind: number, paintColor: string) => {
+  const spawn = (
+    origin: THREE.Vector3,
+    kind: number,
+    paintColor: string,
+    blackPlastic = false,
+  ) => {
     const i = index;
     index = (index + 1) % count;
     const offset = i * 3;
@@ -75,13 +86,32 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
     lives[i] = kind ? 0.4 + random() * 0.3 : 0.6 + random() * 0.5;
     kinds[i] = kind;
     sizes[i] = kind ? 0.1 + random() * (kind === 1 ? 0.08 : 0.045) : 0.09;
-    paint.set(kind === 0 ? '#87949b' : kind === 1 ? '#ffe4a0' : paintColor);
-    if (kind === 2) paint.lerp(white, 0.22);
+    paint.set(
+      kind === 0
+        ? '#87949b'
+        : kind === 1
+          ? '#ffe4a0'
+          : blackPlastic
+            ? '#101214'
+            : paintColor,
+    );
+    if (kind === 2 && !blackPlastic) paint.lerp(white, 0.22);
     colors[offset] = paint.r;
     colors[offset + 1] = paint.g;
     colors[offset + 2] = paint.b;
   };
   return {
+    setViewport(height: number, pixelRatio: number) {
+      if (
+        Number.isFinite(height) &&
+        height > 0 &&
+        Number.isFinite(pixelRatio) &&
+        pixelRatio > 0
+      ) {
+        material.uniforms.viewportHeight.value = height * pixelRatio;
+        material.uniforms.pixelRatio.value = pixelRatio;
+      }
+    },
     update(
       dt: number,
       active: boolean,
@@ -107,7 +137,12 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
         scrapeCarry +=
           step * (scrape > 0 ? 0.4 + scrape * 0.6 : 0) * (low ? 56 : 90);
         while (scrapeCarry >= 1) {
-          spawn(tail, scrapeMaterial === 'metal' ? 1 : 2, paintColor);
+          spawn(
+            tail,
+            scrapeMaterial === 'metal' ? 1 : 2,
+            paintColor,
+            model === 'scooter',
+          );
           scrapeCarry--;
         }
       }

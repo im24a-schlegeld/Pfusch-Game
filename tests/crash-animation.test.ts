@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   Bone,
+  Box3,
+  BoxGeometry,
+  Group,
   InstancedMesh,
   Matrix4,
   Mesh,
@@ -57,6 +60,7 @@ function pose(bike: ReturnType<typeof makeBike>) {
     bodyRotation: bike.body.quaternion.toArray(),
     riderPosition: bike.rider.position.toArray(),
     riderRotation: bike.rider.quaternion.toArray(),
+    joints: bike.captureRagdollPose(),
   };
 }
 
@@ -90,6 +94,108 @@ function minimumVisibleY(owner: Object3D, excluded?: Object3D) {
 }
 
 describe('bounded crash presentation', () => {
+  it('makes the real skinned rider hit nearby vehicles while its limbs leave the grips and pegs', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const scene = new Scene();
+    const obstacle = new Mesh(
+      new BoxGeometry(2.4, 1.45, 4.5),
+      new MeshStandardMaterial(),
+    );
+    obstacle.position.set(0, 0.7, -3.6);
+    scene.add(bike.root, obstacle);
+    scene.updateMatrixWorld(true);
+    const bounds = new Box3().setFromObject(obstacle);
+    const initial = bike.captureRagdollPose();
+    const animation = createCrashAnimation(bike, {
+      cause: 'Traffic collision',
+      pitch: 0,
+      travel: 0,
+      reducedMotion: false,
+      collisionObstacles: [obstacle],
+      impactSpeed: 25,
+    });
+    for (let frame = 0; frame < 72; frame++) {
+      animation.advance(1 / 60, true);
+      scene.updateMatrixWorld(true);
+      const current = bike.captureRagdollPose();
+      const joints = [
+        current.hip,
+        current.shoulder,
+        current.head,
+        ...current.limbs.flatMap(({ arm, leg }) => [
+          arm.start,
+          arm.joint,
+          arm.end,
+          leg.start,
+          leg.joint,
+          leg.end,
+        ]),
+      ];
+      for (const joint of joints) {
+        const world = new Vector3(...joint).applyMatrix4(
+          bike.rider.matrixWorld,
+        );
+        expect(bounds.containsPoint(world)).toBe(false);
+        expect(world.y).toBeGreaterThan(0);
+      }
+    }
+    expect(bike.captureRagdollPose().limbs).not.toEqual(initial.limbs);
+    const settled = pose(bike);
+    animation.advance(0.1, true);
+    expect(pose(bike)).toEqual(settled);
+  });
+
+  it('stops the bike and thrown rider at a traffic impact instead of passing through', () => {
+    const scene = new Scene();
+    const root = new Group();
+    const body = new Group();
+    const rider = new Group();
+    const chassis = new Mesh(
+      new BoxGeometry(0.62, 0.42, 1.4),
+      new MeshStandardMaterial(),
+    );
+    const torso = new Mesh(
+      new BoxGeometry(0.32, 0.92, 0.28),
+      new MeshStandardMaterial(),
+    );
+    torso.position.y = 0.5;
+    rider.position.y = 0.58;
+    rider.add(torso);
+    body.add(chassis, rider);
+    root.add(body);
+    scene.add(root);
+    const car = new Mesh(
+      new BoxGeometry(2.3, 1.8, 5.8),
+      new MeshStandardMaterial(),
+    );
+    car.position.set(0, 0.8, -3.15);
+    scene.add(car);
+    const bike = {
+      root,
+      body,
+      rider,
+      animateSuspension: () => undefined,
+    };
+    const animation = createCrashAnimation(bike, {
+      cause: 'Traffic collision',
+      pitch: 0,
+      travel: 0,
+      reducedMotion: false,
+      impactObstacle: car,
+    });
+    const trafficBounds = new Box3().setFromObject(car);
+    for (let frame = 0; frame < 75; frame++) {
+      animation.advance(1 / 60, true);
+      scene.updateMatrixWorld(true);
+      expect(
+        new Box3().setFromObject(chassis).intersectsBox(trafficBounds),
+      ).toBe(false);
+      expect(new Box3().setFromObject(rider).intersectsBox(trafficBounds)).toBe(
+        false,
+      );
+    }
+  });
+
   it.each(['125', 'scooter', '450', '701'] as const)(
     '%s falls with released limbs, fixed skeleton scale, ground clearance and attached lights',
     (model) => {

@@ -8,7 +8,7 @@ import {
   Vector3,
 } from 'three';
 import { makeSportBodywork } from '../app/game/sportBodywork';
-import { SPORT_LENS_FACES } from '../app/game/sportDesign';
+import { createSportDesign, SPORT_LENS_FACES } from '../app/game/sportDesign';
 
 const bodywork = () => {
   const body = new Group();
@@ -18,6 +18,36 @@ const bodywork = () => {
 };
 
 describe('600 cc Sport fairing and optics', () => {
+  it('raises mirrored painted fairing blades alongside the windscreen', () => {
+    const parts = createSportDesign().parts;
+    const left = parts.find((part) => part.name === 'sport-screen-side-fairing-L');
+    const right = parts.find((part) => part.name === 'sport-screen-side-fairing-R');
+    expect(left).toBeDefined();
+    expect(right).toBeDefined();
+    expect(left!.finish).toBe('paint');
+    expect(right!.finish).toBe('paint');
+    expect(left!.geometry.positions).toHaveLength(right!.geometry.positions.length);
+    const mirroredVertices = (positions: number[], side: number) =>
+      Array.from({ length: positions.length / 3 }, (_, i) => [
+        side * positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2],
+      ].map((value) => Math.round(value * 1e6)).join(',')).sort();
+    expect(mirroredVertices(left!.geometry.positions, -1))
+      .toEqual(mirroredVertices(right!.geometry.positions, 1));
+    const heights = right!.geometry.positions.filter((_, i) => i % 3 === 1);
+    expect(Math.min(...heights)).toBeGreaterThan(0.96);
+    expect(Math.max(...heights)).toBeGreaterThan(1.125);
+    const assembly = bodywork();
+    // A frontal ray beside the upper screen must hit paint, not pass through
+    // the empty space left by an unrelated patch on the lower side fairing.
+    for (const side of [-1, 1]) {
+      const hit = new Raycaster(
+        new Vector3(side * 0.16, 1.08, -0.95),
+        new Vector3(0, 0, 1),
+      ).intersectObjects(assembly.children, false)[0];
+      expect(hit?.object.name).toBe('sport-paint-surfaces');
+    }
+  });
+
   it('leaves the central intake open with a recessed duct behind its mouth', () => {
     const body = bodywork();
     const ray = new Raycaster(
@@ -80,6 +110,11 @@ describe('600 cc Sport fairing and optics', () => {
     // The lower screen continues rearward with the cowl, not vertically
     // against it. Inspect the actual central surface row before edge returns.
     const points = screen.geometry.getAttribute('position');
+    const lowerLeft = new Vector3().fromBufferAttribute(points, 0);
+    const lowerRight = new Vector3().fromBufferAttribute(points, 28);
+    const aboveChamfer = new Vector3().fromBufferAttribute(points, 5 * 29 + 28);
+    expect(lowerLeft.x).toBeCloseTo(-lowerRight.x, 6);
+    expect(aboveChamfer.x - lowerRight.x).toBeGreaterThan(0.03);
     const root = new Vector3().fromBufferAttribute(points, 14);
     const next = new Vector3().fromBufferAttribute(points, 29 + 14);
     expect((next.z - root.z) / (next.y - root.y)).toBeGreaterThan(1.2);

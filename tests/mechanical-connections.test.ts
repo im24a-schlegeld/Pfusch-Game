@@ -8,7 +8,7 @@ import {
   Raycaster,
   Vector3,
 } from 'three';
-import type { CylinderGeometry } from 'three';
+import type { TubeGeometry } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
 import { BIKE_CONTACTS } from '../app/game/riderSkeleton';
@@ -23,11 +23,14 @@ vi.mock('../app/game/garmentTexture', () => ({
 }));
 
 function rodAxis(part: Mesh) {
-  const h = (part.geometry as CylinderGeometry).parameters.height;
+  // The Supermoto silencer is an authored lathe, while forks and the other
+  // silencers are cylinders. Both have their axial extent along local Y.
+  part.geometry.computeBoundingBox();
+  const bounds = part.geometry.boundingBox!;
   part.updateMatrix();
   return new Line3(
-    new Vector3(0, -h / 2, 0).applyMatrix4(part.matrix),
-    new Vector3(0, h / 2, 0).applyMatrix4(part.matrix),
+    new Vector3(0, bounds.min.y, 0).applyMatrix4(part.matrix),
+    new Vector3(0, bounds.max.y, 0).applyMatrix4(part.matrix),
   );
 }
 
@@ -91,15 +94,21 @@ describe('assembled motorcycle connections', () => {
           'frame-mounted-rearset',
         );
         expect(rearsets).toHaveLength(2);
-        for (const yAndZ of [
-          [0.56, 0.16],
-          [0.41, 0.4],
-        ]) {
-          ray.set(new Vector3(1, yAndZ[0], yAndZ[1]), new Vector3(-1, 0, 0));
-          for (const rearset of rearsets)
-            expect(ray.intersectObject(rearset, false).length).toBeGreaterThan(
-              0,
-            );
+        const peg = BIKE_CONTACTS['701'].peg;
+        for (const rearset of rearsets as Mesh[]) {
+          ray.set(new Vector3(1, 0.56, 0.175), new Vector3(-1, 0, 0));
+          expect(ray.intersectObject(rearset, false).length).toBeGreaterThan(0);
+          // The relocated peg meets the carrier's lower corner; its old z=.4
+          // datum is no longer the contact. Require the actual plate to reach
+          // the peg's 18 mm radius, without assuming it covers the whole axis.
+          const vertices = rearset.geometry.getAttribute('position');
+          let pegClearance = Infinity;
+          for (let i = 0; i < vertices.count; i++) {
+            const point = rearset.getVertexPosition(i, new Vector3())
+              .applyMatrix4(rearset.matrixWorld);
+            pegClearance = Math.min(pegClearance, Math.hypot(point.y - peg[1], point.z - peg[2]));
+          }
+          expect(pegClearance).toBeLessThan(0.018);
         }
       }
     },
@@ -229,7 +238,26 @@ describe('assembled motorcycle connections', () => {
         return Math.sign(guardBounds.getCenter(new Vector3()).x) === supportSide;
       });
       expect(guard).toBeDefined();
-      expect(supportBounds.intersectsBox(new Box3().setFromObject(guard!))).toBe(true);
+      const guardBounds = new Box3().setFromObject(guard!);
+      expect(supportBounds.intersectsBox(guardBounds)).toBe(true);
+      expect(supportBounds.max.y).toBeLessThan(guardBounds.max.y - 0.02);
+      expect(supportBounds.min.y).toBeGreaterThan(guardBounds.min.y + 0.008);
+      expect(supportBounds.getCenter(new Vector3()).z).toBeGreaterThan(
+        guardBounds.getCenter(new Vector3()).z,
+      );
+      let shieldedRings = 0;
+      for (let ring = 9; ring <= 27; ring++) {
+        const center = ringCenter(support, ring, 12)
+          .applyMatrix4(support.matrixWorld);
+        const hit = new Raycaster(
+          new Vector3(center.x, center.y, guardBounds.min.z - 0.1),
+          new Vector3(0, 0, 1),
+        ).intersectObject(guard!, false)[0];
+        if (!hit) continue;
+        expect(center.z - hit.point.z).toBeGreaterThan(0.012);
+        shieldedRings++;
+      }
+      expect(shieldedRings).toBeGreaterThan(8);
     }
     const colorOf = (mesh: Mesh) => {
       const material = Array.isArray(mesh.material)
@@ -278,11 +306,13 @@ describe('assembled motorcycle connections', () => {
       const bike = makeBike({ ...newPlayer(), bike: bikeId }, []);
       const pipe = bike.body.getObjectByName('connected-exhaust-pipe') as Mesh;
       const muffler = bike.body.getObjectByName('single-exhaust') as Mesh;
-      const end = ringCenter(pipe, 24);
+      const pipeParameters = (pipe.geometry as TubeGeometry).parameters;
+      const pipeSides = pipeParameters?.radialSegments ?? 14;
+      const end = ringCenter(pipe, pipeParameters?.tubularSegments ?? 24, pipeSides);
       const mufflerAxis = rodAxis(muffler);
       const nearest = mufflerAxis.closestPointToPoint(end, true, new Vector3());
       expect(nearest.distanceTo(end)).toBeLessThan(0.016);
-      const start = ringCenter(pipe, 0);
+      const start = ringCenter(pipe, 0, pipeSides);
       expect(start.y).toBeGreaterThan(
         bikeId === '450' ? 0.7 : bikeId === '701' ? 0.35 : 0.27,
       );

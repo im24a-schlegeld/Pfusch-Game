@@ -34,7 +34,7 @@ export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.146, 0.836, 0.126],
 ];
 
-/** Wider rear mudguard. The top tip remains at 1.068 to retain tail-contact physics. */
+/** Wider rear mudguard. Tail-contact physics reads the final station's upper tip. */
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.17, 0.108, 0.011, 0.946],
   [0.33, 0.117, 0.014, 0.952],

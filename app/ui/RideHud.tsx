@@ -45,7 +45,7 @@ export default function RideHud({
       <div className="v42-right-bottom">
         <span className="ride-state" data-active={state !== 'STREET RUN'}>
           <i aria-hidden="true" />
-          {state}
+          <span>{state}</span>
         </span>
         <button type="button" onClick={pause} aria-label="Fahrt pausieren">
           <Pause

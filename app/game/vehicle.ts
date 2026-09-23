@@ -15,6 +15,7 @@ import {
 } from './riderSkeleton';
 import { BIKE_MODEL_SCALES } from './vehicleScale';
 import { riderMotionPose, type RiderMotion } from './riderMotion';
+import type { RagdollPose } from './ragdoll';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
 import {
@@ -1679,19 +1680,21 @@ export function makeBike(player: Player, products: Product[]) {
     for (const s of [-1, 1]) {
       const control = (outward: number, dy: number, dz: number): Point =>
         supermotoGripPoint(pose.grip, s, outward, dy, dz);
+      // One wraparound backbone connects the clamp to the bar end, directly
+      // behind the shield's middle. It never follows the plastic's upper rim.
       tube(
         body,
         [
           control(-0.09, 0, 0),
-          control(-0.11, 0.016, -0.095),
-          control(-0.088, 0.057, -0.163),
-          control(0.057, 0.049, -0.15),
-          control(0.088, 0.005, -0.118),
-          control(0.065, 0, 0),
+          control(-0.128, -0.002, -0.089),
+          control(-0.087, 0.006, -0.112),
+          control(0.05, 0.004, -0.092),
+          control(0.091, 0.001, -0.068),
+          control(0.055, 0, 0),
         ],
         [0.008, 0.008, 0.008, 0.008, 0.008, 0.008],
         alloy,
-        28,
+        36,
         12,
         0.65,
       ).name = 'supermoto-handguard-support';
@@ -2330,6 +2333,8 @@ export function makeBike(player: Player, products: Product[]) {
     wheels,
     rider: rider.group,
     animateRider: rider.animate,
+    captureRagdollPose: rider.captureRagdollPose,
+    applyRagdollPose: rider.applyRagdollPose,
     animateCrashPose: (progress: number, side: number, dt: number) =>
       rider.animate(
         {
@@ -2464,6 +2469,7 @@ function makeRider(
     hip: Point;
     lean: number;
     roll: number;
+    orientation?: RagdollPose['orientation'];
   };
   type ArmSkinPose = {
     start: Point;
@@ -2495,9 +2501,11 @@ function makeRider(
 
     const update = (arm: ArmSkinPose, torsoPose: TorsoSkinPose) => {
       torsoBone.position.set(...torsoPose.hip);
-      torsoBone.quaternion.setFromEuler(
-        new THREE.Euler(-torsoPose.lean, 0, torsoPose.roll),
-      );
+      if (torsoPose.orientation)
+        torsoBone.quaternion.fromArray(torsoPose.orientation);
+      else torsoBone.quaternion.setFromEuler(
+          new THREE.Euler(-torsoPose.lean, 0, torsoPose.roll),
+        );
 
       const a = V(arm.start);
       const b = V(arm.joint);
@@ -2607,6 +2615,10 @@ function makeRider(
   const limbs: {
     arm: ReturnType<typeof skinGarmentArm>;
     leg: ReturnType<typeof skinLimb>;
+  }[] = [];
+  const extremities: {
+    glove: THREE.Group;
+    boot: THREE.Group;
   }[] = [];
   const upper = products.find((p) => p.id === player.equipped.upper);
   const productColor = (p: Product | undefined) =>
@@ -3107,7 +3119,7 @@ function makeRider(
     }
 
     // The cuff overlaps the glove, which curls around the actual grip center.
-    tube(
+    const glove = tube(
       rider,
       [
         wrist,
@@ -3123,6 +3135,10 @@ function makeRider(
       18,
       0.85,
     );
+    glove.name = 'rider-glove';
+    const glovePivot = new THREE.Group();
+    rider.add(glovePivot);
+    glovePivot.add(glove);
     const hip: Point = [
         side * RIDER_DIMENSIONS.hipHalf,
         pose.hip[1] - 0.01,
@@ -3201,6 +3217,10 @@ function makeRider(
     );
     foot.position.x = side * pose.peg[0];
     foot.name = 'rider-boot';
+    const bootPivot = new THREE.Group();
+    rider.add(bootPivot);
+    bootPivot.add(foot);
+    extremities.push({ glove: glovePivot, boot: bootPivot });
   }
   const neck = tube(
     rider,
@@ -3296,6 +3316,56 @@ function makeRider(
     capMotion = createCarriedCapMotion(pivot);
   }
   rider.userData.skeleton = RIDER_DIMENSIONS;
+  let renderedPose = rest;
+  let ragdollPose: RagdollPose | undefined;
+  const orientation = new THREE.Quaternion();
+  const restOrientation = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(-rest.lean, 0, rest.roll),
+  );
+  const transformExtremity = (
+    object: THREE.Object3D,
+    current: ArmSkinPose,
+    original: ArmSkinPose,
+  ) => {
+    object.quaternion.setFromUnitVectors(
+      V(original.end).sub(V(original.joint)).normalize(),
+      V(current.end).sub(V(current.joint)).normalize(),
+    );
+    object.position.copy(V(current.end)).sub(
+      V(original.end).applyQuaternion(object.quaternion),
+    );
+  };
+  const captureRagdollPose = (): RagdollPose => structuredClone(ragdollPose ?? {
+    hip: renderedPose.hip,
+    shoulder: renderedPose.shoulder,
+    head: renderedPose.head,
+    orientation: torsoGroup.quaternion.toArray(),
+    limbs: renderedPose.limbs,
+  });
+  const applyRagdollPose = (current: RagdollPose) => {
+    ragdollPose = structuredClone(current);
+    orientation.fromArray(current.orientation).normalize();
+    torsoGroup.position.set(...current.hip);
+    torsoGroup.quaternion.copy(orientation);
+    const neckRotation = orientation.clone().multiply(restOrientation.clone().invert());
+    // Rotate the original pelvis around its hip with the rigid torso. Retain
+    // the authored waistband bend and the captured hip-joint spacing.
+    followGarmentWaist(rest.lean, rest.roll);
+    pelvis.quaternion.copy(neckRotation);
+    pelvis.position.copy(V(current.hip)).sub(V(pose.hip).applyQuaternion(neckRotation));
+    neck.quaternion.copy(neckRotation);
+    neck.position.copy(V(current.shoulder)).sub(V(pose.shoulder).applyQuaternion(neckRotation));
+    helmet.position.set(...current.head);
+    helmet.quaternion.copy(neckRotation).multiply(
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.07),
+    );
+    current.limbs.forEach((limb, i) => {
+      limbs[i].arm(limb.arm, { hip: current.hip, lean: 0, roll: 0, orientation: current.orientation });
+      limbs[i].leg(limb.leg);
+      transformExtremity(extremities[i].glove, limb.arm, rest.limbs[i].arm);
+      transformExtremity(extremities[i].boot, limb.leg, rest.limbs[i].leg);
+    });
+  };
   const motion: Required<RiderMotion> = {
     wheelie: 0,
     steer: 0,
@@ -3328,14 +3398,18 @@ function makeRider(
       ((target.crashSide ?? 1) - motion.crashSide) *
       (1 - Math.exp(-18 * dt));
     const current = riderMotionPose(pose, motion);
+    renderedPose = current;
+    ragdollPose = undefined;
     torsoGroup.position.set(...current.hip);
     torsoGroup.rotation.set(-current.lean, 0, current.roll);
     followGarmentWaist(current.lean, current.roll);
+    pelvis.quaternion.identity();
     pelvis.position.set(
       current.hip[0] - pose.hip[0],
       current.hip[1] - pose.hip[1],
       current.hip[2] - pose.hip[2],
     );
+    neck.quaternion.identity();
     neck.position.set(
       current.shoulder[0] - pose.shoulder[0],
       current.shoulder[1] - pose.shoulder[1],
@@ -3354,9 +3428,14 @@ function makeRider(
         roll: current.roll,
       });
       limbs[i].leg(limb.leg);
+      // During riding, retain the authored grip and footpeg contact exactly.
+      for (const contact of [extremities[i].glove, extremities[i].boot]) {
+        contact.position.set(0, 0, 0);
+        contact.quaternion.identity();
+      }
     });
   };
   const animateAccessories = (input: CarriedCapMotionInput, dt: number) =>
     capMotion?.update(input, dt);
-  return { group: rider, animate, animateAccessories };
+  return { group: rider, animate, animateAccessories, captureRagdollPose, applyRagdollPose };
 }

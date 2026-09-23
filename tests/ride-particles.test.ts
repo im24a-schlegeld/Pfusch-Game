@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { Points, Scene, Vector3 } from 'three';
+import { Color, Points, Scene, ShaderMaterial, Vector3 } from 'three';
 import { createRideParticles } from '../app/game/rideParticles';
 
 it('keeps existing exhaust moving and fading after emission stops, and freezes it while inactive', () => {
@@ -25,6 +25,14 @@ it('keeps existing exhaust moving and fading after emission stops, and freezes i
   const points = scene.getObjectByName(
     'ride-exhaust-and-scrape-particles',
   ) as Points;
+  particles.setViewport(960, 1.6);
+  const shader = points.material as ShaderMaterial;
+  expect(shader.uniforms.viewportHeight.value).toBe(1536);
+  expect(shader.uniforms.pixelRatio.value).toBe(1.6);
+  particles.setViewport(Number.NaN, 1);
+  particles.setViewport(1440, 0);
+  expect(shader.uniforms.viewportHeight.value).toBe(1536);
+  expect(shader.uniforms.pixelRatio.value).toBe(1.6);
   const position = points.geometry.getAttribute('position'),
     opacity = points.geometry.getAttribute('particleOpacity');
   const live = Array.from({ length: opacity.count }, (_, i) => i).filter(
@@ -49,4 +57,56 @@ it('keeps existing exhaust moving and fading after emission stops, and freezes i
   expect(
     scene.getObjectByName('ride-exhaust-and-scrape-particles'),
   ).toBeUndefined();
+});
+
+it('emits dark Scooter plastic independently of paint while retaining colored Supermoto chips and Sport sparks', () => {
+  const colors = new Map<string, number[]>();
+  for (const [model, kind, material] of [
+    ['scooter', 2, 'plastic'],
+    ['450', 2, 'plastic'],
+    ['701', 1, 'metal'],
+  ] as const) {
+    const scene = new Scene();
+    const particles = createRideParticles(scene, false);
+    const anchor = new Vector3(0, 0.03, 1);
+    const points = scene.getObjectByName(
+      'ride-exhaust-and-scrape-particles',
+    ) as Points;
+    const position = points.geometry.getAttribute('position');
+    for (let i = 0; i < 100; i++)
+      particles.update(
+        0.05,
+        true,
+        true,
+        25,
+        model,
+        anchor,
+        anchor,
+        0.8,
+        material,
+        '#ff3300',
+        false,
+      );
+    const tint = points.geometry.getAttribute('color');
+    const kinds = points.geometry.getAttribute('particleKind');
+    const opacity = points.geometry.getAttribute('particleOpacity');
+    const chip = Array.from({ length: opacity.count }, (_, i) => i).find(
+      (i) => opacity.getX(i) > 0 && kinds.getX(i) === kind,
+    );
+    expect(chip).toBeDefined();
+    const color = [tint.getX(chip!), tint.getY(chip!), tint.getZ(chip!)];
+    colors.set(model, color);
+    if (model === 'scooter') {
+      const expected = new Color('#101214');
+      expect(color[0]).toBeCloseTo(expected.r, 5);
+      expect(color[1]).toBeCloseTo(expected.g, 5);
+      expect(color[2]).toBeCloseTo(expected.b, 5);
+    }
+    expect(points.geometry.getAttribute('position')).toBe(position);
+    expect(position.count).toBe(128);
+    particles.dispose();
+  }
+  expect(colors.get('450')![0]).toBeGreaterThan(colors.get('450')![2] * 3);
+  expect(colors.get('701')![0]).toBeGreaterThan(0.9);
+  expect(colors.get('701')![1]).toBeGreaterThan(0.7);
 });

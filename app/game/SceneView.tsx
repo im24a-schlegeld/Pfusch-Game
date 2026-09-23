@@ -162,6 +162,8 @@ export default function SceneView({
       previousLateralSpeed = 0;
     let crash: ReturnType<typeof createCrashAnimation> | undefined;
     let crashTravel: ReturnType<typeof createCrashTravel> | undefined;
+    let impactTraffic: THREE.Group | undefined;
+    const collisionTraffic = new Map<THREE.Group, THREE.Vector3>();
     let launchSerial = 0,
       launchPulse = 0;
     let anchors = particleAnchors(bike.body, player.bike);
@@ -203,6 +205,7 @@ export default function SceneView({
         h = el.clientHeight;
       if (!w || !h) return;
       renderer.setSize(w, h, false);
+      particles?.setViewport(h, renderer.getPixelRatio());
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
@@ -275,6 +278,8 @@ export default function SceneView({
         bike.root.name = 'player-bike';
         crash = undefined;
         crashTravel = undefined;
+        impactTraffic = undefined;
+        collisionTraffic.clear();
         anchors = particleAnchors(bike.body, nextAppearance.player.bike);
         scene.add(bike.root);
         updateGlow = createGarmentGlowUpdater(bike.root);
@@ -318,7 +323,7 @@ export default function SceneView({
             headlightRig.count,
           ),
         );
-        bike.root.position.set(engine.x, engine.height, 0);
+        if (!crash) bike.root.position.set(engine.x, engine.height, 0);
         if (moving) {
           if (engine.landingSerial !== landingSerial) {
             landingSerial = engine.landingSerial;
@@ -421,6 +426,31 @@ export default function SceneView({
         }
         if (!moving) previousLateralSpeed = 0;
         previousXPosition = engine.x;
+        engine.obstacles.forEach((o, i) => {
+          const group = traffic[i];
+          group.visible = o.active;
+          if (!o.active) return;
+          group.position.set(
+            o.lane * LANE + o.offsetX,
+            0,
+            -o.z +
+              (crashTravel?.distance ?? 0) -
+              o.velocity * (crashTravel?.elapsed ?? 0),
+          );
+          const frozen = collisionTraffic.get(group);
+          if (frozen) group.position.copy(frozen);
+          const key = `${o.kind}:${o.color}`;
+          if (group.userData.key !== key) {
+            group.clear();
+            group.add(templates.get(key)!.clone(true));
+            group.userData.key = key;
+          }
+          animateTraffic(
+            group,
+            o.velocity,
+            moving || (crashed && crashActive) ? dt : 0,
+          );
+        });
         if (crashed) {
           if (!crash) {
             tilt = Math.min(
@@ -428,11 +458,29 @@ export default function SceneView({
               TAIL_CONTACT[appearance.current.player.bike].angle,
             );
             bike.animateSuspension(tilt, suspension);
+            const impactIndex = engine.obstacles.indexOf(engine.crashObstacle!);
+            impactTraffic = impactIndex >= 0 ? traffic[impactIndex] : undefined;
+            if (impactTraffic?.visible) {
+              impactTraffic.updateWorldMatrix(true, true);
+            } else {
+              impactTraffic = undefined;
+            }
+            // Lock nearby solid traffic at its impact pose while the short
+            // crash simulation resolves rider and motorcycle contacts.
+            engine.obstacles.forEach((obstacle, index) => {
+              const group = traffic[index];
+              if (group.visible && Math.abs(group.position.z) < 16 &&
+                  (TRAFFIC_KINDS.some((kind) => kind === obstacle.kind) || obstacle.kind === 'barrier'))
+                collisionTraffic.set(group, group.position.clone());
+            });
             crash = createCrashAnimation(bike, {
               cause: engine.event.text,
               pitch: tilt,
               travel: suspension,
               reducedMotion: appearance.current.player.settings.reducedMotion,
+              impactObstacle: impactTraffic,
+              collisionObstacles: [...collisionTraffic.keys()],
+              impactSpeed: engine.speed,
             });
           }
           crashComplete = crash.advance(dt, crashActive);
@@ -447,7 +495,7 @@ export default function SceneView({
             paused:
               engine.phase === 'paused' ||
               engine.phase === 'ready' ||
-              (crashed && !crashActive),
+              (crashed && (!crashActive || crashComplete)),
             reducedMotion: appearance.current.player.settings.reducedMotion,
           },
           crashed && !crashActive ? 0 : dt,
@@ -473,29 +521,6 @@ export default function SceneView({
           for (const wheel of bike.wheels)
             wheel.rotation.x -=
               ((crashTravel?.speed ?? engine.speed) * dt) / 0.47;
-        engine.obstacles.forEach((o, i) => {
-          const group = traffic[i];
-          group.visible = o.active;
-          if (!o.active) return;
-          group.position.set(
-            o.lane * LANE + o.offsetX,
-            0,
-            -o.z +
-              (crashTravel?.distance ?? 0) -
-              o.velocity * (crashTravel?.elapsed ?? 0),
-          );
-          const key = `${o.kind}:${o.color}`;
-          if (group.userData.key !== key) {
-            group.clear();
-            group.add(templates.get(key)!.clone(true));
-            group.userData.key = key;
-          }
-          animateTraffic(
-            group,
-            o.velocity,
-            moving || (crashed && crashActive) ? dt : 0,
-          );
-        });
         const shake =
           appearance.current.player.settings.reducedMotion || !moving
             ? 0

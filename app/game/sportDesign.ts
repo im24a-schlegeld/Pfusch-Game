@@ -418,10 +418,14 @@ const nose: SportSurface = (u, v) => {
 };
 const screen: SportSurface = (u, v) => {
   const x = u * 2 - 1;
+  // Straight, symmetric cuts at the two lower corners. The painted surround
+  // follows this same edge, so the chamfers close cleanly into the fairing.
+  const widthAt = (t: number) => 0.149 - 0.019 * t + 0.02 * Math.sin(PI * t);
+  const width = v < 0.18 ? lerp(0.118, widthAt(0.18), v / 0.18) : widthAt(v);
   // A shallow leading section rises into the bubble at the rear. The centre
   // bows forward across its width; the top remains below the rider's sightline.
   return [
-    x * (0.149 - 0.019 * v + 0.02 * Math.sin(PI * v)),
+    x * width,
     0.976 + 0.2 * (0.9 * v + 0.1 * v * v) - 0.035 * v * x * x - 0.005 * x * x,
     -0.73 + 0.184 * (v + 0.08 * Math.sin(PI * v)) + (0.023 + 0.028 * v) * x * x,
   ];
@@ -985,6 +989,50 @@ export function createSportDesign(): SportDesign {
   // One optical surface avoids four stacked alpha layers making a black slab.
   part('sport-smoked-windscreen', 'screen', screen, [0, 0.5, -1], 28, 24, 0);
   for (const side of [-1, 1]) {
+    const label = side < 0 ? 'L' : 'R';
+    const screenEdge = (v: number) => screen(1, v * 0.97);
+    const fairingOuter: readonly SportPoint[] = [
+      SHOULDER[2],
+      [0.221, 1.024, -0.504],
+      [0.179, 1.097, -0.49],
+      screenEdge(1),
+    ];
+    // The painted shoulder continues up beside the smoked bubble, narrowing
+    // to a swept tip near its top. Both sides share the actual glazing edge;
+    // this is a structural fairing blade, not another skin over the flank.
+    part(
+      `sport-screen-side-fairing-${label}`,
+      'paint',
+      (u, v) => {
+        const p = mix(screenEdge(v), spline(fairingOuter, v), u);
+        return mirror([
+          p[0] + 0.006 * Math.sin(PI * u) * Math.sin(PI * v),
+          p[1],
+          p[2] - 0.003 * Math.sin(PI * u) * Math.sin(PI * v),
+        ], side);
+      },
+      [side * 0.8, 0.4, -0.7],
+      10,
+      24,
+    );
+    // Close the small molded transition between the existing shoulder crown
+    // and the windscreen foot, so the rising blade cannot float above the nose.
+    part(
+      `sport-screen-fairing-foot-${label}`,
+      'paint',
+      (u, v) => {
+        const shoulder = mix(nose(1, 1), SHOULDER[2], u);
+        const crown: SportPoint = [
+          shoulder[0],
+          shoulder[1] + 0.009 * Math.sin(PI * u),
+          shoulder[2] - 0.012 * Math.sin(PI * u),
+        ];
+        return mirror(mix(crown, mix(screenEdge(0), SHOULDER[2], u), v), side);
+      },
+      [side * 0.3, 1, -0.3],
+      16,
+      3,
+    );
     part(
       `sport-screen-binding-${side}`,
       'carbon',

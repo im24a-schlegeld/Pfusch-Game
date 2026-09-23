@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
 import { POSES, type RiderPose } from './riderSkeleton';
 import type { RiderMotion } from './riderMotion';
+import type { RagdollPose } from './ragdoll';
 import { suspensionPose } from './bikeMotion';
 import { brakeRotorGeometry } from './driveGeometry';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
@@ -17,6 +18,8 @@ type RiderFactory = (
 ) => {
   group: THREE.Group;
   animate: (motion: RiderMotion, dt: number) => void;
+  captureRagdollPose: () => RagdollPose;
+  applyRagdollPose: (pose: RagdollPose) => void;
   animateAccessories: (input: CarriedCapMotionInput, dt: number) => void;
 };
 
@@ -1460,6 +1463,8 @@ export function makeScooter(
     wheels,
     rider: rider.group,
     animateRider: rider.animate,
+    captureRagdollPose: rider.captureRagdollPose,
+    applyRagdollPose: rider.applyRagdollPose,
     animateAccessories: rider.animateAccessories,
     animateSuspension,
     wheelRadius: rearRadius,

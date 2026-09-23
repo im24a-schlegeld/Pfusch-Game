@@ -1,7 +1,7 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import type * as THREE from 'three';
-import { newPlayer } from '../../app/domain/progression';
 import type { Player } from '../../app/domain/types';
+import type { Engine } from '../../app/game/engine';
 
 declare global {
   interface Window {
@@ -9,6 +9,8 @@ declare global {
       scenes: THREE.Scene[];
       renderCounts: Record<number, number>;
       currentScene?: THREE.Scene;
+      camera?: THREE.Camera;
+      engine?: Engine;
     };
   }
 }
@@ -20,14 +22,8 @@ async function install(page: Page, reducedMotion = false, tutorialSeen = true) {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.clock.install({ time: new Date('2026-09-15T10:00:00Z') });
   await page.clock.pauseAt(new Date('2026-09-15T10:00:01Z'));
-  const player = newPlayer();
-  player.helmet = 'fullface';
-  player.settings.tutorialSeen = tutorialSeen;
-  player.settings.reducedMotion = reducedMotion;
-  await page.addInitScript((saved: Player) => {
+  await page.addInitScript(() => {
     Math.random = () => 5489 / 0xffffffff;
-    if (!localStorage.getItem('pfusch:player:v1'))
-      localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
     window.crashProbe = { scenes: [], renderCounts: {} };
     window.__THREE_DEVTOOLS__ = new EventTarget();
     window.__THREE_DEVTOOLS__.addEventListener('observe', (event) => {
@@ -41,6 +37,7 @@ async function install(page: Page, reducedMotion = false, tutorialSeen = true) {
           if (!scene.getObjectByName('road-headlight')) return;
           const probe = window.crashProbe;
           probe.currentScene = scene;
+          probe.camera = camera;
           // Object3D ids remain unique when the seeded Math.random fixture
           // deliberately makes UUID strings identical across scene rebuilds.
           probe.renderCounts[scene.id] =
@@ -48,15 +45,48 @@ async function install(page: Page, reducedMotion = false, tutorialSeen = true) {
         };
       }
     });
-  }, player);
+  });
+  await page.goto('/');
+  await page.evaluate(
+    async ({ reducedMotion, tutorialSeen }) => {
+      // Use the same Vite JSON-module handling as production; Node's native JSON
+      // import-attribute rules should not change browser fixture loading.
+      const modulePath = '/app/domain/progression.ts';
+      const { newPlayer } = (await import(/* @vite-ignore */ modulePath)) as {
+        newPlayer: () => Player;
+      };
+      const player = newPlayer();
+      player.helmet = 'fullface';
+      player.settings.tutorialSeen = tutorialSeen;
+      player.settings.reducedMotion = reducedMotion;
+      localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
+    },
+    { reducedMotion, tutorialSeen },
+  );
   return errors;
 }
 
 async function waitForPlaying(page: Page) {
   // Wait for DOM mount separately from the potentially costly first GPU frame.
-  await expect(page.locator('canvas')).toHaveCount(1, { timeout: 60000 });
-  await page.clock.runFor(100);
-  await page.clock.runFor(2200);
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(50);
+        return page.locator('.scene-ride canvas').count();
+      },
+      { timeout: 60000 },
+    )
+    .toBe(1);
+  await expect
+    .poll(
+      async () => {
+        await page.clock.fastForward(700);
+        return page.getByTestId('ride-screen').getAttribute('data-phase');
+      },
+      { timeout: 60000 },
+    )
+    .toBe('playing');
+  await page.clock.runFor(32);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',
     'playing',
@@ -65,14 +95,37 @@ async function waitForPlaying(page: Page) {
 
 async function start(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
+  await page.getByRole('button', { name: 'LOSFAHREN', exact: true }).click();
   const tutorial = page.getByRole('button', {
-    name: 'GOT IT. LET’S RIDE',
+    name: 'VERSTANDEN. LOSFAHREN',
     exact: true,
   });
   await expect(page.getByTestId('ride-screen').or(tutorial)).toBeVisible();
   if (await tutorial.isVisible()) await tutorial.click();
   await waitForPlaying(page);
+  await page.evaluate(() => {
+    type Hook = { memoizedState: unknown; next: Hook | null };
+    type Fiber = { memoizedState: Hook | null; return: Fiber | null };
+    const element = document.querySelector(
+      '[data-testid="ride-screen"]',
+    )! as unknown as Record<string, unknown>;
+    let fiber = element[
+      Object.keys(element).find((key) => key.startsWith('__reactFiber$'))!
+    ] as Fiber | null;
+    while (fiber) {
+      for (let hook = fiber.memoizedState; hook; hook = hook.next) {
+        const candidate = Array.isArray(hook.memoizedState)
+          ? (hook.memoizedState[0] as Engine)
+          : undefined;
+        if (candidate?.world && typeof candidate.advance === 'function') {
+          window.crashProbe.engine = candidate;
+          return;
+        }
+      }
+      fiber = fiber.return;
+    }
+    throw new Error('Mounted crash engine not found');
+  });
 }
 
 async function naturalCrash(page: Page) {
@@ -87,7 +140,7 @@ async function naturalCrash(page: Page) {
   await page.keyboard.up('s');
   await expect(ride).toHaveAttribute('data-phase', 'crashed');
   await expect(
-    page.getByRole('button', { name: 'RIDE AGAIN', exact: true }),
+    page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true }),
   ).not.toBeVisible();
 }
 
@@ -160,6 +213,72 @@ function renderCount(page: Page, scene: number) {
   return page.evaluate((id) => window.crashProbe.renderCounts[id] ?? 0, scene);
 }
 
+test('the production rider and bike collide with a car and release their riding pose', async ({
+  page,
+}, testInfo) => {
+  const errors = await install(page);
+  await start(page);
+  await page.evaluate(() => {
+    const engine = window.crashProbe.engine!;
+    engine.elapsed = 10000;
+    engine.clearInput();
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    engine.spawn('car', 0, 5, 0, 0);
+  });
+  const ride = page.getByTestId('ride-screen');
+  for (let frame = 0; frame < 100; frame++) {
+    if ((await ride.getAttribute('data-phase')) === 'crashed') break;
+    await page.clock.runFor(32);
+  }
+  await expect(ride).toHaveAttribute('data-phase', 'crashed');
+  const initial = await pose(page);
+  await capture(page, testInfo, 'car-impact');
+  await page.clock.runFor(400);
+  const airborne = await pose(page);
+  expect(airborne.helmet).not.toEqual(initial.helmet);
+  await capture(page, testInfo, 'car-mid');
+  await page.clock.runFor(640);
+  const fallen = await pose(page);
+  expect(Math.abs(fallen.root.roll)).toBeGreaterThan(1.3);
+  await capture(page, testInfo, 'car-fallen');
+  const contact = await page.evaluate(async () => {
+    const modulePath = '/node_modules/three/build/three.module.js';
+    const { Box3, Vector3 } = (await import(
+      /* @vite-ignore */ modulePath
+    )) as typeof THREE;
+    const scene = window.crashProbe.currentScene!;
+    const car = scene.children.find(
+      (child) => child.visible && String(child.userData.key).startsWith('car:'),
+    )!;
+    const bounds = new Box3().setFromObject(car);
+    const helmet = scene.getObjectByName('full-face-helmet')!;
+    const rider = helmet.parent!;
+    let penetratingVertices = 0,
+      sampled = 0;
+    const vertex = new Vector3();
+    rider.traverse((item) => {
+      const mesh = item as THREE.SkinnedMesh;
+      if (!mesh.isMesh || !mesh.visible) return;
+      if (mesh.isSkinnedMesh) mesh.skeleton.update();
+      const positions = mesh.geometry.getAttribute('position');
+      for (let index = 0; index < positions.count; index += 3) {
+        mesh.getVertexPosition(index, vertex).applyMatrix4(mesh.matrixWorld);
+        if (bounds.containsPoint(vertex)) penetratingVertices++;
+        sampled++;
+      }
+    });
+    return {
+      penetratingVertices,
+      sampled,
+      impact: window.crashProbe.engine!.crashObstacle?.kind,
+    };
+  });
+  expect(contact.impact).toBe('car');
+  expect(contact.sampled).toBeGreaterThan(100);
+  expect(contact.penetratingVertices).toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test('natural crash settles once, falls and slides, freezes while away, then restarts cleanly', async ({
   page,
 }, testInfo) => {
@@ -231,7 +350,7 @@ test('natural crash settles once, falls and slides, freezes while away, then res
   });
   await page.clock.runFor(600);
   await expect(
-    page.getByRole('button', { name: 'RIDE AGAIN', exact: true }),
+    page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true }),
   ).toBeVisible();
   await expect(ride).toHaveCount(0);
   expect(await readSave(page)).toEqual(settled);
@@ -240,7 +359,9 @@ test('natural crash settles once, falls and slides, freezes while away, then res
   expect(await renderCount(page, early.scene)).toBe(stoppedCount);
   expect(await readSave(page)).toEqual(settled);
 
-  await page.getByRole('button', { name: 'RIDE AGAIN', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'NOCHMAL FAHREN', exact: true })
+    .click();
   await waitForPlaying(page);
   const restarted = await pose(page);
   expect(restarted.scene).not.toBe(early.scene);
@@ -251,11 +372,11 @@ test('natural crash settles once, falls and slides, freezes while away, then res
   await page.keyboard.press('Escape');
   await expect(ride).toHaveAttribute('data-phase', 'paused');
   await page
-    .getByRole('button', { name: 'END RIDE & COLLECT', exact: true })
+    .getByRole('button', { name: 'FAHRT BEENDEN', exact: true })
     .click();
   await page.clock.runFor(32);
   await expect(
-    page.getByRole('button', { name: 'RIDE AGAIN', exact: true }),
+    page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true }),
   ).toBeVisible();
   const second = await readSave(page);
   expect(second.runsPlayed).toBe(2);
@@ -287,11 +408,11 @@ test('first tutorial ride collects immediately and focus never resumes a paused 
   expect(await pose(page)).toEqual(paused);
   expect((await readSave(page)).runsPlayed).toBe(0);
   await page
-    .getByRole('button', { name: 'END RIDE & COLLECT', exact: true })
+    .getByRole('button', { name: 'FAHRT BEENDEN', exact: true })
     .click();
   await page.clock.runFor(32);
   await expect(
-    page.getByRole('button', { name: 'RIDE AGAIN', exact: true }),
+    page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true }),
   ).toBeVisible();
   await expect(ride).toHaveCount(0);
   const saved = await readSave(page);
@@ -322,7 +443,7 @@ test('reduced motion shows a short static crash pose before results', async ({
   expect(await readSave(page)).toEqual(saved);
   await page.clock.runFor(220);
   await expect(
-    page.getByRole('button', { name: 'RIDE AGAIN', exact: true }),
+    page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true }),
   ).toBeVisible();
   await expect(ride).toHaveCount(0);
   await page.clock.runFor(1500);

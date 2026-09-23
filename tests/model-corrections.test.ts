@@ -171,9 +171,12 @@ it('keeps both Supermoto boots outside the equally narrow swingarms', () => {
   for (const side of [-1, 1]) {
     const foot = boots.find((box) => Math.sign(box.min.x) === side)!;
     const arm = arms.find((box) => Math.sign(box.min.x) === side)!;
+    // The adult boot and the enlarged bike leave roughly 14.5 mm at rest.
+    // Require a visible 12 mm gap between complete solid envelopes, rather
+    // than the obsolete 18 mm target from the earlier motorcycle scale.
     expect(
       side > 0 ? foot.min.x - arm.max.x : arm.min.x - foot.max.x,
-    ).toBeGreaterThan(0.018);
+    ).toBeGreaterThan(0.012);
   }
   expect(Math.abs(arms[0].min.x)).toBeCloseTo(Math.abs(arms[1].max.x), 6);
   expect(Math.abs(arms[0].max.x)).toBeCloseTo(Math.abs(arms[1].min.x), 6);

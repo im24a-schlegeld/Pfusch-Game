@@ -146,6 +146,8 @@
   color: #f5f6ee;
 }
 .ride-state {
+  min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -154,6 +156,11 @@
     sans-serif;
   letter-spacing: 0.045em;
   white-space: nowrap;
+}
+.ride-state > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ride-state i {
   width: 5px;

@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Box3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import { Box3, Mesh, MeshStandardMaterial, Triangle, Vector3 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
 import { BIKE_MODEL_SCALES } from '../app/game/vehicleScale';
 import { SPORT_GEOMETRY } from '../app/game/sportGeometry';
+import { createSportDesign } from '../app/game/sportDesign';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -18,7 +19,17 @@ describe('larger motorcycles with one unchanged adult', () => {
     bike.root.scale.setScalar(1);
     bike.body.scale.setScalar(1);
     const fender = bike.body.getObjectByName('sport-front-fender') as Mesh;
-    const radiator = bike.body.getObjectByName('sport-radiator') as Mesh;
+    // The radiator core is now part of the shared cavity draw call. Use its
+    // authored vertices in that assembly's space, not the obsolete mesh name
+    // or the combined bounds of unrelated intake/headlight cavities.
+    const assembly = bike.body.getObjectByName('sport-front-assembly')!;
+    const core = createSportDesign().parts.find((part) => part.name === 'sport-radiator-core')!;
+    const radiatorTriangles: Triangle[] = [];
+    for (let i = 0; i < core.geometry.indices.length; i += 3) {
+      const vertex = (j: number) => new Vector3()
+        .fromArray(core.geometry.positions, core.geometry.indices[i + j] * 3);
+      radiatorTriangles.push(new Triangle(vertex(0), vertex(1), vertex(2)));
+    }
     const positions = fender.geometry.getAttribute('position');
     const rearPoints: Vector3[] = [];
     for (let i = 0; i < positions.count; i++) {
@@ -29,15 +40,20 @@ describe('larger motorcycles with one unchanged adult', () => {
     }
     expect(rearPoints.length).toBeGreaterThan(20);
     expect(Math.min(...rearPoints.map(point => point.y))).toBeLessThan(.45);
-    radiator.geometry.computeBoundingBox();
     for (const travel of [-.008, 0, .024]) {
       bike.animateSuspension(0, travel);
       bike.root.updateMatrixWorld(true);
-      const toRadiator = radiator.matrixWorld.clone().invert().multiply(fender.matrixWorld);
+      const toRadiator = assembly.matrixWorld.clone().invert().multiply(fender.matrixWorld);
       let clearance = Infinity;
+      const nearest = new Vector3();
       for (let i = 0; i < positions.count; i++) {
         const point = new Vector3().fromBufferAttribute(positions, i).applyMatrix4(toRadiator);
-        clearance = Math.min(clearance, radiator.geometry.boundingBox!.distanceToPoint(point));
+        // The curved radiator's box contains empty space behind the mudguard.
+        // Measure against its actual triangles instead of that oversized box.
+        for (const triangle of radiatorTriangles) {
+          triangle.closestPointToPoint(point, nearest);
+          clearance = Math.min(clearance, nearest.distanceTo(point));
+        }
       }
       expect(clearance).toBeGreaterThan(.005);
     }

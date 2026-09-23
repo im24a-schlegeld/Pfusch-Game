@@ -134,6 +134,8 @@ export class Engine {
   }));
   maxSpeed = 22;
   event: GameEvent = { text: '', kind: 'skill', serial: 0 };
+  /** Obstacle responsible for the current crash, for collision-aware visuals. */
+  crashObstacle: Obstacle | null = null;
   obstacles: Obstacle[] = Array.from({ length: 32 }, () => ({
     active: false,
     kind: 'car',
@@ -196,7 +198,7 @@ export class Engine {
     const next = Math.max(-1, Math.min(1, this.lane + Math.sign(direction)));
     if (next === this.lane || (airborne && this.airLaneChangeUsed)) return;
     if (this.towCarrier && this.cabContact(this.towCarrier.z)) {
-      this.crash('Missed the side jump');
+      this.crash('Missed the side jump', this.towCarrier);
       return;
     }
     this.laneChangeDirection = next - this.lane;
@@ -312,9 +314,10 @@ export class Engine {
     this.gain(text, points);
     this.event = { text, kind: 'skill', serial: this.event.serial + 1 };
   }
-  crash(cause = 'Traffic collision') {
+  crash(cause = 'Traffic collision', obstacle: Obstacle | null = null) {
     if (this.phase !== 'playing') return;
     this.phase = 'crashed';
+    this.crashObstacle = obstacle;
     this.clearInput();
     this.scrapeIntensity = 0;
     this.scrapeMaterial = null;
@@ -785,7 +788,7 @@ export class Engine {
       const length = road?.contactHalfLength ?? traffic!.contactHalfLength;
       if (o === this.towCarrier) {
         if (this.cabContact(o.z)) {
-          this.crash('Missed the side jump');
+          this.crash('Missed the side jump', o);
           break;
         }
         continue;
@@ -829,7 +832,7 @@ export class Engine {
                 this.forwardLoad,
               );
               if (response.crash) {
-                this.crash(response.crash);
+                this.crash(response.crash, o);
                 break;
               }
               o.cleared = true;
@@ -846,6 +849,7 @@ export class Engine {
               o.kind === 'construction'
                 ? 'Construction barrier collision'
                 : 'Traffic collision',
+              o,
             );
             break;
           }

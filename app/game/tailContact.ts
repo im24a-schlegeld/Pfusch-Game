@@ -1,3 +1,5 @@
+import { SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+
 export interface TailContact {
   readonly point: readonly [number, number, number];
   readonly rearPivotZ: number;
@@ -25,6 +27,7 @@ function contact(
 // its tip with the renderer so sparks and loop-out follow actual contact.
 export const MOPED_REAR_FENDER_ANGLE = 1.68;
 const mopedGuardRadius = 0.305 + 0.038 + 0.008 + 0.005;
+const supermotoTailTip = SUPERMOTO_TAIL_FENDER[SUPERMOTO_TAIL_FENDER.length - 1];
 /** Raw chassis coordinates, before the shared vehicle/world scale. */
 export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   // Earliest rendered rear vertices, including the Ciao's steel mudguard and
@@ -40,7 +43,12 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
     'metal',
   ),
   scooter: contact([0.065, 0.304, 0.9705], 0.64, 0.231, 'plastic'),
-  '450': contact([0, 1.068, 1.045], 0.76, 0.327495, 'plastic'),
-  '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'plastic'),
+  '450': contact(
+    [0, supermotoTailTip[3] + supermotoTailTip[2], supermotoTailTip[0]],
+    0.76,
+    0.327495,
+    'plastic',
+  ),
+  '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'metal'),
 };
 export const TAIL_RECOVERY_ANGLE = 0.12;

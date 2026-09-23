@@ -74,7 +74,7 @@ export function tailScrape(
       ? Math.max(0, Math.min(1, (angle - startAngle) / TAIL_RECOVERY_ANGLE))
       : 0;
   return {
-    material: bikeId === '125' ? ('metal' as const) : ('plastic' as const),
+    material: (TAIL_CONTACT[bikeId] ?? TAIL_CONTACT['450']).material,
     intensity,
     startAngle,
   };

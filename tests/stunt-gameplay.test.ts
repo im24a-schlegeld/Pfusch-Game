@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BIKES } from '../app/domain/config';
 import { Engine, LANE, STEP, STUNT_POINTS } from '../app/game/engine';
 import { TRAFFIC_SHAPES, TOW_RAMP } from '../app/game/trafficDomain';
-import { tailScrape } from '../app/game/wheelie';
+import { BALANCE, tailScrape } from '../app/game/wheelie';
 
 function ride(bike = BIKES[0], seed = 539) {
   const engine = new Engine(bike, seed);
@@ -136,11 +136,18 @@ describe('ride onto the tow truck, then swipe to jump', () => {
   it('keeps direct cab and ordinary car collisions solid', () => {
     for (const kind of ['towtruck', 'car'] as const) {
       const engine = ride();
-      engine.spawn(kind, 0, kind === 'towtruck' ? -2 : 6);
+      const obstacle = engine.spawn(kind, 0, kind === 'towtruck' ? -2 : 6)!;
       steps(engine, 25);
       expect(engine.phase).toBe('crashed');
+      expect(engine.crashObstacle).toBe(obstacle);
       expect(engine.jumps).toBe(0);
     }
+  });
+  it('emits metal sparks for Sport scrapes', () => {
+    const profile = BALANCE['701'];
+    expect(
+      tailScrape('701', profile.crashAngle - 0.03, profile).material,
+    ).toBe('metal');
   });
   it('keeps a destination obstacle solid when a side jump lands into it', () => {
     const engine = ride();
@@ -156,6 +163,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     steps(engine, 12);
     expect(engine.phase).toBe('crashed');
     expect(engine.event.text).toBe('Construction barrier collision');
+    expect(engine.crashObstacle).toBe(obstacle);
     expect(obstacle.cleared).toBe(false);
     expect(engine.jumps).toBe(1);
   });
@@ -233,7 +241,7 @@ describe('stunt scoring and recoverable tail contact', () => {
       expect(engine.phase).toBe('playing');
       expect(engine.scrapeIntensity).toBeGreaterThan(0);
       expect(engine.scrapeMaterial).toBe(
-        bike.id === '125' ? 'metal' : 'plastic',
+        bike.id === '125' || bike.id === '701' ? 'metal' : 'plastic',
       );
       engine.forward(true);
       steps(engine, 100);
