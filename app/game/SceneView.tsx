@@ -194,6 +194,11 @@ export default function SceneView({
     let crash: ReturnType<typeof createCrashAnimation> | undefined;
     let crashTravel: ReturnType<typeof createCrashTravel> | undefined;
     let impactTraffic: THREE.Group | undefined;
+    let policeOutcomeSerial = 0;
+    let policeCrashAge = Infinity;
+    let policeCrashGroup: THREE.Group | undefined;
+    let policeCrashTarget: THREE.Group | undefined;
+    const policeCrashFrom = new THREE.Vector3();
     const collisionTraffic = new Map<THREE.Group, THREE.Vector3>();
     let launchSerial = 0,
       launchPulse = 0;
@@ -327,6 +332,22 @@ export default function SceneView({
       }
       if (engine && mode === 'ride') {
         engine.advance(dt);
+        if (engine.policeOutcomeSerial !== policeOutcomeSerial) {
+          policeOutcomeSerial = engine.policeOutcomeSerial;
+          policeCrashAge = 0;
+          const policeIndex = engine.obstacles.findIndex(
+            (obstacle) => obstacle.police && obstacle.active,
+          );
+          policeCrashGroup =
+            policeIndex >= 0 ? traffic[policeIndex] : undefined;
+          const targetIndex = engine.policeImpactTarget
+            ? engine.obstacles.indexOf(engine.policeImpactTarget)
+            : -1;
+          policeCrashTarget =
+            targetIndex >= 0 ? traffic[targetIndex] : undefined;
+          if (policeCrashGroup) policeCrashFrom.copy(policeCrashGroup.position);
+        }
+        if (policeCrashAge < 1.15) policeCrashAge += dt;
         const moving = engine.phase === 'playing';
         const crashed =
           engine.phase === 'crashed' && engine.event.text !== 'Ride ended';
@@ -468,21 +489,37 @@ export default function SceneView({
           );
           const frozen = collisionTraffic.get(group);
           if (frozen) group.position.copy(frozen);
-          const key = `${o.kind}:${o.color}`;
+          const modelKind = o.police ? 'police' : o.kind;
+          const key = `${modelKind}:${o.color}`;
           if (group.userData.key !== key) {
             group.clear();
             let template = templates.get(key);
             if (!template) {
-              let variants = variantSets.get(o.kind);
+              let variants = variantSets.get(modelKind);
               if (!variants) {
-                variants = makeTrafficVariants(o.kind);
-                variantSets.set(o.kind, variants);
+                variants = makeTrafficVariants(modelKind);
+                variantSets.set(modelKind, variants);
               }
               template = variants[o.color] ?? variants[0];
               templates.set(key, template);
             }
             group.add(template.clone(true));
             group.userData.key = key;
+          }
+          if (
+            o.police &&
+            engine.policeOutcome === 'escaped' &&
+            group === policeCrashGroup &&
+            policeCrashAge < 1.15
+          ) {
+            const crashTarget = policeCrashTarget?.position;
+            const progress = THREE.MathUtils.clamp(policeCrashAge / 0.9, 0, 1);
+            if (crashTarget)
+              group.position.lerpVectors(policeCrashFrom, crashTarget, progress);
+            else
+              group.position.copy(policeCrashFrom).add(new THREE.Vector3(0, 0, -progress * 6));
+            group.rotation.z = Math.sin(progress * Math.PI) * 0.55;
+            group.rotation.y = progress * 0.9;
           }
           animateTraffic(
             group,

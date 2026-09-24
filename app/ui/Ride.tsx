@@ -278,7 +278,9 @@ export default function Ride({
       <RideHud engine={engine} best={player.highScore} pause={pause} />
       {engine.phase === 'playing' && (
         <div className="ride-feedback" aria-label="Punktegewinne">
-          {eventVisible && engine.event.kind !== 'skill' && (
+          {eventVisible &&
+            engine.event.kind !== 'skill' &&
+            engine.event.text !== 'HÄNG SIE AB' && (
             <div
               key={`event-${engine.event.serial}`}
               className={`skill-event ${engine.event.kind}`}
