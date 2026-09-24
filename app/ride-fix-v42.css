@@ -317,6 +317,15 @@
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
+.police-alert-copy {
+  display: grid;
+  gap: 3px;
+}
+.police-countdown {
+  color: #ffe36b;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
 .police-lights {
   display: inline-flex;
   width: 54px;

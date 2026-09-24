@@ -78,6 +78,7 @@ export const STUNT_POINTS = Object.freeze({
   nearMiss: 150,
   airEvade: 240,
   wheelieLaneSwitch: 5,
+  policeEscape: 500,
 });
 export interface SignPickup {
   active: boolean;
@@ -122,6 +123,8 @@ export class Engine {
   scrapeIntensity = 0;
   policeChase = false;
   policeProgress = 0;
+  /** Seconds left in the warning phase before the police can ram. */
+  policeRamRemaining = 0;
   policeOutcome: 'none' | 'escaped' | 'caught' = 'none';
   policeOutcomeSerial = 0;
   policeImpactTarget: Obstacle | null = null;
@@ -361,6 +364,7 @@ export class Engine {
     this.phase = 'crashed';
     if (this.policeChase) {
       this.policeChase = false;
+      this.policeRamRemaining = 0;
       this.policeOutcome = 'caught';
       this.policeOutcomeSerial++;
     }
@@ -621,6 +625,7 @@ export class Engine {
     this.policeObstacle = obstacle;
     this.policeChase = true;
     this.policeProgress = 0.16;
+    this.policeRamRemaining = 3;
     this.policeOutcome = 'none';
     this.policeImpactTarget = null;
     this.event = {
@@ -634,6 +639,7 @@ export class Engine {
     this.policeProgress = Math.max(0, this.policeProgress - amount);
     if (this.policeProgress > 0) return;
     this.policeChase = false;
+    this.policeRamRemaining = 0;
     this.policeOutcome = 'escaped';
     this.policeOutcomeSerial++;
     this.policeImpactTarget = this.obstacles.find(
@@ -648,11 +654,27 @@ export class Engine {
       this.policeObstacle.z = this.policeImpactTarget?.z ?? 24;
       this.policeObstacle.passed = true;
     }
-    this.skill('POLIZEI ABGEHÄNGT', 300);
+    this.skill('POLIZEI ABGEHÄNGT', STUNT_POINTS.policeEscape);
+  }
+  private policeCrashInto(target: Obstacle) {
+    if (!this.policeChase || target.police) return;
+    this.policeChase = false;
+    this.policeRamRemaining = 0;
+    this.policeOutcome = 'escaped';
+    this.policeOutcomeSerial++;
+    this.policeImpactTarget = target;
+    if (this.policeObstacle) {
+      this.policeObstacle.lane = target.lane;
+      this.policeObstacle.offsetX = target.offsetX;
+      this.policeObstacle.z = target.z + 6;
+      this.policeObstacle.passed = true;
+    }
+    this.skill('POLIZEI CRASH', STUNT_POINTS.policeEscape);
   }
   private policeRearEnd() {
     if (!this.policeChase) return;
     this.policeChase = false;
+    this.policeRamRemaining = 0;
     this.policeOutcome = 'caught';
     this.policeOutcomeSerial++;
     if (this.policeObstacle) this.policeObstacle.z = -3.2;
@@ -681,6 +703,44 @@ export class Engine {
       this.policeNextScore += 15000;
       this.policeOutcome = 'none';
       this.policeImpactTarget = null;
+    }
+  }
+  private policeLaneBlocked(lane: number, police: Obstacle) {
+    return this.obstacles.some((o) => {
+      if (
+        !o.active ||
+        o === police ||
+        o.police ||
+        isRoadEvent(o.kind) ||
+        o.lane !== lane ||
+        o.z <= -1 ||
+        o.z >= 42
+      )
+        return false;
+      const shape = TRAFFIC_SHAPES[o.kind];
+      return Math.abs(o.offsetX) < shape.contactHalfWidth + 0.2;
+    });
+  }
+  private updatePoliceLane() {
+    const police = this.policeObstacle;
+    if (!police) return;
+    const desired = this.lane;
+    const candidates = [
+      desired,
+      police.lane,
+      desired - 1,
+      desired + 1,
+      -1,
+      0,
+      1,
+    ].filter(
+      (lane, index, all) =>
+        lane >= -1 && lane <= 1 && all.indexOf(lane) === index,
+    );
+    const free = candidates.find((lane) => !this.policeLaneBlocked(lane, police));
+    if (free !== undefined) {
+      police.lane = free;
+      police.offsetX = 0;
     }
   }
   private cabContact(localZ: number) {
@@ -905,10 +965,13 @@ export class Engine {
     this.spawnIn -= travel;
     this.maybeSpawnPolice();
     if (this.policeChase) {
-      this.policeProgress = Math.min(1, this.policeProgress + dt * 0.16);
-      if (this.policeProgress >= 1) {
-        this.policeRearEnd();
-        return;
+      this.policeRamRemaining = Math.max(0, this.policeRamRemaining - dt);
+      if (this.policeRamRemaining === 0) {
+        this.policeProgress = Math.min(1, this.policeProgress + dt * 0.16);
+        if (this.policeProgress >= 1) {
+          this.policeRearEnd();
+          return;
+        }
       }
     }
     for (const o of this.obstacles) {
@@ -916,8 +979,9 @@ export class Engine {
       const prev = o.z;
       o.z -= travel - o.velocity * dt;
       if (o.police && this.policeChase) {
-        // Keep the pursuing car just behind the rider. Its collision is
-        // resolved by the deterministic pursuit meter, not normal traffic.
+        // Follow the rider when possible, but route around traffic instead
+        // of teleporting through a car in the target lane.
+        this.updatePoliceLane();
         o.z = -3.2 + this.policeProgress * 1.1;
         continue;
       }
@@ -1004,6 +1068,8 @@ export class Engine {
       if (!o.passed && o.z < frontContact) {
         o.passed = true;
         if (o.police) this.startPoliceChase(o);
+        const closeCall =
+          !road && (o.closest < 0.6 || o.lateEvade || o.airNearMiss);
         if (o.cleared && o.rewardPoints > 0)
           this.skill(o.rewardText, o.rewardPoints);
         else if (
@@ -1019,8 +1085,12 @@ export class Engine {
                 : 'KNAPP VORBEI',
             o.airNearMiss ? STUNT_POINTS.airEvade : STUNT_POINTS.nearMiss,
           );
-          this.policeBreakaway(o.airNearMiss ? 0.2 : 0.14);
+          if (this.policeChase && (closeCall || o.kind === 'towtruck'))
+            this.policeCrashInto(o);
+          else this.policeBreakaway(o.airNearMiss ? 0.2 : 0.14);
         }
+        if (this.policeChase && o.kind === 'towtruck')
+          this.policeCrashInto(o);
       }
       if (o.z < -18) o.active = false;
     }

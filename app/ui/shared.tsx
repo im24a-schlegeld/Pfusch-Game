@@ -77,6 +77,7 @@ export function gameText(text: string) {
     'SMOOTH LINE': 'SAUBERE LINIE',
     'CAUGHT THE SLIP': 'RUTSCHER ABGEFANGEN',
     'POLIZEI ABGEHÄNGT': 'POLIZEI ABGEHÄNGT',
+    'POLIZEI CRASH': 'POLIZEI CRASH',
     'POLIZEI HAT DICH GERAMMT': 'POLIZEI HAT DICH GERAMMT',
   };
   if (text.startsWith('SIGN · ')) return `ZEICHEN · ${text.slice(7)}`;
