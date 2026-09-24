@@ -165,7 +165,7 @@ export class Engine {
   readonly world: World;
   private rng: number;
   private spawnIn = 24;
-  private policeSpawnIn = 900;
+  private policeNextScore = 15000;
   private nextSafe = 0;
   private safeDirection = 1;
   private pendingWave: {
@@ -663,12 +663,10 @@ export class Engine {
       this.policeChase ||
       this.policeObstacle?.active ||
       this.distance < 500 ||
-      this.policeSpawnIn > 0 ||
+      this.score < this.policeNextScore ||
       !(this.wheelie || this.height > 0.12 || this.towJumpActive)
     )
       return;
-    this.policeSpawnIn = 900 + this.random() * 1100;
-    if (this.random() > 0.3) return;
     const lane = this.lane === 0 ? (this.random() < 0.5 ? -1 : 1) : 0;
     const police = this.spawn(
       'car',
@@ -680,6 +678,7 @@ export class Engine {
     );
     if (police) {
       this.policeObstacle = police;
+      this.policeNextScore += 15000;
       this.policeOutcome = 'none';
       this.policeImpactTarget = null;
     }
@@ -904,7 +903,6 @@ export class Engine {
       this.policeBreakaway(dt * 0.03 * this.balanceQuality);
     } else this.balancedSeconds = 0;
     this.spawnIn -= travel;
-    this.policeSpawnIn -= travel;
     this.maybeSpawnPolice();
     if (this.policeChase) {
       this.policeProgress = Math.min(1, this.policeProgress + dt * 0.16);
