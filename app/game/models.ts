@@ -69,6 +69,7 @@ function textPlane(
 export function makeTraffic(kind: string, colorIndex: number) {
   if (
     kind === 'car' ||
+    kind === 'police' ||
     kind === 'van' ||
     kind === 'towtruck' ||
     kind === 'construction'

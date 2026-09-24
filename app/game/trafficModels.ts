@@ -109,7 +109,7 @@ function batchParts(parent: THREE.Group) {
 }
 
 export function makeDetailedTraffic(
-  kind: 'car' | 'van' | 'towtruck' | 'construction',
+  kind: 'car' | 'police' | 'van' | 'towtruck' | 'construction',
   colorIndex: number,
 ) {
   const root = new THREE.Group();
@@ -136,7 +136,11 @@ export function makeDetailedTraffic(
   }
   const paint = material(
     'paint',
-    kind === 'towtruck' ? '#ced1c8' : PAINTS[colorIndex % PAINTS.length],
+    kind === 'police'
+      ? '#e4e7e0'
+      : kind === 'towtruck'
+        ? '#ced1c8'
+        : PAINTS[colorIndex % PAINTS.length],
     0.34,
     0.3,
   );
@@ -147,6 +151,7 @@ export function makeDetailedTraffic(
   const bed = material('bed', '#8b9699', 0.54, 0.75);
   const white = material('white', '#dfebe3', 0.3, 0.18, 0.22);
   const red = material('red', '#cf4838', 0.28, 0.15, 0.2);
+  const blue = material('blue', '#2f6fff', 0.2, 0.12, 0.65);
   const amber = material('amber', '#e3a644', 0.27, 0.1, 0.45);
   function mesh(
     geometry: THREE.BufferGeometry,
@@ -342,7 +347,7 @@ export function makeDetailedTraffic(
             red,
           );
     }
-  } else if (kind === 'car') {
+  } else if (kind === 'car' || kind === 'police') {
     const { width, length } = TRAFFIC_SHAPES.car;
     const half = width / 2;
     // Bumper, shoulder and roof are separate curved profiles. Wheel openings
@@ -448,6 +453,11 @@ export function makeDetailedTraffic(
       }
     }
     lamps(width, -length / 2, length / 2, 0.76);
+    if (kind === 'police') {
+      box('police-lightbar-base', [0.72, 0.07, 0.2], [0, 1.96, 0.08], trim);
+      box('police-light-red', [0.29, 0.08, 0.16], [-0.18, 2.02, 0.08], red);
+      box('police-light-blue', [0.29, 0.08, 0.16], [0.18, 2.02, 0.08], blue);
+    }
     box('grille', [1.17, 0.18, 0.055], [0, 0.64, -2.904], trim);
     for (const y of [0.6, 0.66, 0.72])
       box('grille-slat', [1.03, 0.018, 0.066], [0, y, -2.91], silver);
@@ -752,10 +762,12 @@ export function makeDetailedTraffic(
     polygonOffsetUnits: -1,
   });
   shadowMaterial.addEventListener('dispose', () => shadowMap.dispose());
+  const shapeKind: 'car' | 'van' | 'towtruck' | 'construction' =
+    kind === 'police' ? 'car' : kind;
   const shadow = new THREE.Mesh(
     new THREE.PlaneGeometry(
-      TRAFFIC_SHAPES[kind].width * 1.24,
-      TRAFFIC_SHAPES[kind].length * 1.05,
+      TRAFFIC_SHAPES[shapeKind].width * 1.24,
+      TRAFFIC_SHAPES[shapeKind].length * 1.05,
     ),
     shadowMaterial,
   );
@@ -763,10 +775,10 @@ export function makeDetailedTraffic(
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.011;
   shadow.position.z =
-    (TRAFFIC_SHAPES[kind].frontZ + TRAFFIC_SHAPES[kind].rearZ) / 2;
+    (TRAFFIC_SHAPES[shapeKind].frontZ + TRAFFIC_SHAPES[shapeKind].rearZ) / 2;
   root.add(shadow);
   root.userData.kind = kind;
-  root.userData.shape = TRAFFIC_SHAPES[kind];
+  root.userData.shape = TRAFFIC_SHAPES[shapeKind];
   return root;
 }
 

@@ -64,6 +64,15 @@ export default function RideHud({
           />
         </button>
       </div>
+      {engine.policeChase && (
+        <div className="police-alert" role="status" aria-live="polite">
+          <span className="police-lights" aria-hidden="true">
+            <i />
+            <b />
+          </span>
+          <strong>HÄNG SIE AB</strong>
+        </div>
+      )}
     </div>
   );
 }

@@ -76,6 +76,8 @@ export function gameText(text: string) {
     'CLEAN LIFT': 'SAUBER ANGEHOBEN',
     'SMOOTH LINE': 'SAUBERE LINIE',
     'CAUGHT THE SLIP': 'RUTSCHER ABGEFANGEN',
+    'POLIZEI ABGEHÄNGT': 'POLIZEI ABGEHÄNGT',
+    'POLIZEI HAT DICH GERAMMT': 'POLIZEI HAT DICH GERAMMT',
   };
   if (text.startsWith('SIGN · ')) return `ZEICHEN · ${text.slice(7)}`;
   return exact[text] ?? text;
