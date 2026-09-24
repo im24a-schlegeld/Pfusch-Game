@@ -76,6 +76,7 @@ export const STUNT_POINTS = Object.freeze({
   carJump: 700,
   nearMiss: 150,
   airEvade: 240,
+  wheelieLaneSwitch: 5,
 });
 export interface SignPickup {
   active: boolean;
@@ -156,7 +157,7 @@ export class Engine {
   }));
   readonly world: World;
   private rng: number;
-  private spawnIn = 28;
+  private spawnIn = 24;
   private nextSafe = 0;
   private safeDirection = 1;
   private pendingWave: {
@@ -167,7 +168,6 @@ export class Engine {
   private scoreGainSerial = 0;
   private accumulator = 0;
   private towCarrier: Obstacle | null = null;
-  private pendingTowLane: number | null = null;
   private towSafeObstacles = new Set<Obstacle>();
   private signSequence = 0;
   private nextSignAttempt = 300;
@@ -195,7 +195,7 @@ export class Engine {
   get onTowTruck() {
     return this.towCarrier !== null;
   }
-  move(direction: number) {
+  move(direction: number, scoreWheelieLaneSwitch = true) {
     if (this.phase !== 'playing' || !Number.isFinite(direction)) return;
     const airborne =
       !this.onTowTruck && (this.height > 0 || this.velocityY !== 0);
@@ -203,12 +203,6 @@ export class Engine {
     if (next === this.lane || (airborne && this.airLaneChangeUsed)) return;
     if (this.towCarrier && this.cabContact(this.towCarrier.z)) {
       this.crash('Missed the side jump', this.towCarrier);
-      return;
-    }
-    if (this.towCarrier && this.height < TOW_TRANSFER.minimumTakeoffHeight) {
-      // Keep the rider on the ramp until there is enough height to cross the
-      // neighbouring car. The queued swipe still chooses the landing lane.
-      this.pendingTowLane = next;
       return;
     }
     if (!airborne && !this.towCarrier) {
@@ -240,13 +234,14 @@ export class Engine {
     this.laneChangeAge = 0;
     this.laneChangeSerial++;
     this.lane = next;
+    if (scoreWheelieLaneSwitch && this.wheelie)
+      this.skill('WHEELIE LANE SWITCH', STUNT_POINTS.wheelieLaneSwitch);
     if (this.towCarrier) {
       // Only the truck being left gets a short exit exemption. Other vehicles
       // still collide if the rider jumps into them below their actual roof.
       const carrier = this.towCarrier;
       this.towSafeObstacles.add(carrier);
       this.towCarrier = null;
-      this.pendingTowLane = null;
       this.velocityY = TOW_TRANSFER.launchVelocity;
       if (this.wheelieAngle < this.balanceProfile.balancePoint)
         this.wheelieAngularVelocity -= 0.58;
@@ -481,8 +476,8 @@ export class Engine {
         environment.minimumSpacing,
         this.difficulty,
       ) *
-        0.84 -
-        this.random() * 5,
+      0.8 -
+        this.random() * 4,
     );
     this.spawnWaveSign();
   }
@@ -727,24 +722,13 @@ export class Engine {
       this.height = pose.height;
       this.towPitch = pose.pitch;
       this.velocityY = 0;
-      if (queuedTowLane !== null) this.move(queuedTowLane - this.lane);
-      if (
-        this.pendingTowLane !== null &&
-        this.height >= TOW_TRANSFER.minimumTakeoffHeight
-      )
-        this.move(this.pendingTowLane - this.lane);
+      if (queuedTowLane !== null) this.move(queuedTowLane - this.lane, false);
     } else this.towPitch *= Math.exp(-dt * 8);
     let landedTowJump = false;
     if (!this.towCarrier && (this.height > 0 || this.velocityY > 0)) {
-      // A low, broad arc just clears the roof; settle promptly after crossing.
-      // Its timing is fixed at takeoff and never steers around nearby traffic.
-      const gravity = this.towJumpActive
-        ? this.transferAge < TOW_TRANSFER.landingAfter
-          ? TOW_TRANSFER.gravity
-          : TOW_TRANSFER.landingGravity
-        : TOW_RAMP.gravity;
-      this.height += this.velocityY * dt - 0.5 * gravity * dt * dt;
-      this.velocityY -= gravity * dt;
+      // Keep the original fixed gravity arc for ordinary and tow jumps.
+      this.height += this.velocityY * dt - 0.5 * TOW_RAMP.gravity * dt * dt;
+      this.velocityY -= TOW_RAMP.gravity * dt;
       if (this.height <= 0) {
         this.landingSpeed = Math.abs(this.velocityY);
         this.landingSerial++;
@@ -821,12 +805,14 @@ export class Engine {
       this.wheelieMeters += travel;
       this.balancedSeconds += dt * this.balanceQuality;
       const risky = this.wheelieAngle > this.balanceProfile.balancePoint + 0.18;
+      const tunnelWheelieBonus = this.environment.kind === 'tunnel' ? 1.1 : 1;
       this.gain(
         risky ? 'RISKY WHEELIE' : 'WHEELIE',
         travel *
           6 *
           wheelieScoreFactor(this, this.balanceProfile) *
-          (this.speed / 22),
+          (this.speed / 22) *
+          tunnelWheelieBonus,
         'wheelie',
       );
     } else this.balancedSeconds = 0;

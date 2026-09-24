@@ -42,8 +42,8 @@ export const TOW_RAMP = Object.freeze({
   frontHeight: 1.05,
   deckThickness: 0.09,
   halfWidth: 1.25,
-  launchVelocity: 5.85,
-  gravity: 26,
+  launchVelocity: 8.4,
+  gravity: 21,
   cabRearZ: -1.2,
 });
 /** World-space front tire contacts, checked against the assembled bike meshes. */

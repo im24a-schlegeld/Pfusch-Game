@@ -608,6 +608,27 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
   width: 100% !important;
   margin-top: 1px !important;
 }
+.product-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, .85fr) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  align-items: stretch !important;
+}
+.product-actions .button {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin-top: 1px !important;
+  padding-inline: 8px !important;
+  white-space: normal !important;
+  line-height: 1.15 !important;
+}
+.product-actions .product-unequip {
+  grid-column: 1 / -1 !important;
+  border-color: #686864 !important;
+  color: #d0d0cb !important;
+  background: transparent !important;
+}
 .compact-buy-button:disabled {
   background: transparent !important;
   color: #8e8e8a !important;
@@ -656,6 +677,14 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
     font-size: 14px !important;
   }
   .compact-product-description {
+    font-size: 10px !important;
+  }
+  .product-actions {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) !important;
+    gap: 5px !important;
+  }
+  .product-actions .button {
+    padding-inline: 5px !important;
     font-size: 10px !important;
   }
   .inline-color-swatches button {

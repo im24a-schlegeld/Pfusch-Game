@@ -9,6 +9,7 @@ import { HELMETS, HELMET_COLORS, VISOR_COLORS, equipHelmet } from '../domain/hel
 import { isSticker, saveStickers } from '../domain/stickers';
 import {
   equipConfiguration,
+  equipmentSlot,
   equippable,
   imagePath,
   previewLoadout,
@@ -105,6 +106,19 @@ export default function Garage({
     services.analytics.track('product_equipped', { id: p.id });
     notify(`${p.title} ausgerüstet und gespeichert.`);
   }
+  function unequipProduct(p: Product) {
+    const slot = equipmentSlot(p);
+    if (player.equipped[slot] !== p.id) return;
+    const equipped = { ...player.equipped };
+    delete equipped[slot];
+    update({ ...player, equipped });
+    if (selected?.id === p.id) {
+      setDraft(null);
+      setSelected(null);
+      setConfiguration(null);
+    }
+    notify(`${p.title} abgelegt.`);
+  }
   function previewBike(
     values: Partial<Pick<Player, 'bike' | 'paint' | 'rims'>>,
   ) {
@@ -137,9 +151,15 @@ export default function Garage({
     setDraft(null);
     notify(`${bike.name} Setup ausgerüstet.`);
   }
-  const visible = products.filter(
-    (p) => filter === 'all' || p.category === filter,
-  );
+  const isMotorcycleProduct = (p: Product) =>
+    p.category === 'bike' || p.handle === 'schlusselanhanger' || isSticker(p);
+  const visible = products.filter((p) => {
+    const motorcycleItem = isMotorcycleProduct(p);
+    if (tab === 'bike') {
+      return motorcycleItem && (filter === 'all' || filter === 'motorcycle');
+    }
+    return !motorcycleItem && (filter === 'all' || p.category === filter);
+  });
   const openProduct = (p: Product) => {
     const config = initialConfiguration(appearance, p);
     setConfiguration(config);
@@ -153,7 +173,10 @@ export default function Garage({
         Käufe in der Garage sind nur digitale Spielgegenstände. Es wird nichts physisch versendet.
       </p>
       <div className="category-filter" aria-label="Produktkategorien">
-        {['all', 'upper', 'head', 'accessory', 'collectible'].map((f) => (
+        {(tab === 'bike'
+          ? ['all', 'motorcycle']
+          : ['all', 'upper', 'head', 'accessory', 'collectible']
+        ).map((f) => (
           <button
             key={f}
             aria-pressed={filter === f}
@@ -168,7 +191,9 @@ export default function Garage({
                   ? 'KOPFBEDECKUNG'
                   : f === 'accessory'
                     ? 'ACCESSOIRES'
-                    : 'SAMMELSTÜCKE'}
+                    : f === 'collectible'
+                      ? 'SAMMELSTÜCKE'
+                      : 'MOTORRAD'}
           </button>
         ))}
       </div>
@@ -229,12 +254,7 @@ export default function Garage({
                 onClick={() => {
                   if (isOwned && canWear) {
                     equipProduct(p, config);
-                  } else if (canWear) {
-                    setDraft(previewLoadout(player, p, config));
-                    setSelected(p);
-                    setConfiguration(config);
-                    services.analytics.track('product_viewed', { id: p.id });
-                  }
+                  } else openProduct(p);
                   setAngle(productView === 'front' ? Math.PI : 0);
                   setInspectionRevision((r) => r + 1);
                 }}
@@ -425,30 +445,57 @@ export default function Garage({
                     ))}
                   </fieldset>
                 )}
-                {isSticker(p) && <button className="button small" onClick={() => setStickerBike(appearance)}>AUF FAHRZEUG PLATZIEREN</button>}
-                <button
-                  className="button small primary compact-buy-button"
-                  disabled={
-                    (state === 'LOCKED' && player.coins < digitalPrice(p)) ||
-                    (p.preview?.numberCustomization &&
-                      !/^\d{1,2}$/.test(config.customNumber ?? ''))
-                  }
-                  onClick={() => {
-                    if (state === 'LOCKED') {
-                      unlockProduct(p, config);
-                    } else if (canWear && !exact) {
-                      equipProduct(p, config);
+                {isSticker(p) && (
+                  <button
+                    className="button small"
+                    onClick={() => setStickerBike(appearance)}
+                  >
+                    AUF FAHRZEUG PLATZIEREN
+                  </button>
+                )}
+                <div className="product-actions">
+                  <button
+                    className="button small primary compact-buy-button"
+                    disabled={
+                      (state === 'LOCKED' && player.coins < digitalPrice(p)) ||
+                      (p.preview?.numberCustomization &&
+                        !/^\d{1,2}$/.test(config.customNumber ?? ''))
                     }
-                  }}
-                >
-                  {exact
-                    ? 'AUSGERÜSTET'
-                    : state === 'LOCKED'
-                      ? `KAUFEN · ${digitalPrice(p)} COINS`
-                      : canWear
-                        ? 'AUSRÜSTEN'
-                        : 'GEKAUFT'}
-                </button>
+                    onClick={() => {
+                      if (state === 'LOCKED') {
+                        unlockProduct(p, config);
+                      } else if (canWear && !exact) {
+                        equipProduct(p, config);
+                      }
+                    }}
+                  >
+                    {exact
+                      ? 'AUSGERÜSTET'
+                      : state === 'LOCKED'
+                        ? `KAUFEN · ${digitalPrice(p)} COINS`
+                        : canWear
+                          ? 'AUSRÜSTEN'
+                          : 'GEKAUFT'}
+                  </button>
+                  <button
+                    className="button small"
+                    onClick={() => {
+                      openProduct(p);
+                      setAngle(productView === 'front' ? Math.PI : 0);
+                      setInspectionRevision((r) => r + 1);
+                    }}
+                  >
+                    ANSEHEN
+                  </button>
+                  {isEquipped && (
+                    <button
+                      className="button small product-unequip"
+                      onClick={() => unequipProduct(p)}
+                    >
+                      ABLEGEN
+                    </button>
+                  )}
+                </div>
               </div>
             </article>
           );
@@ -569,14 +616,12 @@ export default function Garage({
                 <h2>KLEIDUNG</h2>
               </div>
               <div className="equipped-slots">
-                {(['upper', 'head', 'accessory', 'keychain'] as const).map((slot) => (
+                {(['upper', 'head', 'accessory'] as const).map((slot) => (
                   <div key={slot}>
                     <span className="eyebrow">
                       {slot === 'upper'
                         ? 'OBERTEIL'
-                        : slot === 'head'
-                          ? 'KOPFBEDECKUNG'
-                          : slot === 'keychain' ? 'SCHLÜSSELANHÄNGER' : 'ACCESSOIRE'}
+                        : slot === 'head' ? 'KOPFBEDECKUNG' : 'ACCESSOIRE'}
                     </span>
                     <b>
                       {products.find((p) => p.id === player.equipped[slot])
@@ -641,7 +686,6 @@ export default function Garage({
               {grid}
             </TabsContent>
             <TabsContent value="bike">
-              <button className="button small sticker-workshop-open" onClick={() => setStickerBike(appearance)}>STICKER-WERKSTATT ÖFFNEN</button>
               <div className="section-intro">
                 <h2>MOTORRÄDER</h2>
               </div>
@@ -692,6 +736,28 @@ export default function Garage({
                   </article>
                 ))}
               </div>
+              <div className="equipped-slots motorcycle-equipped">
+                <div>
+                  <span className="eyebrow">SCHLÜSSELANHÄNGER</span>
+                  <b>
+                    {products.find((p) => p.id === player.equipped.keychain)
+                      ?.title ?? 'Kein Schlüsselanhänger'}
+                  </b>
+                  {player.equipped.keychain && (
+                    <button
+                      onClick={() => {
+                        const equipped = { ...player.equipped };
+                        delete equipped.keychain;
+                        update({ ...player, equipped });
+                        setDraft(null);
+                      }}
+                    >
+                      ENTFERNEN
+                    </button>
+                  )}
+                </div>
+              </div>
+              {grid}
               {!owned(`bike:${bike.id}`) && (
                 <button
                   className="button bike-unlock"

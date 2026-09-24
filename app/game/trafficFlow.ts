@@ -1,14 +1,15 @@
 /** All distances are metres; speeds are metres/second. No km/h/m/s mixing. */
 export const TRAFFIC_FLOW = Object.freeze({
-  density: 0.52,
+  // Keep a reachable safe lane while making the road feel consistently busy.
+  density: 0.46,
   maximumTrafficSpeed: 23,
   maximumCarSpeed: 16,
   towClosingSpeed: 12,
   reactionSeconds: 0.5,
   laneChangeSeconds: 0.38,
   minimumArrivalGap: 1.22,
-  pairedTrafficChance: 0.07,
-  towCarPairChance: 0.16,
+  pairedTrafficChance: 0.11,
+  towCarPairChance: 0.18,
 });
 export function trafficWaveSpacing(
   initial: number,
