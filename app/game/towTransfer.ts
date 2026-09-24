@@ -1,6 +1,8 @@
 /** World metres and seconds. Traffic never changes the player's chosen arc. */
 export const TOW_TRANSFER = Object.freeze({
   launchVelocity: 8.4,
+  /** Retained for test/readability compatibility; the engine no longer queues swipes on it. */
+  minimumTakeoffHeight: 1.02,
   lateralSeconds: 0.58,
 });
 const smooth = (t: number) => {
