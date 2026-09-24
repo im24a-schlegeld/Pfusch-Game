@@ -14,6 +14,7 @@
   color-scheme: dark;
 }
 
+
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; height: 100%; min-height: 100%; margin: 0; }
 body {
@@ -251,6 +252,18 @@ h3 { font-size: 20px !important; }
 .challenge-card p, .reward-card p, .product-body p, .bike-info p, .catalog-note, .settings-section p, .preview-source-note, .detail-description { color: #a4a4a0 !important; }
 .product-image { background: #323232 !important; border-color: #4b4b4b !important; }
 .ownership { background: #323232 !important; color: #d0d0cc !important; border-color: #555 !important; }
+.recent-product-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 6px;
+  border: 1px solid #f4f4f2;
+  background: #323232e8;
+  color: #f4f4f2;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
 
 .garage-layout, .garage-preview, .garage-controls, .garage-product-panel, .product-detail, .reward-art, .authoritative-image, .settings-section, .ranking-list, .ranking-head, .lifetime-stats, .level-list, .completed-challenges, .earned {
   background: #323232 !important;
@@ -539,8 +552,22 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
 .compact-product-grid {
   gap: 12px !important;
 }
+.product-loading {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  border: 1px solid #4b4b4b;
+  color: #bcbcb8;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
 .compact-product-card {
   border: 1px solid #4b4b4b !important;
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 360px;
 }
 .compact-product-card:last-child {
   border-bottom: 1px solid #4b4b4b !important;
@@ -623,11 +650,8 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
   white-space: normal !important;
   line-height: 1.15 !important;
 }
-.product-actions .product-unequip {
-  grid-column: 1 / -1 !important;
-  border-color: #686864 !important;
-  color: #d0d0cb !important;
-  background: transparent !important;
+.product-actions.sticker-actions {
+  grid-template-columns: 1fr !important;
 }
 .compact-buy-button:disabled {
   background: transparent !important;
@@ -2209,5 +2233,27 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
     height: 240px !important;
     min-height: 240px !important;
     max-height: 240px !important;
+  }
+}
+
+/* Mobile touch targets stay readable and easy to hit with one hand. */
+@media (max-width: 760px) {
+  .garage-tabs [data-slot='tabs-trigger'] {
+    min-height: 48px !important;
+    padding-inline: 10px !important;
+    font-size: 10px !important;
+  }
+  .category-filter button,
+  .garage-angles button,
+  .equipped-slots button {
+    min-height: 40px !important;
+    padding-inline: 11px !important;
+  }
+  .product-actions .button,
+  .compact-product-card > .button {
+    min-height: 42px !important;
+  }
+  .compact-product-card .product-image {
+    min-height: 220px !important;
   }
 }

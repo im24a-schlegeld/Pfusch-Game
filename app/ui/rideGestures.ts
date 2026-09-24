@@ -1,7 +1,7 @@
 interface PointerState {id:number;x:number;y:number;startX:number;startY:number;time:number}
 interface GestureActions {weight(value:number):void;move(direction:number):void;togglePause():void}
-export const RIDE_GESTURE=Object.freeze({lanePixels:155,weightDeadZone:10,weightPixels:76,twoFingerStartMs:180,twoFingerTapMs:340,tapSlop:14});
-/** Each intentional 100 CSS-pixel swipe makes ONE lane change; lifting re-arms it. */
+export const RIDE_GESTURE=Object.freeze({lanePixels:44,weightDeadZone:10,weightPixels:76,twoFingerStartMs:180,twoFingerTapMs:340,tapSlop:14});
+/** A short, intentional horizontal swipe makes ONE lane change; lifting re-arms it. */
 export class RideGestures {
   private pointers:PointerState[]=[];
   private owner:number|null=null;
@@ -22,7 +22,8 @@ export class RideGestures {
     const dy=y-this.anchorY;
     this.actions.weight(Math.sign(dy)*Math.max(0,Math.min(1,(Math.abs(dy)-RIDE_GESTURE.weightDeadZone)/RIDE_GESTURE.weightPixels)));
     const dx=x-this.anchorX;
-    if(!this.laneUsed&&Math.abs(dx)>=RIDE_GESTURE.lanePixels){this.actions.move(Math.sign(dx));this.laneUsed=true;}
+    const lateralEnough=Math.abs(dx)>=Math.abs(dy)*0.72;
+    if(!this.laneUsed&&lateralEnough&&Math.abs(dx)>=RIDE_GESTURE.lanePixels){this.actions.move(Math.sign(dx));this.laneUsed=true;}
   }
   up(id:number,time:number){
     const i=this.pointers.findIndex(p=>p.id===id);if(i<0)return;this.pointers.splice(i,1);

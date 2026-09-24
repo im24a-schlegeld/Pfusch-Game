@@ -307,9 +307,16 @@
     grid-template-rows: 44px 72px 36px !important;
     gap: 6px 8px !important;
   }
+  .ride-screen .v42-hud {
+    inset: max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right)) auto
+      max(8px, env(safe-area-inset-left)) !important;
+  }
   .ride-screen .v42-score {
     grid-row: 2;
+    min-height: 72px;
     padding: 7px 8px !important;
+    border-top-width: 3px;
   }
   .ride-screen .v42-score > strong {
     font-size: 34px !important;
@@ -324,6 +331,34 @@
   }
   .ride-screen .v42-top-actions {
     gap: 4px;
+  }
+  .ride-screen .v42-sign-slot {
+    height: 40px;
+    padding: 2px 5px;
+    background: #10131580;
+    border: 1px solid #ffffff44;
+  }
+  .ride-screen .v42-pause {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    background: #10131580 !important;
+    border: 1px solid #ffffff66 !important;
+  }
+  .ride-screen .ride-balance {
+    top: 2px !important;
+    height: 38px;
+    padding: 0 4px !important;
+  }
+  .ride-screen .ride-tip {
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    max-width: calc(100% - 24px) !important;
+    padding: 7px 10px !important;
+    border: 1px solid #ffffff80;
+    background: #10131590 !important;
+    font-size: 9px !important;
+    text-shadow: 0 1px 2px #000;
   }
   .ride-screen .ride-feedback {
     top: calc(max(10px, env(safe-area-inset-top)) + 173px);

@@ -6,7 +6,6 @@ import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
 import { disposeUnique, makeTrafficVariants } from './models';
 import { makeBike } from './vehicle';
-import { ROAD_EVENT_KINDS } from './roadEvents';
 import { makeWorldView } from './worldView';
 import { DAY_SKY, makeWorldLighting } from './worldLighting';
 import { createBikeHeadlightRig } from './bikeHeadlight';
@@ -110,12 +109,15 @@ export default function SceneView({
     }
     const { renderer, environment } = session;
     const low = player.settings.quality === 'low';
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, low ? 1 : 1.6));
+    // Cap render resolution before it can multiply the Three.js workload on
+    // high-DPI desktop displays. Gameplay uses the same fixed-step engine.
+    const pixelCap = low ? 1 : mode === 'ride' ? 1.35 : 1.2;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelCap));
     renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#323232');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
-    renderer.shadowMap.enabled = mode !== 'ride';
+    renderer.shadowMap.enabled = mode !== 'ride' && !low;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
@@ -137,7 +139,7 @@ export default function SceneView({
     const sunlight = new THREE.DirectionalLight('#fff5e6', 3.4);
     sunlight.position.set(-3, 7, 4);
     sunlight.castShadow = mode !== 'ride';
-    sunlight.shadow.mapSize.set(low ? 512 : 1024, low ? 512 : 1024);
+    sunlight.shadow.mapSize.set(low ? 256 : 512, low ? 256 : 512);
     Object.assign(sunlight.shadow.camera, {
       left: -4,
       right: 4,
@@ -176,6 +178,7 @@ export default function SceneView({
     let worldView: ReturnType<typeof makeWorldView> | undefined;
     const traffic: THREE.Group[] = [];
     const templates = new Map<string, THREE.Group>();
+    const variantSets = new Map<string, readonly THREE.Group[]>();
     let appliedAngle = inspection.current.inspectionAngle,
       appliedRevision = inspection.current.inspectionRevision;
     let rotation = appliedAngle ?? 2.35;
@@ -211,10 +214,6 @@ export default function SceneView({
         scene.add(group);
         traffic.push(group);
       }
-      for (const kind of [...TRAFFIC_KINDS, ...ROAD_EVENT_KINDS])
-        makeTrafficVariants(kind).forEach((model, color) =>
-          templates.set(`${kind}:${color}`, model),
-        );
     } else {
       scene.background = new THREE.Color('#323232');
       scene.fog = null;
@@ -472,7 +471,17 @@ export default function SceneView({
           const key = `${o.kind}:${o.color}`;
           if (group.userData.key !== key) {
             group.clear();
-            group.add(templates.get(key)!.clone(true));
+            let template = templates.get(key);
+            if (!template) {
+              let variants = variantSets.get(o.kind);
+              if (!variants) {
+                variants = makeTrafficVariants(o.kind);
+                variantSets.set(o.kind, variants);
+              }
+              template = variants[o.color] ?? variants[0];
+              templates.set(key, template);
+            }
+            group.add(template.clone(true));
             group.userData.key = key;
           }
           animateTraffic(
@@ -687,6 +696,18 @@ export default function SceneView({
             );
           }
         }),
+      );
+      variantSets.forEach((variants) =>
+        variants.forEach((t) =>
+          t.traverse((o) => {
+            if (o instanceof THREE.Mesh) {
+              geometries.add(o.geometry);
+              (Array.isArray(o.material) ? o.material : [o.material]).forEach(
+                (m) => mats.add(m),
+              );
+            }
+          }),
+        ),
       );
       geometries.forEach((g) => g.dispose());
       mats.forEach((m) => {

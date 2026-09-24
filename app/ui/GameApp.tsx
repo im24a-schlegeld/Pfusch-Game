@@ -23,7 +23,7 @@ import { BIKES, DAILY_CHALLENGES } from '../domain/config';
 import { refreshDaily } from '../domain/progression';
 import { createServices, type Services } from '../services';
 import { GameAudio } from '../game/audio';
-import { Coin, Preview, XpBar, fmt, gameText, preloadScene } from './shared';
+import { Coin, Preview, XpBar, fmt, gameText } from './shared';
 import Ride from './Ride';
 import Garage from './Garage';
 import {
@@ -65,19 +65,20 @@ export default function GameApp() {
   );
   useEffect(() => {
     let alive = true;
-    void preloadScene();
-    void Promise.all([
-      services.auth.getUser(),
-      services.players.load(),
-      services.products.list(),
-    ])
-      .then(([, p, catalog]) => {
+    void Promise.all([services.auth.getUser(), services.players.load()])
+      .then(([, p]) => {
         if (alive) {
           current.current = p;
           setPlayer(p);
-          setProducts(catalog);
           services.analytics.track('game_started');
         }
+        // The first screen does not need the full product catalog. Load it
+        // after the player is visible so the ride/menu can become interactive
+        // without waiting on preview assets and catalog parsing.
+        return services.products.list();
+      })
+      .then((catalog) => {
+        if (alive) setProducts(catalog);
       })
       .catch((e) => {
         if (alive) setError(e instanceof Error ? e.message : 'Start fehlgeschlagen');

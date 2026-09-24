@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { ArrowRight, Check, Lock, RotateCw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Player, Product, ProductConfiguration } from '../domain/types';
@@ -26,10 +26,13 @@ import {
   money,
 } from './shared';
 import { ProgressContent } from './Screens';
-import ProductPreview from './ProductPreview';
 import ColorSection from './ColorSection';
 import { visiblePalette } from '../domain/paletteView';
 const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
+
+const isMotorcycleProduct = (p: Product) =>
+  p.category === 'bike' || p.handle === 'schlusselanhanger' || isSticker(p);
+
 interface Props {
   player: Player;
   products: Product[];
@@ -60,10 +63,14 @@ export default function Garage({
     useState<ProductConfiguration | null>(null);
   const [angle, setAngle] = useState(2.35);
   const [inspectionRevision, setInspectionRevision] = useState(0);
+  const [recentProductIds, setRecentProductIds] = useState<string[]>([]);
   const appearance = draft ?? player;
   const bike = BIKES.find((b) => b.id === appearance.bike) ?? BIKES[0];
   const owned = (id: string) => player.ownedItems.includes(id);
+  const rememberProduct = (id: string) =>
+    setRecentProductIds((ids) => [id, ...ids.filter((value) => value !== id)].slice(0, 3));
   function unlockProduct(p: Product, config: ProductConfiguration) {
+    rememberProduct(p.id);
     const unlocked = unlock(player, p.id, digitalPrice(p));
     if (!unlocked) {
       notify('Du brauchst mehr Coins.');
@@ -96,6 +103,7 @@ export default function Garage({
     notify(`${p.title} freigeschaltet.`);
   }
   function equipProduct(p: Product, config: ProductConfiguration) {
+    rememberProduct(p.id);
     const next = equipConfiguration(player, p, config);
     if (!next) {
       notify('Schalte den Artikel frei, bevor du ihn ausrüstest.');
@@ -107,6 +115,7 @@ export default function Garage({
     notify(`${p.title} ausgerüstet und gespeichert.`);
   }
   function unequipProduct(p: Product) {
+    rememberProduct(p.id);
     const slot = equipmentSlot(p);
     if (player.equipped[slot] !== p.id) return;
     const equipped = { ...player.equipped };
@@ -151,16 +160,25 @@ export default function Garage({
     setDraft(null);
     notify(`${bike.name} Setup ausgerüstet.`);
   }
-  const isMotorcycleProduct = (p: Product) =>
-    p.category === 'bike' || p.handle === 'schlusselanhanger' || isSticker(p);
-  const visible = products.filter((p) => {
-    const motorcycleItem = isMotorcycleProduct(p);
-    if (tab === 'bike') {
-      return motorcycleItem && (filter === 'all' || filter === 'motorcycle');
-    }
-    return !motorcycleItem && (filter === 'all' || p.category === filter);
-  });
+  const visible = useMemo(
+    () => {
+      const filtered = products.filter((p) => {
+        const motorcycleItem = isMotorcycleProduct(p);
+        if (tab === 'bike') {
+          return motorcycleItem && (filter === 'all' || filter === 'motorcycle');
+        }
+        return !motorcycleItem && (filter === 'all' || p.category === filter);
+      });
+      return [...filtered].sort(
+        (a, b) =>
+          (recentProductIds.indexOf(a.id) < 0 ? 99 : recentProductIds.indexOf(a.id)) -
+          (recentProductIds.indexOf(b.id) < 0 ? 99 : recentProductIds.indexOf(b.id)),
+      );
+    },
+    [products, tab, filter, recentProductIds],
+  );
   const openProduct = (p: Product) => {
+    rememberProduct(p.id);
     const config = initialConfiguration(appearance, p);
     setConfiguration(config);
     setDraft(previewLoadout(appearance, p, config));
@@ -198,7 +216,12 @@ export default function Garage({
         ))}
       </div>
       <div className="product-grid compact-product-grid">
-        {visible.map((p) => {
+        {products.length === 0 ? (
+          <div className="product-loading" role="status">
+            <span className="spinner" />
+            <span>PRODUKTE WERDEN GELADEN</span>
+          </div>
+        ) : visible.map((p) => {
           const state = ownership(player, p);
           const colors = productColors(p);
           const baseConfig = initialConfiguration(player, p);
@@ -236,11 +259,6 @@ export default function Garage({
           );
           const isOwned = state !== 'LOCKED';
           const isEquipped = state === 'EQUIPPED';
-          const exact =
-            isEquipped &&
-            baseConfig.variantId === config.variantId &&
-            baseConfig.customNumber === config.customNumber &&
-            baseConfig.hoodEnabled === config.hoodEnabled;
           const canWear = equippable(p);
           return (
             <article
@@ -250,11 +268,13 @@ export default function Garage({
             >
               <button
                 className="product-image product-open"
-                aria-label={`${isOwned && canWear ? 'Ausrüsten' : 'Ansehen'} ${p.title}`}
+                aria-label={`${isOwned && canWear ? 'Ausrüsten' : isSticker(p) ? 'Stickerbild' : 'Ansehen'} ${p.title}`}
                 onClick={() => {
                   if (isOwned && canWear) {
                     equipProduct(p, config);
-                  } else openProduct(p);
+                  } else if (!isSticker(p)) {
+                    openProduct(p);
+                  }
                   setAngle(productView === 'front' ? Math.PI : 0);
                   setInspectionRevision((r) => r + 1);
                 }}
@@ -267,6 +287,7 @@ export default function Garage({
                   src={imagePath(mockupSource)}
                   alt={p.title}
                   loading="lazy"
+                  decoding="async"
                   width="360"
                   height="360"
                   onLoad={(e) =>
@@ -347,6 +368,9 @@ export default function Garage({
                         ? 'GEKAUFT'
                         : 'SPIELITEM'}
                 </span>
+                {recentProductIds.includes(p.id) && (
+                  <span className="recent-product-badge">ZULETZT</span>
+                )}
               </button>
               <div className="product-body compact-product-body">
                 <h3>{p.title}</h3>
@@ -445,15 +469,9 @@ export default function Garage({
                     ))}
                   </fieldset>
                 )}
-                {isSticker(p) && (
-                  <button
-                    className="button small"
-                    onClick={() => setStickerBike(appearance)}
-                  >
-                    AUF FAHRZEUG PLATZIEREN
-                  </button>
-                )}
-                <div className="product-actions">
+                <div
+                  className={`product-actions${isSticker(p) ? ' sticker-actions' : ''}`}
+                >
                   <button
                     className="button small primary compact-buy-button"
                     disabled={
@@ -464,38 +482,41 @@ export default function Garage({
                     onClick={() => {
                       if (state === 'LOCKED') {
                         unlockProduct(p, config);
-                      } else if (canWear && !exact) {
-                        equipProduct(p, config);
+                      } else if (canWear) {
+                        if (isEquipped) unequipProduct(p);
+                        else equipProduct(p, config);
                       }
                     }}
                   >
-                    {exact
-                      ? 'AUSGERÜSTET'
-                      : state === 'LOCKED'
-                        ? `KAUFEN · ${digitalPrice(p)} COINS`
-                        : canWear
-                          ? 'AUSRÜSTEN'
-                          : 'GEKAUFT'}
+                    {state === 'LOCKED'
+                      ? `KAUFEN · ${digitalPrice(p)} COINS`
+                      : canWear
+                        ? isEquipped
+                          ? 'ABLEGEN'
+                          : 'AUSRÜSTEN'
+                        : 'GEKAUFT'}
                   </button>
-                  <button
-                    className="button small"
-                    onClick={() => {
-                      openProduct(p);
-                      setAngle(productView === 'front' ? Math.PI : 0);
-                      setInspectionRevision((r) => r + 1);
-                    }}
-                  >
-                    ANSEHEN
-                  </button>
-                  {isEquipped && (
+                  {!isSticker(p) && (
                     <button
-                      className="button small product-unequip"
-                      onClick={() => unequipProduct(p)}
+                      className="button small"
+                      onClick={() => {
+                        openProduct(p);
+                        setAngle(productView === 'front' ? Math.PI : 0);
+                        setInspectionRevision((r) => r + 1);
+                      }}
                     >
-                      ABLEGEN
+                      ANSEHEN
                     </button>
                   )}
                 </div>
+                {isSticker(p) && (
+                  <button
+                    className="button small"
+                    onClick={() => setStickerBike(appearance)}
+                  >
+                    AUF FAHRZEUG PLATZIEREN
+                  </button>
+                )}
               </div>
             </article>
           );

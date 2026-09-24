@@ -272,7 +272,7 @@ export default function Ride({
       />
       <div
         className="gesture-zone"
-        aria-label="Steuerung: seitlich deutlich wischen; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
+        aria-label="Steuerung: seitlich wischen für Spurwechsel; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
         onContextMenu={(e) => e.preventDefault()}
       />
       <RideHud engine={engine} best={player.highScore} pause={pause} />
@@ -328,7 +328,7 @@ export default function Ride({
             S / ↓ ANHEBEN · W / ↑ KORRIGIEREN
           </span>
           <span className="touch-control-tip">
-            DEUTLICH WISCHEN = SPURWECHSEL · ZWEI FINGER = PAUSE
+            ← / → WISCHEN = SPURWECHSEL · ZWEI FINGER = PAUSE
           </span>
         </div>
       )}
