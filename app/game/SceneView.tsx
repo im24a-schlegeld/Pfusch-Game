@@ -346,6 +346,11 @@ export default function SceneView({
           policeCrashTarget =
             targetIndex >= 0 ? traffic[targetIndex] : undefined;
           if (policeCrashGroup) policeCrashFrom.copy(policeCrashGroup.position);
+          if (policeCrashTarget)
+            collisionTraffic.set(
+              policeCrashTarget,
+              policeCrashTarget.position.clone(),
+            );
         }
         if (policeCrashAge < 1.15) policeCrashAge += dt;
         const moving = engine.phase === 'playing';
@@ -363,6 +368,12 @@ export default function SceneView({
         crashTravel?.advance(dt, crashed && crashActive);
         const distance = engine.distance + (crashTravel?.distance ?? 0);
         worldView!.update(engine.world, distance);
+        worldView!.setBlitzerFlash(
+          engine.blitzerIndex,
+          engine.blitzerFlashRemaining > 0
+            ? Math.min(1, engine.blitzerFlashRemaining * 5)
+            : 0,
+        );
         updateGlow(
           lighting!.update(
             engine.world,
@@ -478,7 +489,11 @@ export default function SceneView({
         previousXPosition = engine.x;
         engine.obstacles.forEach((o, i) => {
           const group = traffic[i];
-          group.visible = o.active;
+          // The pursuit car is a hidden gameplay state. Reveal it only after
+          // it has committed to a crash, so the player sees the impact rather
+          // than a police car teleporting behind the rider every frame.
+          group.visible =
+            o.active && (!o.police || engine.policeOutcome !== 'none');
           if (!o.active) return;
           group.position.set(
             o.lane * LANE + o.offsetX,
@@ -513,13 +528,28 @@ export default function SceneView({
             policeCrashAge < 1.15
           ) {
             const crashTarget = policeCrashTarget?.position;
-            const progress = THREE.MathUtils.clamp(policeCrashAge / 0.9, 0, 1);
+            // Cubic ease-in gives the short final burst of speed before the
+            // police car wedges into the obstacle or tow truck.
+            const linear = THREE.MathUtils.clamp(policeCrashAge / 0.72, 0, 1);
+            const progress = linear * linear * (3 - 2 * linear);
             if (crashTarget)
               group.position.lerpVectors(policeCrashFrom, crashTarget, progress);
             else
               group.position.copy(policeCrashFrom).add(new THREE.Vector3(0, 0, -progress * 6));
             group.rotation.z = Math.sin(progress * Math.PI) * 0.55;
             group.rotation.y = progress * 0.9;
+          } else if (
+            o.police &&
+            engine.policeOutcome === 'escaped' &&
+            group === policeCrashGroup &&
+            policeCrashTarget
+          ) {
+            // Leave the police car at the impact instead of recycling it into
+            // ordinary traffic, which previously caused repeated crashes at
+            // the same spot.
+            group.position.copy(policeCrashTarget.position);
+            group.rotation.z = 0.18;
+            group.rotation.y = 0.35;
           }
           animateTraffic(
             group,

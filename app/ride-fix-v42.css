@@ -321,6 +321,11 @@
   display: grid;
   gap: 3px;
 }
+.police-instruction {
+  color: #f5f6ee;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
 .police-countdown {
   color: #ffe36b;
   font-size: 9px;
@@ -328,24 +333,34 @@
 }
 .police-lights {
   display: inline-flex;
-  width: 54px;
-  height: 14px;
-  gap: 3px;
+  position: relative;
+  width: 86px;
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f4434d 0%, #9c4b7c 48%, #3f83ff 100%);
+  box-shadow: 0 0 14px #f4434d99, 0 0 14px #3f83ff99;
 }
 .police-lights i,
 .police-lights b {
-  flex: 1;
+  position: absolute;
   display: block;
-  border-radius: 1px;
+  top: -4px;
+  width: 52%;
+  height: 24px;
+  border-radius: 999px;
+  filter: blur(4px);
 }
 .police-lights i {
+  left: -7%;
   background: #f4434d;
-  box-shadow: 0 0 10px #f4434d;
+  box-shadow: 0 0 13px #f4434d;
   animation: police-red 0.56s steps(2, end) infinite;
 }
 .police-lights b {
+  right: -7%;
   background: #3f83ff;
-  box-shadow: 0 0 10px #3f83ff;
+  box-shadow: 0 0 13px #3f83ff;
   animation: police-blue 0.56s steps(2, end) infinite;
 }
 @keyframes police-red {

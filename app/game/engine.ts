@@ -39,6 +39,11 @@ import {
   trafficArrivalGap,
   trafficWaveSpacing,
 } from './trafficFlow';
+import {
+  blitzerDistance,
+  blitzerIndexAtOrBefore,
+  hasBlitzer,
+} from './speedCamera';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
 export type ObstacleKind = TrafficKind | RoadEventKind;
@@ -59,6 +64,7 @@ export interface Obstacle {
   airNearMiss: boolean;
   lateEvade: boolean;
   police: boolean;
+  policeImpactFrozen: boolean;
 }
 export interface GameEvent {
   text: string;
@@ -128,6 +134,9 @@ export class Engine {
   policeOutcome: 'none' | 'escaped' | 'caught' = 'none';
   policeOutcomeSerial = 0;
   policeImpactTarget: Obstacle | null = null;
+  blitzerIndex = -1;
+  blitzerFlashSerial = 0;
+  blitzerFlashRemaining = 0;
   balancedSeconds = 0;
   wheelieMeters = 0;
   nearMisses = 0;
@@ -164,6 +173,7 @@ export class Engine {
     airNearMiss: false,
     lateEvade: false,
     police: false,
+    policeImpactFrozen: false,
   }));
   readonly world: World;
   private rng: number;
@@ -188,6 +198,7 @@ export class Engine {
   resumeRemaining = 0;
   private towWarningFor: Obstacle | null = null;
   private policeObstacle: Obstacle | null = null;
+  private nextBlitzerIndex = 0;
   private id: string;
   constructor(
     public bike: Bike,
@@ -362,6 +373,7 @@ export class Engine {
   crash(cause = 'Traffic collision', obstacle: Obstacle | null = null) {
     if (this.phase !== 'playing') return;
     this.phase = 'crashed';
+    this.blitzerFlashRemaining = 0;
     if (this.policeChase) {
       this.policeChase = false;
       this.policeRamRemaining = 0;
@@ -616,6 +628,7 @@ export class Engine {
         airNearMiss: false,
         lateEvade: false,
         police,
+        policeImpactFrozen: false,
       });
     }
     return o;
@@ -625,14 +638,53 @@ export class Engine {
     this.policeObstacle = obstacle;
     this.policeChase = true;
     this.policeProgress = 0.16;
-    this.policeRamRemaining = 3;
+    this.policeRamRemaining = 5;
     this.policeOutcome = 'none';
     this.policeImpactTarget = null;
     this.event = {
-      text: 'HÄNG SIE AB',
+      text: 'HÄNGE SIE AB · CLOSE CALL ODER SPRUNG',
       kind: 'warning',
       serial: this.event.serial + 1,
     };
+  }
+  private checkBlitzer() {
+    // Keep a short four-metre activation window so a stunt started directly
+    // beside the cabinet still counts instead of requiring one exact frame.
+    const lastIndex = blitzerIndexAtOrBefore(this.distance + 4);
+    if (lastIndex < 0) return;
+    while (this.nextBlitzerIndex <= lastIndex) {
+      const index = this.nextBlitzerIndex++;
+      const cameraDistance = blitzerDistance(index);
+      if (!hasBlitzer(index) || cameraDistance < this.distance - 4) continue;
+      const section = this.world.at(cameraDistance);
+      if (
+        !section ||
+        section.kind === 'tunnel' ||
+        section.kind.startsWith('bridge')
+      )
+        continue;
+      if (
+        this.policeChase ||
+        this.policeObstacle?.active ||
+        !(this.wheelie || this.height > 0.12 || this.towJumpActive)
+      ) {
+        // Wait until the camera is actually behind us before abandoning it.
+        this.nextBlitzerIndex = index;
+        return;
+      }
+      const police = this.spawn('car', this.lane, 132, 0, 0, true);
+      if (!police) continue;
+      this.blitzerIndex = index;
+      this.blitzerFlashSerial++;
+      this.blitzerFlashRemaining = 0.42;
+      this.startPoliceChase(police);
+      this.event = {
+        text: 'BLITZER · HÄNGE SIE AB',
+        kind: 'warning',
+        serial: this.event.serial + 1,
+      };
+      break;
+    }
   }
   private policeBreakaway(amount: number) {
     if (!this.policeChase || !Number.isFinite(amount) || amount <= 0) return;
@@ -650,6 +702,8 @@ export class Engine {
         o.z > 18 &&
         (o.kind === 'car' || o.kind === 'towtruck' || o.kind === 'van'),
     ) ?? null;
+    if (this.policeImpactTarget)
+      this.policeImpactTarget.policeImpactFrozen = true;
     if (this.policeObstacle) {
       this.policeObstacle.z = this.policeImpactTarget?.z ?? 24;
       this.policeObstacle.passed = true;
@@ -663,6 +717,7 @@ export class Engine {
     this.policeOutcome = 'escaped';
     this.policeOutcomeSerial++;
     this.policeImpactTarget = target;
+    target.policeImpactFrozen = true;
     if (this.policeObstacle) {
       this.policeObstacle.lane = target.lane;
       this.policeObstacle.offsetX = target.offsetX;
@@ -778,6 +833,10 @@ export class Engine {
       distanceAtTime(this.elapsed, this.bike) -
       distanceAtTime(previousElapsed, this.bike);
     this.distance += travel;
+    this.blitzerFlashRemaining = Math.max(
+      0,
+      this.blitzerFlashRemaining - dt,
+    );
     this.world.advance(this.distance);
     this.roadRoughness *= Math.exp(-dt * 7);
     this.surfaceGrip += (1 - this.surfaceGrip) * (1 - Math.exp(-dt * 1.8));
@@ -932,6 +991,7 @@ export class Engine {
     this.wheelie =
       this.wheelieAngle > 0.12 &&
       (this.height === 0 || this.onTowTruck || this.towJumpActive);
+    this.checkBlitzer();
     const scrape = tailScrape(
       this.bike.id,
       this.wheelieAngle,
@@ -986,6 +1046,10 @@ export class Engine {
         continue;
       }
       if (o.police && this.policeOutcome === 'escaped') {
+        if (o.z < -18) o.active = false;
+        continue;
+      }
+      if (o.policeImpactFrozen) {
         if (o.z < -18) o.active = false;
         continue;
       }

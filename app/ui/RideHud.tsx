@@ -71,7 +71,8 @@ export default function RideHud({
             <b />
           </span>
           <span className="police-alert-copy">
-            <strong>HÄNG SIE AB</strong>
+            <strong>HÄNGE SIE AB</strong>
+            <small className="police-instruction">CLOSE CALL ODER SPRUNG</small>
             {engine.policeRamRemaining > 0 && (
               <small className="police-countdown">
                 RAMMEN IN {Math.ceil(engine.policeRamRemaining)}

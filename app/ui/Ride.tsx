@@ -280,14 +280,14 @@ export default function Ride({
         <div className="ride-feedback" aria-label="Punktegewinne">
           {eventVisible &&
             engine.event.kind !== 'skill' &&
-            engine.event.text !== 'HÄNG SIE AB' && (
-            <div
-              key={`event-${engine.event.serial}`}
-              className={`skill-event ${engine.event.kind}`}
-            >
-              {gameText(engine.event.text)}
-            </div>
-          )}
+            !engine.event.text.includes('HÄNGE SIE AB') && (
+              <div
+                key={`event-${engine.event.serial}`}
+                className={`skill-event ${engine.event.kind}`}
+              >
+                {gameText(engine.event.text)}
+              </div>
+            )}
           {engine.scoreGains
             .filter((gain) => gain.group !== 'ride')
             .map((gain) => (
