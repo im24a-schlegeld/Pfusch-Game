@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 
 type Point = [number, number, number];
 type EdgeSample = { x: number; y: number };
@@ -26,11 +27,11 @@ function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number) {
   return lowest;
 }
 
-/** sidePanel() stores two copies of its ordered boundary, one per wall face. */
+/** The formed side cover starts with its ordered outer boundary before its creases. */
 function readSideBoundary(cover: THREE.Mesh): Point[] {
   const p = cover.geometry.getAttribute('position');
-  const count = p.count / 2;
-  if (!Number.isInteger(count) || count < 3) {
+  const count = SUPERMOTO_SIDE_COVER.length;
+  if (p.count < count * 2) {
     throw new Error('Unexpected Supermoto side-cover topology');
   }
   return Array.from({ length: count }, (_, i) => [
@@ -130,23 +131,29 @@ export function addSupermotoRearProtection(
   if (covers.length !== 2) throw new Error('Expected two Supermoto side covers');
   const boundary = readSideBoundary(cover);
   const frontZ = 0.44;
-  const endZ = Math.max(...boundary.map(p => p[2]));
+  const coverEndZ = Math.max(...boundary.map(p => p[2]));
+  const tailTip = SUPERMOTO_TAIL_FENDER[SUPERMOTO_TAIL_FENDER.length - 1];
+  const endZ = tailTip[0] - 0.018;
   const sections = new Map<number, { halfWidth: number; edgeY: number; crown: number }>();
 
   const section = (z: number) => {
     const cached = sections.get(z);
     if (cached) return cached;
-    const edge = lowerEdgeAt(boundary, z);
+    const edge = lowerEdgeAt(boundary, Math.min(z, coverEndZ));
     const roof = undersideAt(tail.geometry, 0, z);
 
-    // Close the slim plastics directly underneath the seat. The diagonal
-    // lower subframe stays exposed instead of pulling this sheet into a bowl.
-    const edgeY = edge.y + 0.004;
-    const crown = Math.min(
-      edgeY + 0.014,
-      roof - 0.002,
-    );
-    const result = { halfWidth: edge.x + 0.001, edgeY, crown };
+    // The wheel-side surface joins the lower edge of the side panels, then
+    // rises smoothly into the slim tail. Its rear lip stays inside the fender.
+    let halfWidth = edge.x - 0.002;
+    if (z > coverEndZ) {
+      const span = SUPERMOTO_TAIL_FENDER.findIndex(p => p[0] >= z);
+      const a = SUPERMOTO_TAIL_FENDER[Math.max(0, span - 1)], b = SUPERMOTO_TAIL_FENDER[span];
+      halfWidth = THREE.MathUtils.lerp(a[1], b[1], (z - a[0]) / (b[0] - a[0])) - 0.007;
+    }
+    const join = THREE.MathUtils.smoothstep(z, coverEndZ - 0.055, coverEndZ + 0.045);
+    const edgeY = THREE.MathUtils.lerp(edge.y + 0.002, roof - 0.018, join);
+    const crown = Math.min(edgeY + 0.012, roof - 0.004);
+    const result = { halfWidth, edgeY, crown };
     sections.set(z, result);
     return result;
   };

@@ -1,4 +1,5 @@
 import { SPORT_LENS_FACES } from '../app/game/sportDesign';
+import { SUPERMOTO_LENS_FACE } from '../app/game/supermotoBodywork';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DirectionalLight,
@@ -35,7 +36,7 @@ type Bike = ReturnType<typeof makeBike>;
 const lensFaces: Readonly<Record<BikeModelId, readonly Point[]>> = {
   '125': [[0, 0.967, -0.604]],
   scooter: [[0, 0.611, -0.785]],
-  '450': [[0, 0.99, -0.641]],
+  '450': [SUPERMOTO_LENS_FACE],
   // Shared S1 optical faces; the assertions below also verify the actual mesh vertices.
   '701': SPORT_LENS_FACES,
 };
@@ -111,7 +112,7 @@ function expectAnchorsOnVisibleLenses(bike: Bike, model: BikeModelId) {
       model === '125'
         ? color === 'e7e4b8'
         : model === '450'
-          ? color === '1c272a'
+          ? object.name === 'supermoto-headlight-glass'
           : object.name ===
             (model === '701' ? 'sport-projector-lens' : 'scooter-headlight');
     if (!isLens) return;

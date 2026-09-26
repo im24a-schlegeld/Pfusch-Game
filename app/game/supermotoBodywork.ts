@@ -1,8 +1,58 @@
 import { BufferGeometry, Float32BufferAttribute, MathUtils, ShapeUtils, Vector2 } from 'three';
-import { SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 
 type Section = readonly [number, number, number, number];
 type Point = [number, number, number];
+
+/** Two moulded faces sharing a thin return edge. Interior crease vertices are
+ * real folds in the panel; the ordered outline remains first in each face. */
+function sideSheet(side: number, outline: Point[], creases: Point[], regions: number[][]) {
+  const points = [...outline, ...creases], faceSize = points.length;
+  const positions: number[] = [], uv: number[] = [], indices: number[] = [];
+  for (const offset of [0.002, -0.002]) for (const [x, y, z] of points) {
+    positions.push(side * (x + offset), y, z);
+    uv.push((z + 0.5) / 1.5, (y - 0.65) / 0.35);
+  }
+  for (const region of regions) {
+    const projected = region.map(i => new Vector2(points[i][2], points[i][1]));
+    for (const face of ShapeUtils.triangulateShape(projected, [])) {
+      const [a, b, c] = face.map(i => region[i]);
+      const pa = points[a], pb = points[b], pc = points[c];
+      const outward = side * ((pb[1] - pa[1]) * (pc[2] - pa[2]) - (pb[2] - pa[2]) * (pc[1] - pa[1])) > 0;
+      const b0 = outward ? b : c, c0 = outward ? c : b;
+      indices.push(a, b0, c0, a + faceSize, c0 + faceSize, b0 + faceSize);
+    }
+  }
+  for (let a = 0; a < outline.length; a++) {
+    const b = (a + 1) % outline.length;
+    if (side > 0) indices.push(a, a + faceSize, b, b, a + faceSize, b + faceSize);
+    else indices.push(a, b, a + faceSize, b, b + faceSize, a + faceSize);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+  return geometry;
+}
+
+export function supermotoShroudGeometry(side: number) {
+  return sideSheet(side, SUPERMOTO_SHROUD, [
+    [0.191, 0.918, -0.280], [0.181, 0.900, -0.150], [0.149, 0.917, 0.040],
+  ], [
+    [0, 1, 2, 3, 4, 14, 13, 12],
+    [0, 12, 13, 14, 4, 5, 6, 7, 8, 9, 10, 11],
+  ]);
+}
+
+export function supermotoSideCoverGeometry(side: number) {
+  return sideSheet(side, SUPERMOTO_SIDE_COVER, [
+    [0.173, 0.818, 0.290], [0.145, 0.901, 0.540],
+  ], [
+    [0, 1, 2, 3, 4, 12, 11],
+    [0, 11, 12, 4, 5, 6, 7, 8, 9, 10],
+  ]);
+}
 
 /** A moulded plastic sheet with a closed 4 mm edge, rather than a solid oval. */
 function formedSheet(rows: number, columns: number, pointAt: (u: number, v: number) => Point, thickness: Point) {
@@ -60,16 +110,17 @@ export function supermotoTailFenderGeometry() {
 }
 
 const FRONT_FENDER: readonly Section[] = [
-  // Preserve the fork-side stations and extend only the nose by about 25%.
-  [-1.190, 0.044, 0.007, 0.779],
-  [-1.060, 0.068, 0.014, 0.793],
-  [-0.900, 0.084, 0.025, 0.817],
-  [-0.792, 0.092, 0.036, 0.849],
-  [-0.684, 0.089, 0.037, 0.858],
-  [-0.595, 0.080, 0.026, 0.857],
-  [-0.520, 0.067, 0.016, 0.835],
-  [-0.462, 0.054, 0.010, 0.782],
-  [-0.428, 0.038, 0.005, 0.704],
+  // Coordinates are final bike coordinates; the crown mounts at the lower
+  // fork bridge and the trailing tongue follows the back of the front wheel.
+  [-1.090, 0.056, 0.007, 0.838],
+  [-1.055, 0.068, 0.011, 0.848],
+  [-0.940, 0.078, 0.019, 0.869],
+  [-0.805, 0.085, 0.029, 0.886],
+  [-0.665, 0.086, 0.029, 0.887],
+  [-0.572, 0.080, 0.024, 0.869],
+  [-0.514, 0.069, 0.019, 0.829],
+  [-0.474, 0.055, 0.013, 0.777],
+  [-0.452, 0.041, 0.007, 0.740],
 ];
 
 /** Thin arched front blade: raised over the tyre, with its nose bending down. */
@@ -80,31 +131,48 @@ export function supermotoFrontFenderGeometry() {
     // The center spine is high, with folded shoulders on either side. This
     // gives the blade its moulded trough section without making its wall thick.
     const shoulder = 1 - 0.58 * v * v - 0.42 * Math.pow(v, 6);
-    return [width * v, edgeY + crown * shoulder - 0.025,
-      -0.390 + (z + 0.428 + noseCorner * 0.023) * 0.65];
+    return [width * v, edgeY + crown * shoulder, z + noseCorner * 0.024];
   }, [0, -0.004, 0]);
 }
 
 type Outline = readonly (readonly [number, number])[];
 const LAMP_OPENING: Outline = [
-  [-0.047, 0.943], [0.047, 0.943], [0.068, 0.974],
-  [0.058, 1.048], [-0.058, 1.048], [-0.068, 0.974],
+  [-0.038, 0.934], [0.038, 0.934], [0.070, 1.007],
+  [0.069, 1.067], [-0.069, 1.067], [-0.070, 1.007],
 ];
 function maskFrontZ(y: number, x: number) {
-  const profile = [[0.89, -0.625], [0.945, -0.663], [1.025, -0.644], [1.096, -0.601], [1.154, -0.564]];
-  const i = Math.min(profile.length - 2, Math.max(0, profile.findIndex(p => p[0] >= y) - 1));
+  const profile = [[0.885, -0.538], [0.935, -0.559], [1.010, -0.520], [1.080, -0.464], [1.140, -0.420]];
+  const next = profile.findIndex(p => p[0] >= y);
+  const i = next < 0 ? profile.length - 2 : Math.max(0, next - 1);
   const a = profile[i], b = profile[i + 1];
-  return MathUtils.lerp(a[1], b[1], MathUtils.clamp((y - a[0]) / (b[0] - a[0]), 0, 1)) + x * x * 2.7;
+  return MathUtils.lerp(a[1], b[1], MathUtils.clamp((y - a[0]) / (b[0] - a[0]), 0, 1)) + x * x * 2.0;
 }
 
+/** Visible lens center, shared by the real light anchor and the lamp mesh. */
+export const SUPERMOTO_LENS_FACE: Point = [0, 1.006, maskFrontZ(1.006, 0) - 0.004];
+
 /** Thin shaped front and back faces, including real return walls around holes. */
-function maskShell(outline: Outline, hole: Outline | undefined, thickness: number, offset: number) {
+function maskShell(outline: Outline, hole: Outline | undefined, thickness: number, offset: number, lensCenter = false, ridge?: Outline) {
   const contours = [outline, ...(hole ? [hole] : [])];
-  const points = contours.flat(), count = points.length;
-  const triangles = ShapeUtils.triangulateShape(outline.map(p => new Vector2(...p)), hole ? [hole.map(p => new Vector2(...p))] : []);
+  const points = contours.flat();
+  const ridgeStart = points.length;
+  if (ridge) points.push(...ridge);
+  if (lensCenter) points.push([SUPERMOTO_LENS_FACE[0], SUPERMOTO_LENS_FACE[1]]);
+  const count = points.length;
+  const triangles = ridge && hole
+    ? [
+      ...ShapeUtils.triangulateShape(outline.map(p => new Vector2(...p)), [ridge.map(p => new Vector2(...p))])
+        .map(face => face.map(i => i < outline.length ? i : ridgeStart + i - outline.length)),
+      ...ShapeUtils.triangulateShape(ridge.map(p => new Vector2(...p)), [hole.map(p => new Vector2(...p))])
+        .map(face => face.map(i => i < ridge.length ? ridgeStart + i : outline.length + i - ridge.length)),
+    ]
+    : lensCenter
+    ? outline.map((_, i) => [i, (i + 1) % outline.length, count - 1])
+    : ShapeUtils.triangulateShape(outline.map(p => new Vector2(...p)), hole ? [hole.map(p => new Vector2(...p))] : []);
   const positions: number[] = [], indices: number[] = [], uv: number[] = [];
-  for (const depth of [offset, offset + thickness]) for (const [x, y] of points) {
-    positions.push(x, y, maskFrontZ(y, x) + depth); uv.push((x + 0.13) / 0.26, (y - 0.89) / 0.27);
+  for (const depth of [offset, offset + thickness]) for (const [i, [x, y]] of points.entries()) {
+    const ridgeDepth = ridge && i >= ridgeStart ? -0.008 : 0;
+    positions.push(x, y, maskFrontZ(y, x) + depth + ridgeDepth); uv.push((x + 0.13) / 0.26, (y - 0.885) / 0.255);
   }
   for (const [a, b, c] of triangles) {
     const pa = points[a], pb = points[b], pc = points[c];
@@ -113,10 +181,11 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
       a + count, (positive ? b : c) + count, (positive ? c : b) + count);
   }
   let first = 0;
-  for (const contour of contours) {
+  for (const [contourIndex, contour] of contours.entries()) {
     for (let i = 0; i < contour.length; i++) {
       const a = first + i, b = first + (i + 1) % contour.length;
-      indices.push(a, b, a + count, b, b + count, a + count);
+      if (contourIndex === 0) indices.push(a, b, a + count, b, b + count, a + count);
+      else indices.push(a, a + count, b, b, a + count, b + count);
     }
     first += contour.length;
   }
@@ -124,12 +193,6 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
   g.setAttribute('position', new Float32BufferAttribute(positions, 3));
   g.setAttribute('uv', new Float32BufferAttribute(uv, 2));
   g.setIndex(indices);
-  const vertex = g.getAttribute('position');
-  for (let i = 0; i < vertex.count; i++) {
-    const y = 0.930 + (vertex.getY(i) - 0.98) * 0.78;
-    vertex.setXYZ(i, vertex.getX(i) * 1.20, y,
-      vertex.getZ(i) + 0.1445 + (y - 0.94) * 0.30);
-  }
   g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
   return g;
 }
@@ -137,17 +200,39 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
 /** Cut-corner front mask folds back around the fork, with a real recessed lamp aperture. */
 export function supermotoHeadlightMaskGeometry() {
   return maskShell([
-    [-0.051, 0.891], [0.051, 0.891], [0.083, 0.910], [0.107, 0.968],
-    [0.116, 1.077], [0.102, 1.132], [0.078, 1.154],
-    [-0.078, 1.154], [-0.102, 1.132], [-0.116, 1.077], [-0.107, 0.968], [-0.083, 0.910],
-  ], LAMP_OPENING, 0.004, 0);
+    [-0.047, 0.885], [0.047, 0.885], [0.077, 0.913], [0.108, 0.988],
+    [0.125, 1.086], [0.118, 1.128], [0.099, 1.140],
+    [-0.099, 1.140], [-0.118, 1.128], [-0.125, 1.086], [-0.108, 0.988], [-0.077, 0.913],
+  ], LAMP_OPENING, 0.004, 0, false, lampOutline(1.20));
 }
 
 function lampOutline(scale: number): Outline {
-  return LAMP_OPENING.map(([x, y]) => [x * scale, 0.994 + (y - 0.994) * scale] as const);
+  return LAMP_OPENING.map(([x, y]) => [x * scale, 1.006 + (y - 1.006) * scale] as const);
 }
 
 export function supermotoLampGeometry(part: 'bezel' | 'reflector' | 'glass') {
   if (part === 'bezel') return maskShell(lampOutline(1.045), lampOutline(0.87), 0.013, -0.001);
-  return maskShell(lampOutline(0.89), undefined, 0.003, part === 'glass' ? -0.004 : 0.011);
+  if (part === 'glass') return maskShell(lampOutline(0.89), undefined, 0.003, -0.004, true);
+  // The reflector is a shallow faceted bowl behind the clear lens. A flat
+  // silver plate reads as an opaque grey screen at normal riding distances.
+  // Its small central aperture seats the bulb instead of drawing a white dot
+  // floating on an uninterrupted surface.
+  const outer = lampOutline(0.89), geometry = maskShell(outer, lampOutline(0.16), 0.003, 0.006);
+  const p = geometry.getAttribute('position'), faceSize = p.count / 2;
+  for (let i = 0; i < p.count; i++) if (i % faceSize >= outer.length) p.setZ(i, p.getZ(i) + 0.031);
+  // Match each outer edge with the corresponding throat edge. Generic hole
+  // triangulation draws long diagonals across unrelated reflector sectors.
+  const indices: number[] = [], n = outer.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, a = i, b = j, c = i + n, d = j + n;
+    indices.push(a, c, b, b, c, d,
+      a + faceSize, b + faceSize, c + faceSize, b + faceSize, d + faceSize, c + faceSize,
+      a, b, a + faceSize, b, b + faceSize, a + faceSize,
+      c, c + faceSize, d, d, c + faceSize, d + faceSize);
+  }
+  geometry.setIndex(indices);
+  const reflector = geometry.toNonIndexed();
+  geometry.dispose();
+  reflector.computeVertexNormals(); reflector.computeBoundingBox(); reflector.computeBoundingSphere();
+  return reflector;
 }

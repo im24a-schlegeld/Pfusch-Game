@@ -1,4 +1,4 @@
-import {TUBE_EXHAUST,exhaustAxisY,raisedLinerY} from './exhaustClearance';
+import {TUBE_EXHAUST} from './exhaustClearance';
 import * as THREE from 'three';
 type P = [number, number, number];
 function add(root: THREE.Object3D, g: THREE.BufferGeometry, m: THREE.Material, name: string) {
@@ -15,7 +15,7 @@ function _panel(root:THREE.Object3D, vertices:number[], indices:number[], mat:TH
   return add(root,g,mat,name);
 }
 function _clonePaint(base:THREE.MeshStandardMaterial){const m=base.clone();m.side=THREE.DoubleSide;return m;}
-/** Only the pipe/silencer and a raised channel in the EXISTING liner. No box panels. */
+/** A formed alloy can and continuous four-stroke header, fitted beside the liner. */
 export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMaterial) {
   if(body.getObjectByName('v42-tube-exhaust'))return;
   const names=new Set(['single-exhaust','exhaust-mount-band','exhaust-frame-hanger','open-silencer-outlet','connected-exhaust-pipe']);
@@ -24,69 +24,78 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   if(old.length!==5)throw new Error(`Expected the five original Supermoto exhaust parts, got ${old.length}`);
   old.forEach(o=>{o.removeFromParent();o.geometry.dispose();});
   const e=TUBE_EXHAUST,group=new THREE.Group();group.name='v42-tube-exhaust';body.add(group);
-  const silver=color('#a6abb0',.63,.40),carbon=color('#222427',.2,.72),inner=color('#0e0f10',.15,.94);
-  const a=new THREE.Vector3(e.x,e.startY+.018,e.startZ+.02),b=new THREE.Vector3(e.x,e.endY+.03,e.endZ-.01);
+  const silver=color('#a4a6a3',.72,.36),carbon=color('#303334',.36,.56),inner=color('#101213',.08,.96);
+  inner.side=THREE.DoubleSide;
+  const headerFinish=color('#827768',.70,.38);
+  const a=new THREE.Vector3(e.x,e.startY,e.startZ),b=new THREE.Vector3(e.x,e.endY,e.endZ);
   const axis=b.clone().sub(a).normalize(),len=a.distanceTo(b);
   const orient=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis);
-  const shell=new THREE.LatheGeometry([
-    new THREE.Vector2(.022,0),new THREE.Vector2(.034,.014),new THREE.Vector2(e.radius,.040),
-    new THREE.Vector2(e.radius,len-.068),new THREE.Vector2(e.radius-.003,len-.035),
-  ],40);
-  const can=add(group,shell,silver,'single-exhaust');can.position.copy(a);can.quaternion.copy(orient);
-  const capGeometry=new THREE.LatheGeometry([
-    new THREE.Vector2(e.radius,len-.070),new THREE.Vector2(e.radius-.002,len-.029),
-    new THREE.Vector2(.039,len+.001),new THREE.Vector2(.027,len+.006),
-    new THREE.Vector2(.023,len+.006),new THREE.Vector2(.023,len-.061),
-  ],40);
-  const cap=add(group,capGeometry,carbon,'open-silencer-outlet');cap.position.copy(a);cap.quaternion.copy(orient);
-  const bore=add(group,new THREE.CylinderGeometry(.023,.023,.050,32,1,true),inner,'silencer-inner-bore');
-  bore.quaternion.copy(orient);bore.position.copy(b).addScaledVector(axis,-.028);
-  const endRing=add(group,new THREE.TorusGeometry(.025,.0024,8,40),silver,'silencer-outlet-ring');
-  endRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);endRing.position.copy(b).addScaledVector(axis,.007);
-  const band=add(group,new THREE.CylinderGeometry(.049,.049,.016,32,1,true),carbon,'exhaust-mount-band');
-  band.quaternion.copy(orient);band.position.copy(a).addScaledVector(axis,len*.42);
-  // Four-stroke header: short outlet from the head, tight downward bend ahead
-  // of the cylinder, then a continuous return up the right side to the can.
-  tube(group,[[.046,.724,-.238],[.135,.709,-.247],[.190,.664,-.286],
-    [.197,.610,-.295],[.196,.570,-.252],[.191,.580,-.173],
-    [.170,.656,-.119],[.129,.746,-.055],[.105,.776,.130],[.103,.782,.310],
-    [e.x,e.startY+.018,e.startZ+.02]],.0175,silver,'connected-exhaust-pipe');
-  tube(group,[[.075,.976,.62],[e.x,.94,.64],[e.x,exhaustAxisY(.64)+.045,.64]],.008,carbon,'exhaust-frame-hanger');
-  const liner=body.getObjectByName('supermoto-under-tail-liner');
-  if(!(liner instanceof THREE.Mesh))throw new Error('Supermoto liner is missing');
-  const p=liner.geometry.getAttribute('position');let raised=0;
-  const original=Float32Array.from(p.array as ArrayLike<number>),half=p.count/2;
-  if(!Number.isInteger(half))throw new Error('Expected a two-sided liner sheet');
-  // Raising the liner also moves it into a narrower part of the side cover.
-  // Fit its width to that actual inner wall, not the former low outer edge.
-  const wallTriangles: THREE.Triangle[]=[];
-  body.traverse(object=>{
-    if(!(object instanceof THREE.Mesh)||object.name!=='supermoto-side-cover')return;
-    const pos=object.geometry.getAttribute('position'),ix=object.geometry.index!;
-    for(let i=0;i<ix.count;i+=3){
-      const triangle=new THREE.Triangle(...[0,1,2].map(j=>new THREE.Vector3().fromBufferAttribute(pos,ix.getX(i+j))) as [THREE.Vector3,THREE.Vector3,THREE.Vector3]);
-      if(triangle.getMidpoint(new THREE.Vector3()).x>0)wallTriangles.push(triangle);
+  // Each ring is (lateral radius, vertical radius, distance along the can).
+  // Independent radii retain the pressed oval shell and a circular outlet.
+  const ovalShell=(profile:P[],closed=false)=>{
+    const positions:number[]=[],indices:number[]=[],sides=32;
+    for(const [rx,rz,y] of profile)for(let side=0;side<sides;side++){
+      const angle=side/sides*Math.PI*2;
+      positions.push(Math.cos(angle)*rx,y,Math.sin(angle)*rz);
     }
-  });
-  const wallRay=new THREE.Ray(),wallHit=new THREE.Vector3(),inward=new THREE.Vector3(-1,0,0);
-  const innerWallX=(y:number,z:number)=>{
-    wallRay.set(new THREE.Vector3(1,y,z),inward);let x=Infinity;
-    for(const t of wallTriangles)if(wallRay.intersectTriangle(t.a,t.b,t.c,false,wallHit))x=Math.min(x,wallHit.x);
-    return x;
+    for(let row=0;row<profile.length-(closed?0:1);row++)for(let side=0;side<sides;side++){
+      const i=row*sides+side,j=((row+1)%profile.length)*sides+side;
+      const next=row*sides+(side+1)%sides;
+      const nextRow=((row+1)%profile.length)*sides+(side+1)%sides;
+      indices.push(i,j,next,next,j,nextRow);
+    }
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    geometry.setIndex(indices);geometry.computeVertexNormals();
+    return geometry;
   };
-  for(let i=0;i<p.count;i++){
-    const j=i%half,baseY=original[j*3+1],oldY=original[i*3+1];
-    let x=original[j*3],newY=raisedLinerY(x,baseY,original[j*3+2])+(oldY-baseY);
-    const z=original[j*3+2];
-    if(x>0)for(let pass=0;pass<8;pass++){
-      x=Math.min(x,innerWallX(newY,z)-.007);
-      newY=Math.max(newY,raisedLinerY(x,baseY,z)+(oldY-baseY));
-    }
-    p.setXYZ(i,x,newY,z);
-    if(newY>oldY+1e-7)raised++;
+  const shell=ovalShell([
+    [.0185,.0185,-.008],[.022,.023,0],[.034,.043,.025],[e.radius,e.verticalRadius,.067],
+    [e.radius,e.verticalRadius,len-.067],[.049,.069,len-.032],
+    [.0255,.0255,len-.032],[.0185,.0185,.012],
+  ],true);
+  const can=add(group,shell,silver,'single-exhaust');can.position.copy(a);can.quaternion.copy(orient);
+  const capGeometry=ovalShell([
+    [e.radius+.001,e.verticalRadius+.001,len-.069],
+    [.050,.070,len-.032],[.044,.058,len-.009],
+    [.033,.038,len+.009],[.031,.031,len+.015],
+    [.026,.026,len+.015],[.026,.026,len-.059],
+  ],true);
+  const cap=add(group,capGeometry,carbon,'open-silencer-outlet');cap.position.copy(a);cap.quaternion.copy(orient);
+  const bore=add(group,new THREE.CylinderGeometry(.0255,.0255,.067,32,1,true),inner,'silencer-inner-bore');
+  bore.quaternion.copy(orient);bore.position.copy(b).addScaledVector(axis,-.019);
+  const boreBack=add(group,new THREE.CircleGeometry(.0255,32),inner,'silencer-bore-depth');
+  boreBack.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);
+  boreBack.position.copy(b).addScaledVector(axis,-.053);
+  const endRing=add(group,new THREE.TorusGeometry(.028,.0028,8,32),silver,'silencer-outlet-ring');
+  endRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);endRing.position.copy(b).addScaledVector(axis,.015);
+  const bandAt=len*.53;
+  const band=add(group,ovalShell([
+    [.0525,.0745,bandAt-.011],[.0525,.0745,bandAt+.011],
+  ]),carbon,'exhaust-mount-band');
+  band.quaternion.copy(orient);band.position.copy(a);
+  // The header comes forward out of the head, curls below the radiator, then
+  // returns above the crankcase to the silencer. Its bore never changes size.
+  const headerPoints:P[]=[
+    [.046,.724,-.238],[.129,.718,-.263],[.197,.680,-.292],
+    [.220,.603,-.291],[.218,.564,-.239],[.211,.581,-.164],
+    [.197,.665,-.101],[.168,.720,.006],[.168,.719,.164],
+    [.174,.721,.292],[e.x,e.startY,e.startZ],
+  ];
+  tube(group,headerPoints,.0185,headerFinish,'connected-exhaust-pipe');
+  const bandTop=new THREE.Vector3(0,bandAt,-.075).applyQuaternion(orient).add(a);
+  tube(group,[[.073,.924,.618],[.121,.891,.618],[bandTop.x,bandTop.y,bandTop.z]],.0075,carbon,'exhaust-frame-hanger');
+  // Small, real joints at the outlet and bracket make the separated surfaces
+  // legible without adding heavy decorative geometry to the running game.
+  for(const fraction of [.13,.83]){
+    const bead=add(group,new THREE.TorusGeometry(.019,.0013,6,20),silver,'header-weld');
+    const curve=(group.getObjectByName('connected-exhaust-pipe') as THREE.Mesh<THREE.TubeGeometry>).geometry.parameters.path;
+    bead.position.copy(curve.getPointAt(fraction));
+    bead.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),curve.getTangentAt(fraction));
   }
-  p.needsUpdate=true;liner.geometry.computeVertexNormals();liner.geometry.computeBoundingBox();liner.geometry.computeBoundingSphere();
-  liner.userData.exhaustChannelRaised=raised;group.userData.sideCutouts=0;group.userData.boxPanels=0;
+  const liner=body.getObjectByName('supermoto-under-tail-liner');
+  if(liner)liner.userData.exhaustChannelRaised=0;
+  group.userData.sideCutouts=0;group.userData.boxPanels=0;
 }
 
 /** Color rim surfaces only. Spokes stay silver on the supermoto. */

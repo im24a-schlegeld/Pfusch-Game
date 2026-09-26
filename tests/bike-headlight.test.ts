@@ -1,4 +1,6 @@
 import { SPORT_LENS_FACES } from '../app/game/sportDesign';
+import { SUPERMOTO_LENS_FACE } from '../app/game/supermotoBodywork';
+import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 import { describe, expect, it } from 'vitest';
 import { Group, Scene, SpotLight, Vector3 } from 'three';
 import { createBikeHeadlightRig } from '../app/game/bikeHeadlight';
@@ -36,10 +38,10 @@ const fixtures: readonly Fixture[] = [
   {
     model: '450',
     scale: 1.06,
-    rear: 0.76,
-    front: -0.77,
-    radius: 0.3119 * 1.05,
-    emitters: [[0, 0.99, -0.641]],
+    rear: SUPERMOTO_CHASSIS.rearAxle,
+    front: SUPERMOTO_CHASSIS.frontAxle,
+    radius: SUPERMOTO_CHASSIS.wheelRadius,
+    emitters: [SUPERMOTO_LENS_FACE],
   },
   {
     model: '701',
