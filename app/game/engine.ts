@@ -39,15 +39,20 @@ import {
   trafficArrivalGap,
   trafficWaveSpacing,
 } from './trafficFlow';
+import { SPEED_CAMERA, SpeedCameraSchedule } from './speedCamera';
 import {
-  blitzerDistance,
-  blitzerIndexAtOrBefore,
-  hasBlitzer,
-} from './speedCamera';
+  POLICE,
+  createPoliceVehicle,
+  firstPoliceHit,
+  policeImpactOffset,
+  policeRampPose,
+  policeTargetShape,
+} from './policePursuit';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
 export type ObstacleKind = TrafficKind | RoadEventKind;
 export interface Obstacle {
+  spawnId: number;
   active: boolean;
   kind: ObstacleKind;
   lane: number;
@@ -64,7 +69,6 @@ export interface Obstacle {
   airNearMiss: boolean;
   lateEvade: boolean;
   police: boolean;
-  policeImpactFrozen: boolean;
 }
 export interface GameEvent {
   text: string;
@@ -129,12 +133,17 @@ export class Engine {
   scrapeIntensity = 0;
   policeChase = false;
   policeProgress = 0;
-  /** Seconds left in the warning phase before the police can ram. */
+  /** Actual remaining chase time; traffic obstruction pauses the deadline. */
   policeRamRemaining = 0;
   policeOutcome: 'none' | 'escaped' | 'caught' = 'none';
   policeOutcomeSerial = 0;
   policeImpactTarget: Obstacle | null = null;
-  blitzerIndex = -1;
+  readonly policeVehicle = createPoliceVehicle();
+  policeRamObstacle: Obstacle | null = null;
+  private readonly cameraSchedule = new SpeedCameraSchedule();
+  get speedCamera() {
+    return this.cameraSchedule.camera;
+  }
   blitzerFlashSerial = 0;
   blitzerFlashRemaining = 0;
   balancedSeconds = 0;
@@ -157,6 +166,7 @@ export class Engine {
   /** Obstacle responsible for the current crash, for collision-aware visuals. */
   crashObstacle: Obstacle | null = null;
   obstacles: Obstacle[] = Array.from({ length: 32 }, () => ({
+    spawnId: 0,
     active: false,
     kind: 'car',
     lane: 0,
@@ -173,12 +183,12 @@ export class Engine {
     airNearMiss: false,
     lateEvade: false,
     police: false,
-    policeImpactFrozen: false,
   }));
   readonly world: World;
   private rng: number;
   private spawnIn = 24;
-  private policeNextScore = 15000;
+  private spawnSerial = 0;
+  private nextPatrolDistance = 900;
   private nextSafe = 0;
   private safeDirection = 1;
   private pendingWave: {
@@ -197,8 +207,12 @@ export class Engine {
   private transferOriginX = 0;
   resumeRemaining = 0;
   private towWarningFor: Obstacle | null = null;
-  private policeObstacle: Obstacle | null = null;
-  private nextBlitzerIndex = 0;
+  private policeTargetId = 0;
+  private policeImpactFromX = 0;
+  private policeImpactFromZ = 0;
+  private policeImpactEndZ = 0;
+  private policeJumpTarget: { obstacle: Obstacle; spawnId: number } | null =
+    null;
   private id: string;
   constructor(
     public bike: Bike,
@@ -259,12 +273,13 @@ export class Engine {
     this.lane = next;
     if (scoreWheelieLaneSwitch && this.wheelie) {
       this.skill('WHEELIE LANE SWITCH', STUNT_POINTS.wheelieLaneSwitch);
-      this.policeBreakaway(0.08);
     }
     if (this.towCarrier) {
       // Only the truck being left gets a short exit exemption. Other vehicles
       // still collide if the rider jumps into them below their actual roof.
       const carrier = this.towCarrier;
+      if (this.policeChase)
+        this.policeJumpTarget = { obstacle: carrier, spawnId: carrier.spawnId };
       this.towSafeObstacles.add(carrier);
       this.towCarrier = null;
       this.velocityY = TOW_TRANSFER.launchVelocity;
@@ -380,6 +395,11 @@ export class Engine {
       this.policeOutcome = 'caught';
       this.policeOutcomeSerial++;
     }
+    if (this.policeVehicle.phase === 'chasing') {
+      this.policeVehicle.phase = 'idle';
+      this.policeVehicle.visible = false;
+    }
+    this.policeJumpTarget = null;
     this.crashObstacle = obstacle;
     this.clearInput();
     this.scrapeIntensity = 0;
@@ -498,8 +518,27 @@ export class Engine {
       previousSafe,
       ...candidates.filter((l) => l !== this.nextSafe && l !== previousSafe),
     ];
-    for (let i = 0; i < count; i++)
-      this.spawn(nextKinds[i], lanes[i], 145, 0, velocity);
+    const patrolReady =
+      this.distance >= this.nextPatrolDistance &&
+      this.score >= SPEED_CAMERA.firstScore &&
+      this.policeVehicle.phase === 'idle' &&
+      !this.speedCamera.active &&
+      !this.obstacles.some((o) => o.active && o.police);
+    let patrolSpawned = false;
+    for (let i = 0; i < count; i++) {
+      const patrol: boolean =
+        patrolReady && !patrolSpawned && nextKinds[i] === 'car';
+      const vehicle = this.spawn(
+        nextKinds[i],
+        lanes[i],
+        145,
+        0,
+        velocity,
+        patrol,
+      );
+      patrolSpawned ||= patrol && !!vehicle;
+    }
+    if (patrolSpawned) this.nextPatrolDistance = this.distance + 1800;
     this.pendingWave = null;
     this.spawnIn = Math.max(
       10,
@@ -508,7 +547,7 @@ export class Engine {
         environment.minimumSpacing,
         this.difficulty,
       ) *
-      0.8 -
+        0.8 -
         this.random() * 4,
     );
     this.spawnWaveSign();
@@ -603,6 +642,7 @@ export class Engine {
       this.towSafeObstacles.delete(o);
       if (this.towWarningFor === o) this.towWarningFor = null;
       Object.assign(o, {
+        spawnId: ++this.spawnSerial,
         active: true,
         kind,
         lane,
@@ -628,19 +668,55 @@ export class Engine {
         airNearMiss: false,
         lateEvade: false,
         police,
-        policeImpactFrozen: false,
       });
     }
     return o;
   }
-  private startPoliceChase(obstacle: Obstacle) {
-    if (this.policeChase || !obstacle.police) return;
-    this.policeObstacle = obstacle;
+  private doingPoliceStunt() {
+    return (
+      this.wheelie ||
+      this.wheelieAngle > 0.12 ||
+      this.height > 0.12 ||
+      this.towJumpActive
+    );
+  }
+  private startPoliceChase(patrol?: Obstacle) {
+    if (
+      this.policeChase ||
+      this.policeVehicle.phase !== 'idle' ||
+      !this.doingPoliceStunt()
+    )
+      return;
+    if (patrol && (!patrol.active || !patrol.police)) return;
+    const p = this.policeVehicle;
+    Object.assign(p, createPoliceVehicle(), {
+      phase: 'chasing',
+      x: patrol ? patrol.lane * LANE + patrol.offsetX : this.x,
+      z: POLICE.followZ,
+      velocity: this.speed,
+    });
+    if (patrol) patrol.active = false;
+    for (const obstacle of this.obstacles) {
+      if (!obstacle.active) continue;
+      const shape = policeTargetShape(obstacle);
+      if (
+        shape &&
+        Math.abs(p.x - (obstacle.lane * LANE + obstacle.offsetX)) <
+          (shape.width + TRAFFIC_SHAPES.car.width) / 2
+      )
+        if (obstacle.z - shape.frontZ > p.z - TRAFFIC_SHAPES.car.rearZ)
+          p.z = Math.min(
+            p.z,
+            obstacle.z - shape.rearZ + TRAFFIC_SHAPES.car.frontZ - 0.1,
+          );
+    }
     this.policeChase = true;
-    this.policeProgress = 0.16;
-    this.policeRamRemaining = 5;
+    this.policeProgress = 0;
+    this.policeRamRemaining = POLICE.chaseSeconds;
     this.policeOutcome = 'none';
     this.policeImpactTarget = null;
+    this.policeJumpTarget = null;
+    this.policeRamObstacle = null;
     this.event = {
       text: 'HÄNGE SIE AB · CLOSE CALL ODER SPRUNG',
       kind: 'warning',
@@ -648,155 +724,237 @@ export class Engine {
     };
   }
   private checkBlitzer() {
-    // Keep a short four-metre activation window so a stunt started directly
-    // beside the cabinet still counts instead of requiring one exact frame.
-    const lastIndex = blitzerIndexAtOrBefore(this.distance + 4);
-    if (lastIndex < 0) return;
-    while (this.nextBlitzerIndex <= lastIndex) {
-      const index = this.nextBlitzerIndex++;
-      const cameraDistance = blitzerDistance(index);
-      if (!hasBlitzer(index) || cameraDistance < this.distance - 4) continue;
-      const section = this.world.at(cameraDistance);
-      if (
-        !section ||
-        section.kind === 'tunnel' ||
-        section.kind.startsWith('bridge')
-      )
-        continue;
-      if (
-        this.policeChase ||
-        this.policeObstacle?.active ||
-        !(this.wheelie || this.height > 0.12 || this.towJumpActive)
-      ) {
-        // Wait until the camera is actually behind us before abandoning it.
-        this.nextBlitzerIndex = index;
-        return;
-      }
-      const police = this.spawn('car', this.lane, 132, 0, 0, true);
-      if (!police) continue;
-      this.blitzerIndex = index;
-      this.blitzerFlashSerial++;
-      this.blitzerFlashRemaining = 0.42;
-      this.startPoliceChase(police);
-      this.event = {
-        text: 'BLITZER · HÄNGE SIE AB',
-        kind: 'warning',
-        serial: this.event.serial + 1,
-      };
-      break;
-    }
-  }
-  private policeBreakaway(amount: number) {
-    if (!this.policeChase || !Number.isFinite(amount) || amount <= 0) return;
-    this.policeProgress = Math.max(0, this.policeProgress - amount);
-    if (this.policeProgress > 0) return;
-    this.policeChase = false;
-    this.policeRamRemaining = 0;
-    this.policeOutcome = 'escaped';
-    this.policeOutcomeSerial++;
-    this.policeImpactTarget = this.obstacles.find(
-      (o) =>
-        o.active &&
-        !o.police &&
-        !o.passed &&
-        o.z > 18 &&
-        (o.kind === 'car' || o.kind === 'towtruck' || o.kind === 'van'),
-    ) ?? null;
-    if (this.policeImpactTarget)
-      this.policeImpactTarget.policeImpactFrozen = true;
-    if (this.policeObstacle) {
-      this.policeObstacle.z = this.policeImpactTarget?.z ?? 24;
-      this.policeObstacle.passed = true;
-    }
-    this.skill('POLIZEI ABGEHÄNGT', STUNT_POINTS.policeEscape);
+    this.cameraSchedule.update(
+      this.score,
+      this.distance,
+      this.policeVehicle.phase === 'idle' &&
+        !this.obstacles.some((o) => o.active && o.police),
+      (distance) => {
+        const section = this.world.at(distance);
+        return (
+          !!section &&
+          section.kind !== 'tunnel' &&
+          !section.kind.startsWith('bridge')
+        );
+      },
+    );
+    const camera = this.speedCamera;
+    if (
+      !camera.active ||
+      camera.triggered ||
+      this.policeVehicle.phase !== 'idle' ||
+      Math.abs(camera.distance - this.distance) > SPEED_CAMERA.triggerRange ||
+      !this.doingPoliceStunt()
+    )
+      return;
+    this.startPoliceChase();
+    if (!this.policeChase) return;
+    camera.triggered = true;
+    this.blitzerFlashSerial++;
+    this.blitzerFlashRemaining = 0.28;
   }
   private policeCrashInto(target: Obstacle) {
-    if (!this.policeChase || target.police) return;
+    if (
+      !this.policeChase ||
+      !target.active ||
+      target.police ||
+      !policeTargetShape(target)
+    )
+      return;
     this.policeChase = false;
     this.policeRamRemaining = 0;
+    this.policeProgress = 0;
     this.policeOutcome = 'escaped';
     this.policeOutcomeSerial++;
+    this.policeJumpTarget = null;
     this.policeImpactTarget = target;
-    target.policeImpactFrozen = true;
-    if (this.policeObstacle) {
-      this.policeObstacle.lane = target.lane;
-      this.policeObstacle.offsetX = target.offsetX;
-      this.policeObstacle.z = target.z + 6;
-      this.policeObstacle.passed = true;
-    }
-    this.skill('POLIZEI CRASH', STUNT_POINTS.policeEscape);
+    this.policeTargetId = target.spawnId;
+    const p = this.policeVehicle;
+    this.policeImpactFromX = p.x;
+    this.policeImpactFromZ = p.z - target.z;
+    this.policeImpactEndZ = policeImpactOffset(target);
+    p.phase = 'approach';
+    p.visible = true;
+    p.age = 0;
+    this.skill('POLIZEI ABGEHÄNGT', STUNT_POINTS.policeEscape);
   }
   private policeRearEnd() {
     if (!this.policeChase) return;
+    const p = this.policeVehicle;
     this.policeChase = false;
     this.policeRamRemaining = 0;
+    this.policeProgress = 1;
     this.policeOutcome = 'caught';
     this.policeOutcomeSerial++;
-    if (this.policeObstacle) this.policeObstacle.z = -3.2;
-    this.crash('POLIZEI HAT DICH GERAMMT', this.policeObstacle);
-  }
-  private maybeSpawnPolice() {
-    if (
-      this.policeChase ||
-      this.policeObstacle?.active ||
-      this.distance < 500 ||
-      this.score < this.policeNextScore ||
-      !(this.wheelie || this.height > 0.12 || this.towJumpActive)
-    )
-      return;
-    const lane = this.lane === 0 ? (this.random() < 0.5 ? -1 : 1) : 0;
-    const police = this.spawn(
-      'car',
-      lane,
-      132,
-      0,
-      Math.min(4, this.speed * 0.08),
-      true,
-    );
-    if (police) {
-      this.policeObstacle = police;
-      this.policeNextScore += 15000;
-      this.policeOutcome = 'none';
-      this.policeImpactTarget = null;
-    }
-  }
-  private policeLaneBlocked(lane: number, police: Obstacle) {
-    return this.obstacles.some((o) => {
-      if (
-        !o.active ||
-        o === police ||
-        o.police ||
-        isRoadEvent(o.kind) ||
-        o.lane !== lane ||
-        o.z <= -1 ||
-        o.z >= 42
-      )
-        return false;
-      const shape = TRAFFIC_SHAPES[o.kind];
-      return Math.abs(o.offsetX) < shape.contactHalfWidth + 0.2;
+    Object.assign(p, {
+      phase: 'ramming',
+      visible: true,
+      x: this.x,
+      z: POLICE.ramZ,
+      age: 0,
+      yaw: 0,
+      roll: 0,
+      pitch: 0,
+      velocity: this.speed,
     });
+    this.policeRamObstacle = {
+      ...this.obstacles[0],
+      spawnId: -1,
+      active: true,
+      kind: 'car',
+      lane: this.lane,
+      offsetX: this.x - this.lane * LANE,
+      z: p.z,
+      police: true,
+      velocity: this.speed,
+      passed: true,
+      color: 0,
+    };
+    this.crash('POLIZEI HAT DICH GERAMMT', this.policeRamObstacle);
   }
-  private updatePoliceLane() {
-    const police = this.policeObstacle;
-    if (!police) return;
-    const desired = this.lane;
-    const candidates = [
-      desired,
-      police.lane,
-      desired - 1,
-      desired + 1,
-      -1,
-      0,
-      1,
-    ].filter(
-      (lane, index, all) =>
-        lane >= -1 && lane <= 1 && all.indexOf(lane) === index,
-    );
-    const free = candidates.find((lane) => !this.policeLaneBlocked(lane, police));
-    if (free !== undefined) {
-      police.lane = free;
-      police.offsetX = 0;
+  private clearPoliceVehicle() {
+    Object.assign(this.policeVehicle, createPoliceVehicle());
+    this.policeImpactTarget = null;
+    this.policeTargetId = 0;
+    this.policeJumpTarget = null;
+  }
+  private updatePolice(dt: number, travel: number) {
+    const p = this.policeVehicle;
+    if (p.phase === 'idle' || p.phase === 'ramming') return;
+    p.age += dt;
+    if (p.phase === 'approach' || p.phase === 'wrecked') {
+      const target = this.policeImpactTarget;
+      if (!target?.active || target.spawnId !== this.policeTargetId) {
+        this.clearPoliceVehicle();
+        return;
+      }
+      const targetX = target.lane * LANE + target.offsetX;
+      if (p.phase === 'approach') {
+        const t = Math.min(1, p.age / POLICE.impactSeconds);
+        const ease = t * t * (3 - 2 * t);
+        const startX = p.x,
+          startZ = p.z - travel;
+        const nextX =
+          this.policeImpactFromX + (targetX - this.policeImpactFromX) * ease;
+        const nextZ =
+          target.z +
+          this.policeImpactFromZ +
+          (this.policeImpactEndZ - this.policeImpactFromZ) * ease;
+        const obstruction = firstPoliceHit(
+          this.obstacles,
+          startX,
+          startZ,
+          nextX,
+          nextZ,
+          target,
+        );
+        if (obstruction) {
+          const f = Math.max(0, obstruction.fraction - 0.001);
+          p.x = startX + (nextX - startX) * f;
+          p.z = startZ + (nextZ - startZ) * f;
+          this.policeImpactTarget = obstruction.obstacle;
+          this.policeTargetId = obstruction.obstacle.spawnId;
+          this.policeImpactEndZ = p.z - obstruction.obstacle.z;
+          this.policeImpactFromX =
+            p.x -
+            (obstruction.obstacle.lane * LANE + obstruction.obstacle.offsetX);
+          p.phase = 'wrecked';
+          p.age = 0;
+          p.velocity = obstruction.obstacle.velocity;
+          const ramp =
+            obstruction.obstacle.kind === 'towtruck'
+              ? policeRampPose(obstruction.obstacle.z - p.z)
+              : { y: 0, pitch: 0 };
+          p.y = ramp.y;
+          p.pitch = ramp.pitch;
+          p.yaw = 0;
+          p.roll = 0;
+          return;
+        }
+        p.x = nextX;
+        p.z = nextZ;
+        p.velocity = Math.max(0, (nextZ - startZ) / dt);
+        p.yaw =
+          Math.max(
+            -0.35,
+            Math.min(
+              0.35,
+              -Math.atan2(nextX - startX, Math.max(0.1, nextZ - startZ)),
+            ),
+          ) * Math.min(1, (1 - t) * 4);
+        if (target.kind === 'towtruck') {
+          const ramp = policeRampPose(target.z - p.z);
+          p.y = ramp.y;
+          p.pitch = ramp.pitch;
+        }
+        if (t >= 1) {
+          p.phase = 'wrecked';
+          p.age = 0;
+          this.policeImpactFromX = p.x - targetX;
+          p.velocity = target.velocity;
+        }
+      } else {
+        p.x = targetX + this.policeImpactFromX;
+        p.z = target.z + this.policeImpactEndZ;
+        p.velocity = target.velocity;
+        p.yaw = 0;
+      }
+      if (p.z < POLICE.retireZ) this.clearPoliceVehicle();
+      return;
     }
+    p.z -= travel;
+    const remaining = this.policeRamRemaining;
+    const desiredX = this.lane * LANE;
+    const ahead = firstPoliceHit(this.obstacles, p.x, p.z, p.x, p.z + 7);
+    let targetX = p.x;
+    if (!firstPoliceHit(this.obstacles, p.x, p.z, desiredX, p.z))
+      targetX = desiredX;
+    if (ahead) {
+      const lane = Math.max(-1, Math.min(1, Math.round(p.x / LANE)));
+      const candidates = [this.lane, lane - 1, lane + 1].filter(
+        (v) => v >= -1 && v <= 1,
+      );
+      const clear = candidates.find(
+        (v) =>
+          !firstPoliceHit(this.obstacles, p.x, p.z, v * LANE, p.z) &&
+          !firstPoliceHit(this.obstacles, v * LANE, p.z, v * LANE, p.z + 7),
+      );
+      if (clear !== undefined) targetX = clear * LANE;
+    }
+    const nextX =
+      p.x +
+      Math.max(
+        -POLICE.lateralSpeed * dt,
+        Math.min(POLICE.lateralSpeed * dt, targetX - p.x),
+      );
+    if (!firstPoliceHit(this.obstacles, p.x, p.z, nextX, p.z)) p.x = nextX;
+    const approach = Math.max(0, Math.min(1, (2 - remaining) / 2));
+    const goalZ = POLICE.followZ + (POLICE.ramZ - POLICE.followZ) * approach;
+    const velocity = Math.max(
+      0,
+      Math.min(this.speed + 26, this.speed + (goalZ - p.z) * 5),
+    );
+    const nextZ = p.z + velocity * dt;
+    const hit = firstPoliceHit(this.obstacles, p.x, p.z, p.x, nextZ);
+    const fraction = hit ? Math.max(0, hit.fraction - 0.001) : 1;
+    p.z += (nextZ - p.z) * fraction;
+    p.velocity = velocity * fraction;
+    const laneObstructed =
+      Math.abs(p.x - desiredX) > 0.15 &&
+      !!firstPoliceHit(this.obstacles, p.x, p.z, desiredX, p.z);
+    if (!hit && !laneObstructed) {
+      const canRam =
+        p.z >= POLICE.ramZ - 0.8 &&
+        Math.abs(p.x - this.x) < 0.3 &&
+        this.height < 0.45 &&
+        !firstPoliceHit(this.obstacles, p.x, p.z, this.x, POLICE.ramZ);
+      this.policeRamRemaining = Math.max(canRam ? 0 : STEP, remaining - dt);
+      if (this.policeRamRemaining <= 1e-8 && canRam) {
+        this.policeRearEnd();
+        return;
+      }
+    }
+    this.policeProgress = 1 - this.policeRamRemaining / POLICE.chaseSeconds;
   }
   private cabContact(localZ: number) {
     const front = RAMP_FRONT_CONTACT[this.bike.id] ?? RAMP_FRONT_CONTACT['450'];
@@ -833,10 +991,7 @@ export class Engine {
       distanceAtTime(this.elapsed, this.bike) -
       distanceAtTime(previousElapsed, this.bike);
     this.distance += travel;
-    this.blitzerFlashRemaining = Math.max(
-      0,
-      this.blitzerFlashRemaining - dt,
-    );
+    this.blitzerFlashRemaining = Math.max(0, this.blitzerFlashRemaining - dt);
     this.world.advance(this.distance);
     this.roadRoughness *= Math.exp(-dt * 7);
     this.surfaceGrip += (1 - this.surfaceGrip) * (1 - Math.exp(-dt * 1.8));
@@ -1020,39 +1175,13 @@ export class Engine {
           tunnelWheelieBonus,
         'wheelie',
       );
-      this.policeBreakaway(dt * 0.03 * this.balanceQuality);
     } else this.balancedSeconds = 0;
     this.spawnIn -= travel;
-    this.maybeSpawnPolice();
-    if (this.policeChase) {
-      this.policeRamRemaining = Math.max(0, this.policeRamRemaining - dt);
-      if (this.policeRamRemaining === 0) {
-        this.policeProgress = Math.min(1, this.policeProgress + dt * 0.16);
-        if (this.policeProgress >= 1) {
-          this.policeRearEnd();
-          return;
-        }
-      }
-    }
+    let policeEscapeTarget: Obstacle | null = null;
     for (const o of this.obstacles) {
       if (!o.active) continue;
       const prev = o.z;
       o.z -= travel - o.velocity * dt;
-      if (o.police && this.policeChase) {
-        // Follow the rider when possible, but route around traffic instead
-        // of teleporting through a car in the target lane.
-        this.updatePoliceLane();
-        o.z = -3.2 + this.policeProgress * 1.1;
-        continue;
-      }
-      if (o.police && this.policeOutcome === 'escaped') {
-        if (o.z < -18) o.active = false;
-        continue;
-      }
-      if (o.policeImpactFrozen) {
-        if (o.z < -18) o.active = false;
-        continue;
-      }
       const dx = Math.abs(this.x - (o.lane * LANE + o.offsetX));
       const road = isRoadEvent(o.kind) ? ROAD_EVENTS[o.kind] : undefined;
       const traffic = !isRoadEvent(o.kind) ? TRAFFIC_SHAPES[o.kind] : undefined;
@@ -1127,6 +1256,13 @@ export class Engine {
         } else {
           o.closest = Math.min(o.closest, gap);
           if (gap < 0.6 && this.height > 0.1) o.airNearMiss = true;
+          if (
+            this.policeChase &&
+            !o.police &&
+            !road &&
+            (gap < 0.6 || o.lateEvade)
+          )
+            policeEscapeTarget ??= o;
         }
       }
       if (!o.passed && o.z < frontContact) {
@@ -1134,9 +1270,10 @@ export class Engine {
         if (o.police) this.startPoliceChase(o);
         const closeCall =
           !road && (o.closest < 0.6 || o.lateEvade || o.airNearMiss);
-        if (o.cleared && o.rewardPoints > 0)
+        if (o.cleared && o.rewardPoints > 0) {
           this.skill(o.rewardText, o.rewardPoints);
-        else if (
+          if (this.policeChase && !o.police && !road) policeEscapeTarget ??= o;
+        } else if (
           (!road || o.kind === 'barrier') &&
           (o.closest < 0.6 || o.lateEvade)
         ) {
@@ -1149,19 +1286,36 @@ export class Engine {
                 : 'KNAPP VORBEI',
             o.airNearMiss ? STUNT_POINTS.airEvade : STUNT_POINTS.nearMiss,
           );
-          if (this.policeChase && (closeCall || o.kind === 'towtruck'))
-            this.policeCrashInto(o);
-          else this.policeBreakaway(o.airNearMiss ? 0.2 : 0.14);
+          if (this.policeChase && closeCall && !o.police)
+            policeEscapeTarget ??= o;
         }
-        if (this.policeChase && o.kind === 'towtruck')
-          this.policeCrashInto(o);
       }
-      if (o.z < -18) o.active = false;
+      // An impact partner stays an ordinary solid NPC and moves at its own
+      // speed. Keep its pool slot only until the coupled wreck is behind us.
+      const retained =
+        o === this.policeImpactTarget || o === this.policeJumpTarget?.obstacle;
+      if (o.z < (retained ? POLICE.retireZ : -18)) o.active = false;
     }
     if (landedTowJump && this.phase === 'playing') {
       this.jumps++;
       this.skill('SPRUNG GELANDET', STUNT_POINTS.jump);
-      this.policeBreakaway(0.24);
+    }
+    if (this.phase === 'playing') {
+      const jump = this.policeJumpTarget;
+      if (
+        this.policeChase &&
+        jump?.obstacle.active &&
+        jump.spawnId === jump.obstacle.spawnId &&
+        (landedTowJump ||
+          (this.towJumpActive &&
+            this.height > 0.12 &&
+            Math.abs(
+              this.x - (jump.obstacle.lane * LANE + jump.obstacle.offsetX),
+            ) > TRAFFIC_SHAPES.towtruck.contactHalfWidth))
+      )
+        policeEscapeTarget ??= jump.obstacle;
+      if (policeEscapeTarget) this.policeCrashInto(policeEscapeTarget);
+      this.updatePolice(dt, travel);
     }
     if (this.phase === 'playing')
       for (const sign of this.signs) {

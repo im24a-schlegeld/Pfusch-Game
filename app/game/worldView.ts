@@ -8,13 +8,7 @@ import {
   writeTunnelBermMatrix,
 } from './worldTerrain';
 import { createBlitzerModel } from './blitzerModel';
-import {
-  BLITZER_START,
-  BLITZER_SPACING,
-  blitzerDistance,
-  blitzerSide,
-  hasBlitzer,
-} from './speedCamera';
+import type { SpeedCameraState } from './speedCamera';
 
 export const WORLD_VIEW = Object.freeze({
   cellLength: 12,
@@ -111,12 +105,13 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   const root = new THREE.Group();
   root.name = 'streamed-world';
   scene.add(root);
-  const blitzers = Array.from({ length: low ? 4 : 8 }, () => {
-    const model = createBlitzerModel({ scale: low ? 0.82 : 0.95 });
-    model.visible = false;
-    root.add(model);
-    return model;
-  });
+  const speedCamera = createBlitzerModel({ scale: 0.95 });
+  speedCamera.visible = false;
+  scene.add(speedCamera);
+  const cameraFlash = speedCamera.getObjectByName('BlitzerFlash') as THREE.Mesh<
+    THREE.PlaneGeometry,
+    THREE.MeshBasicMaterial
+  >;
   const geometries: Record<Form, THREE.BufferGeometry> = {
     box: new THREE.BoxGeometry(1, 1, 1),
     round: new THREE.CylinderGeometry(1, 1, 1, low ? 8 : 12),
@@ -397,13 +392,8 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       const radius = height * (pine ? 0.27 : 0.36);
       const halfDepth = height * (pine ? 0.27 : 0.28);
       const minX = x - radius - 0.12;
-      const maxX =
-        x + radius + 0.12;
-      const minZ =
-        anchor -
-        z -
-        halfDepth -
-        0.12;
+      const maxX = x + radius + 0.12;
+      const minZ = anchor - z - halfDepth - 0.12;
       const maxZ = anchor - z + halfDepth + 0.12;
       const top = height * (pine ? 1.17 : 1.14);
       if (minX < 4.95 && maxX > -4.95) continue;
@@ -596,8 +586,14 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     }
   }
 
-  function open(segment: WorldSegment, start: number, end: number, cell: number) {
-    const length = end - start, mid = (start + end) / 2;
+  function open(
+    segment: WorldSegment,
+    start: number,
+    end: number,
+    cell: number,
+  ) {
+    const length = end - start,
+      mid = (start + end) / 2;
     // A forest corridor: multiple staggered depths of firs, no low-poly hills.
     box('forestFloor', 230, 0.012, length, 0, -0.101, mid);
     const depths = low ? [10, 18, 29] : [9.5, 15.5, 23, 32, 43];
@@ -606,14 +602,14 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         const v = variation(cell, segment.variant, row * 7 + side + 70);
         const count = low ? 1 : 2;
         for (let j = 0; j < count; j++) {
-          const z = start + length * ((j + .25 + (v % 4) * .075) / count);
-          const x = side * (depths[row] + ((v >>> 5) % 7) * .22);
-          const height = 5.3 + ((v >>> (j + 2)) % 11) * .28 + row * .18;
+          const z = start + length * ((j + 0.25 + (v % 4) * 0.075) / count);
+          const x = side * (depths[row] + ((v >>> 5) % 7) * 0.22);
+          const height = 5.3 + ((v >>> (j + 2)) % 11) * 0.28 + row * 0.18;
           tree(x, z, height, true);
         }
       }
-      box('white', .13, .75, .13, side * 5.5, .375, mid);
-      box('dark', .15, .15, .15, side * 5.5, .6, mid);
+      box('white', 0.13, 0.75, 0.13, side * 5.5, 0.375, mid);
+      box('dark', 0.15, 0.15, 0.15, side * 5.5, 0.6, mid);
     }
   }
 
@@ -987,63 +983,27 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       }
   }
 
-  function resetBlitzers() {
-    for (const model of blitzers) {
-      model.visible = false;
-      model.userData.blitzerIndex = -1;
-      model.traverse((object) => {
-        if (!(object instanceof THREE.Mesh) || !object.userData.blitzerFlash)
-          return;
-        const material = object.material;
-        if (material instanceof THREE.MeshBasicMaterial) {
-          material.opacity = 0;
-          object.visible = true;
-        }
-      });
-    }
-  }
-
-  function placeBlitzers(world: World, start: number, end: number) {
-    resetBlitzers();
-    let pool = 0;
-    const first = Math.max(
-      0,
-      Math.floor((start - BLITZER_START) / BLITZER_SPACING) - 1,
-    );
-    for (let index = first; ; index++) {
-      const distance = blitzerDistance(index);
-      if (distance >= end || pool === blitzers.length) break;
-      if (distance < start || !hasBlitzer(index)) continue;
-      const segment = world.at(distance);
-      if (
-        !segment ||
-        segment.kind === 'tunnel' ||
-        segment.kind.startsWith('bridge')
-      )
-        continue;
-      const model = blitzers[pool++]!;
-      const side = blitzerSide(index);
-      model.visible = true;
-      model.userData.blitzerIndex = index;
-      model.position.set(side * 6.35, 0, anchor - distance);
-      // Face the sensor across the road toward the rider's lane.
-      model.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
-    }
-  }
-
-  function setBlitzerFlash(index: number, intensity: number) {
-    for (const model of blitzers) {
-      if (model.userData.blitzerIndex !== index) continue;
-      model.traverse((object) => {
-        if (!(object instanceof THREE.Mesh) || !object.userData.blitzerFlash)
-          return;
-        const material = object.material;
-        if (material instanceof THREE.MeshBasicMaterial) {
-          material.opacity = Math.max(0, Math.min(1, intensity));
-          material.color.setScalar(0.85 + material.opacity * 0.15);
-        }
-      });
-    }
+  function updateSpeedCamera(
+    camera: SpeedCameraState,
+    playerDistance: number,
+    flash: number,
+  ) {
+    const relativeDistance = camera.distance - playerDistance;
+    speedCamera.visible =
+      camera.active &&
+      relativeDistance >= -WORLD_VIEW.lookBehind &&
+      relativeDistance <= WORLD_VIEW.lookAhead;
+    speedCamera.userData.cameraId = camera.id;
+    // The independent model uses the same relative road distance as traffic,
+    // so streamed terrain reanchoring cannot move the sensor or reset a flash.
+    speedCamera.position.set(camera.side * 6.35, 0, -relativeDistance);
+    // Aim the sensor across the road and back toward approaching riders. The
+    // flash remains on its black sensor opening in both low/high quality modes.
+    speedCamera.rotation.y = Math.atan2(-camera.side * 6.35, 8);
+    cameraFlash.material.opacity = camera.active
+      ? Math.max(0, Math.min(1, flash))
+      : 0;
+    cameraFlash.visible = cameraFlash.material.opacity > 0;
   }
 
   let previousWorld: World | undefined,
@@ -1078,7 +1038,6 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         }
       }
       for (const segment of world.segments) landmarks(segment, start, end);
-      placeBlitzers(world, start, end);
       plantClearTrees();
       for (const batch of batches.values()) {
         batch.mesh.count = batch.used;
@@ -1090,5 +1049,5 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     }
     root.position.z = distance - anchor;
   }
-  return { root, update, setBlitzerFlash };
+  return { root, update, updateSpeedCamera };
 }

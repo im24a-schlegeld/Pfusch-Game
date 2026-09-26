@@ -13,74 +13,83 @@ export default function RideHud({
   pause: () => void;
 }) {
   return (
-    <div className="v42-hud" aria-label="Fahrdaten">
-      <div className="v42-score">
-        <span>PUNKTE</span>
-        <strong data-long={number(engine.score).length > 9}>
-          {number(engine.score)}
-        </strong>
-        <small>BESTE {number(best)}</small>
-      </div>
-      {engine.phase === 'playing' && (
-        <div className="ride-balance" aria-label="Wheelie-Winkel und Kippunkt">
-          <small>KIPPUNKT</small>
-          <div className="balance-meter">
-            <b
-              style={{
-                left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
-              }}
-            />
-            <i
-              style={{
-                width: `${Math.min(100, (engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100)}%`,
-              }}
-            />
+    <>
+      <div className="v42-hud" aria-label="Fahrdaten">
+        <div className="v42-score">
+          <span>PUNKTE</span>
+          <strong data-long={number(engine.score).length > 9}>
+            {number(engine.score)}
+          </strong>
+          <small>BESTE {number(best)}</small>
+        </div>
+        {engine.phase === 'playing' && (
+          <div
+            className="ride-balance"
+            aria-label="Wheelie-Winkel und Kippunkt"
+          >
+            <small>KIPPUNKT</small>
+            <div className="balance-meter">
+              <b
+                style={{
+                  left: `${(engine.balanceProfile.balancePoint / engine.balanceProfile.crashAngle) * 100}%`,
+                }}
+              />
+              <i
+                style={{
+                  width: `${Math.min(100, (engine.wheelieAngle / engine.balanceProfile.crashAngle) * 100)}%`,
+                }}
+              />
+            </div>
           </div>
+        )}
+        <div className="v42-metrics">
+          <b>
+            {number(engine.distance)} <small>M</small>
+          </b>
+          <b>
+            {Math.round(engine.speed * 3.6)} <small>KM/H</small>
+          </b>
         </div>
-      )}
-      <div className="v42-metrics">
-        <b>
-          {number(engine.distance)} <small>M</small>
-        </b>
-        <b>
-          {Math.round(engine.speed * 3.6)} <small>KM/H</small>
-        </b>
-      </div>
-      <div className="v42-top-actions">
-        <div className="v42-sign-slot">
-          <SignProgress mask={engine.collectedSigns} />
+        <div className="v42-top-actions">
+          <div className="v42-sign-slot">
+            <SignProgress mask={engine.collectedSigns} />
+          </div>
+          <button
+            className="v42-pause"
+            type="button"
+            onClick={pause}
+            aria-label="Fahrt pausieren"
+          >
+            <Pause
+              size={21}
+              fill="currentColor"
+              strokeWidth={0}
+              aria-hidden="true"
+            />
+          </button>
         </div>
-        <button
-          className="v42-pause"
-          type="button"
-          onClick={pause}
-          aria-label="Fahrt pausieren"
-        >
-          <Pause
-            size={21}
-            fill="currentColor"
-            strokeWidth={0}
-            aria-hidden="true"
-          />
-        </button>
       </div>
       {engine.policeChase && (
-        <div className="police-alert" role="status" aria-live="polite">
+        <>
           <span className="police-lights" aria-hidden="true">
             <i />
             <b />
           </span>
-          <span className="police-alert-copy">
-            <strong>HÄNGE SIE AB</strong>
-            <small className="police-instruction">CLOSE CALL ODER SPRUNG</small>
+          <div className="police-alert">
+            <output className="police-alert-copy" aria-live="polite">
+              <strong>HÄNGE SIE AB</strong>
+              <small className="police-instruction">
+                MIT CLOSE CALL ODER SPRUNG
+              </small>
+            </output>
             {engine.policeRamRemaining > 0 && (
-              <small className="police-countdown">
-                RAMMEN IN {Math.ceil(engine.policeRamRemaining)}
+              <small className="police-countdown" role="timer" aria-live="off">
+                RAMMEN IN {Math.ceil(engine.policeRamRemaining)} S
               </small>
             )}
-          </span>
-        </div>
+          </div>
+        </>
       )}
-    </div>
+    </>
   );
 }

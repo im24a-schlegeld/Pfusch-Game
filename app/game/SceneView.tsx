@@ -36,7 +36,10 @@ function applyStickersSafely(
       player.stickers[player.bike] ?? [],
     );
   } catch (error) {
-    console.error('Gespeicherte Sticker konnten nicht angewendet werden.', error);
+    console.error(
+      'Gespeicherte Sticker konnten nicht angewendet werden.',
+      error,
+    );
     clearBikeStickers(bike.body);
   }
 }
@@ -194,11 +197,12 @@ export default function SceneView({
     let crash: ReturnType<typeof createCrashAnimation> | undefined;
     let crashTravel: ReturnType<typeof createCrashTravel> | undefined;
     let impactTraffic: THREE.Group | undefined;
-    let policeOutcomeSerial = 0;
-    let policeCrashAge = Infinity;
-    let policeCrashGroup: THREE.Group | undefined;
-    let policeCrashTarget: THREE.Group | undefined;
-    const policeCrashFrom = new THREE.Vector3();
+    // Pursuit animation has its own vehicle. It can never transfer its pose to
+    // an ordinary car when a traffic-pool entry is reused.
+    const pursuitCar = new THREE.Group();
+    pursuitCar.name = 'police-pursuit-vehicle';
+    pursuitCar.visible = false;
+    let policeCameraReveal = 0;
     const collisionTraffic = new Map<THREE.Group, THREE.Vector3>();
     let launchSerial = 0,
       launchPulse = 0;
@@ -213,8 +217,13 @@ export default function SceneView({
     let crashReported = false;
     if (mode === 'ride') {
       worldView = makeWorldView(scene, low);
+      const policeVariants = makeTrafficVariants('police');
+      variantSets.set('police', policeVariants);
+      pursuitCar.add(policeVariants[0].clone(true));
+      scene.add(pursuitCar);
       for (let i = 0; i < 32; i++) {
         const group = new THREE.Group();
+        group.name = `traffic-pool-${i}`;
         group.visible = false;
         scene.add(group);
         traffic.push(group);
@@ -332,27 +341,6 @@ export default function SceneView({
       }
       if (engine && mode === 'ride') {
         engine.advance(dt);
-        if (engine.policeOutcomeSerial !== policeOutcomeSerial) {
-          policeOutcomeSerial = engine.policeOutcomeSerial;
-          policeCrashAge = 0;
-          const policeIndex = engine.obstacles.findIndex(
-            (obstacle) => obstacle.police && obstacle.active,
-          );
-          policeCrashGroup =
-            policeIndex >= 0 ? traffic[policeIndex] : undefined;
-          const targetIndex = engine.policeImpactTarget
-            ? engine.obstacles.indexOf(engine.policeImpactTarget)
-            : -1;
-          policeCrashTarget =
-            targetIndex >= 0 ? traffic[targetIndex] : undefined;
-          if (policeCrashGroup) policeCrashFrom.copy(policeCrashGroup.position);
-          if (policeCrashTarget)
-            collisionTraffic.set(
-              policeCrashTarget,
-              policeCrashTarget.position.clone(),
-            );
-        }
-        if (policeCrashAge < 1.15) policeCrashAge += dt;
         const moving = engine.phase === 'playing';
         const crashed =
           engine.phase === 'crashed' && engine.event.text !== 'Ride ended';
@@ -368,9 +356,10 @@ export default function SceneView({
         crashTravel?.advance(dt, crashed && crashActive);
         const distance = engine.distance + (crashTravel?.distance ?? 0);
         worldView!.update(engine.world, distance);
-        worldView!.setBlitzerFlash(
-          engine.blitzerIndex,
-          engine.blitzerFlashRemaining > 0
+        worldView!.updateSpeedCamera(
+          engine.speedCamera,
+          distance,
+          engine.phase !== 'crashed' && engine.blitzerFlashRemaining > 0
             ? Math.min(1, engine.blitzerFlashRemaining * 5)
             : 0,
         );
@@ -487,14 +476,38 @@ export default function SceneView({
         }
         if (!moving) previousLateralSpeed = 0;
         previousXPosition = engine.x;
+        const policePose = engine.policeVehicle;
+        pursuitCar.visible = policePose.visible;
+        pursuitCar.position.set(
+          policePose.x,
+          policePose.y,
+          -policePose.z +
+            (crashTravel?.distance ?? 0) -
+            policePose.velocity * (crashTravel?.elapsed ?? 0),
+        );
+        pursuitCar.rotation.set(
+          policePose.pitch,
+          policePose.yaw,
+          policePose.roll,
+        );
+        const frozenPolice = collisionTraffic.get(pursuitCar);
+        if (crashed && frozenPolice) pursuitCar.position.copy(frozenPolice);
+        animateTraffic(pursuitCar, policePose.velocity, moving ? dt : 0);
         engine.obstacles.forEach((o, i) => {
           const group = traffic[i];
-          // The pursuit car is a hidden gameplay state. Reveal it only after
-          // it has committed to a crash, so the player sees the impact rather
-          // than a police car teleporting behind the rider every frame.
-          group.visible =
-            o.active && (!o.police || engine.policeOutcome !== 'none');
-          if (!o.active) return;
+          if (group.userData.spawnId !== o.spawnId) {
+            collisionTraffic.delete(group);
+            group.userData.spawnId = o.spawnId;
+          }
+          group.visible = o.active;
+          group.rotation.set(0, 0, 0);
+          group.scale.set(1, 1, 1);
+          if (!o.active) {
+            // Pooled groups may later represent a different vehicle. Never
+            // carry a police-impact freeze into that recycled slot.
+            collisionTraffic.delete(group);
+            return;
+          }
           group.position.set(
             o.lane * LANE + o.offsetX,
             0,
@@ -503,7 +516,7 @@ export default function SceneView({
               o.velocity * (crashTravel?.elapsed ?? 0),
           );
           const frozen = collisionTraffic.get(group);
-          if (frozen) group.position.copy(frozen);
+          if (frozen && crashed) group.position.copy(frozen);
           const modelKind = o.police ? 'police' : o.kind;
           const key = `${modelKind}:${o.color}`;
           if (group.userData.key !== key) {
@@ -521,36 +534,6 @@ export default function SceneView({
             group.add(template.clone(true));
             group.userData.key = key;
           }
-          if (
-            o.police &&
-            engine.policeOutcome === 'escaped' &&
-            group === policeCrashGroup &&
-            policeCrashAge < 1.15
-          ) {
-            const crashTarget = policeCrashTarget?.position;
-            // Cubic ease-in gives the short final burst of speed before the
-            // police car wedges into the obstacle or tow truck.
-            const linear = THREE.MathUtils.clamp(policeCrashAge / 0.72, 0, 1);
-            const progress = linear * linear * (3 - 2 * linear);
-            if (crashTarget)
-              group.position.lerpVectors(policeCrashFrom, crashTarget, progress);
-            else
-              group.position.copy(policeCrashFrom).add(new THREE.Vector3(0, 0, -progress * 6));
-            group.rotation.z = Math.sin(progress * Math.PI) * 0.55;
-            group.rotation.y = progress * 0.9;
-          } else if (
-            o.police &&
-            engine.policeOutcome === 'escaped' &&
-            group === policeCrashGroup &&
-            policeCrashTarget
-          ) {
-            // Leave the police car at the impact instead of recycling it into
-            // ordinary traffic, which previously caused repeated crashes at
-            // the same spot.
-            group.position.copy(policeCrashTarget.position);
-            group.rotation.z = 0.18;
-            group.rotation.y = 0.35;
-          }
           animateTraffic(
             group,
             o.velocity,
@@ -565,7 +548,12 @@ export default function SceneView({
             );
             bike.animateSuspension(tilt, suspension);
             const impactIndex = engine.obstacles.indexOf(engine.crashObstacle!);
-            impactTraffic = impactIndex >= 0 ? traffic[impactIndex] : undefined;
+            impactTraffic =
+              engine.crashObstacle === engine.policeRamObstacle
+                ? pursuitCar
+                : impactIndex >= 0
+                  ? traffic[impactIndex]
+                  : undefined;
             const solidImpact =
               engine.crashObstacle &&
               (TRAFFIC_KINDS.some(
@@ -589,6 +577,8 @@ export default function SceneView({
               )
                 collisionTraffic.set(group, group.position.clone());
             });
+            if (pursuitCar.visible && Math.abs(pursuitCar.position.z) < 20)
+              collisionTraffic.set(pursuitCar, pursuitCar.position.clone());
             crash = createCrashAnimation(bike, {
               cause: engine.event.text,
               pitch: tilt,
@@ -600,8 +590,17 @@ export default function SceneView({
             });
           }
           crashComplete = crash.advance(dt, crashActive);
-        } else bike.animateSuspension(tilt, suspension,
-          engine.onTowTruck ? 0 : Math.min(1, engine.wheelieAngle / engine.balanceProfile.balancePoint));
+        } else
+          bike.animateSuspension(
+            tilt,
+            suspension,
+            engine.onTowTruck
+              ? 0
+              : Math.min(
+                  1,
+                  engine.wheelieAngle / engine.balanceProfile.balancePoint,
+                ),
+          );
         // Final ordinary/crash pose: accessory gravity and both light endpoints
         // consume these same transforms before the scene is rendered.
         bike.animateAccessories(
@@ -644,23 +643,40 @@ export default function SceneView({
             : Math.sin(clock * 23) * 0.016;
         const portraitRide = camera.aspect < 0.8;
         const chaseZ = portraitRide ? 10.4 : 8.4;
+        const showPoliceImpact =
+          policePose.visible &&
+          (policePose.phase === 'approach' ||
+            (policePose.phase === 'wrecked' && policePose.age < 0.65));
+        const revealTarget =
+          showPoliceImpact && !appearance.current.player.settings.reducedMotion
+            ? THREE.MathUtils.clamp(pursuitCar.position.z + 8 - chaseZ, 5, 14)
+            : 0;
+        if (moving)
+          policeCameraReveal +=
+            (revealTarget - policeCameraReveal) *
+            (1 - Math.exp(-dt * (showPoliceImpact ? 9 : 3.5)));
         camera.position.set(
           engine.x * 0.27 + shake,
-          4.4 + engine.height * 0.13,
-          chaseZ,
+          4.4 + engine.height * 0.13 + policeCameraReveal * 0.34,
+          chaseZ + policeCameraReveal,
         );
-        camera.lookAt(engine.x * 0.38, 1.4, -12);
+        const policeLookZ = -12 + Math.min(16, policeCameraReveal * 2.4);
+        camera.lookAt(engine.x * 0.38, 1.4, policeLookZ);
         if (crash) {
           const blend = crash.cameraBlend;
           camera.position.set(
             THREE.MathUtils.lerp(engine.x * 0.27, crash.focus.x, blend),
-            THREE.MathUtils.lerp(4.4 + engine.height * 0.13, 3.5, blend),
-            THREE.MathUtils.lerp(chaseZ, 7.2, blend),
+            THREE.MathUtils.lerp(
+              4.4 + engine.height * 0.13 + policeCameraReveal * 0.34,
+              3.5,
+              blend,
+            ),
+            THREE.MathUtils.lerp(chaseZ + policeCameraReveal, 7.2, blend),
           );
           camera.lookAt(
             THREE.MathUtils.lerp(engine.x * 0.38, crash.focus.x, blend),
             THREE.MathUtils.lerp(1.4, crash.focus.y, blend),
-            THREE.MathUtils.lerp(-12, crash.focus.z, blend),
+            THREE.MathUtils.lerp(policeLookZ, crash.focus.z, blend),
           );
         }
         const speedFov = 61 + (engine.speed - 22) * 0.22;
