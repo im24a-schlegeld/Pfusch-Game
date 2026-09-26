@@ -17,8 +17,9 @@ import {
   makeBeltDrive,
   makeDrive,
 } from '../app/game/driveGeometry';
-import { SPORT_GEOMETRY, roadTireGeometry } from '../app/game/sportGeometry';
+import { SPORT_GEOMETRY, sportTireGeometry } from '../app/game/sportGeometry';
 import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
+import { supermotoTireGeometry } from '../app/game/supermotoWheels';
 
 /** Includes every plate/roller instance, rather than only their base geometry. */
 function vertexBounds(object: Mesh) {
@@ -59,7 +60,7 @@ it('keeps both chain runs tangent, closes the loop and never cuts through either
 });
 
 it.each([
-  ['supermoto', SUPERMOTO_CHASSIS.rearAxle, SUPERMOTO_CHASSIS.wheelRadius, SUPERMOTO_CHASSIS.rearTireWidth],
+  ['supermoto', SUPERMOTO_CHASSIS.rearAxle, SUPERMOTO_CHASSIS.rearRadius, SUPERMOTO_CHASSIS.rearTireWidth],
   [
     'sport',
     SPORT_GEOMETRY.rearAxle,
@@ -68,16 +69,21 @@ it.each([
   ],
 ] as const)(
   'keeps the complete %s chain inside the left beam and clear of the actual tire',
-  (_, rearZ, rearY, tireWidth) => {
+  (model, rearZ, rearY, tireWidth) => {
     const body = new Group(),
       wheel = new Group(),
       metal = new MeshStandardMaterial();
     wheel.position.set(0, rearY, rearZ);
     body.add(wheel);
-    const tire = new Mesh(roadTireGeometry(rearY, tireWidth), metal);
+    const tire = new Mesh(
+      model === 'supermoto' ? supermotoTireGeometry(true) : sportTireGeometry(true),
+      metal,
+    );
     wheel.add(tire);
     makeDrive(body, wheel, 0.08, 0.49, metal);
     const tireBounds = vertexBounds(tire);
+    expect(tireBounds.min.y).toBeCloseTo(0, 6);
+    expect(tireBounds.max.x - tireBounds.min.x).toBeCloseTo(tireWidth, 2);
     expect(tireBounds.min.x).toBeGreaterThanOrEqual(
       -CHAIN_DRIVE.maxRearTireHalfWidth,
     );
@@ -90,7 +96,9 @@ it.each([
       const bounds = vertexBounds(body.getObjectByName(name) as Mesh);
       expect(bounds.min.x - beamInnerX).toBeGreaterThan(0.007);
       expect(tireBounds.min.x - bounds.max.x).toBeGreaterThan(0.005);
-      expect(tireBounds.min.x - bounds.max.x).toBeLessThan(0.03);
+      // The narrower 150 mm Supermoto tire leaves about 31 mm in the same
+      // chain passage; the chain still stays inside its unchanged left beam.
+      expect(tireBounds.min.x - bounds.max.x).toBeLessThan(0.035);
       expect(bounds.min.x).toBeGreaterThanOrEqual(
         CHAIN_DRIVE.planeX - CHAIN_DRIVE.chainHalfWidth - 1e-8,
       );

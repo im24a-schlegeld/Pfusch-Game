@@ -40,7 +40,8 @@ const fixtures: readonly Fixture[] = [
     scale: 1.06,
     rear: SUPERMOTO_CHASSIS.rearAxle,
     front: SUPERMOTO_CHASSIS.frontAxle,
-    radius: SUPERMOTO_CHASSIS.wheelRadius,
+    // The suspension/wheelie pivot follows the rear contact circle.
+    radius: SUPERMOTO_CHASSIS.rearRadius,
     emitters: [SUPERMOTO_LENS_FACE],
   },
   {

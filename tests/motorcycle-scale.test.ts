@@ -6,6 +6,7 @@ import { BIKE_MODEL_SCALES } from '../app/game/vehicleScale';
 import { SPORT_GEOMETRY } from '../app/game/sportGeometry';
 import { createSportDesign } from '../app/game/sportDesign';
 import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
+import { SUPERMOTO_WHEELS } from '../app/game/supermotoWheels';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -59,29 +60,42 @@ describe('larger motorcycles with one unchanged adult', () => {
       expect(clearance).toBeGreaterThan(.005);
     }
   });
-  it('uses equal 17-inch Supermoto wheels with wider tires that both stay grounded', () => {
+  it('uses matching 17-inch Supermoto bead seats with distinct road tire sections that stay grounded', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     bike.root.scale.setScalar(1);
+    expect(SUPERMOTO_WHEELS.front.beadRadius * 2 / 0.0254).toBeCloseTo(17, 9);
+    expect(SUPERMOTO_WHEELS.front.beadRadius).toBe(SUPERMOTO_WHEELS.rear.beadRadius);
+    expect(SUPERMOTO_CHASSIS.frontRadius * 2).toBeCloseTo(0.5998, 9);
+    expect(SUPERMOTO_CHASSIS.rearRadius * 2).toBeCloseTo(0.6118, 9);
+    const tireWidths: number[] = [];
+    const rimWidths: number[] = [];
     for (const [i, wheel] of bike.wheels.entries()) {
       bike.animateSuspension(0, 0);
-      const radius = SUPERMOTO_CHASSIS.wheelRadius;
+      const radius = i === 0 ? SUPERMOTO_CHASSIS.frontRadius : SUPERMOTO_CHASSIS.rearRadius;
+      const size = i === 0 ? SUPERMOTO_WHEELS.front : SUPERMOTO_WHEELS.rear;
       const tire = wheel.getObjectByName('tire') as Mesh;
       const rim = wheel.getObjectByName('formed-rim-barrel') as Mesh;
       tire.geometry.computeBoundingBox();
       rim.geometry.computeBoundingBox();
-      // Geometry bounds catch both an unchanged tire and a tire enlarged
-      // around the old small rim, independent of the scene display scale.
+      // Inspect the actual profile before any presentation scale. The visible
+      // lip lies outside the nominal bead; the tire is circular in the YZ plane.
       expect(tire.geometry.boundingBox!.max.y).toBeCloseTo(radius, 5);
       expect(tire.geometry.boundingBox!.min.y).toBeCloseTo(-radius, 5);
+      expect(tire.geometry.boundingBox!.max.z).toBeCloseTo(radius, 5);
+      expect(tire.geometry.boundingBox!.min.z).toBeCloseTo(-radius, 5);
       expect(rim.geometry.boundingBox!.max.y).toBeCloseTo(
-        SUPERMOTO_CHASSIS.rimRadius + 0.003,
+        size.rimEdgeRadius,
         5,
       );
+      expect(size.rimEdgeRadius).toBeGreaterThan(size.beadRadius);
       expect(wheel.position.y).toBeCloseTo(radius, 12);
       const width = tire.geometry.boundingBox!.max.x - tire.geometry.boundingBox!.min.x;
       const nominalWidth = i === 0 ? SUPERMOTO_CHASSIS.frontTireWidth : SUPERMOTO_CHASSIS.rearTireWidth;
-      // The existing moulded sidewall detail protrudes less than a millimetre.
-      expect(Math.abs(width - nominalWidth)).toBeLessThan(0.0015);
+      expect(width).toBeCloseTo(nominalWidth, 6);
+      tireWidths.push(width);
+      rimWidths.push(rim.geometry.boundingBox!.max.x - rim.geometry.boundingBox!.min.x);
+      expect(rimWidths[i]).toBeLessThan(width);
+      expect(wheel.scale.toArray()).toEqual([1, 1, 1]);
       for (const travel of [-0.008, 0, 0.024]) {
         bike.animateSuspension(0, travel);
         bike.root.updateMatrixWorld(true);
@@ -90,6 +104,8 @@ describe('larger motorcycles with one unchanged adult', () => {
         expect(tireBottom).toBeLessThan(0.0005);
       }
     }
+    expect(tireWidths[0]).toBeLessThan(tireWidths[1]);
+    expect(rimWidths[0]).toBeLessThan(rimWidths[1]);
   });
   it.each(['125', 'scooter', '450', '701'] as const)(
     '%s retains world anatomy and grounded rear contact through suspension/wheelie',

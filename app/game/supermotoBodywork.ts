@@ -1,5 +1,5 @@
 import { BufferGeometry, Float32BufferAttribute, MathUtils, ShapeUtils, Vector2 } from 'three';
-import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER, SUPERMOTO_FRONT_FENDER } from './supermotoFit';
 
 type Section = readonly [number, number, number, number];
 type Point = [number, number, number];
@@ -47,7 +47,7 @@ export function supermotoShroudGeometry(side: number) {
 
 export function supermotoSideCoverGeometry(side: number) {
   return sideSheet(side, SUPERMOTO_SIDE_COVER, [
-    [0.173, 0.818, 0.290], [0.145, 0.901, 0.540],
+    [0.173, 0.818, 0.290], [0.145, 0.912, 0.540],
   ], [
     [0, 1, 2, 3, 4, 12, 11],
     [0, 11, 12, 4, 5, 6, 7, 8, 9, 10],
@@ -109,24 +109,10 @@ export function supermotoTailFenderGeometry() {
   }, [0, -0.007, 0]);
 }
 
-const FRONT_FENDER: readonly Section[] = [
-  // Coordinates are final bike coordinates; the crown mounts at the lower
-  // fork bridge and the trailing tongue follows the back of the front wheel.
-  [-1.090, 0.056, 0.007, 0.838],
-  [-1.055, 0.068, 0.011, 0.848],
-  [-0.940, 0.078, 0.019, 0.869],
-  [-0.805, 0.085, 0.029, 0.886],
-  [-0.665, 0.086, 0.029, 0.887],
-  [-0.572, 0.080, 0.024, 0.869],
-  [-0.514, 0.069, 0.019, 0.829],
-  [-0.474, 0.055, 0.013, 0.777],
-  [-0.452, 0.041, 0.007, 0.740],
-];
-
 /** Thin arched front blade: raised over the tyre, with its nose bending down. */
 export function supermotoFrontFenderGeometry() {
   return formedSheet(48, 20, (u, v) => {
-    const [z, width, crown, edgeY] = sectionAt(FRONT_FENDER, u);
+    const [z, width, crown, edgeY] = sectionAt(SUPERMOTO_FRONT_FENDER, u);
     const noseCorner = (1 - MathUtils.smoothstep(u, 0, 0.09)) * (1 - Math.sqrt(Math.max(0, 1 - v * v)));
     // The center spine is high, with folded shoulders on either side. This
     // gives the blade its moulded trough section without making its wall thick.

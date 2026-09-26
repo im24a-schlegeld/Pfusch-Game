@@ -54,7 +54,7 @@ export const RAMP_FRONT_CONTACT: Readonly<
   scooter: { axle: -0.65 * 1.45, radius: 0.224 * 1.45 },
   '450': {
     axle: SUPERMOTO_CHASSIS.frontAxle * BIKE_MODEL_SCALES['450'] * 1.45,
-    radius: SUPERMOTO_CHASSIS.wheelRadius * BIKE_MODEL_SCALES['450'] * 1.45,
+    radius: SUPERMOTO_CHASSIS.frontRadius * BIKE_MODEL_SCALES['450'] * 1.45,
   },
   '701': {
     axle: -0.72 * BIKE_MODEL_SCALES['701'] * 1.45,
@@ -68,7 +68,7 @@ const RAMP_REAR_CONTACT: Readonly<
   scooter: { axle: 0.64 * 1.45, radius: 0.231 * 1.45 },
   '450': {
     axle: SUPERMOTO_CHASSIS.rearAxle * BIKE_MODEL_SCALES['450'] * 1.45,
-    radius: SUPERMOTO_CHASSIS.wheelRadius * BIKE_MODEL_SCALES['450'] * 1.45,
+    radius: SUPERMOTO_CHASSIS.rearRadius * BIKE_MODEL_SCALES['450'] * 1.45,
   },
   '701': {
     axle: 0.685 * BIKE_MODEL_SCALES['701'] * 1.45,

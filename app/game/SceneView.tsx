@@ -636,7 +636,7 @@ export default function SceneView({
         if (moving || (crashed && crashActive))
           for (const wheel of bike.wheels)
             wheel.rotation.x -=
-              ((crashTravel?.speed ?? engine.speed) * dt) / 0.47;
+              ((crashTravel?.speed ?? engine.speed) * dt) / (wheel.userData.rollingRadius ?? 0.47);
         const shake =
           appearance.current.player.settings.reducedMotion || !moving
             ? 0

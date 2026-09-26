@@ -1,3 +1,5 @@
+import { SUPERMOTO_WHEELS } from './supermotoWheelDimensions';
+
 /** Supermoto-only dimensions, in unscaled motorcycle coordinates. Front is -Z. */
 export type FitPoint = [number, number, number];
 
@@ -5,16 +7,34 @@ export type FitPoint = [number, number, number];
 export const SUPERMOTO_CHASSIS = Object.freeze({
   frontAxle: -0.725,
   rearAxle: 0.725,
-  wheelRadius: 0.318,
-  rimRadius: 0.2159,
-  frontTireWidth: 0.125,
-  rearTireWidth: 0.165,
+  frontRadius: SUPERMOTO_WHEELS.front.outerRadius,
+  rearRadius: SUPERMOTO_WHEELS.rear.outerRadius,
+  rimRadius: SUPERMOTO_WHEELS.front.beadRadius,
+  frontTireWidth: SUPERMOTO_WHEELS.front.tireWidth,
+  rearTireWidth: SUPERMOTO_WHEELS.rear.tireWidth,
+  frontBrakeRadius: 0.16,
   forkTopY: 1.02,
 });
 
 // One contact datum for the actual pegs AND the existing rider IK/boot generator.
 export const SUPERMOTO_PEG: FitPoint = [0.26, 0.385, 0.105];
-export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.112, -0.335];
+export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.132, -0.335];
+export const SUPERMOTO_BAR = Object.freeze({
+  clampY: 1.089,
+  clampZ: -0.395,
+  shoulderY: 1.105,
+  shoulderZ: -0.385,
+});
+
+/** Saddle stations: z, half width, half thickness, center height. */
+export const SUPERMOTO_SEAT: [number, number, number, number][] = [
+  [-0.220, 0.057, 0.013, 1.014],
+  [-0.145, 0.073, 0.018, 0.992],
+  [0.040, 0.091, 0.023, 0.974],
+  [0.380, 0.099, 0.021, 0.972],
+  [0.625, 0.087, 0.017, 1.000],
+  [0.708, 0.065, 0.007, 1.010],
+];
 
 // A single bent radiator wing: a shallow tank shoulder, a forward lip and a
 // lower fin beside the cylinder. The recessed back edge keeps the tank visible.
@@ -42,16 +62,16 @@ export const SUPERMOTO_SHROUD_SHOULDER: [number, number, number, number, number]
   [0.165, 0.087, 0.951, 0.128, 0.947],
 ];
 
-// The long, low upper seam follows the saddle. A separate broad side number
-// panel masks the subframe without filling the open triangle around the shock.
+// The upper seam follows the gently rising rear saddle. A separate broad side
+// number panel masks the subframe without filling the open shock triangle.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.125, 0.941, 0.170],
-  [0.121, 0.943, 0.345],
-  [0.118, 0.951, 0.530],
-  [0.114, 0.965, 0.695],
-  [0.104, 0.978, 0.835],
-  [0.116, 0.936, 0.773],
-  [0.149, 0.843, 0.495],
+  [0.121, 0.945, 0.345],
+  [0.118, 0.961, 0.530],
+  [0.114, 0.990, 0.695],
+  [0.104, 1.018, 0.835],
+  [0.116, 0.970, 0.773],
+  [0.149, 0.851, 0.495],
   [0.156, 0.720, 0.305],
   [0.150, 0.705, 0.278],
   [0.134, 0.782, 0.220],
@@ -62,12 +82,26 @@ export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
  * Tail-contact physics reads the final station's upper center tip. */
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.17, 0.123, 0.008, 0.941],
-  [0.34, 0.121, 0.009, 0.943],
-  [0.53, 0.119, 0.010, 0.951],
-  [0.70, 0.114, 0.011, 0.965],
-  [0.84, 0.104, 0.011, 0.978],
-  [0.93, 0.090, 0.009, 0.984],
-  [0.99, 0.074, 0.006, 0.984],
+  [0.34, 0.121, 0.009, 0.945],
+  [0.53, 0.119, 0.010, 0.961],
+  [0.70, 0.114, 0.011, 0.990],
+  [0.84, 0.104, 0.011, 1.018],
+  [0.93, 0.090, 0.009, 1.027],
+  [0.99, 0.074, 0.006, 1.028],
+];
+
+/** z, half width, crown height, edge height. The forward blade is compact;
+ * the mounting station and trailing tyre-clearance tongue remain fixed. */
+export const SUPERMOTO_FRONT_FENDER: [number, number, number, number][] = [
+  [-1.025, 0.056, 0.009, 0.853],
+  [-0.997, 0.068, 0.014, 0.864],
+  [-0.905, 0.078, 0.024, 0.884],
+  [-0.795, 0.085, 0.033, 0.892],
+  [-0.665, 0.086, 0.031, 0.889],
+  [-0.572, 0.080, 0.024, 0.869],
+  [-0.514, 0.069, 0.019, 0.829],
+  [-0.474, 0.055, 0.013, 0.777],
+  [-0.452, 0.041, 0.007, 0.740],
 ];
 
 export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];

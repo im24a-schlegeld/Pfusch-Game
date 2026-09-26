@@ -46,7 +46,7 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   '450': contact(
     [0, supermotoTailTip[3] + supermotoTailTip[2], supermotoTailTip[0]],
     SUPERMOTO_CHASSIS.rearAxle,
-    SUPERMOTO_CHASSIS.wheelRadius,
+    SUPERMOTO_CHASSIS.rearRadius,
     'plastic',
   ),
   '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'metal'),

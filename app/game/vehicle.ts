@@ -31,7 +31,6 @@ import {
   sportTireGeometry,
   sportBoxBeamGeometry,
   sportRearHuggerGeometry,
-  roadTireGeometry,
 } from './sportGeometry';
 import {
   brakeRotorGeometry,
@@ -49,7 +48,8 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
-import { SUPERMOTO_CHASSIS, SUPERMOTO_SHROUD_SHOULDER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SEAT, SUPERMOTO_SHROUD_SHOULDER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supermotoWheels';
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry } from './supermotoBodywork';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
@@ -602,18 +602,20 @@ export function makeBike(player: Player, products: Product[]) {
       ? 0.305
       : sport
         ? SPORT_GEOMETRY.frontRadius
-        : SUPERMOTO_CHASSIS.wheelRadius,
+        : SUPERMOTO_CHASSIS.frontRadius,
     rearRadius = moped
       ? radius
       : sport
         ? SPORT_GEOMETRY.rearRadius
-        : SUPERMOTO_CHASSIS.wheelRadius;
+        : SUPERMOTO_CHASSIS.rearRadius;
   const wheels: THREE.Group[] = [];
   const tireFinish = !moped && !sport ? supermotoTireMaterial(rubber) : rubber;
   for (const [i, z] of [front, rear].entries()) {
     const wheel = new THREE.Group();
     wheel.name = i === 0 ? 'front-wheel' : 'rear-wheel';
     wheel.position.set(0, i === 0 ? radius : rearRadius, z);
+    if (!moped && !sport)
+      wheel.userData.rollingRadius = wheel.position.y * modelScale * root.scale.x;
     (i === 0 ? frontAssembly : body).add(wheel);
     wheels.push(wheel);
     const width = moped
@@ -631,11 +633,7 @@ export function makeBike(player: Player, products: Product[]) {
         ? sportTireGeometry(i === 1)
         : moped
           ? new THREE.TorusGeometry(radius - width, width, 12, 48)
-          : roadTireGeometry(
-              i === 0 ? radius : rearRadius,
-              i === 0 ? SUPERMOTO_CHASSIS.frontTireWidth : SUPERMOTO_CHASSIS.rearTireWidth,
-              SUPERMOTO_CHASSIS.rimRadius,
-            ),
+          : supermotoTireGeometry(i === 1),
       tireFinish,
     );
     tire.name = 'tire';
@@ -643,7 +641,7 @@ export function makeBike(player: Player, products: Product[]) {
     const rimRadius = moped
       ? radius - width * 1.85
       : sport ? SPORT_GEOMETRY.rimRadius : SUPERMOTO_CHASSIS.rimRadius;
-    for (const x of moped ? [0] : [-width * 0.81, width * 0.81]) {
+    for (const x of moped ? [0] : sport ? [-width * 0.81, width * 0.81] : []) {
       const lip = mesh(
         wheel,
         new THREE.TorusGeometry(rimRadius, moped ? 0.015 : sport ? 0.011 : 0.014, 12, 72),
@@ -652,9 +650,10 @@ export function makeBike(player: Player, products: Product[]) {
       lip.rotation.y = Math.PI / 2;
       lip.position.x = x;
     }
-    rod(wheel, [-0.06, 0, 0], [0.06, 0, 0], 0.055, rim);
-    if (!moped)
+    if (moped || sport) rod(wheel, [-0.06, 0, 0], [0.06, 0, 0], 0.055, rim);
+    if (sport)
       motorcycleRim(wheel, sport, rimRadius, width * 0.81, rim, alloy);
+    else if (!moped) addSupermotoRim(wheel, i === 1, rim, alloy);
     const spokes = 5;
     for (let k = 0; moped && k < spokes; k++) {
       const a = (k / spokes) * Math.PI * 2;
@@ -676,9 +675,9 @@ export function makeBike(player: Player, products: Product[]) {
       for (const x of i === 0
         ? sport
           ? [-0.085, 0.085]
-          : [-0.085]
-        : [0.105]) {
-        const outer = i === 0 ? (sport ? 0.16 : 0.175) : 0.11;
+          : [SUPERMOTO_WHEELS.front.brakeMountX]
+        : [sport ? 0.105 : SUPERMOTO_WHEELS.rear.brakeMountX]) {
+        const outer = i === 0 ? (sport ? 0.16 : SUPERMOTO_CHASSIS.frontBrakeRadius) : 0.11;
         const disc = mesh(wheel, brakeRotorGeometry(outer), discMaterial);
         disc.name = i === 0 ? 'front-brake-disc' : 'rear-brake-disc';
         disc.position.x = x;
@@ -1068,14 +1067,14 @@ export function makeBike(player: Player, products: Product[]) {
   } else if (!sport) {
     // Double cradle: steering head -> engine rails -> swingarm pivot, with a separate alloy subframe.
     const subframeFinish = material('#252b2d', 0.48, 0.52);
-    rod(body, forkAxisAt(forkTop[1] - 0.025), [0, 1.079, -0.415], 0.023, alloy).name =
+    rod(body, forkAxisAt(forkTop[1] - 0.025), [0, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ], 0.023, alloy).name =
       'handlebar-stem';
     for (const s of [-1, 1])
       rod(
         body,
         [s * 0.075, 1.050, -0.410],
-        [s * 0.075, 1.079, -0.415],
-        0.025,
+        [s * 0.075, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ],
+        0.021,
         dark,
       ).name = 'handlebar-clamp';
     for (const s of [-1, 1]) {
@@ -1083,25 +1082,26 @@ export function makeBike(player: Player, products: Product[]) {
         body,
         [
           [s * 0.018, 1.01, forkAxisAt(1.01)[2] + 0.026],
-          [s * 0.105, 0.82, -0.23],
-          [s * 0.13, 0.51, 0.13],
+          [s * 0.108, 0.84, -0.14],
+          [s * 0.145, 0.66, 0.06],
+          [s * 0.145, 0.51, 0.13],
         ],
-        [0.023, 0.025, 0.026],
+        [0.019, 0.021, 0.020, 0.020],
         dark,
         24,
         14,
-      );
+      ).name = 'supermoto-frame-main-spar';
       tube(
         body,
         [
-          [s * 0.13, 0.51, 0.13],
-          [s * 0.13, 0.37, 0.1],
-          [s * 0.12, 0.38, -0.2],
-          [s * 0.085, 0.49, -0.285],
-          [s * 0.045, 0.575, -0.33],
+          [s * 0.145, 0.51, 0.13],
+          [s * 0.145, 0.377, 0.1],
+          [s * 0.13, 0.382, -0.18],
+          [s * 0.085, 0.485, -0.265],
+          [s * 0.040, 0.575, -0.322],
           [0, 0.625, -0.35],
         ],
-        [0.020, 0.018, 0.018, 0.018, 0.019, 0.023],
+        [0.016, 0.0135, 0.0135, 0.014, 0.015, 0.019],
         dark,
         28,
         14,
@@ -1118,7 +1118,7 @@ export function makeBike(player: Player, products: Product[]) {
             [0, 0.84, -0.39],
             [0, 0.98, forkAxisAt(0.98)[2] + 0.024],
           ],
-          [0.025, 0.027, 0.028, 0.027],
+          [0.020, 0.021, 0.022, 0.021],
           dark,
           24,
           16,
@@ -1126,9 +1126,9 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          [s * 0.13, 0.51, 0.13],
-          [s * 0.081, 0.795, 0.48],
-          [s * 0.060, 0.946, 0.81],
+          [s * 0.145, 0.51, 0.13],
+          [s * 0.081, 0.803, 0.48],
+          [s * 0.060, 0.982, 0.81],
         ],
         [0.014, 0.014, 0.012],
         subframeFinish,
@@ -1138,23 +1138,22 @@ export function makeBike(player: Player, products: Product[]) {
       rod(
         body,
         [s * 0.085, 0.918, 0.12],
-        [s * 0.060, 0.946, 0.81],
+        [s * 0.060, 0.982, 0.81],
         0.013,
         subframeFinish,
       ).name = 'supermoto-upper-subframe';
       const swingarm = loft(
         body,
         [
-          [0.1, 0.030, 0.050, 0.5],
-          [0.34, 0.032, 0.045, 0.43],
-          [rear - 0.04, 0.026, 0.030, rearRadius + 0.01],
-          [rear + 0.025, 0.021, 0.023, rearRadius],
+          [0.1, 0.0252, 0.042, 0.5],
+          [0.34, 0.02688, 0.037, 0.43],
+          [rear - 0.04, 0.02184, 0.026, rearRadius + 0.01],
+          [rear + 0.025, 0.01764, 0.021, rearRadius],
         ],
         matteBlack,
         'z',
         16,
       );
-      swingarm.geometry.scale(0.84, 1, 1);
       swingarm.position.x =
         s < 0 ? CHAIN_DRIVE.leftSwingarmX : CHAIN_DRIVE.rightSwingarmX;
       swingarm.name = 'box-section-swingarm';
@@ -1287,8 +1286,8 @@ export function makeBike(player: Player, products: Product[]) {
         s,
         [
           [0.096, 0.932, 0.184],
-          [0.095, 0.942, 0.544],
-          [0.092, 0.936, 0.603],
+          [0.095, 0.953, 0.544],
+          [0.092, 0.954, 0.603],
           [0.100, 0.848, 0.444],
           [0.104, 0.800, 0.307],
           [0.100, 0.805, 0.193],
@@ -1357,7 +1356,7 @@ export function makeBike(player: Player, products: Product[]) {
         ).name = 'radiator-protection-rib';
       rod(
         body,
-        [s * 0.098, 0.824, -0.237],
+        [s * 0.108, 0.840, -0.140],
         [s * 0.097, 0.858, -0.311],
         0.011,
         dark,
@@ -1370,9 +1369,9 @@ export function makeBike(player: Player, products: Product[]) {
       [
         [0.075, 0.084, 0.046, 0.890],
         [0.22, 0.108, 0.079, 0.862],
-        [0.43, 0.099, 0.044, 0.899],
-        [0.61, 0.075, 0.029, 0.926],
-        [0.78, 0.061, 0.018, 0.950],
+        [0.43, 0.099, 0.044, 0.905],
+        [0.61, 0.075, 0.029, 0.945],
+        [0.78, 0.061, 0.018, 0.985],
       ],
       dark,
       'z',
@@ -1385,17 +1384,17 @@ export function makeBike(player: Player, products: Product[]) {
     addSupermotoRearProtection(body, matteBlack, rubber);
     // The lamp nestles in the dark underside. No projecting registration carrier.
     const tailLampHousing = loft(body, [
-      [0.867, 0.051, 0.018, 0.965],
-      [0.929, 0.049, 0.015, 0.969],
-      [0.951, 0.042, 0.011, 0.971],
+      [0.867, 0.051, 0.018, 1.008],
+      [0.929, 0.049, 0.015, 1.012],
+      [0.951, 0.042, 0.011, 1.014],
     ], matteBlack, 'z', 16);
     tailLampHousing.name = 'supermoto-tail-light-housing';
     const tailLens = mesh(body, new THREE.SphereGeometry(1, 20, 10),
       new THREE.MeshStandardMaterial({ color: '#9c1018', emissive: '#b90c12', emissiveIntensity: 0.45, roughness: 0.25 }));
-    tailLens.position.set(0, 0.971, 0.952);
+    tailLens.position.set(0, 1.014, 0.952);
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
-    rod(body, [-0.15, 0.5, 0.12], [0.15, 0.5, 0.12], 0.05, dark);
+    rod(body, [-0.16, 0.5, 0.12], [0.16, 0.5, 0.12], 0.033, dark).name = 'swingarm-pivot';
     addSupermotoEngine(body);
     const damperTop = V(SUPERMOTO_SHOCK_TOP),
       damperBottom = V(SUPERMOTO_SHOCK_BOTTOM),
@@ -1404,6 +1403,14 @@ export function makeBike(player: Player, products: Product[]) {
       cross = new THREE.Vector3().crossVectors(axis, radial);
     rod(body, [-0.108, 0.885, 0.090], [0.108, 0.885, 0.090], 0.024, dark).name =
       'shock-frame-crossmember';
+    // Close the load path under the tank: main spar, saddle rail and the
+    // shock bridge are joined instead of ending separately behind the panel.
+    for (const side of [-1, 1]) {
+      rod(body, [side * 0.108, 0.84, -0.14], [side * 0.085, 0.918, 0.12], 0.018, dark)
+        .name = 'supermoto-under-seat-frame-rail';
+      rod(body, [side * 0.108, 0.885, 0.09], [side * 0.085, 0.918, 0.12], 0.013, dark)
+        .name = 'supermoto-shock-bridge-support';
+    }
     rod(
       body,
       [0, 0.885, 0.090],
@@ -1474,14 +1481,7 @@ export function makeBike(player: Player, products: Product[]) {
       'fuel-cap';
     loft(
       body,
-      [
-        [-0.220, 0.057, 0.013, 1.014],
-        [-0.145, 0.073, 0.018, 0.992],
-        [0.040, 0.091, 0.023, 0.974],
-        [0.380, 0.099, 0.021, 0.970],
-        [0.625, 0.087, 0.017, 0.980],
-        [0.708, 0.065, 0.007, 0.983],
-      ],
+      SUPERMOTO_SEAT,
       seat,
       'z',
     ).name = 'supermoto-seat';
@@ -1539,11 +1539,11 @@ export function makeBike(player: Player, products: Product[]) {
       [
         supermotoGripPoint(pose.grip, -1, 0.055),
         supermotoGripPoint(pose.grip, -1, -0.09),
-        [-0.17, 1.090, -0.395],
-        [-0.08, 1.079, -0.415],
-        [0, 1.079, -0.415],
-        [0.08, 1.079, -0.415],
-        [0.17, 1.090, -0.395],
+        [-0.17, SUPERMOTO_BAR.shoulderY, SUPERMOTO_BAR.shoulderZ],
+        [-0.08, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ],
+        [0, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ],
+        [0.08, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ],
+        [0.17, SUPERMOTO_BAR.shoulderY, SUPERMOTO_BAR.shoulderZ],
         supermotoGripPoint(pose.grip, 1, -0.09),
         supermotoGripPoint(pose.grip, 1, 0.055),
       ],
