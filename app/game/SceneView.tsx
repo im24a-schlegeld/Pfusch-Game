@@ -215,6 +215,24 @@ export default function SceneView({
     if (signs) scene.add(signs.root);
     let crashNotified = false;
     let crashReported = false;
+    let shadowFloor: THREE.Mesh | undefined;
+    const fitPreviewGround = (model: Player['bike']) => {
+      if (!shadowFloor) return;
+      shadowFloor.position.y = -0.015;
+      sunlight.shadow.normalBias = 0.015;
+      if (model !== '450') return;
+      // Fit the receiving plane to the actual tires, independently of the
+      // mechanical geometry. A large shadow bias made the preview float.
+      bike.root.updateMatrixWorld(true);
+      let contactY = Infinity;
+      for (const wheel of bike.wheels) {
+        const tire = wheel.getObjectByName('tire');
+        if (tire)
+          contactY = Math.min(contactY, new THREE.Box3().setFromObject(tire).min.y);
+      }
+      if (Number.isFinite(contactY)) shadowFloor.position.y = contactY - 0.0005;
+      sunlight.shadow.normalBias = 0.002;
+    };
     if (mode === 'ride') {
       worldView = makeWorldView(scene, low);
       const policeVariants = makeTrafficVariants('police');
@@ -231,7 +249,7 @@ export default function SceneView({
     } else {
       scene.background = new THREE.Color('#323232');
       scene.fog = null;
-      const shadowFloor = new THREE.Mesh(
+      shadowFloor = new THREE.Mesh(
         new THREE.PlaneGeometry(200, 200),
         new THREE.ShadowMaterial({ opacity: 0.18 }),
       );
@@ -240,6 +258,7 @@ export default function SceneView({
       shadowFloor.receiveShadow = true;
       shadowFloor.name = 'neutral-preview-shadow-floor';
       scene.add(shadowFloor);
+      fitPreviewGround(player.bike);
     }
     const resize = () => {
       const w = el.clientWidth,
@@ -323,6 +342,7 @@ export default function SceneView({
         collisionTraffic.clear();
         anchors = particleAnchors(bike.body, nextAppearance.player.bike);
         scene.add(bike.root);
+        fitPreviewGround(nextAppearance.player.bike);
         updateGlow = createGarmentGlowUpdater(bike.root);
         headlightRig = createBikeHeadlightRig(
           headlightModel(nextAppearance.player.bike),

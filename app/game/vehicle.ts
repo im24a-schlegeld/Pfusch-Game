@@ -53,6 +53,8 @@ import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supe
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry } from './supermotoBodywork';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
+import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, supermotoLowerFrameGeometry } from './supermotoFrame';
+import { SUPERMOTO_SWINGARM, supermotoSwingarmGeometry } from './supermotoSwingarm';
 import { supermotoTireMaterial } from './supermotoTire';
 import { supermotoGripPoint } from './supermotoCockpit';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
@@ -1078,34 +1080,27 @@ export function makeBike(player: Player, products: Product[]) {
         dark,
       ).name = 'handlebar-clamp';
     for (const s of [-1, 1]) {
+      const pivotJoint: Point = [
+        s * SUPERMOTO_PIVOT_FRAME_JOINT[0],
+        SUPERMOTO_PIVOT_FRAME_JOINT[1],
+        SUPERMOTO_PIVOT_FRAME_JOINT[2],
+      ];
       tube(
         body,
         [
           [s * 0.018, 1.01, forkAxisAt(1.01)[2] + 0.026],
           [s * 0.108, 0.84, -0.14],
           [s * 0.145, 0.66, 0.06],
-          [s * 0.145, 0.51, 0.13],
+          [s * 0.132, 0.596, 0.142],
+          [s * 0.124, 0.543, 0.172],
+          pivotJoint,
         ],
-        [0.019, 0.021, 0.020, 0.020],
+        [0.019, 0.021, 0.020, 0.015, 0.012, SUPERMOTO_PIVOT_FRAME_RADIUS],
         dark,
         24,
         14,
       ).name = 'supermoto-frame-main-spar';
-      tube(
-        body,
-        [
-          [s * 0.145, 0.51, 0.13],
-          [s * 0.145, 0.377, 0.1],
-          [s * 0.13, 0.382, -0.18],
-          [s * 0.085, 0.485, -0.265],
-          [s * 0.040, 0.575, -0.322],
-          [0, 0.625, -0.35],
-        ],
-        [0.016, 0.0135, 0.0135, 0.014, 0.015, 0.019],
-        dark,
-        28,
-        14,
-      ).name = 'supermoto-frame-merge-branch';
+      mesh(body, supermotoLowerFrameGeometry(s), dark).name = 'supermoto-frame-merge-branch';
 
       // Both lower frame rails meet here. From this junction upward there is
       // one visibly wider central frame tube instead of two parallel rods.
@@ -1126,11 +1121,12 @@ export function makeBike(player: Player, products: Product[]) {
       tube(
         body,
         [
-          [s * 0.145, 0.51, 0.13],
+          pivotJoint,
+          [s * 0.111, 0.594, 0.208],
           [s * 0.081, 0.803, 0.48],
           [s * 0.060, 0.982, 0.81],
         ],
-        [0.014, 0.014, 0.012],
+        [SUPERMOTO_PIVOT_FRAME_RADIUS, 0.014, 0.014, 0.012],
         subframeFinish,
         20,
         12,
@@ -1142,21 +1138,7 @@ export function makeBike(player: Player, products: Product[]) {
         0.013,
         subframeFinish,
       ).name = 'supermoto-upper-subframe';
-      const swingarm = loft(
-        body,
-        [
-          [0.1, 0.0252, 0.042, 0.5],
-          [0.34, 0.02688, 0.037, 0.43],
-          [rear - 0.04, 0.02184, 0.026, rearRadius + 0.01],
-          [rear + 0.025, 0.01764, 0.021, rearRadius],
-        ],
-        matteBlack,
-        'z',
-        16,
-      );
-      swingarm.position.x =
-        s < 0 ? CHAIN_DRIVE.leftSwingarmX : CHAIN_DRIVE.rightSwingarmX;
-      swingarm.name = 'box-section-swingarm';
+      mesh(body, supermotoSwingarmGeometry(s), matteBlack).name = 'box-section-swingarm';
       const forkGuard = rod(
         frontAssembly,
         [
@@ -1394,7 +1376,9 @@ export function makeBike(player: Player, products: Product[]) {
     tailLens.position.set(0, 1.014, 0.952);
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
-    rod(body, [-0.16, 0.5, 0.12], [0.16, 0.5, 0.12], 0.033, dark).name = 'swingarm-pivot';
+    // The visible spindle uses the same axis as the moving arm's bearing.
+    rod(body, [-0.19, SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.pivotZ],
+      [0.19, SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.pivotZ], 0.033, dark).name = 'swingarm-pivot';
     addSupermotoEngine(body);
     const damperTop = V(SUPERMOTO_SHOCK_TOP),
       damperBottom = V(SUPERMOTO_SHOCK_BOTTOM),
@@ -1420,14 +1404,14 @@ export function makeBike(player: Player, products: Product[]) {
     ).name = 'shock-upper-mount';
     rod(
       body,
-      [CHAIN_DRIVE.leftSwingarmX, 0.414, 0.43],
-      [CHAIN_DRIVE.rightSwingarmX, 0.414, 0.43],
+      [CHAIN_DRIVE.leftSwingarmX, 0.414, 0.405],
+      [CHAIN_DRIVE.rightSwingarmX, 0.414, 0.405],
       0.022,
       alloy,
     ).name = 'swingarm-crossmember';
     rod(
       body,
-      [0, 0.414, 0.43],
+      [0, 0.414, 0.405],
       damperBottom.toArray() as Point,
       0.023,
       dark,
@@ -1936,13 +1920,16 @@ export function makeBike(player: Player, products: Product[]) {
       0.012,
       alloy,
     ).name = 'rear-axle';
-    rod(
+    const forwardBridgeY = sport ? 0.46 : SUPERMOTO_SWINGARM.forwardBridgeY;
+    const forwardBridgeZ = sport ? 0.18 : SUPERMOTO_SWINGARM.forwardBridgeZ;
+    const forwardBridge = rod(
       body,
-      [CHAIN_DRIVE.leftSwingarmX, 0.46, 0.18],
-      [0.16, 0.46, 0.18],
+      [CHAIN_DRIVE.leftSwingarmX, forwardBridgeY, forwardBridgeZ],
+      [0.16, forwardBridgeY, forwardBridgeZ],
       0.022,
       dark,
     );
+    if (!sport) forwardBridge.name = 'swingarm-forward-crossmember';
   } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
   const exhaustX = moped ? 0.15 : sport ? 0.272 : 0.130;

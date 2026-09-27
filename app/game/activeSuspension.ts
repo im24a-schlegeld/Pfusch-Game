@@ -169,6 +169,7 @@ const motorcycleRear = new Set([
   'rear-brake-torque-link',
   'rear-axle',
   'swingarm-crossmember',
+  'swingarm-forward-crossmember',
   'shock-lower-link',
   'sport-shock-swingarm-bridge',
   'sport-rear-hugger',
