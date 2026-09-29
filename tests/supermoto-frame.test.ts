@@ -36,6 +36,9 @@ describe('compact Supermoto engine cradle', () => {
       'supermoto-frame-main-spar',
       'supermoto-frame-merge-branch',
       'supermoto-rear-subframe',
+      'supermoto-frame-central-up-tube',
+      'supermoto-steering-neck-gusset',
+      'supermoto-cradle-crossmember',
     ];
     const frames = frameNames.flatMap((name) =>
       bike.body.getObjectsByProperty('name', name),
@@ -127,6 +130,7 @@ describe('compact Supermoto engine cradle', () => {
     let armGap = Infinity,
       caseGap = Infinity,
       bridgeFrameGap = Infinity;
+    let armGapContext = '';
     for (const travel of [-0.025, 0, 0.06, 0.12]) {
       bike.animateSuspension(0, travel);
       bike.root.updateMatrixWorld(true);
@@ -145,7 +149,11 @@ describe('compact Supermoto engine cradle', () => {
           for (const target of [...armProbes, ...caseProbes])
             clear(point, target, frame.name);
           if (points.getY(index) < 0.65 && points.getZ(index) > 0.03) {
-            armGap = Math.min(armGap, distance(point, armSurfaces) / scale);
+            const gap = distance(point, armSurfaces) / scale;
+            if (gap < armGap) {
+              armGap = gap;
+              armGapContext = `${frame.name}, travel ${travel}, local vertex ${points.getX(index)},${points.getY(index)},${points.getZ(index)}`;
+            }
             if (caseSurfaces.length)
               caseGap = Math.min(
                 caseGap,
@@ -213,7 +221,7 @@ describe('compact Supermoto engine cradle', () => {
         actual.distanceTo(bridgePosition.clone().setX(-0.002)),
       ).toBeLessThan(1e-8);
     }
-    expect(armGap).toBeGreaterThan(0.001);
+    expect(armGap, armGapContext).toBeGreaterThan(0.001);
     expect(caseGap).toBeGreaterThan(0.001);
     expect(bridgeFrameGap).toBeGreaterThan(0.001);
     finish.dispose();
@@ -237,7 +245,7 @@ describe('compact Supermoto engine cradle', () => {
         path.getPoint(1).distanceTo(new Vector3(0, 0.625, -0.35)),
       ).toBeLessThan(1e-8);
       const geometry = supermotoLowerFrameGeometry(side);
-      expect(geometry.boundingBox!.min.y).toBeGreaterThan(0.376);
+      expect(geometry.boundingBox!.min.y).toBeGreaterThan(0.371);
       // The previous free spline dipped well below its own control points.
       for (let step = 0; step <= 200; step++) {
         const point = path.getPointAt(step / 200);

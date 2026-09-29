@@ -74,12 +74,13 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
     [.0525,.0745,bandAt-.011],[.0525,.0745,bandAt+.011],
   ]),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a);
-  // The header comes forward out of the head, curls below the radiator, then
-  // returns above the crankcase to the silencer. Its bore never changes size.
+  // The port and first tangent stay seated in the head. A compact return bend
+  // runs alongside the cylinder, above the coolant hose, rather than hanging
+  // down beside the crankcase as an oversized free loop.
   const headerPoints:P[]=[
-    [.046,.724,-.238],[.129,.718,-.263],[.197,.680,-.292],
-    [.220,.603,-.291],[.218,.564,-.239],[.211,.581,-.164],
-    [.197,.665,-.101],[.168,.720,.006],[.168,.719,.164],
+    [.046,.724,-.238],[.129,.718,-.263],[.167,.696,-.275],
+    [.180,.670,-.265],[.184,.668,-.225],[.182,.686,-.161],
+    [.184,.702,-.071],[.184,.720,.006],[.180,.719,.164],
     [.174,.721,.292],[e.x,e.startY,e.startZ],
   ];
   tube(group,headerPoints,.0185,headerFinish,'connected-exhaust-pipe');

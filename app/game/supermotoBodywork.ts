@@ -1,5 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute, MathUtils, ShapeUtils, Vector2 } from 'three';
-import { SUPERMOTO_SHROUD, SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER, SUPERMOTO_FRONT_FENDER } from './supermotoFit';
+import { SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER, SUPERMOTO_FRONT_FENDER } from './supermotoFit';
+export { supermotoShroudGeometry } from './supermotoTank';
 
 type Section = readonly [number, number, number, number];
 type Point = [number, number, number];
@@ -36,15 +37,6 @@ function sideSheet(side: number, outline: Point[], creases: Point[], regions: nu
   return geometry;
 }
 
-export function supermotoShroudGeometry(side: number) {
-  return sideSheet(side, SUPERMOTO_SHROUD, [
-    [0.191, 0.918, -0.280], [0.181, 0.900, -0.150], [0.149, 0.917, 0.040],
-  ], [
-    [0, 1, 2, 3, 4, 14, 13, 12],
-    [0, 12, 13, 14, 4, 5, 6, 7, 8, 9, 10, 11],
-  ]);
-}
-
 export function supermotoSideCoverGeometry(side: number) {
   return sideSheet(side, SUPERMOTO_SIDE_COVER, [
     [0.173, 0.818, 0.290], [0.145, 0.912, 0.540],
@@ -55,7 +47,7 @@ export function supermotoSideCoverGeometry(side: number) {
 }
 
 /** A moulded plastic sheet with a closed 4 mm edge, rather than a solid oval. */
-function formedSheet(rows: number, columns: number, pointAt: (u: number, v: number) => Point, thickness: Point) {
+function formedSheet(rows: number, columns: number, pointAt: (u: number, v: number) => Point, thickness: Point, mirrorDiagonals = false) {
   const positions: number[] = [], uv: number[] = [], indices: number[] = [];
   const stride = columns + 1, faceSize = (rows + 1) * stride;
   for (let layer = 0; layer < 2; layer++) for (let row = 0; row <= rows; row++) {
@@ -68,9 +60,13 @@ function formedSheet(rows: number, columns: number, pointAt: (u: number, v: numb
   }
   for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
     const a = row * stride + column, b = a + stride;
-    indices.push(a, b, a + 1, a + 1, b, b + 1,
-      a + faceSize, a + 1 + faceSize, b + faceSize,
-      a + 1 + faceSize, b + 1 + faceSize, b + faceSize);
+    if (mirrorDiagonals && column >= columns / 2)
+      indices.push(a, b, b + 1, a, b + 1, a + 1,
+        a + faceSize, b + 1 + faceSize, b + faceSize,
+        a + faceSize, a + 1 + faceSize, b + 1 + faceSize);
+    else indices.push(a, b, a + 1, a + 1, b, b + 1,
+        a + faceSize, a + 1 + faceSize, b + faceSize,
+        a + 1 + faceSize, b + 1 + faceSize, b + faceSize);
   }
   const rim: number[] = [];
   for (let c = 0; c < columns; c++) rim.push(c);
@@ -109,16 +105,67 @@ export function supermotoTailFenderGeometry() {
   }, [0, -0.007, 0]);
 }
 
-/** Thin arched front blade: raised over the tyre, with its nose bending down. */
+/** Shape-preserving longitudinal bends; unlike an unconstrained spline,
+ * these tangents cannot overshoot the tyre-clearance stations. Width stays
+ * piecewise linear so the real stepped outline is not rounded into an oval. */
+function frontFenderSectionAt(u: number): Section {
+  const sections = SUPERMOTO_FRONT_FENDER;
+  const station = u * (sections.length - 1), i = Math.min(Math.floor(station), sections.length - 2);
+  const t = station - i, a = sections[i], b = sections[i + 1], span = b[0] - a[0];
+  const slope = (index: number, component: 2 | 3) => {
+    const secant = (n: number) => (sections[n + 1][component] - sections[n][component])
+      / (sections[n + 1][0] - sections[n][0]);
+    if (index === 0) return secant(0);
+    if (index === sections.length - 1) return secant(index - 1);
+    const left = secant(index - 1), right = secant(index);
+    if (left * right <= 0) return 0;
+    const before = sections[index][0] - sections[index - 1][0];
+    const after = sections[index + 1][0] - sections[index][0];
+    const w1 = 2 * after + before, w2 = after + 2 * before;
+    return (w1 + w2) / (w1 / left + w2 / right);
+  };
+  const bend = (component: 2 | 3) => (2 * t ** 3 - 3 * t ** 2 + 1) * a[component]
+    + (t ** 3 - 2 * t ** 2 + t) * span * slope(i, component)
+    + (-2 * t ** 3 + 3 * t ** 2) * b[component]
+    + (t ** 3 - t ** 2) * span * slope(i + 1, component);
+  return [MathUtils.lerp(a[0], b[0], t), MathUtils.lerp(a[1], b[1], t), bend(2), bend(3)];
+}
+
+/** One thin moulded part: broad central spine, recessed side channels,
+ * kicked-out shoulders, rounded descending nose and short rear return. */
 export function supermotoFrontFenderGeometry() {
-  return formedSheet(48, 20, (u, v) => {
-    const [z, width, crown, edgeY] = sectionAt(SUPERMOTO_FRONT_FENDER, u);
-    const noseCorner = (1 - MathUtils.smoothstep(u, 0, 0.09)) * (1 - Math.sqrt(Math.max(0, 1 - v * v)));
-    // The center spine is high, with folded shoulders on either side. This
-    // gives the blade its moulded trough section without making its wall thick.
-    const shoulder = 1 - 0.58 * v * v - 0.42 * Math.pow(v, 6);
-    return [width * v, edgeY + crown * shoulder, z + noseCorner * 0.024];
-  }, [0, -0.004, 0]);
+  const folds = [[0, 1], [0.25, 0.94], [0.50, 0.35], [0.625, 0.35], [0.75, 0.50], [1, 0]];
+  return formedSheet(60, 16, (u, v) => {
+    const section = frontFenderSectionAt(u), [z, width] = section, across = Math.abs(v);
+    const segment = Math.max(0, folds.findIndex(p => p[0] >= across) - 1);
+    const a = folds[segment], b = folds[segment + 1];
+    const height = MathUtils.lerp(a[1], b[1], (across - a[0]) / (b[0] - a[0]));
+    // Clip the two corners of the broad nose. Use physical longitudinal
+    // distance so dense first stations cannot fold back over one another.
+    const noseCorner = 0.020 * MathUtils.smoothstep(across, 0.55, 1)
+      * (1 - MathUtils.smoothstep(z, -1.045, -0.915));
+    const pointZ = z + noseCorner;
+    let profile = section;
+    if (noseCorner > 0) {
+      const next = SUPERMOTO_FRONT_FENDER.findIndex(station => station[0] >= pointZ);
+      const i = Math.max(0, next - 1), start = SUPERMOTO_FRONT_FENDER[i][0];
+      const t = (pointZ - start) / (SUPERMOTO_FRONT_FENDER[i + 1][0] - start);
+      profile = frontFenderSectionAt((i + t) / (SUPERMOTO_FRONT_FENDER.length - 1));
+    }
+    // The shoulder notch only cuts the outer flange. Keep the central rib
+    // continuous through it instead of pinching the entire cross-section.
+    const spineWidth = z > -0.915 && z < -0.760
+      ? Math.max(width, MathUtils.lerp(0.099, 0.090, (z + 0.915) / 0.155))
+      : width;
+    const x = across <= 0.5 ? across * spineWidth
+      : MathUtils.lerp(spineWidth * 0.5, width, (across - 0.5) * 2);
+    // The reinforcing folds fade into the smooth leading lip and rear skirt;
+    // carrying the channels all the way to either cut edge creates two bumps.
+    const foldStrength = MathUtils.smoothstep(pointZ, -1.015, -0.945)
+      * (1 - MathUtils.smoothstep(pointZ, -0.520, -0.470));
+    const crownHeight = MathUtils.lerp(1 - v * v, height, foldStrength);
+    return [Math.sign(v) * x, profile[3] + profile[2] * crownHeight, pointZ];
+  }, [0, -0.004, 0], true);
 }
 
 type Outline = readonly (readonly [number, number])[];
@@ -127,15 +174,19 @@ const LAMP_OPENING: Outline = [
   [0.069, 1.067], [-0.069, 1.067], [-0.070, 1.007],
 ];
 function maskFrontZ(y: number, x: number) {
-  const profile = [[0.885, -0.538], [0.935, -0.559], [1.010, -0.520], [1.080, -0.464], [1.140, -0.420]];
+  const profile = [[0.885, -0.547], [0.935, -0.523], [1.010, -0.488], [1.080, -0.455], [1.140, -0.426]];
   const next = profile.findIndex(p => p[0] >= y);
   const i = next < 0 ? profile.length - 2 : Math.max(0, next - 1);
   const a = profile[i], b = profile[i + 1];
-  return MathUtils.lerp(a[1], b[1], MathUtils.clamp((y - a[0]) / (b[0] - a[0]), 0, 1)) + x * x * 2.0;
+  return MathUtils.lerp(a[1], b[1], MathUtils.clamp((y - a[0]) / (b[0] - a[0]), 0, 1)) + x * x * 2.0 - 0.004;
 }
 
 /** Visible lens center, shared by the real light anchor and the lamp mesh. */
 export const SUPERMOTO_LENS_FACE: Point = [0, 1.006, maskFrontZ(1.006, 0) - 0.004];
+export const SUPERMOTO_LAMP_BULB: Point = [0, 1.006, SUPERMOTO_LENS_FACE[2] + 0.030];
+/** Real back-face attachment points; mirror X for the other fork strap. */
+export const SUPERMOTO_MASK_STRAP_ANCHORS: Point[] = [[0.077, 0.913], [0.108, 0.988]]
+  .map(([x, y]) => [x, y, maskFrontZ(y, x) + 0.004]);
 
 /** Thin shaped front and back faces, including real return walls around holes. */
 function maskShell(outline: Outline, hole: Outline | undefined, thickness: number, offset: number, lensCenter = false, ridge?: Outline) {

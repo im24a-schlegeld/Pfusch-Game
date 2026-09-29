@@ -36,32 +36,6 @@ export const SUPERMOTO_SEAT: [number, number, number, number][] = [
   [0.708, 0.065, 0.007, 1.010],
 ];
 
-// A single bent radiator wing: a shallow tank shoulder, a forward lip and a
-// lower fin beside the cylinder. The recessed back edge keeps the tank visible.
-export const SUPERMOTO_SHROUD: FitPoint[] = [
-  [0.153, 0.930, -0.470],
-  [0.165, 0.980, -0.320],
-  [0.168, 0.982, -0.200],
-  [0.150, 0.947, 0.015],
-  [0.128, 0.947, 0.165],
-  [0.138, 0.890, 0.071],
-  [0.173, 0.839, -0.125],
-  [0.180, 0.710, -0.224],
-  [0.178, 0.685, -0.255],
-  [0.176, 0.748, -0.304],
-  [0.172, 0.837, -0.345],
-  [0.159, 0.890, -0.448],
-];
-
-/** z, inner x/y, outer x/y. Matches the wing's five upper boundary points. */
-export const SUPERMOTO_SHROUD_SHOULDER: [number, number, number, number, number][] = [
-  [-0.470, 0.112, 0.930, 0.153, 0.930],
-  [-0.320, 0.095, 0.984, 0.165, 0.980],
-  [-0.200, 0.097, 0.987, 0.168, 0.982],
-  [0.015, 0.089, 0.953, 0.150, 0.947],
-  [0.165, 0.087, 0.951, 0.128, 0.947],
-];
-
 // The upper seam follows the gently rising rear saddle. A separate broad side
 // number panel masks the subframe without filling the open shock triangle.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
@@ -90,18 +64,23 @@ export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.99, 0.074, 0.006, 1.028],
 ];
 
-/** z, half width, crown height, edge height. The forward blade is compact;
- * the mounting station and trailing tyre-clearance tongue remain fixed. */
+/** z, half width, crown height, edge height. Broad dropped nose, stepped
+ * shoulders and a short rear skirt follow the supplied moulded MX fender.
+ * The fork mounting station and rear tyre-clearance height remain fixed. */
 export const SUPERMOTO_FRONT_FENDER: [number, number, number, number][] = [
-  [-1.025, 0.056, 0.009, 0.853],
-  [-0.997, 0.068, 0.014, 0.864],
-  [-0.905, 0.078, 0.024, 0.884],
-  [-0.795, 0.085, 0.033, 0.892],
-  [-0.665, 0.086, 0.031, 0.889],
+  [-1.045, 0.050, 0.006, 0.784],
+  [-1.020, 0.067, 0.011, 0.797],
+  [-0.970, 0.088, 0.022, 0.820],
+  [-0.915, 0.099, 0.035, 0.844],
+  [-0.870, 0.096, 0.041, 0.860],
+  [-0.858, 0.078, 0.043, 0.866],
+  [-0.760, 0.090, 0.044, 0.883],
+  [-0.665, 0.091, 0.034, 0.890],
   [-0.572, 0.080, 0.024, 0.869],
-  [-0.514, 0.069, 0.019, 0.829],
-  [-0.474, 0.055, 0.013, 0.777],
-  [-0.452, 0.041, 0.007, 0.740],
+  [-0.535, 0.074, 0.021, 0.845],
+  [-0.500, 0.072, 0.017, 0.809],
+  [-0.472, 0.070, 0.012, 0.771],
+  [-0.452, 0.066, 0.007, 0.740],
 ];
 
 export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];

@@ -48,12 +48,13 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
-import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SEAT, SUPERMOTO_SHROUD_SHOULDER, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SEAT, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supermotoWheels';
-import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry } from './supermotoBodywork';
+import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry, SUPERMOTO_LAMP_BULB, SUPERMOTO_MASK_STRAP_ANCHORS } from './supermotoBodywork';
+import { supermotoFuelTankGeometry } from './supermotoTank';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
-import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, supermotoLowerFrameGeometry } from './supermotoFrame';
+import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, addSupermotoMainFrame } from './supermotoFrame';
 import { SUPERMOTO_SWINGARM, supermotoSwingarmGeometry } from './supermotoSwingarm';
 import { supermotoTireMaterial } from './supermotoTire';
 import { supermotoGripPoint } from './supermotoCockpit';
@@ -1079,45 +1080,15 @@ export function makeBike(player: Player, products: Product[]) {
         0.021,
         dark,
       ).name = 'handlebar-clamp';
+    addSupermotoMainFrame(body, dark,
+      [0, 1.01, forkAxisAt(1.01)[2] + 0.026],
+      [0, 0.98, forkAxisAt(0.98)[2] + 0.024]);
     for (const s of [-1, 1]) {
       const pivotJoint: Point = [
         s * SUPERMOTO_PIVOT_FRAME_JOINT[0],
         SUPERMOTO_PIVOT_FRAME_JOINT[1],
         SUPERMOTO_PIVOT_FRAME_JOINT[2],
       ];
-      tube(
-        body,
-        [
-          [s * 0.018, 1.01, forkAxisAt(1.01)[2] + 0.026],
-          [s * 0.108, 0.84, -0.14],
-          [s * 0.145, 0.66, 0.06],
-          [s * 0.132, 0.596, 0.142],
-          [s * 0.124, 0.543, 0.172],
-          pivotJoint,
-        ],
-        [0.019, 0.021, 0.020, 0.015, 0.012, SUPERMOTO_PIVOT_FRAME_RADIUS],
-        dark,
-        24,
-        14,
-      ).name = 'supermoto-frame-main-spar';
-      mesh(body, supermotoLowerFrameGeometry(s), dark).name = 'supermoto-frame-merge-branch';
-
-      // Both lower frame rails meet here. From this junction upward there is
-      // one visibly wider central frame tube instead of two parallel rods.
-      if (s === 1)
-        tube(
-          body,
-          [
-            [0, 0.625, -0.35],
-            [0, 0.72, -0.365],
-            [0, 0.84, -0.39],
-            [0, 0.98, forkAxisAt(0.98)[2] + 0.024],
-          ],
-          [0.020, 0.021, 0.022, 0.021],
-          dark,
-          24,
-          16,
-        ).name = 'supermoto-frame-central-up-tube';
       tube(
         body,
         [
@@ -1143,23 +1114,23 @@ export function makeBike(player: Player, products: Product[]) {
         frontAssembly,
         [
           s * forkHalfWidth,
-          0.36,
+          0.338,
           THREE.MathUtils.lerp(
             front,
             forkTop[2],
-            (0.36 - radius) / (forkTop[1] - radius),
+            (0.338 - radius) / (forkTop[1] - radius),
           ),
         ],
         [
           s * forkHalfWidth,
-          0.64,
+          0.716,
           THREE.MathUtils.lerp(
             front,
             forkTop[2],
-            (0.64 - radius) / (forkTop[1] - radius),
+            (0.716 - radius) / (forkTop[1] - radius),
           ),
         ],
-        0.035,
+        0.046,
         paint,
       );
       // A moulded U-section shields the front and sides of the slider. The
@@ -1168,8 +1139,8 @@ export function makeBike(player: Player, products: Product[]) {
         .parameters.height;
       forkGuard.geometry.dispose();
       forkGuard.geometry = new THREE.CylinderGeometry(
-        0.035,
-        0.032,
+        0.046,
+        0.036,
         guardLength,
         28,
         1,
@@ -1183,65 +1154,6 @@ export function makeBike(player: Player, products: Product[]) {
       forkGuard.name = 'open-back-fork-guard';
       const shroud = mesh(body, supermotoShroudGeometry(s), paint);
       shroud.name = 'radiator-shroud';
-      // The shoulder folds inward onto the tank. This shallow closed strip
-      // gives the shroud a supported upper surface instead of a flat sign.
-      const shoulderStations = SUPERMOTO_SHROUD_SHOULDER;
-      const shoulderVertices: number[] = [],
-        shoulderIndices: number[] = [];
-      for (const dy of [0, -0.004])
-        for (const [z, innerX, innerY, outerX, outerY] of shoulderStations)
-          shoulderVertices.push(
-            s * innerX,
-            innerY + dy,
-            z,
-            s * (outerX + 0.002),
-            outerY + dy,
-            z,
-          );
-      const shoulderFace = shoulderStations.length * 2;
-      for (let i = 0; i < shoulderStations.length - 1; i++) {
-        const a = i * 2,
-          b = a + 2;
-        shoulderIndices.push(
-          a,
-          a + 1,
-          b,
-          a + 1,
-          b + 1,
-          b,
-          a + shoulderFace,
-          b + shoulderFace,
-          a + shoulderFace + 1,
-          a + shoulderFace + 1,
-          b + shoulderFace,
-          b + shoulderFace + 1,
-          a,
-          b,
-          a + shoulderFace,
-          b,
-          b + shoulderFace,
-          a + shoulderFace,
-          a + 1,
-          a + shoulderFace + 1,
-          b + 1,
-          b + 1,
-          a + shoulderFace + 1,
-          b + shoulderFace + 1,
-        );
-      }
-      const shoulderLast = shoulderFace - 2;
-      shoulderIndices.push(0, shoulderFace, 1, 1, shoulderFace, shoulderFace + 1,
-        shoulderLast, shoulderLast + 1, shoulderLast + shoulderFace,
-        shoulderLast + 1, shoulderLast + shoulderFace + 1, shoulderLast + shoulderFace);
-      const shoulderGeometry = new THREE.BufferGeometry();
-      shoulderGeometry.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(shoulderVertices, 3),
-      );
-      shoulderGeometry.setIndex(shoulderIndices);
-      const shoulderFinish = paint.clone();
-      shoulderFinish.side = THREE.DoubleSide;
-      mesh(body, shoulderGeometry, shoulderFinish).name = 'shroud-shoulder';
       mesh(body, supermotoSideCoverGeometry(s), paint).name = 'supermoto-side-cover';
       // A separate airbox access panel follows the front edge of the white
       // number panel, with a small parting line and the black tank above it.
@@ -1338,7 +1250,7 @@ export function makeBike(player: Player, products: Product[]) {
         ).name = 'radiator-protection-rib';
       rod(
         body,
-        [s * 0.108, 0.840, -0.140],
+        [s * 0.118, 0.855, -0.150],
         [s * 0.097, 0.858, -0.311],
         0.011,
         dark,
@@ -1387,14 +1299,6 @@ export function makeBike(player: Player, products: Product[]) {
       cross = new THREE.Vector3().crossVectors(axis, radial);
     rod(body, [-0.108, 0.885, 0.090], [0.108, 0.885, 0.090], 0.024, dark).name =
       'shock-frame-crossmember';
-    // Close the load path under the tank: main spar, saddle rail and the
-    // shock bridge are joined instead of ending separately behind the panel.
-    for (const side of [-1, 1]) {
-      rod(body, [side * 0.108, 0.84, -0.14], [side * 0.085, 0.918, 0.12], 0.018, dark)
-        .name = 'supermoto-under-seat-frame-rail';
-      rod(body, [side * 0.108, 0.885, 0.09], [side * 0.085, 0.918, 0.12], 0.013, dark)
-        .name = 'supermoto-shock-bridge-support';
-    }
     rod(
       body,
       [0, 0.885, 0.090],
@@ -1447,19 +1351,9 @@ export function makeBike(player: Player, products: Product[]) {
       100,
       8,
     ).name = 'rear-shock-spring';
-    const tank = loft(
-      body,
-      [
-        [-0.405, 0.057, 0.026, 0.965],
-        [-0.305, 0.102, 0.070, 0.945],
-        [-0.185, 0.136, 0.096, 0.901],
-        [-0.035, 0.138, 0.098, 0.870],
-        [0.080, 0.116, 0.081, 0.852],
-        [0.172, 0.076, 0.044, 0.850],
-      ],
-      material('#101214', 0.08, 0.53),
-      'z',
-    );
+    const tank = new THREE.Mesh(supermotoFuelTankGeometry(), material('#101214', 0.08, 0.53));
+    tank.castShadow = tank.receiveShadow = true;
+    body.add(tank);
     tank.name = 'supermoto-fuel-tank';
     rod(body, [0, 1.01, -0.299], [0, 1.024, -0.299], 0.027, dark).name =
       'fuel-cap';
@@ -1478,14 +1372,11 @@ export function makeBike(player: Player, products: Product[]) {
         0.007,
         dark,
       ).name = 'front-fender-mount';
-      for (const [y, z] of [
-        [0.925, -0.544],
-        [1.092, -0.437],
-      ])
+      for (const [x, y, z] of SUPERMOTO_MASK_STRAP_ANCHORS)
         rod(
           body,
-          [s * 0.074, y, forkAxisAt(y)[2]],
-          [s * 0.074, y, z + 0.025],
+          [s * x, y, forkAxisAt(y)[2]],
+          [s * x, y, z],
           0.006,
           rubber,
         ).name = 'number-plate-strap';
@@ -1507,7 +1398,7 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoLampGeometry('glass'), glass).name = 'supermoto-headlight-glass';
     oval(
       body,
-      [0, 1.006, -0.496],
+      SUPERMOTO_LAMP_BULB,
       [0.008, 0.010, 0.007],
       new THREE.MeshStandardMaterial({
         color: '#f7fcff',

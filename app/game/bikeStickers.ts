@@ -144,6 +144,76 @@ function savedSurface(
   }
   return nearest;
 }
+
+function projectedStickerGeometry(
+  source: THREE.Mesh,
+  point: THREE.Vector3,
+  selectedNormal: THREE.Vector3,
+  placement: StickerPlacement,
+) {
+  const normal = outwardNormal(source, point, selectedNormal);
+  const up = Math.abs(normal.y) > 0.94
+    ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const x = new THREE.Vector3().crossVectors(up, normal).normalize();
+  const y = new THREE.Vector3().crossVectors(normal, x).normalize();
+  const rotation = new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(x, y, normal),
+  );
+  rotation.multiply(new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(0, 0, 1), placement.rotation,
+  ));
+  const localSource = new THREE.Mesh(source.geometry, source.material);
+  localSource.updateMatrixWorld(true);
+  const geometry = new DecalGeometry(
+    localSource, point, new THREE.Euler().setFromQuaternion(rotation),
+    new THREE.Vector3(placement.size, placement.size, 0.035),
+  );
+  // Keep the clicked skin even when its winding points inward, then turn
+  // only that skin outward so the print remains visible without mirroring.
+  const normals = geometry.getAttribute('normal');
+  if (!normals) {
+    geometry.dispose();
+    return undefined;
+  }
+  const indices: number[] = [], faceNormal = new THREE.Vector3();
+  const reverse = normal.dot(selectedNormal) < 0;
+  for (let i = 0; i < normals.count; i += 3) {
+    faceNormal.set(0, 0, 0);
+    for (let j = 0; j < 3; j++)
+      faceNormal.add(new THREE.Vector3().fromBufferAttribute(normals, i + j));
+    if (faceNormal.dot(selectedNormal) > 0.15)
+      indices.push(i, i + (reverse ? 2 : 1), i + (reverse ? 1 : 2));
+  }
+  if (reverse) for (let i = 0; i < normals.count; i++)
+    normals.setXYZ(i, -normals.getX(i), -normals.getY(i), -normals.getZ(i));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
+/** These Supermoto panels were reshaped without changing save schema 1.
+ * Recover an empty old projection on the same real skin, only for rendering;
+ * a valid current placement and the persisted point/normal stay untouched. */
+function reshapedSurfacePoint(source: THREE.Mesh, point: THREE.Vector3, normal: THREE.Vector3) {
+  if (!['radiator-shroud', 'supermoto-front-fender', 'supermoto-headlight-mask', 'supermoto-fuel-tank'].includes(source.name))
+    return undefined;
+  const positions = source.geometry.getAttribute('position'), index = source.geometry.getIndex();
+  const triangle = new THREE.Triangle(), candidate = new THREE.Vector3(), faceNormal = new THREE.Vector3();
+  let nearest: { point: THREE.Vector3; normal: THREE.Vector3 } | undefined, distance = Infinity;
+  for (let i = 0; i < (index?.count ?? positions.count); i += 3) {
+    triangle.a.fromBufferAttribute(positions, index ? index.getX(i) : i);
+    triangle.b.fromBufferAttribute(positions, index ? index.getX(i + 1) : i + 1);
+    triangle.c.fromBufferAttribute(positions, index ? index.getX(i + 2) : i + 2);
+    triangle.getNormal(faceNormal);
+    if (faceNormal.dot(normal) <= 0.15 || triangle.getArea() < 1e-12) continue;
+    triangle.closestPointToPoint(point, candidate);
+    const gap = candidate.distanceToSquared(point);
+    if (gap < distance) {
+      distance = gap;
+      nearest = { point: candidate.clone(), normal: faceNormal.clone() };
+    }
+  }
+  return nearest;
+}
 /** Decal vertices live in the selected surface's space, so suspension stays attached. */
 export function applyBikeStickers(
   body: THREE.Object3D,
@@ -163,51 +233,17 @@ export function applyBikeStickers(
       source.geometry.computeBoundingBox();
       if (source.geometry.boundingBox)
         source.geometry.boundingBox.clampPoint(point, point);
-      const normal = outwardNormal(source, point, selectedNormal);
-      const up =
-        Math.abs(normal.y) > 0.94
-          ? new THREE.Vector3(0, 0, -1)
-          : new THREE.Vector3(0, 1, 0);
-      const x = new THREE.Vector3().crossVectors(up, normal).normalize();
-      const y = new THREE.Vector3().crossVectors(normal, x).normalize();
-      const rotation = new THREE.Quaternion().setFromRotationMatrix(
-        new THREE.Matrix4().makeBasis(x, y, normal),
-      );
-      rotation.multiply(
-        new THREE.Quaternion().setFromAxisAngle(
-          new THREE.Vector3(0, 0, 1),
-          placement.rotation,
-        ),
-      );
-      const localSource = new THREE.Mesh(source.geometry, source.material);
-      localSource.updateMatrixWorld(true);
-      const geometry = new DecalGeometry(
-        localSource,
-        point,
-        new THREE.Euler().setFromQuaternion(rotation),
-        new THREE.Vector3(placement.size, placement.size, 0.035),
-      );
-      // Keep the clicked skin even when its source winding points inward, then
-      // turn that skin outward so the print is visible and reads the right way.
-      const normals = geometry.getAttribute('normal');
-      if (!normals) {
-        geometry.dispose();
-        continue;
+      let geometry = projectedStickerGeometry(source, point, selectedNormal, placement);
+      if (!geometry?.getIndex()?.count) {
+        geometry?.dispose();
+        const recovered = reshapedSurfacePoint(source, point, selectedNormal);
+        if (!recovered) continue;
+        geometry = projectedStickerGeometry(source, recovered.point, recovered.normal, placement);
+        if (!geometry?.getIndex()?.count) {
+          geometry?.dispose();
+          continue;
+        }
       }
-      const indices: number[] = [];
-      const faceNormal = new THREE.Vector3();
-      const reverse = normal.dot(selectedNormal) < 0;
-      for (let i = 0; i < normals.count; i += 3) {
-        faceNormal.set(0, 0, 0);
-        for (let j = 0; j < 3; j++)
-          faceNormal.add(new THREE.Vector3().fromBufferAttribute(normals, i + j));
-        if (faceNormal.dot(selectedNormal) > 0.15)
-          indices.push(i, i + (reverse ? 2 : 1), i + (reverse ? 1 : 2));
-      }
-      if (reverse)
-        for (let i = 0; i < normals.count; i++)
-          normals.setXYZ(i, -normals.getX(i), -normals.getY(i), -normals.getZ(i));
-      geometry.setIndex(indices);
       // Chrome shading is already present in the supplied pixels. Lighting it a
       // second time washed the gray print into pale paint under the garage lights.
       const material = new THREE.MeshBasicMaterial({
