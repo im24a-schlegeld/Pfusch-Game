@@ -290,7 +290,7 @@ describe('assembled motorcycle connections', () => {
       const start = ringCenter(pipe, 0, pipeSides);
       if (bikeId === '450') {
         // The user's marked outlet now seats on the lower front casting.
-        expect(start.distanceTo(new Vector3(0.112, 0.578, -0.210))).toBeLessThan(1e-6);
+        expect(start.distanceTo(new Vector3(0, 0.560, -0.236))).toBeLessThan(1e-6);
       } else {
         expect(start.y).toBeGreaterThan(bikeId === '701' ? 0.35 : 0.27);
       }

@@ -202,7 +202,6 @@ export default function SceneView({
     const pursuitCar = new THREE.Group();
     pursuitCar.name = 'police-pursuit-vehicle';
     pursuitCar.visible = false;
-    let policeCameraReveal = 0;
     const collisionTraffic = new Map<THREE.Group, THREE.Vector3>();
     let launchSerial = 0,
       launchPulse = 0;
@@ -663,40 +662,27 @@ export default function SceneView({
             : Math.sin(clock * 23) * 0.016;
         const portraitRide = camera.aspect < 0.8;
         const chaseZ = portraitRide ? 10.4 : 8.4;
-        const showPoliceImpact =
-          policePose.visible &&
-          (policePose.phase === 'approach' ||
-            (policePose.phase === 'wrecked' && policePose.age < 0.65));
-        const revealTarget =
-          showPoliceImpact && !appearance.current.player.settings.reducedMotion
-            ? THREE.MathUtils.clamp(pursuitCar.position.z + 8 - chaseZ, 5, 14)
-            : 0;
-        if (moving)
-          policeCameraReveal +=
-            (revealTarget - policeCameraReveal) *
-            (1 - Math.exp(-dt * (showPoliceImpact ? 9 : 3.5)));
         camera.position.set(
           engine.x * 0.27 + shake,
-          4.4 + engine.height * 0.13 + policeCameraReveal * 0.34,
-          chaseZ + policeCameraReveal,
+          4.4 + engine.height * 0.13,
+          chaseZ,
         );
-        const policeLookZ = -12 + Math.min(16, policeCameraReveal * 2.4);
-        camera.lookAt(engine.x * 0.38, 1.4, policeLookZ);
+        camera.lookAt(engine.x * 0.38, 1.4, -12);
         if (crash) {
           const blend = crash.cameraBlend;
           camera.position.set(
             THREE.MathUtils.lerp(engine.x * 0.27, crash.focus.x, blend),
             THREE.MathUtils.lerp(
-              4.4 + engine.height * 0.13 + policeCameraReveal * 0.34,
+              4.4 + engine.height * 0.13,
               3.5,
               blend,
             ),
-            THREE.MathUtils.lerp(chaseZ + policeCameraReveal, 7.2, blend),
+            THREE.MathUtils.lerp(chaseZ, 7.2, blend),
           );
           camera.lookAt(
             THREE.MathUtils.lerp(engine.x * 0.38, crash.focus.x, blend),
             THREE.MathUtils.lerp(1.4, crash.focus.y, blend),
-            THREE.MathUtils.lerp(policeLookZ, crash.focus.z, blend),
+            THREE.MathUtils.lerp(-12, crash.focus.z, blend),
           );
         }
         const speedFov = 61 + (engine.speed - 22) * 0.22;

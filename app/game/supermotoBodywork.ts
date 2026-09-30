@@ -196,11 +196,11 @@ export function supermotoFrontFenderGeometry() {
 
 type Outline = readonly (readonly [number, number])[];
 const LAMP_OPENING: Outline = [
-  [-0.038, 0.934], [0.038, 0.934], [0.070, 1.007],
-  [0.069, 1.067], [-0.069, 1.067], [-0.070, 1.007],
+  [-0.043, 0.946], [0.043, 0.946], [0.082, 1.021],
+  [0.080, 1.089], [-0.080, 1.089], [-0.082, 1.021],
 ];
 function maskFrontZ(y: number, x: number) {
-  const profile = [[0.885, -0.547], [0.935, -0.523], [1.010, -0.488], [1.080, -0.455], [1.140, -0.426]];
+  const profile = [[0.885, -0.547], [0.935, -0.523], [1.010, -0.488], [1.105, -0.443], [1.165, -0.414]];
   const next = profile.findIndex(p => p[0] >= y);
   const i = next < 0 ? profile.length - 2 : Math.max(0, next - 1);
   const a = profile[i], b = profile[i + 1];
@@ -208,10 +208,10 @@ function maskFrontZ(y: number, x: number) {
 }
 
 /** Visible lens center, shared by the real light anchor and the lamp mesh. */
-export const SUPERMOTO_LENS_FACE: Point = [0, 1.006, maskFrontZ(1.006, 0) - 0.004];
-export const SUPERMOTO_LAMP_BULB: Point = [0, 1.006, SUPERMOTO_LENS_FACE[2] + 0.030];
+export const SUPERMOTO_LENS_FACE: Point = [0, 1.023, maskFrontZ(1.023, 0) - 0.004];
+export const SUPERMOTO_LAMP_BULB: Point = [0, 1.023, SUPERMOTO_LENS_FACE[2] + 0.030];
 /** Real back-face attachment points; mirror X for the other fork strap. */
-export const SUPERMOTO_MASK_STRAP_ANCHORS: Point[] = [[0.077, 0.913], [0.108, 0.988]]
+export const SUPERMOTO_MASK_STRAP_ANCHORS: Point[] = [[0.077, 0.913], [0.1195, 1.008]]
   .map(([x, y]) => [x, y, maskFrontZ(y, x) + 0.004]);
 
 /** Thin shaped front and back faces, including real return walls around holes. */
@@ -235,7 +235,7 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
   const positions: number[] = [], indices: number[] = [], uv: number[] = [];
   for (const depth of [offset, offset + thickness]) for (const [i, [x, y]] of points.entries()) {
     const ridgeDepth = ridge && i >= ridgeStart ? -0.008 : 0;
-    positions.push(x, y, maskFrontZ(y, x) + depth + ridgeDepth); uv.push((x + 0.13) / 0.26, (y - 0.885) / 0.255);
+    positions.push(x, y, maskFrontZ(y, x) + depth + ridgeDepth); uv.push((x + 0.145) / 0.290, (y - 0.885) / 0.280);
   }
   for (const [a, b, c] of triangles) {
     const pa = points[a], pb = points[b], pc = points[c];
@@ -263,14 +263,14 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
 /** Cut-corner front mask folds back around the fork, with a real recessed lamp aperture. */
 export function supermotoHeadlightMaskGeometry() {
   return maskShell([
-    [-0.047, 0.885], [0.047, 0.885], [0.077, 0.913], [0.108, 0.988],
-    [0.125, 1.086], [0.118, 1.128], [0.099, 1.140],
-    [-0.099, 1.140], [-0.118, 1.128], [-0.125, 1.086], [-0.108, 0.988], [-0.077, 0.913],
+    [-0.047, 0.885], [0.047, 0.885], [0.077, 0.913], [0.120, 1.008],
+    [0.145, 1.110], [0.137, 1.152], [0.115, 1.165],
+    [-0.115, 1.165], [-0.137, 1.152], [-0.145, 1.110], [-0.120, 1.008], [-0.077, 0.913],
   ], LAMP_OPENING, 0.004, 0, false, lampOutline(1.20));
 }
 
 function lampOutline(scale: number): Outline {
-  return LAMP_OPENING.map(([x, y]) => [x * scale, 1.006 + (y - 1.006) * scale] as const);
+  return LAMP_OPENING.map(([x, y]) => [x * scale, SUPERMOTO_LENS_FACE[1] + (y - SUPERMOTO_LENS_FACE[1]) * scale] as const);
 }
 
 export function supermotoLampGeometry(part: 'bezel' | 'reflector' | 'glass') {

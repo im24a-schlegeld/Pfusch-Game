@@ -44,6 +44,7 @@ import {
   POLICE,
   createPoliceVehicle,
   firstPoliceHit,
+  policeCatchPosition,
   policeImpactOffset,
   policeRampPose,
   policeTargetShape,
@@ -189,6 +190,7 @@ export class Engine {
   private spawnIn = 24;
   private spawnSerial = 0;
   private nextPatrolDistance = 900;
+  private policeReadyAt = 0;
   private nextSafe = 0;
   private safeDirection = 1;
   private pendingWave: {
@@ -209,7 +211,6 @@ export class Engine {
   private towWarningFor: Obstacle | null = null;
   private policeTargetId = 0;
   private policeImpactFromX = 0;
-  private policeImpactFromZ = 0;
   private policeImpactEndZ = 0;
   private policeJumpTarget: { obstacle: Obstacle; spawnId: number } | null =
     null;
@@ -520,6 +521,7 @@ export class Engine {
     ];
     const patrolReady =
       this.distance >= this.nextPatrolDistance &&
+      this.elapsed >= this.policeReadyAt &&
       this.score >= SPEED_CAMERA.firstScore &&
       this.policeVehicle.phase === 'idle' &&
       !this.speedCamera.active &&
@@ -684,6 +686,7 @@ export class Engine {
     if (
       this.policeChase ||
       this.policeVehicle.phase !== 'idle' ||
+      this.elapsed < this.policeReadyAt ||
       !this.doingPoliceStunt()
     )
       return;
@@ -696,6 +699,9 @@ export class Engine {
       velocity: this.speed,
     });
     if (patrol) patrol.active = false;
+    // Camera and patrol encounters share one recovery window. A camera must
+    // not leave an overdue patrol waiting to trigger as soon as its wreck ends.
+    this.nextPatrolDistance = this.distance + 1800;
     for (const obstacle of this.obstacles) {
       if (!obstacle.active) continue;
       const shape = policeTargetShape(obstacle);
@@ -728,6 +734,7 @@ export class Engine {
       this.score,
       this.distance,
       this.policeVehicle.phase === 'idle' &&
+        this.elapsed >= this.policeReadyAt &&
         !this.obstacles.some((o) => o.active && o.police),
       (distance) => {
         const section = this.world.at(distance);
@@ -743,6 +750,7 @@ export class Engine {
       !camera.active ||
       camera.triggered ||
       this.policeVehicle.phase !== 'idle' ||
+      this.elapsed < this.policeReadyAt ||
       Math.abs(camera.distance - this.distance) > SPEED_CAMERA.triggerRange ||
       !this.doingPoliceStunt()
     )
@@ -767,16 +775,30 @@ export class Engine {
     this.policeOutcome = 'escaped';
     this.policeOutcomeSerial++;
     this.policeJumpTarget = null;
-    this.policeImpactTarget = target;
-    this.policeTargetId = target.spawnId;
+    this.policeImpactTarget = null;
+    this.policeTargetId = 0;
     const p = this.policeVehicle;
-    this.policeImpactFromX = p.x;
-    this.policeImpactFromZ = p.z - target.z;
-    this.policeImpactEndZ = policeImpactOffset(target);
     p.phase = 'approach';
     p.visible = true;
     p.age = 0;
+    this.choosePoliceImpactTarget(target);
     this.skill('POLIZEI ABGEHÄNGT', STUNT_POINTS.policeEscape);
+  }
+  private choosePoliceImpactTarget(preferred?: Obstacle) {
+    const visible = (obstacle: Obstacle) =>
+      obstacle.active &&
+      !obstacle.police &&
+      !!policeTargetShape(obstacle) &&
+      obstacle.z + policeImpactOffset(obstacle) >= this.policeVehicle.z &&
+      policeCatchPosition(obstacle, this.policeVehicle.z, this.speed) >=
+        POLICE.visibleImpactZ;
+    const target =
+      preferred && visible(preferred)
+        ? preferred
+        : this.obstacles.filter(visible).sort((a, b) => a.z - b.z)[0];
+    this.policeImpactTarget = target ?? null;
+    this.policeTargetId = target?.spawnId ?? 0;
+    this.policeImpactEndZ = target ? policeImpactOffset(target) : 0;
   }
   private policeRearEnd() {
     if (!this.policeChase) return;
@@ -813,6 +835,7 @@ export class Engine {
     this.crash('POLIZEI HAT DICH GERAMMT', this.policeRamObstacle);
   }
   private clearPoliceVehicle() {
+    this.policeReadyAt = this.elapsed + POLICE.encounterCooldownSeconds;
     Object.assign(this.policeVehicle, createPoliceVehicle());
     this.policeImpactTarget = null;
     this.policeTargetId = 0;
@@ -822,83 +845,120 @@ export class Engine {
     const p = this.policeVehicle;
     if (p.phase === 'idle' || p.phase === 'ramming') return;
     p.age += dt;
-    if (p.phase === 'approach' || p.phase === 'wrecked') {
+    if (p.phase === 'approach') {
+      p.z -= travel;
+      let target = this.policeImpactTarget;
+      if (
+        !target?.active ||
+        target.spawnId !== this.policeTargetId ||
+        target.z + this.policeImpactEndZ < p.z ||
+        policeCatchPosition(target, p.z, this.speed) < POLICE.visibleImpactZ
+      ) {
+        this.choosePoliceImpactTarget();
+        target = this.policeImpactTarget;
+      }
+      // The close-call vehicle can already be behind the rider. Catch another
+      // existing vehicle ahead instead of moving the camera or teleporting NPCs.
+      const goalX = target
+        ? target.lane * LANE + target.offsetX
+        : this.lane * LANE;
+      const goalZ = target
+        ? target.z + this.policeImpactEndZ
+        : POLICE.visibleImpactZ + 3;
+      const startX = p.x,
+        startZ = p.z;
+      const riderBlocks = (
+        fromX: number,
+        toX: number,
+        fromZ: number,
+        toZ: number,
+      ) =>
+        Math.max(fromZ, toZ) > -5 &&
+        Math.min(fromZ, toZ) < 4 &&
+        Math.min(fromX, toX) < this.x + 1.7 &&
+        Math.max(fromX, toX) > this.x - 1.7;
+      const lateralClear = (x: number) =>
+        !riderBlocks(p.x, x, p.z, p.z) &&
+        !firstPoliceHit(this.obstacles, p.x, p.z, x, p.z, target);
+      const forwardClear = (x: number) =>
+        !riderBlocks(x, x, p.z, Math.min(goalZ, p.z + 7)) &&
+        !firstPoliceHit(
+          this.obstacles,
+          x,
+          p.z,
+          x,
+          Math.min(goalZ, p.z + 7),
+          target,
+        );
+      const candidates = [goalX, -LANE, 0, LANE].sort(
+        (a, b) => Math.abs(a - goalX) - Math.abs(b - goalX),
+      );
+      const laneX = candidates.find((x) => lateralClear(x) && forwardClear(x));
+      const nextX =
+        p.x +
+        Math.max(
+          -POLICE.lateralSpeed * dt,
+          Math.min(POLICE.lateralSpeed * dt, (laneX ?? p.x) - p.x),
+        );
+      if (lateralClear(nextX)) p.x = nextX;
+      const aligned = Math.abs(p.x - goalX) < 0.1;
+      // Finish the lane change behind a target's bumper, then drive into it.
+      const limitZ = goalZ - (aligned ? 0 : 0.35);
+      const nextZ = Math.min(
+        limitZ,
+        p.z + (this.speed + POLICE.escapeClosingSpeed) * dt,
+      );
+      if (nextZ > p.z && !riderBlocks(p.x, p.x, p.z, nextZ)) {
+        const obstruction = firstPoliceHit(
+          this.obstacles,
+          p.x,
+          p.z,
+          p.x,
+          nextZ,
+          target,
+        );
+        const fraction = obstruction
+          ? Math.max(0, obstruction.fraction - 0.001)
+          : 1;
+        p.z += (nextZ - p.z) * fraction;
+      }
+      p.velocity = Math.max(0, (p.z - startZ) / dt);
+      p.yaw = Math.max(
+        -0.35,
+        Math.min(0.35, -Math.atan2(p.x - startX, Math.max(0.1, p.z - startZ))),
+      );
+      const ramp =
+        target?.kind === 'towtruck' && aligned
+          ? policeRampPose(target.z - p.z)
+          : { y: 0, pitch: 0 };
+      p.y = ramp.y;
+      p.pitch = ramp.pitch;
+      if (
+        target &&
+        aligned &&
+        p.z >= goalZ - 0.001 &&
+        p.z >= POLICE.visibleImpactZ
+      ) {
+        p.phase = 'wrecked';
+        p.age = 0;
+        p.yaw = 0;
+        p.velocity = target.velocity;
+        this.policeImpactFromX = p.x - goalX;
+      } else if (p.age > POLICE.escapeSeconds) {
+        this.clearPoliceVehicle();
+      }
+      return;
+    }
+    if (p.phase === 'wrecked') {
       const target = this.policeImpactTarget;
       if (!target?.active || target.spawnId !== this.policeTargetId) {
         this.clearPoliceVehicle();
         return;
       }
-      const targetX = target.lane * LANE + target.offsetX;
-      if (p.phase === 'approach') {
-        const t = Math.min(1, p.age / POLICE.impactSeconds);
-        const ease = t * t * (3 - 2 * t);
-        const startX = p.x,
-          startZ = p.z - travel;
-        const nextX =
-          this.policeImpactFromX + (targetX - this.policeImpactFromX) * ease;
-        const nextZ =
-          target.z +
-          this.policeImpactFromZ +
-          (this.policeImpactEndZ - this.policeImpactFromZ) * ease;
-        const obstruction = firstPoliceHit(
-          this.obstacles,
-          startX,
-          startZ,
-          nextX,
-          nextZ,
-          target,
-        );
-        if (obstruction) {
-          const f = Math.max(0, obstruction.fraction - 0.001);
-          p.x = startX + (nextX - startX) * f;
-          p.z = startZ + (nextZ - startZ) * f;
-          this.policeImpactTarget = obstruction.obstacle;
-          this.policeTargetId = obstruction.obstacle.spawnId;
-          this.policeImpactEndZ = p.z - obstruction.obstacle.z;
-          this.policeImpactFromX =
-            p.x -
-            (obstruction.obstacle.lane * LANE + obstruction.obstacle.offsetX);
-          p.phase = 'wrecked';
-          p.age = 0;
-          p.velocity = obstruction.obstacle.velocity;
-          const ramp =
-            obstruction.obstacle.kind === 'towtruck'
-              ? policeRampPose(obstruction.obstacle.z - p.z)
-              : { y: 0, pitch: 0 };
-          p.y = ramp.y;
-          p.pitch = ramp.pitch;
-          p.yaw = 0;
-          p.roll = 0;
-          return;
-        }
-        p.x = nextX;
-        p.z = nextZ;
-        p.velocity = Math.max(0, (nextZ - startZ) / dt);
-        p.yaw =
-          Math.max(
-            -0.35,
-            Math.min(
-              0.35,
-              -Math.atan2(nextX - startX, Math.max(0.1, nextZ - startZ)),
-            ),
-          ) * Math.min(1, (1 - t) * 4);
-        if (target.kind === 'towtruck') {
-          const ramp = policeRampPose(target.z - p.z);
-          p.y = ramp.y;
-          p.pitch = ramp.pitch;
-        }
-        if (t >= 1) {
-          p.phase = 'wrecked';
-          p.age = 0;
-          this.policeImpactFromX = p.x - targetX;
-          p.velocity = target.velocity;
-        }
-      } else {
-        p.x = targetX + this.policeImpactFromX;
-        p.z = target.z + this.policeImpactEndZ;
-        p.velocity = target.velocity;
-        p.yaw = 0;
-      }
+      p.x = target.lane * LANE + target.offsetX + this.policeImpactFromX;
+      p.z = target.z + this.policeImpactEndZ;
+      p.velocity = target.velocity;
+      p.yaw = 0;
       if (p.z < POLICE.retireZ) this.clearPoliceVehicle();
       return;
     }

@@ -7,6 +7,7 @@ import {
   STUNT_POINTS,
   type Obstacle,
 } from '../app/game/engine';
+import { POLICE, firstPoliceHit } from '../app/game/policePursuit';
 
 function ride() {
   const engine = new Engine(BIKES[2], 539);
@@ -124,18 +125,21 @@ describe('police pursuit gameplay', () => {
 
   it('keeps a visible impact partner solid beyond the old eight-second despawn timer', () => {
     const engine = startPursuit();
-    const target = engine.spawn('car', 1, 0.4, -1, 23)!;
-    for (let count = 0; count < 510; count++) frame(engine, [target]);
+    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('car', -1, 35, 0, 23)!;
+    for (let count = 0; count < 510; count++)
+      frame(engine, [target, closeCall]);
     expect(engine.phase).toBe('playing');
     expect(engine.policeOutcome).toBe('escaped');
     expect(engine.policeVehicle.phase).toBe('wrecked');
     expect(engine.policeImpactTarget).toBe(target);
     expect(target.active).toBe(true);
     expect(target.velocity).toBe(23);
-    expect(Math.abs(target.z)).toBeLessThan(3);
+    expect(target.z).toBeGreaterThan(20);
     expect(engine.policeVehicle.y).toBe(0);
     engine.lane = target.lane;
     engine.x = target.lane * LANE + target.offsetX;
+    target.z = 0;
     frame(engine, [target]);
     expect(engine.phase).toBe('crashed');
     expect(engine.crashObstacle).toBe(target);
@@ -229,9 +233,12 @@ describe('police pursuit gameplay', () => {
 
   it('keeps ordinary NPC pool slots free of chase state after a patrol is reused', () => {
     const engine = startPursuit();
-    const target = engine.spawn('car', 1, 0.4, -1)!;
-    for (let count = 0; count < 180; count++) frame(engine, [target]);
+    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('car', -1, 40, 0, 6)!;
+    for (let count = 0; count < 180; count++)
+      frame(engine, [target, closeCall]);
     expect(engine.policeOutcome).toBe('escaped');
+    expect(engine.policeVehicle.phase).toBe('wrecked');
     for (const obstacle of engine.obstacles) obstacle.active = false;
     const previousSpawnIds = engine.obstacles.map(
       (obstacle) => obstacle.spawnId,
@@ -253,6 +260,142 @@ describe('police pursuit gameplay', () => {
     });
     expect(engine.policeImpactTarget).toBeNull();
     expect(engine.x).toBeCloseTo(engine.lane * LANE, 8);
+  });
+
+  it('drives ahead into existing traffic for a visible crash without moving any NPC', () => {
+    const engine = startPursuit();
+    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('van', -1, 50, 0, 6)!;
+    const targetId = target.spawnId;
+    for (
+      let count = 0;
+      count < 300 && engine.policeVehicle.phase !== 'wrecked';
+      count++
+    ) {
+      const oldDistance = engine.distance;
+      const oldZ = target.z;
+      const oldPolice = { ...engine.policeVehicle };
+      frame(engine, [closeCall, target]);
+      const travel = engine.distance - oldDistance;
+      expect(target.z).toBeCloseTo(oldZ - travel + 6 * STEP, 8);
+      expect(target.velocity).toBe(6);
+      expect(target.spawnId).toBe(targetId);
+      if (oldPolice.phase === 'approach') {
+        expect(
+          Math.abs(engine.policeVehicle.x - oldPolice.x),
+        ).toBeLessThanOrEqual(POLICE.lateralSpeed * STEP + 1e-6);
+        expect(engine.policeVehicle.z - oldPolice.z).toBeLessThanOrEqual(
+          POLICE.escapeClosingSpeed * STEP + 1e-4,
+        );
+        expect(
+          firstPoliceHit(
+            [closeCall],
+            engine.policeVehicle.x,
+            engine.policeVehicle.z,
+            engine.policeVehicle.x,
+            engine.policeVehicle.z,
+          ),
+        ).toBeNull();
+      }
+    }
+    expect(engine.policeVehicle.phase).toBe('wrecked');
+    expect(engine.policeImpactTarget).toBe(target);
+    expect(engine.policeVehicle.z).toBeGreaterThanOrEqual(
+      POLICE.visibleImpactZ,
+    );
+    expect(engine.policeOutcomeSerial).toBe(1);
+    expect(closeCall.police).toBe(false);
+    expect(target.police).toBe(false);
+  });
+
+  it('routes the escape surge around intervening traffic instead of passing through it', () => {
+    const engine = startPursuit();
+    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const blocker = engine.spawn('van', -1, 12, 0, 6)!;
+    const blockerId = blocker.spawnId;
+    const target = engine.spawn('car', -1, 65, 0, 10)!;
+    const traffic = [closeCall, blocker, target];
+    for (
+      let count = 0;
+      count < 420 && engine.policeVehicle.phase !== 'wrecked';
+      count++
+    ) {
+      const old = { ...engine.policeVehicle };
+      const distance = engine.distance;
+      frame(engine, traffic);
+      if (blocker.spawnId === blockerId) expect(blocker.velocity).toBe(6);
+      if (old.phase !== 'approach') continue;
+      const police = engine.policeVehicle;
+      const startZ = old.z - (engine.distance - distance);
+      // The engine performs a lateral sweep followed by a longitudinal sweep.
+      // Check both against every real blocker, ignoring only the final target.
+      expect(
+        firstPoliceHit(
+          traffic,
+          old.x,
+          startZ,
+          police.x,
+          startZ,
+          engine.policeImpactTarget,
+        ),
+      ).toBeNull();
+      expect(
+        firstPoliceHit(
+          traffic,
+          police.x,
+          startZ,
+          police.x,
+          police.z,
+          engine.policeImpactTarget,
+        ),
+      ).toBeNull();
+    }
+    expect(engine.phase).toBe('playing');
+    expect(engine.policeVehicle.phase).toBe('wrecked');
+    expect(engine.policeVehicle.z).toBeGreaterThanOrEqual(
+      POLICE.visibleImpactZ,
+    );
+    expect(target.velocity).toBe(10);
+  });
+
+  it('climbs onto a visible trailer and keeps the coupled impact above its ramp', () => {
+    const engine = startPursuit();
+    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const trailer = engine.spawn('towtruck', -1, 45, 0, 6)!;
+    for (
+      let count = 0;
+      count < 300 && engine.policeVehicle.phase !== 'wrecked';
+      count++
+    )
+      frame(engine, [closeCall, trailer]);
+    expect(engine.policeVehicle.phase).toBe('wrecked');
+    expect(engine.policeImpactTarget).toBe(trailer);
+    expect(engine.policeVehicle.z).toBeGreaterThanOrEqual(
+      POLICE.visibleImpactZ,
+    );
+    expect(engine.policeVehicle.y).toBeGreaterThan(0.1);
+    expect(engine.policeVehicle.pitch).toBeGreaterThan(0);
+    expect(trailer.velocity).toBe(6);
+    const separation = trailer.z - engine.policeVehicle.z;
+    for (let count = 0; count < 30; count++)
+      frame(engine, [closeCall, trailer]);
+    expect(trailer.z - engine.policeVehicle.z).toBeCloseTo(separation, 8);
+    expect(trailer.active).toBe(true);
+  });
+
+  it('keeps the visible escape deterministic across render frame chunk sizes', () => {
+    const a = startPursuit();
+    const b = startPursuit();
+    for (const run of [a, b]) {
+      run.spawn('car', 1, 0.4, -1);
+      run.spawn('van', -1, 50, 0, 6);
+    }
+    for (let count = 0; count < 240; count++) a.advance(STEP);
+    for (let count = 0; count < 120; count++) b.advance(STEP * 2);
+    expect(a.policeVehicle).toEqual(b.policeVehicle);
+    expect(a.policeOutcomeSerial).toBe(b.policeOutcomeSerial);
+    expect(a.score).toBe(b.score);
+    expect(a.obstacles).toEqual(b.obstacles);
   });
 });
 
@@ -302,5 +445,53 @@ describe('speed camera pursuit integration', () => {
     expect(engine.blitzerFlashSerial).toBe(1);
     expect(cars.every((car) => car.active && !car.police)).toBe(true);
     expect(engine.policeVehicle.phase).toBe('chasing');
+  });
+
+  it('shares one recovery window between patrols and a camera milestone crossed during escape', () => {
+    const engine = approachCamera(true);
+    engine.wheelieAngle = 0;
+    engine.wheelieAngularVelocity = 0;
+    engine.wheelie = false;
+    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('van', -1, 45, 0, 6)!;
+    engine.score = 22500;
+    for (
+      let count = 0;
+      count < 600 && engine.policeVehicle.phase !== 'idle';
+      count++
+    )
+      frame(engine, [closeCall, target]);
+    expect(engine.policeVehicle.phase).toBe('idle');
+    expect(engine.policeOutcomeSerial).toBe(1);
+    expect(engine.speedCamera.active).toBe(false);
+    const patrol = engine.spawn('car', 1, -3.95, 0, 0, true)!;
+    engine.wheelieAngle = 0.6;
+    frame(engine, [patrol]);
+    expect(patrol.passed).toBe(true);
+    expect(engine.policeChase).toBe(false);
+    engine.wheelieAngle = 0;
+    engine.wheelieAngularVelocity = 0;
+    engine.wheelie = false;
+    for (
+      let count = 0;
+      count < (POLICE.encounterCooldownSeconds - 1) / STEP;
+      count++
+    ) {
+      frame(engine);
+      expect(engine.speedCamera.active).toBe(false);
+      expect(engine.policeChase).toBe(false);
+    }
+    for (let count = 0; count < 1200 && !engine.speedCamera.active; count++)
+      frame(engine);
+    expect(engine.speedCamera.active).toBe(true);
+    expect(engine.speedCamera.id).toBe(2);
+    expect(engine.blitzerFlashSerial).toBe(1);
+    engine.distance = engine.speedCamera.distance - 1;
+    engine.wheelieAngle = 0.6;
+    frame(engine);
+    expect(engine.policeChase).toBe(true);
+    expect(engine.blitzerFlashSerial).toBe(2);
+    for (let count = 0; count < 10; count++) frame(engine);
+    expect(engine.blitzerFlashSerial).toBe(2);
   });
 });

@@ -8,6 +8,7 @@ import {
   TubeGeometry,
   Vector3,
 } from 'three';
+import { TUBE_EXHAUST } from '../app/game/exhaustClearance';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
 
@@ -29,11 +30,20 @@ describe('fitted Supermoto header', () => {
     ) as Mesh<TubeGeometry>;
     const path = header.geometry.parameters.path;
     const start = path.getPoint(0);
-    expect(start.distanceTo(new Vector3(0.112, 0.578, -0.210))).toBeLessThan(
+    expect(start.distanceTo(new Vector3(0, 0.560, -0.236))).toBeLessThan(
       1e-9,
     );
-    const portAxis = new Vector3(0.05, -0.018, -0.080).normalize();
+    const portAxis = new Vector3(0, -0.012, -0.070).normalize();
     expect(path.getTangent(0).dot(portAxis)).toBeGreaterThan(0.999);
+    // The outlet and first forward section pass centrally through the cradle,
+    // then the return sweeps outside; a side exit cannot satisfy this gate.
+    expect(Math.abs(start.x)).toBeLessThan(0.001);
+    // Probe the same physical front plane even when the rear curve grows.
+    const exit = path.getSpacedPoints(512).find(point => point.z < -0.3)!;
+    expect(Math.abs(exit.x)).toBeLessThan(0.005);
+    expect(exit.z).toBeLessThan(-0.295);
+    const exhaustAxis = new Vector3(0, TUBE_EXHAUST.endY - TUBE_EXHAUST.startY, TUBE_EXHAUST.endZ - TUBE_EXHAUST.startZ).normalize();
+    expect(path.getTangent(1).dot(exhaustAxis), 'pipe enters the muffler axially').toBeGreaterThan(0.999);
     const frontBend = path
       .getSpacedPoints(256)
       .filter((point) => point.z < -0.07);
@@ -45,10 +55,11 @@ describe('fitted Supermoto header', () => {
     expect(Math.min(...frontBend.map((point) => point.y))).toBeLessThan(0.53);
     expect(Math.min(...frontBend.map((point) => point.z))).toBeGreaterThan(-0.35);
     expect(Math.max(...frontBend.map((point) => point.x))).toBeLessThan(0.20);
-    const externalRun = path.getSpacedPoints(256).filter(point => point.z > 0.045 && point.z < 0.165);
-    expect(externalRun.length).toBeGreaterThan(12);
-    for (const point of externalRun) {
-      expect(point.x - header.geometry.parameters.radius).toBeGreaterThan(0.165);
+    const concealedRun = path.getSpacedPoints(256).filter(point => point.z > 0.045 && point.z < 0.165);
+    expect(concealedRun.length).toBeGreaterThan(12);
+    for (const point of concealedRun) {
+      // The visible main spar lies outside this rear run.
+      expect(point.x + header.geometry.parameters.radius).toBeLessThan(0.114);
     }
 
     const finish = new MeshBasicMaterial({ side: DoubleSide });
@@ -62,6 +73,15 @@ describe('fitted Supermoto header', () => {
       'engine-water-pump',
       'radiator-core',
       'radiator-end-tank',
+      'supermoto-frame-merge-branch',
+      'supermoto-frame-central-up-tube',
+      'supermoto-rear-subframe',
+      'supermoto-upper-subframe',
+      'airbox-inner-splash-wall',
+      'supermoto-shock-damper',
+      'supermoto-shock-reservoir',
+      'supermoto-shock-spring-seat',
+      'rear-shock-spring',
     ]);
     const obstacles: Mesh[] = [];
     bike.body.traverse((object) => {
@@ -89,7 +109,7 @@ describe('fitted Supermoto header', () => {
             .filter(
               (distance, i, all) => i === 0 || distance - all[i - 1] > 1e-6,
             );
-          expect(hits.length % 2, `header inside ${obstacle.name}`).toBe(0);
+          expect(hits.length % 2, `header inside ${obstacle.name} at ${point.toArray().join(",")}`).toBe(0);
         }
       }
       const coolant = bike.body.getObjectByName(
@@ -138,6 +158,40 @@ describe('fitted Supermoto header', () => {
         expect(frameGap - header.geometry.parameters.radius
           - frame.geometry.parameters.radius, 'header must clear upper frame spars')
           .toBeGreaterThan(0.002);
+      }
+      const rightSpar = bike.body.getObjectsByProperty('name', 'supermoto-frame-main-spar')
+        .find(object => (object as Mesh<TubeGeometry>).geometry.parameters.path.getPoint(0.5).x > 0) as Mesh<TubeGeometry>;
+      const sparPoints = rightSpar.geometry.parameters.path.getSpacedPoints(256);
+      const crossing = path.getSpacedPoints(512).filter(p => p.z > 0 && p.z < 0.15)
+        .sort((a, b) => {
+          const gap = (p: Vector3) => Math.min(...sparPoints.map(q => Math.hypot(p.y - q.y, p.z - q.z)));
+          return gap(a) - gap(b);
+        })[0];
+      const hit = new Raycaster(new Vector3(0.6, crossing.y, crossing.z), new Vector3(-1, 0, 0))
+        .intersectObjects([rightSpar, header], false)[0];
+      expect(hit?.object.name, 'the marked crossing must be hidden behind the frame').toBe('supermoto-frame-main-spar');
+      const rightRear = bike.body.getObjectsByProperty('name', 'supermoto-rear-subframe')
+        .find(object => (object as Mesh).geometry.getAttribute('position').getX(0) > 0) as Mesh;
+      let rearCovered = 0;
+      for (const point of path.getSpacedPoints(512).filter(p => p.z > 0.25 && p.z < 0.42)) {
+        const ray = new Raycaster(new Vector3(0.6, point.y, point.z), new Vector3(-1, 0, 0));
+        if (!ray.intersectObject(rightRear, false).length) continue;
+        const first = ray.intersectObjects([rightRear, header], false)[0];
+        expect(first.object.name, 'the complete rear brace must stay outside the exhaust').toBe('supermoto-rear-subframe');
+        rearCovered++;
+      }
+      expect(rearCovered).toBeGreaterThan(3);
+      for (const travel of [-0.025, 0, 0.06, 0.12]) {
+        bike.animateSuspension(0, travel); bike.root.updateMatrixWorld(true);
+        for (const name of ['supermoto-shock-damper', 'supermoto-shock-reservoir', 'supermoto-shock-spring-seat', 'rear-shock-spring']) {
+          for (const shock of bike.body.getObjectsByProperty('name', name) as Mesh[]) {
+            const proxy = new Mesh(shock.geometry, finish); proxy.matrixWorld.copy(shock.matrixWorld);
+            for (const point of headerPath.filter(p => p.z > 0.02)) {
+              const gap = new Raycaster(point, new Vector3(-1, 0, 0)).intersectObject(proxy, false)[0];
+              if (gap) expect(gap.distance - header.geometry.parameters.radius, name + ' travel ' + travel + ' at ' + point.toArray().join(',')).toBeGreaterThan(0.003);
+            }
+          }
+        }
       }
     } finally {
       finish.dispose();

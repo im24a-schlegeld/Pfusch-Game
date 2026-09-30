@@ -61,7 +61,9 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
         bike.body.getObjectsByProperty('name', 'radiator-shroud') as Mesh[]
       ).find((p) => p.geometry.getAttribute('position').getX(0) * side > 0)!;
       const ray = (x: number) => {
-        const start = bike.body.localToWorld(new Vector3(side * x, 1.2, -0.2));
+        // Sample the remaining front shoulder; z=-0.2 now belongs to the
+        // requested open tank recess and is checked separately below.
+        const start = bike.body.localToWorld(new Vector3(side * x, 1.2, -0.355));
         const direction = new Vector3(0, -1, 0).transformDirection(
           bike.body.matrixWorld,
         );
@@ -78,6 +80,38 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
       // A plane would have the same slope. The shoulder rolls increasingly
       // steeply down to the side face, as in the marked reference area.
       expect((b - c) / 0.025).toBeGreaterThan(((a - b) / 0.03) * 1.5);
+    }
+  });
+
+  it('shows the real black tank through the upper shoulder opening beside the seat nose', () => {
+    const tank = bike.body.getObjectByName('supermoto-fuel-tank') as Mesh;
+    const direction = new Vector3(0, -1, 0).transformDirection(bike.body.matrixWorld);
+    for (const side of [-1, 1]) {
+      let visible = 0;
+      for (const x of [0.105, 0.115]) for (const z of [-0.29, -0.25, -0.21]) {
+        const origin = bike.body.localToWorld(new Vector3(side * x, 1.2, z));
+        const hit = new Raycaster(origin, direction).intersectObject(bike.body, true)
+          .find(hit => {
+            for (let part = hit.object; part; part = part.parent!)
+              if (part === bike.rider) return false;
+            return true;
+          });
+        if (hit?.object === tank) visible++;
+      }
+      expect(visible, `Black upper tank opening on side ${side}`).toBeGreaterThanOrEqual(5);
+      let sideVisible = 0;
+      for (const y of [0.975, 0.985]) for (const z of [-0.29, -0.265, -0.24]) {
+        const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
+        const sideDirection = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
+        const hit = new Raycaster(origin, sideDirection).intersectObject(bike.body, true)
+          .find(hit => {
+            for (let part = hit.object; part; part = part.parent!)
+              if (part === bike.rider) return false;
+            return true;
+          });
+        if (hit?.object === tank) sideVisible++;
+      }
+      expect(sideVisible, `Upper tank must also show from the side ${side}`).toBeGreaterThanOrEqual(5);
     }
   });
 

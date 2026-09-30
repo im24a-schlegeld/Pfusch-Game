@@ -74,4 +74,21 @@ describe('score-based speed camera scheduling', () => {
     for (let index = 1; index < sides.length; index++)
       expect(sides[index]).toBe(-sides[index - 1]);
   });
+
+  it('collapses milestones crossed during one pursuit instead of replaying camera encounters', () => {
+    const schedule = new SpeedCameraSchedule();
+    schedule.update(7500, 1000, true, openRoad);
+    schedule.update(54000, 5000, false, openRoad);
+    expect(schedule.camera.active).toBe(false);
+    schedule.update(54000, 5100, true, openRoad);
+    const pending = { ...schedule.camera };
+    expect(pending.active).toBe(true);
+    schedule.update(54000, pending.distance + 30, true, openRoad);
+    expect(schedule.camera.active).toBe(false);
+    schedule.update(67499, pending.distance + 60, true, openRoad);
+    expect(schedule.camera.active).toBe(false);
+    schedule.update(67500, pending.distance + 70, true, openRoad);
+    expect(schedule.camera.active).toBe(true);
+    expect(schedule.camera.id).toBe(pending.id + 1);
+  });
 });

@@ -18,12 +18,12 @@ export const SUPERMOTO_CHASSIS = Object.freeze({
 
 // One contact datum for the actual pegs AND the existing rider IK/boot generator.
 export const SUPERMOTO_PEG: FitPoint = [0.26, 0.385, 0.105];
-export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.132, -0.335];
+export const SUPERMOTO_GRIP: FitPoint = [0.35, 1.167, -0.305];
 export const SUPERMOTO_BAR = Object.freeze({
-  clampY: 1.089,
-  clampZ: -0.395,
-  shoulderY: 1.105,
-  shoulderZ: -0.385,
+  clampY: 1.124,
+  clampZ: -0.365,
+  shoulderY: 1.140,
+  shoulderZ: -0.355,
 });
 
 /** Saddle stations: z, half width, half thickness, center height. */

@@ -27,7 +27,7 @@ export class SpeedCameraSchedule {
     triggered: false,
   };
 
-  private nextScore = SPEED_CAMERA.firstScore;
+  private nextScore: number = SPEED_CAMERA.firstScore;
 
   update(
     score: number,
@@ -55,7 +55,16 @@ export class SpeedCameraSchedule {
       camera.distance = candidate;
       camera.side = camera.id % 2 === 0 ? 1 : -1;
       camera.triggered = false;
-      this.nextScore += SPEED_CAMERA.scoreInterval;
+      // A long pursuit or one large score reward may cross several thresholds.
+      // Show one pending encounter, then resume the original milestone grid;
+      // replaying every crossed threshold causes back-to-back police triggers.
+      this.nextScore =
+        SPEED_CAMERA.firstScore +
+        (Math.floor(
+          (score - SPEED_CAMERA.firstScore) / SPEED_CAMERA.scoreInterval,
+        ) +
+          1) *
+          SPEED_CAMERA.scoreInterval;
       return;
     }
   }

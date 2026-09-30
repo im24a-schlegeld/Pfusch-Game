@@ -105,13 +105,16 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   const root = new THREE.Group();
   root.name = 'streamed-world';
   scene.add(root);
-  const speedCamera = createBlitzerModel({ scale: 0.95 });
+  const speedCamera = createBlitzerModel({ scale: 1.12 });
   speedCamera.visible = false;
   scene.add(speedCamera);
   const cameraFlash = speedCamera.getObjectByName('BlitzerFlash') as THREE.Mesh<
     THREE.PlaneGeometry,
     THREE.MeshBasicMaterial
   >;
+  const cameraFlashGlow = speedCamera.getObjectByName(
+    'BlitzerFlashGlow',
+  ) as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   const geometries: Record<Form, THREE.BufferGeometry> = {
     box: new THREE.BoxGeometry(1, 1, 1),
     round: new THREE.CylinderGeometry(1, 1, 1, low ? 8 : 12),
@@ -997,13 +1000,15 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     // The independent model uses the same relative road distance as traffic,
     // so streamed terrain reanchoring cannot move the sensor or reset a flash.
     speedCamera.position.set(camera.side * 6.35, 0, -relativeDistance);
-    // Aim the sensor across the road and back toward approaching riders. The
-    // flash remains on its black sensor opening in both low/high quality modes.
-    speedCamera.rotation.y = Math.atan2(-camera.side * 6.35, 8);
+    // Stand square to the road with the sensor facing approaching riders.
+    // The same unlit core and soft glow work without bloom in either quality mode.
+    speedCamera.rotation.set(0, 0, 0);
     cameraFlash.material.opacity = camera.active
       ? Math.max(0, Math.min(1, flash))
       : 0;
     cameraFlash.visible = cameraFlash.material.opacity > 0;
+    cameraFlashGlow.material.opacity = cameraFlash.material.opacity;
+    cameraFlashGlow.visible = cameraFlash.visible;
   }
 
   let previousWorld: World | undefined,

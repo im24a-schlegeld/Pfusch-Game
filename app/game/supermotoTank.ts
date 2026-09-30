@@ -37,12 +37,12 @@ function section(stations: readonly Station[], z: number): number[] {
 const WING: readonly Station[] = [
   [-0.47, 0.112, 0.153, 0.93, 0.925],
   [-0.435, 0.107, 0.165, 0.953, 0.877],
-  [-0.36, 0.099, 0.173, 0.978, 0.815],
-  [-0.3, 0.095, 0.176, 0.987, 0.735],
-  [-0.255, 0.095, 0.176, 0.989, 0.685],
-  [-0.222, 0.096, 0.176, 0.987, 0.751],
-  [-0.19, 0.097, 0.174, 0.983, 0.865],
-  [-0.14, 0.096, 0.167, 0.977, 0.904],
+  [-0.36, 0.103, 0.173, 0.978, 0.815],
+  [-0.3, 0.120, 0.176, 0.967, 0.735],
+  [-0.255, 0.132, 0.176, 0.955, 0.685],
+  [-0.222, 0.136, 0.176, 0.956, 0.751],
+  [-0.19, 0.132, 0.174, 0.966, 0.865],
+  [-0.14, 0.117, 0.167, 0.977, 0.904],
   [-0.05, 0.092, 0.155, 0.959, 0.913],
   [0.05, 0.089, 0.14, 0.947, 0.911],
   [0.165, 0.087, 0.128, 0.947, 0.922],
@@ -72,7 +72,11 @@ export function supermotoShroudGeometry(side: number) {
         if (v <= 0.25) {
           const a = ((v / 0.25) * Math.PI) / 2;
           x = inner + (outer - inner) * Math.sin(a);
-          y = top + 0.014 * Math.cos(a);
+          // The inner lip dips around the fuel reservoir. This opens the
+          // marked black shoulder without painting a fake patch on the wing.
+          const recess = MathUtils.smoothstep(z, -0.36, -0.255)
+            * (1 - MathUtils.smoothstep(z, -0.19, -0.05));
+          y = top + (0.014 - 0.027 * recess) * Math.cos(a);
         } else {
           const t = (v - 0.25) / 0.75;
           x = outer + Math.sin(t * Math.PI) ** 2 * 0.008;
@@ -122,9 +126,9 @@ export function supermotoShroudGeometry(side: number) {
 // and a rounded low reservoir hanging visibly above the cylinder head.
 const TANK: readonly Station[] = [
   [-0.405, 0.035, 0.984, 0.947],
-  [-0.345, 0.075, 1.003, 0.879],
-  [-0.28, 0.118, 1.006, 0.831],
-  [-0.195, 0.142, 0.994, 0.804],
+  [-0.345, 0.084, 1.009, 0.879],
+  [-0.28, 0.139, 1.014, 0.831],
+  [-0.195, 0.153, 0.999, 0.804],
   [-0.085, 0.151, 0.967, 0.798],
   [0.025, 0.147, 0.946, 0.808],
   [0.108, 0.127, 0.932, 0.834],

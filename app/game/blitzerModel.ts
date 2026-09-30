@@ -13,6 +13,28 @@ export interface BlitzerModelOptions {
   color?: THREE.ColorRepresentation;
 }
 
+/** A tiny reusable radial glow: no bloom pass, canvas or dynamic light. */
+function flashGlowTexture(): THREE.DataTexture {
+  const size = 32;
+  const pixels = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const radius = Math.hypot(
+        ((x + 0.5) / size) * 2 - 1,
+        ((y + 0.5) / size) * 2 - 1,
+      );
+      const offset = (y * size + x) * 4;
+      pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = 255;
+      pixels[offset + 3] = Math.round(255 * Math.max(0, 1 - radius) ** 2);
+    }
+  }
+  const texture = new THREE.DataTexture(pixels, size, size);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 const D = Object.freeze({
   baseWidth: 0.94,
   baseDepth: 0.82,
@@ -204,19 +226,39 @@ export function createBlitzerModel(options: BlitzerModelOptions = {}): THREE.Gro
   // The black sensor recess gets a separate emissive-looking flash plane.
   // It stays dark until the deterministic game event triggers the camera.
   const flash = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.16, 0.11),
+    new THREE.PlaneGeometry(0.204, 0.158),
     new THREE.MeshBasicMaterial({
       color: '#ffffff',
       transparent: true,
       opacity: 0,
       depthWrite: false,
+      toneMapped: false,
       side: THREE.DoubleSide,
     }),
   );
   flash.name = 'BlitzerFlash';
-  flash.position.set(0, 2.01, D.towerDepth / 2 + 0.008);
+  flash.position.set(0, 2.151, D.towerDepth / 2 + 0.008);
   flash.userData.blitzerFlash = true;
   root.add(flash);
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.05, 1.05),
+    new THREE.MeshBasicMaterial({
+      color: '#ffffff',
+      map: flashGlowTexture(),
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    }),
+  );
+  glow.name = 'BlitzerFlashGlow';
+  // SceneView's existing unique-resource cleanup owns this generated texture.
+  glow.userData.disposable = true;
+  glow.position.copy(flash.position);
+  glow.position.z += 0.001;
+  root.add(glow);
   root.scale.setScalar(scale);
   root.userData.dimensions = {
     width: D.baseWidth*scale,
@@ -239,7 +281,10 @@ export function disposeBlitzerModel(model: THREE.Group): void {
     const list = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of list) materials.add(material);
   });
-  for (const material of materials) material.dispose();
+  for (const material of materials) {
+    if (material instanceof THREE.MeshBasicMaterial) material.map?.dispose();
+    material.dispose();
+  }
 }
 
 export default createBlitzerModel;

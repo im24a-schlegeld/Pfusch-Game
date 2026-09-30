@@ -75,15 +75,27 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   ]),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a);
   // Short forward overhang and a rounded downward return below the radiator.
-  // The return and rear run stay outside the right frame rail, as marked.
+  // Exit forward through the gap between both cradle rails. Only beyond the
+  // front of the cradle does the compact return sweep outward. The rear
+  // section stays behind both main and rear braces. A formed final elbow
+  // enters the shortened front neck along the unchanged silencer axis.
   const headerPoints:P[]=[
     [...SUPERMOTO_EXHAUST_OUTLET],
     SUPERMOTO_EXHAUST_OUTLET.map((value,index)=>value+SUPERMOTO_EXHAUST_TANGENT[index]) as P,
-    [.184,.550,-.325],[.185,.505,-.323],[.187,.505,-.290],
-    [.190,.553,-.220],[.194,.610,-.110],[.190,.663,.055],
-    [.185,.700,.230],[e.x,e.startY,e.startZ],
+    [.015,.530,-.331],[.090,.508,-.341],[.160,.520,-.312],
+    [.190,.553,-.220],[.194,.610,-.110],[.130,.635,-.010],
+    [.081,.650,.075],[.078,.675,.200],[.074,.692,.280],[.049,.708,.350],
+    [.047,.711,.380],
   ];
-  tube(group,headerPoints,.0185,headerFinish,'connected-exhaust-pipe',80);
+  const headerCurve=new THREE.CurvePath<THREE.Vector3>();
+  headerCurve.add(new THREE.CatmullRomCurve3(headerPoints.map(p=>new THREE.Vector3(...p)),false,'centripetal'));
+  headerCurve.add(new THREE.CubicBezierCurve3(
+    new THREE.Vector3(...headerPoints[headerPoints.length-1]),
+    new THREE.Vector3(.041667,.719,.460),
+    a.clone().addScaledVector(axis,-.05),
+    a.clone(),
+  ));
+  add(group,new THREE.TubeGeometry(headerCurve,80,.0185,12,false),headerFinish,'connected-exhaust-pipe');
   const bandTop=new THREE.Vector3(0,bandAt,-.075).applyQuaternion(orient).add(a);
   tube(group,[[.073,.924,.618],[.121,.891,.618],[bandTop.x,bandTop.y,bandTop.z]],.0075,carbon,'exhaust-frame-hanger');
   // Small, real joints at the outlet and bracket make the separated surfaces

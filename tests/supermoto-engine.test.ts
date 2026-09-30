@@ -177,7 +177,7 @@ describe('formed Supermoto single-cylinder engine', () => {
     const length = (port.geometry as CylinderGeometry).parameters.height;
     const start = new Vector3(0, -length / 2, 0).applyMatrix4(port.matrixWorld);
     const end = new Vector3(0, length / 2, 0).applyMatrix4(port.matrixWorld);
-    const datum = new Vector3(0.112, 0.578, -0.210);
+    const datum = new Vector3(0, 0.560, -0.236);
     const axis = end.clone().sub(start).normalize();
     expect(datum.clone().sub(start).cross(axis).length()).toBeLessThan(1e-7);
     const finish = new MeshBasicMaterial({ side: DoubleSide });

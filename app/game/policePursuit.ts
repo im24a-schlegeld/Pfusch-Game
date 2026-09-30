@@ -6,9 +6,12 @@ export const POLICE = Object.freeze({
   chaseSeconds: 22,
   followZ: -12,
   ramZ: -4.35,
-  impactSeconds: 0.46,
+  escapeClosingSpeed: 38,
+  visibleImpactZ: 5,
+  escapeSeconds: 12,
   retireZ: -48,
   lateralSpeed: 4.8,
+  encounterCooldownSeconds: 12,
 });
 
 /** Separate from the NPC pool: no recycled car can become the pursuing car. */
@@ -105,6 +108,21 @@ export function firstPoliceHit(
 export function policeImpactOffset(target: Obstacle) {
   if (target.kind === 'towtruck') return -4.8;
   return TRAFFIC_SHAPES.car.frontZ - policeTargetShape(target)!.rearZ - 0.02;
+}
+
+/** Where bumper contact will occur if the police catches up at its surge speed. */
+export function policeCatchPosition(
+  target: Obstacle,
+  fromZ: number,
+  riderSpeed: number,
+) {
+  const contactZ = target.z + policeImpactOffset(target);
+  const closingSpeed = Math.max(
+    1,
+    riderSpeed + POLICE.escapeClosingSpeed - target.velocity,
+  );
+  const seconds = Math.max(0, contactZ - fromZ) / closingSpeed;
+  return contactZ - (riderSpeed - target.velocity) * seconds;
 }
 
 /** Both police axles follow the ramp; never sink a car through the loading bed. */

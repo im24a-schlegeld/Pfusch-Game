@@ -139,7 +139,9 @@ describe('moulded Supermoto front fender and raked mask', () => {
       const positions = geometry.getAttribute('position');
       const lowerZ = (positions.getZ(0) + positions.getZ(1)) / 2;
       const upperZ = (positions.getZ(6) + positions.getZ(7)) / 2;
-      const rake = Math.atan((upperZ - lowerZ) / (1.14 - 0.885)) * 180 / Math.PI;
+      const lowerY = (positions.getY(0) + positions.getY(1)) / 2;
+      const upperY = (positions.getY(6) + positions.getY(7)) / 2;
+      const rake = Math.atan((upperZ - lowerZ) / (upperY - lowerY)) * 180 / Math.PI;
       expect(rake).toBeGreaterThan(24);
       expect(rake).toBeLessThan(30);
       expect(SUPERMOTO_LAMP_BULB[2] - SUPERMOTO_LENS_FACE[2]).toBeCloseTo(0.030, 6);

@@ -1375,7 +1375,7 @@ export function makeBike(player: Player, products: Product[]) {
       for (const [x, y, z] of SUPERMOTO_MASK_STRAP_ANCHORS)
         rod(
           body,
-          [s * x, y, forkAxisAt(y)[2]],
+          [s * Math.min(x, 0.108), y, forkAxisAt(y)[2]],
           [s * x, y, z],
           0.006,
           rubber,
