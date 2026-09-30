@@ -60,13 +60,17 @@ describe('larger motorcycles with one unchanged adult', () => {
       expect(clearance).toBeGreaterThan(.005);
     }
   });
-  it('uses matching 17-inch Supermoto bead seats with distinct road tire sections that stay grounded', () => {
+  it('uses the annotated 16.5 / 17-inch Supermoto wheels and 1472 mm axle spacing', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     bike.root.scale.setScalar(1);
-    expect(SUPERMOTO_WHEELS.front.beadRadius * 2 / 0.0254).toBeCloseTo(17, 9);
-    expect(SUPERMOTO_WHEELS.front.beadRadius).toBe(SUPERMOTO_WHEELS.rear.beadRadius);
-    expect(SUPERMOTO_CHASSIS.frontRadius * 2).toBeCloseTo(0.5998, 9);
+    expect(SUPERMOTO_WHEELS.front.beadRadius * 2 / 0.0254).toBeCloseTo(16.5, 9);
+    expect(SUPERMOTO_WHEELS.rear.beadRadius * 2 / 0.0254).toBeCloseTo(17, 9);
+    expect(SUPERMOTO_CHASSIS.frontRadius * 2).toBeCloseTo(0.5871, 9);
     expect(SUPERMOTO_CHASSIS.rearRadius * 2).toBeCloseTo(0.6118, 9);
+    bike.animateSuspension(0, 0); bike.root.updateMatrixWorld(true);
+    const axles = bike.wheels.map(wheel => wheel.getWorldPosition(new Vector3()).divideScalar(bike.body.scale.x));
+    expect(axles[1].z - axles[0].z).toBeCloseTo(1.472, 9);
+    expect(SUPERMOTO_CHASSIS.frontBrakeRadius * 2).toBeCloseTo(0.310, 9);
     const tireWidths: number[] = [];
     const rimWidths: number[] = [];
     for (const [i, wheel] of bike.wheels.entries()) {
@@ -75,6 +79,12 @@ describe('larger motorcycles with one unchanged adult', () => {
       const size = i === 0 ? SUPERMOTO_WHEELS.front : SUPERMOTO_WHEELS.rear;
       const tire = wheel.getObjectByName('tire') as Mesh;
       const rim = wheel.getObjectByName('formed-rim-barrel') as Mesh;
+      const disc = wheel.getObjectByName(i === 0 ? 'front-brake-disc' : 'rear-brake-disc') as Mesh;
+      const discVertices = disc.geometry.getAttribute('position');
+      let discRadius = 0;
+      for (let vertex = 0; vertex < discVertices.count; vertex++)
+        discRadius = Math.max(discRadius, Math.hypot(discVertices.getY(vertex), discVertices.getZ(vertex)));
+      expect(discRadius * 2).toBeCloseTo(i === 0 ? 0.310 : 0.220, 6);
       tire.geometry.computeBoundingBox();
       rim.geometry.computeBoundingBox();
       // Inspect the actual profile before any presentation scale. The visible
@@ -88,7 +98,8 @@ describe('larger motorcycles with one unchanged adult', () => {
         5,
       );
       expect(size.rimEdgeRadius).toBeGreaterThan(size.beadRadius);
-      expect(wheel.position.y).toBeCloseTo(radius, 12);
+      bike.root.updateMatrixWorld(true);
+      expect(wheel.getWorldPosition(new Vector3()).y / bike.body.scale.y).toBeCloseTo(radius, 12);
       const width = tire.geometry.boundingBox!.max.x - tire.geometry.boundingBox!.min.x;
       const nominalWidth = i === 0 ? SUPERMOTO_CHASSIS.frontTireWidth : SUPERMOTO_CHASSIS.rearTireWidth;
       expect(width).toBeCloseTo(nominalWidth, 6);

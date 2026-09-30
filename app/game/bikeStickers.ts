@@ -150,6 +150,7 @@ function projectedStickerGeometry(
   point: THREE.Vector3,
   selectedNormal: THREE.Vector3,
   placement: StickerPlacement,
+  recoveryFacing?: THREE.Vector3,
 ) {
   const normal = outwardNormal(source, point, selectedNormal);
   const up = Math.abs(normal.y) > 0.94
@@ -176,11 +177,23 @@ function projectedStickerGeometry(
     return undefined;
   }
   const indices: number[] = [], faceNormal = new THREE.Vector3();
+  const face = new THREE.Triangle(), geometricNormal = new THREE.Vector3();
+  const positions = geometry.getAttribute('position');
   const reverse = normal.dot(selectedNormal) < 0;
   for (let i = 0; i < normals.count; i += 3) {
     faceNormal.set(0, 0, 0);
     for (let j = 0; j < 3; j++)
       faceNormal.add(new THREE.Vector3().fromBufferAttribute(normals, i + j));
+    if (recoveryFacing) {
+      // Smoothed edge normals can face sideways even on a horizontal return.
+      // Old stickers must recover onto a real face visible from their saved
+      // side, rather than predominantly printing on a thin hidden underside.
+      face.a.fromBufferAttribute(positions, i);
+      face.b.fromBufferAttribute(positions, i + 1);
+      face.c.fromBufferAttribute(positions, i + 2);
+      face.getNormal(geometricNormal);
+      if (Math.abs(geometricNormal.dot(recoveryFacing)) <= 0.15) continue;
+    }
     if (faceNormal.dot(selectedNormal) > 0.15)
       indices.push(i, i + (reverse ? 2 : 1), i + (reverse ? 1 : 2));
   }
@@ -194,7 +207,8 @@ function projectedStickerGeometry(
  * Recover an empty old projection on the same real skin, only for rendering;
  * a valid current placement and the persisted point/normal stay untouched. */
 function reshapedSurfacePoint(source: THREE.Mesh, point: THREE.Vector3, normal: THREE.Vector3) {
-  if (!['radiator-shroud', 'supermoto-front-fender', 'supermoto-headlight-mask', 'supermoto-fuel-tank'].includes(source.name))
+  if (!['radiator-shroud', 'supermoto-front-fender', 'supermoto-headlight-mask', 'supermoto-fuel-tank',
+    'supermoto-side-cover', 'supermoto-tail-fender'].includes(source.name))
     return undefined;
   const positions = source.geometry.getAttribute('position'), index = source.geometry.getIndex();
   const triangle = new THREE.Triangle(), candidate = new THREE.Vector3(), faceNormal = new THREE.Vector3();
@@ -238,7 +252,7 @@ export function applyBikeStickers(
         geometry?.dispose();
         const recovered = reshapedSurfacePoint(source, point, selectedNormal);
         if (!recovered) continue;
-        geometry = projectedStickerGeometry(source, recovered.point, recovered.normal, placement);
+        geometry = projectedStickerGeometry(source, recovered.point, recovered.normal, placement, selectedNormal);
         if (!geometry?.getIndex()?.count) {
           geometry?.dispose();
           continue;

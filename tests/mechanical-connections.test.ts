@@ -66,13 +66,14 @@ describe('assembled motorcycle connections', () => {
       expect(carriers).toHaveLength(calipers.length);
       const ray = new Raycaster();
       for (const caliper of calipers) {
+        const caliperPosition = caliper.getWorldPosition(new Vector3());
         ray.set(
-          new Vector3(1, caliper.position.y, caliper.position.z),
+          new Vector3(1, caliperPosition.y, caliperPosition.z),
           new Vector3(-1, 0, 0),
         );
         const connection = ray
           .intersectObjects(carriers, false)
-          .find((hit) => Math.abs(hit.point.x - caliper.position.x) < 0.024);
+          .find((hit) => Math.abs(hit.point.x - caliperPosition.x) < 0.024);
         expect(connection).toBeDefined();
         // The same solid plate reaches the axle; a detached decorative plate
         // near the caliper is insufficient to pass this connectivity check.
@@ -80,8 +81,9 @@ describe('assembled motorcycle connections', () => {
           caliper.parent === bike.wheels[0].parent
             ? bike.wheels[0]
             : bike.wheels[1];
+        const axlePosition = wheel.getWorldPosition(new Vector3());
         ray.set(
-          new Vector3(1, wheel.position.y, wheel.position.z),
+          new Vector3(1, axlePosition.y, axlePosition.z),
           new Vector3(-1, 0, 0),
         );
         expect(
@@ -220,8 +222,22 @@ describe('assembled motorcycle connections', () => {
       expect(ringCenter(bar, side < 0 ? 0 : 36, 12).distanceTo(axis.end))
         .toBeLessThan(1e-6);
       const rearwardSweep = axis.end.z - ringCenter(bar, 18, 12).z;
-      expect(rearwardSweep).toBeGreaterThan(0.07);
-      expect(rearwardSweep).toBeLessThan(0.105);
+      // The requested compact cockpit reduces the clamp-to-tip rear sweep;
+      // the grip's own 12-degree sweep and its exact IK contact remain above.
+      expect(rearwardSweep).toBeGreaterThan(0.055);
+      expect(rearwardSweep).toBeLessThan(0.070);
+    }
+  });
+
+  it('attaches the Supermoto fender holders to the lower yoke in the settled fork geometry', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const yokes = bike.body.getObjectsByProperty('name', 'fork-yoke') as Mesh[];
+    const lower = yokes.map(rodAxis).sort((a, b) => a.start.y - b.start.y)[0];
+    const holders = bike.body.getObjectsByProperty('name', 'front-fender-mount') as Mesh[];
+    expect(holders).toHaveLength(2);
+    for (const holder of holders) {
+      const end = rodAxis(holder).end;
+      expect(lower.closestPointToPoint(end, true, new Vector3()).distanceTo(end)).toBeLessThan(1e-6);
     }
   });
 

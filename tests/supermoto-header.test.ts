@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  Box3,
+  CylinderGeometry,
   DoubleSide,
+  Line3,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -20,6 +23,32 @@ vi.mock('../app/game/garmentTexture', () => ({
 }));
 
 describe('fitted Supermoto header', () => {
+  it('hangs the shorter raised can from the actual upper rear rail and mounting band', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.updateMatrixWorld(true);
+    const hanger = bike.body.getObjectByName('exhaust-frame-hanger') as Mesh<TubeGeometry>;
+    const rail = bike.body.getObjectsByProperty('name', 'supermoto-upper-subframe')
+      .find(part => part.position.x > 0) as Mesh<CylinderGeometry>;
+    const half = rail.geometry.parameters.height / 2;
+    const axis = new Line3(
+      new Vector3(0, -half, 0).applyMatrix4(rail.matrixWorld),
+      new Vector3(0, half, 0).applyMatrix4(rail.matrixWorld),
+    );
+    const top = hanger.geometry.parameters.path.getPoint(0).applyMatrix4(hanger.matrixWorld);
+    expect(axis.closestPointToPoint(top, true, new Vector3()).distanceTo(top)).toBeLessThan(1e-6);
+    const band = bike.body.getObjectByName('exhaust-mount-band') as Mesh;
+    const end = hanger.geometry.parameters.path.getPoint(1).applyMatrix4(hanger.matrixWorld);
+    const center = new Box3().setFromObject(band).getCenter(new Vector3());
+    const finish = new MeshBasicMaterial({ side: DoubleSide });
+    const proxy = new Mesh(band.geometry, finish);
+    proxy.matrixWorld.copy(band.matrixWorld);
+    try {
+      const hit = new Raycaster(end, center.sub(end).normalize()).intersectObject(proxy, false)[0];
+      expect(hit).toBeDefined();
+      expect(hit.distance).toBeLessThan(0.003);
+    } finally { finish.dispose(); }
+  });
+
   it('keeps the real compact return bend clear of the cylinder, radiator and coolant hose', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     bike.root.scale.setScalar(1);
@@ -167,14 +196,15 @@ describe('fitted Supermoto header', () => {
           const gap = (p: Vector3) => Math.min(...sparPoints.map(q => Math.hypot(p.y - q.y, p.z - q.z)));
           return gap(a) - gap(b);
         })[0];
-      const hit = new Raycaster(new Vector3(0.6, crossing.y, crossing.z), new Vector3(-1, 0, 0))
+      const sideDirection = new Vector3(-1, 0, 0).transformDirection(header.matrixWorld);
+      const hit = new Raycaster(new Vector3(0.6, crossing.y, crossing.z).applyMatrix4(header.matrixWorld), sideDirection)
         .intersectObjects([rightSpar, header], false)[0];
       expect(hit?.object.name, 'the marked crossing must be hidden behind the frame').toBe('supermoto-frame-main-spar');
       const rightRear = bike.body.getObjectsByProperty('name', 'supermoto-rear-subframe')
         .find(object => (object as Mesh).geometry.getAttribute('position').getX(0) > 0) as Mesh;
       let rearCovered = 0;
       for (const point of path.getSpacedPoints(512).filter(p => p.z > 0.25 && p.z < 0.42)) {
-        const ray = new Raycaster(new Vector3(0.6, point.y, point.z), new Vector3(-1, 0, 0));
+        const ray = new Raycaster(new Vector3(0.6, point.y, point.z).applyMatrix4(header.matrixWorld), sideDirection);
         if (!ray.intersectObject(rightRear, false).length) continue;
         const first = ray.intersectObjects([rightRear, header], false)[0];
         expect(first.object.name, 'the complete rear brace must stay outside the exhaust').toBe('supermoto-rear-subframe');
@@ -183,11 +213,14 @@ describe('fitted Supermoto header', () => {
       expect(rearCovered).toBeGreaterThan(3);
       for (const travel of [-0.025, 0, 0.06, 0.12]) {
         bike.animateSuspension(0, travel); bike.root.updateMatrixWorld(true);
+        const movingHeaderPath = path.getSpacedPoints(256).filter(p => p.z > 0.02)
+          .map(point => point.applyMatrix4(header.matrixWorld));
+        const movingSideDirection = new Vector3(-1, 0, 0).transformDirection(header.matrixWorld);
         for (const name of ['supermoto-shock-damper', 'supermoto-shock-reservoir', 'supermoto-shock-spring-seat', 'rear-shock-spring']) {
           for (const shock of bike.body.getObjectsByProperty('name', name) as Mesh[]) {
             const proxy = new Mesh(shock.geometry, finish); proxy.matrixWorld.copy(shock.matrixWorld);
-            for (const point of headerPath.filter(p => p.z > 0.02)) {
-              const gap = new Raycaster(point, new Vector3(-1, 0, 0)).intersectObject(proxy, false)[0];
+            for (const point of movingHeaderPath) {
+              const gap = new Raycaster(point, movingSideDirection).intersectObject(proxy, false)[0];
               if (gap) expect(gap.distance - header.geometry.parameters.radius, name + ' travel ' + travel + ' at ' + point.toArray().join(',')).toBeGreaterThan(0.003);
             }
           }

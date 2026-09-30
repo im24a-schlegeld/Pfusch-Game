@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+import { SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+import { raisedLinerY } from './exhaustClearance';
 
 type Point = [number, number, number];
 type EdgeSample = { x: number; y: number };
 
 /** Intersect a vertical line with the mesh's real triangles (bike-local space). */
-function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number) {
+function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number, required = true) {
   const p = geometry.getAttribute('position');
   const index = geometry.getIndex();
   if (!index) throw new Error('Supermoto rear fender must be indexed');
@@ -23,14 +24,20 @@ function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number) {
     if (Math.min(u, v, w) < -1e-6) continue;
     lowest = Math.min(lowest, u * p.getY(a) + v * p.getY(b) + w * p.getY(c));
   }
-  if (!Number.isFinite(lowest)) throw new Error('Rear liner sample outside the existing fender');
+  if (required && !Number.isFinite(lowest)) throw new Error('Rear liner sample outside the existing fender');
   return lowest;
+}
+
+function geometryBoundaryCount(geometry: THREE.BufferGeometry): number {
+  const count = geometry.userData.sideBoundaryCount;
+  if (!Number.isInteger(count) || count < 3) throw new Error('Missing Supermoto side-cover boundary');
+  return count;
 }
 
 /** The formed side cover starts with its ordered outer boundary before its creases. */
 function readSideBoundary(cover: THREE.Mesh): Point[] {
   const p = cover.geometry.getAttribute('position');
-  const count = SUPERMOTO_SIDE_COVER.length;
+  const count = geometryBoundaryCount(cover.geometry);
   if (p.count < count * 2) {
     throw new Error('Unexpected Supermoto side-cover topology');
   }
@@ -107,7 +114,7 @@ function sheet(
   return geometry;
 }
 
-/** Read the already-built, symmetric covers; only add the liner and mudflap. */
+/** Join the real asymmetric covers with a liner arch over the right-hand can. */
 export function addSupermotoRearProtection(
   body: THREE.Group,
   paint: THREE.MeshStandardMaterial,
@@ -129,17 +136,21 @@ export function addSupermotoRearProtection(
     if (object.name === 'supermoto-side-cover' && object instanceof THREE.Mesh) covers.push(object);
   });
   if (covers.length !== 2) throw new Error('Expected two Supermoto side covers');
-  const boundary = readSideBoundary(cover);
+  const leftCover = covers.find(part => part.geometry.getAttribute('position').getX(0) < 0)!;
+  const rightCover = covers.find(part => part.geometry.getAttribute('position').getX(0) > 0)!;
+  const boundaries = [readSideBoundary(leftCover), readSideBoundary(rightCover)];
+  const boundary = boundaries[0];
   const frontZ = 0.44;
   const coverEndZ = Math.max(...boundary.map(p => p[2]));
   const tailTip = SUPERMOTO_TAIL_FENDER[SUPERMOTO_TAIL_FENDER.length - 1];
   const endZ = tailTip[0] - 0.018;
   const sections = new Map<number, { halfWidth: number; edgeY: number; crown: number }>();
 
-  const section = (z: number) => {
-    const cached = sections.get(z);
+  const section = (z: number, side: number) => {
+    const key = z * side;
+    const cached = sections.get(key);
     if (cached) return cached;
-    const edge = lowerEdgeAt(boundary, Math.min(z, coverEndZ));
+    const edge = lowerEdgeAt(boundaries[side < 0 ? 0 : 1], Math.min(z, coverEndZ));
     const roof = undersideAt(tail.geometry, 0, z);
 
     // The wheel-side surface joins the lower edge of the side panels, then
@@ -154,19 +165,21 @@ export function addSupermotoRearProtection(
     const edgeY = THREE.MathUtils.lerp(edge.y + 0.002, roof - 0.018, join);
     const crown = Math.min(edgeY + 0.012, roof - 0.004);
     const result = { halfWidth, edgeY, crown };
-    sections.set(z, result);
+    sections.set(key, result);
     return result;
   };
 
   const linerPoint = (z: number, v: number): Point => {
-    const p = section(z);
+    const p = section(z, v < 0 ? -1 : 1);
     // Complementary weights: the liner must not sag below both edge/crown.
     const edgeBlend = Math.pow(Math.abs(v), 1.65);
-    return [
-      p.halfWidth * v,
-      p.crown + (p.edgeY - p.crown) * edgeBlend,
-      z,
-    ];
+    const x = p.halfWidth * v;
+    const y = p.crown + (p.edgeY - p.crown) * edgeBlend;
+    const coverRoof = undersideAt((v < 0 ? leftCover : rightCover).geometry, x, z, false);
+    // At the tapered inlet the complete-radius thermal channel is deliberately
+    // conservative. End it inside the real moulded cover, never through its
+    // visible skin. Seat it 1 mm inside the return to absorb triangulation.
+    return [x, Math.min(raisedLinerY(x, y, z), coverRoof - 0.001), z];
   };
 
   const parts = new THREE.Group();
@@ -175,11 +188,17 @@ export function addSupermotoRearProtection(
   const linerFinish = paint.clone();
   linerFinish.metalness = 0;
   linerFinish.roughness = 0.92;
+  // Share the moulded side-cover stations, especially its raised rear corner;
+  // a coarse uniform strip would cut diagonally through that sharp return.
+  const linerStations = [...new Set([
+    ...boundaries.flatMap(points => points.map(point => point[2])).filter(z => z > frontZ && z < endZ),
+    ...Array.from({ length: 29 }, (_, i) => THREE.MathUtils.lerp(frontZ, endZ, i / 28)),
+  ])].sort((a, b) => a - b);
   const liner = new THREE.Mesh(
     sheet(
-      28,
+      linerStations.length - 1,
       12,
-      (u, v) => linerPoint(frontZ + (endZ - frontZ) * u, v),
+      (u, v) => linerPoint(linerStations[Math.round(u * (linerStations.length - 1))], v),
       [0, -0.003, 0],
     ),
     linerFinish,

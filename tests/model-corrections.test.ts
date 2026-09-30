@@ -49,7 +49,11 @@ it.each(['125', 'scooter', '450', '701'] as const)(
   (id) => {
     const bike = makeBike({ ...newPlayer(), bike: id }, []);
     bike.root.updateMatrixWorld(true);
-    const inverse = bike.body.matrixWorld.clone().invert();
+    // Remove only presentation scale. Keep the actual settled suspension pose
+    // when comparing vertices with neutral axle/contact coordinates.
+    const inverse = bike.root.matrixWorld.clone().invert().premultiply(
+      new Matrix4().makeScale(1 / bike.body.scale.x, 1 / bike.body.scale.y, 1 / bike.body.scale.z),
+    );
     const radius = bike.wheelRadius / bike.body.scale.x;
     const pivot = bike.rearAxle / bike.body.scale.x;
     const contact = TAIL_CONTACT[id];
@@ -91,7 +95,7 @@ it.each(['125', 'scooter', '450', '701'] as const)(
     scan(bike.body);
     contactPoints.sort((a, b) => a.angle - b.angle);
     expect(contactPoints[0].angle).toBeCloseTo(contact.angle, 6);
-    const target = new Vector3(...contact.point);
+    const target = new Vector3(...contact.settledPoint);
     expect(
       target.distanceTo(new Vector3(...contactPoints[0].point)),
     ).toBeLessThan(0.000001);

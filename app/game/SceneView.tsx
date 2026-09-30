@@ -227,7 +227,9 @@ export default function SceneView({
       for (const wheel of bike.wheels) {
         const tire = wheel.getObjectByName('tire');
         if (tire)
-          contactY = Math.min(contactY, new THREE.Box3().setFromObject(tire).min.y);
+          // The settled swingarm rotates the rear wheel. A rotated bounding
+          // box extends below a round tyre; use its actual vertices here.
+          contactY = Math.min(contactY, new THREE.Box3().setFromObject(tire, true).min.y);
       }
       if (Number.isFinite(contactY)) shadowFloor.position.y = contactY - 0.0005;
       sunlight.shadow.normalBias = 0.002;

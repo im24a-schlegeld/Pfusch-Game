@@ -51,6 +51,7 @@ import {
 import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SEAT, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supermotoWheels';
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry, SUPERMOTO_LAMP_BULB, SUPERMOTO_MASK_STRAP_ANCHORS, SUPERMOTO_FRONT_FENDER_MOUNT } from './supermotoBodywork';
+import { supermotoProjectorGeometry, supermotoLowerLightGuideGeometry } from './supermotoHeadlight';
 import { supermotoFuelTankGeometry } from './supermotoTank';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
@@ -58,6 +59,7 @@ import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, addSupermoto
 import { SUPERMOTO_SWINGARM, supermotoSwingarmGeometry } from './supermotoSwingarm';
 import { supermotoTireMaterial } from './supermotoTire';
 import { supermotoGripPoint } from './supermotoCockpit';
+import { supermotoSettledOffset } from './supermotoRideHeight';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
 import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, finishRequestedModelParts } from './v40ModelFinish';
@@ -747,6 +749,10 @@ export function makeBike(player: Player, products: Product[]) {
     moped ? 0.94 : sport ? SPORT_GEOMETRY.forkTopY : SUPERMOTO_CHASSIS.forkTopY,
     moped ? -0.47 : sport ? SPORT_GEOMETRY.forkTopZ : -0.4,
   ];
+  const settledOffset: Point = !moped && !sport
+    ? supermotoSettledOffset(rearRadius, rear)
+    : [0, 0, 0];
+  const settledForkBottom: Point = [0, radius - settledOffset[1], front - settledOffset[2]];
   // Bearings, stem and both yokes share the existing raked fork axis. The
   // steering assembly must join frame, fork legs and bars rather than leave
   // the bars suspended above two independent fork tubes.
@@ -754,9 +760,9 @@ export function makeBike(player: Player, products: Product[]) {
     0,
     y,
     THREE.MathUtils.lerp(
-      front,
+      settledForkBottom[2],
       forkTop[2],
-      (y - radius) / (forkTop[1] - radius),
+      (y - settledForkBottom[1]) / (forkTop[1] - settledForkBottom[1]),
     ),
   ];
   const forkHalfWidth = sport ? 0.105 : moped ? 0.08 : 0.10;
@@ -827,8 +833,8 @@ export function makeBike(player: Player, products: Product[]) {
         body,
         [
           forkX,
-          THREE.MathUtils.lerp(radius, forkTop[1], 0.42),
-          THREE.MathUtils.lerp(front, forkTop[2], 0.42),
+          THREE.MathUtils.lerp(settledForkBottom[1], forkTop[1], 0.42),
+          THREE.MathUtils.lerp(settledForkBottom[2], forkTop[2], 0.42),
         ],
         [forkX, forkTop[1], forkTop[2]],
         sport ? 0.028 : 0.027,
@@ -1095,7 +1101,7 @@ export function makeBike(player: Player, products: Product[]) {
           pivotJoint,
           [s * 0.111, 0.594, 0.208],
           [s * 0.081, 0.803, 0.48],
-          [s * 0.060, 0.982, 0.81],
+          [s * 0.060, 0.982, 0.77],
         ],
         [SUPERMOTO_PIVOT_FRAME_RADIUS, 0.014, 0.014, 0.012],
         subframeFinish,
@@ -1105,7 +1111,7 @@ export function makeBike(player: Player, products: Product[]) {
       rod(
         body,
         [s * 0.085, 0.918, 0.12],
-        [s * 0.060, 0.982, 0.81],
+        [s * 0.060, 0.982, 0.77],
         0.013,
         subframeFinish,
       ).name = 'supermoto-upper-subframe';
@@ -1115,20 +1121,12 @@ export function makeBike(player: Player, products: Product[]) {
         [
           s * forkHalfWidth,
           0.338,
-          THREE.MathUtils.lerp(
-            front,
-            forkTop[2],
-            (0.338 - radius) / (forkTop[1] - radius),
-          ),
+          forkAxisAt(0.338 - settledOffset[1])[2] + settledOffset[2],
         ],
         [
           s * forkHalfWidth,
           0.716,
-          THREE.MathUtils.lerp(
-            front,
-            forkTop[2],
-            (0.716 - radius) / (forkTop[1] - radius),
-          ),
+          forkAxisAt(0.716 - settledOffset[1])[2] + settledOffset[2],
         ],
         0.046,
         paint,
@@ -1278,14 +1276,14 @@ export function makeBike(player: Player, products: Product[]) {
     addSupermotoRearProtection(body, matteBlack, rubber);
     // The lamp nestles in the dark underside. No projecting registration carrier.
     const tailLampHousing = loft(body, [
-      [0.867, 0.051, 0.018, 1.008],
-      [0.929, 0.049, 0.015, 1.012],
-      [0.951, 0.042, 0.011, 1.014],
+      [0.827, 0.051, 0.018, 1.008],
+      [0.889, 0.049, 0.015, 1.012],
+      [0.911, 0.042, 0.011, 1.014],
     ], matteBlack, 'z', 16);
     tailLampHousing.name = 'supermoto-tail-light-housing';
     const tailLens = mesh(body, new THREE.SphereGeometry(1, 20, 10),
       new THREE.MeshStandardMaterial({ color: '#9c1018', emissive: '#b90c12', emissiveIntensity: 0.45, roughness: 0.25 }));
-    tailLens.position.set(0, 1.014, 0.952);
+    tailLens.position.set(0, 1.014, 0.912);
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
     // The visible spindle uses the same axis as the moving arm's bearing.
@@ -1383,8 +1381,15 @@ export function makeBike(player: Player, products: Product[]) {
     }
     mesh(body, supermotoHeadlightMaskGeometry(), paint).name = 'supermoto-headlight-mask';
     mesh(body, supermotoLampGeometry('bezel'), material('#1c272a', 0.1, 0.2)).name = 'supermoto-headlight-bezel';
-    const reflector = mesh(body, supermotoLampGeometry('reflector'), material('#c7ced0', 0.78, 0.2));
+    const reflector = mesh(body, supermotoLampGeometry('reflector'), material('#13181c', 0.25, 0.38));
     reflector.name = 'supermoto-headlight-reflector';
+    mesh(body, supermotoProjectorGeometry('socket'), material('#c8cdd0', 0.76, 0.19)).name = 'supermoto-headlight-projector-rings';
+    const lightGuide = new THREE.MeshStandardMaterial({
+      color: '#edf4f7', emissive: '#d2e9ff', emissiveIntensity: 0.35, roughness: 0.2,
+    });
+    mesh(body, supermotoProjectorGeometry('lens'), lightGuide).name = 'supermoto-headlight-projector-lenses';
+    mesh(body, supermotoLampGeometry('light-guide'), lightGuide).name = 'supermoto-headlight-upper-light-guide';
+    mesh(body, supermotoLowerLightGuideGeometry(), lightGuide).name = 'supermoto-headlight-lower-light-guide';
     const glass = new THREE.MeshPhysicalMaterial({
       color: '#eef7ff',
       transparent: true,
@@ -2068,6 +2073,12 @@ export function makeBike(player: Player, products: Product[]) {
   body.scale.setScalar(modelScale);
   rider.group.scale.setScalar(1 / modelScale);
   const rearSuspension = createRearSuspension(body, player.bike);
+  const brakeHose = player.bike === '450'
+    ? body.getObjectByName('supermoto-control-cable') as THREE.Mesh<THREE.BufferGeometry> | undefined
+    : undefined;
+  const brakeHosePositions = brakeHose?.geometry.getAttribute('position');
+  const brakeHoseRest = brakeHosePositions?.array.slice();
+  const hosePoint = new THREE.Vector3(), movedHosePoint = new THREE.Vector3();
   const movedLower = new THREE.Vector3(),
     direction = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
@@ -2099,7 +2110,25 @@ export function makeBike(player: Player, products: Product[]) {
         direction.normalize(),
       );
     }
+    if (brakeHosePositions && brakeHoseRest && brakeHose) {
+      // The lower hose follows the moving caliper while its upper clamp stays
+      // on the chassis. Bend the existing tube; never add per-frame meshes.
+      for (let index = 0; index < brakeHosePositions.count; index++) {
+        hosePoint.fromArray(brakeHoseRest, index * 3);
+        const followAxle = 1 - THREE.MathUtils.smoothstep(hosePoint.y, 0.43, 0.70);
+        movedHosePoint.copy(hosePoint).applyAxisAngle(up.set(1, 0, 0), pose.axleAngle).add(pose.axlePosition);
+        hosePoint.lerp(movedHosePoint, followAxle);
+        brakeHosePositions.setXYZ(index, hosePoint.x, hosePoint.y, hosePoint.z);
+      }
+      brakeHosePositions.needsUpdate = true;
+      brakeHose.geometry.computeVertexNormals();
+      brakeHose.geometry.computeBoundingSphere();
+    }
   };
+  // Garage and the first ride frame use the same settled supermoto chassis.
+  // The suspension rig moves the sprung parts while retaining both tyre
+  // contacts, the wheelbase, fixed-length rider and all authored attachments.
+  if (player.bike === '450') animateSuspension(0, 0);
   return {
     root,
     body,

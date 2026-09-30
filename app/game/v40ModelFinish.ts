@@ -51,13 +51,13 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   };
   const shell=ovalShell([
     [.0185,.0185,-.008],[.022,.023,0],[.034,.043,.025],[e.radius,e.verticalRadius,.067],
-    [e.radius,e.verticalRadius,len-.067],[.049,.069,len-.032],
+    [e.radius,e.verticalRadius,len-.067],[e.radius-.002,e.verticalRadius-.004,len-.032],
     [.0255,.0255,len-.032],[.0185,.0185,.012],
   ],true);
   const can=add(group,shell,silver,'single-exhaust');can.position.copy(a);can.quaternion.copy(orient);
   const capGeometry=ovalShell([
     [e.radius+.001,e.verticalRadius+.001,len-.069],
-    [.050,.070,len-.032],[.044,.058,len-.009],
+    [e.radius-.001,e.verticalRadius-.003,len-.032],[e.radius-.007,e.verticalRadius-.015,len-.009],
     [.033,.038,len+.009],[.031,.031,len+.015],
     [.026,.026,len+.015],[.026,.026,len-.059],
   ],true);
@@ -71,7 +71,7 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   endRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),axis);endRing.position.copy(b).addScaledVector(axis,.015);
   const bandAt=len*.53;
   const band=add(group,ovalShell([
-    [.0525,.0745,bandAt-.011],[.0525,.0745,bandAt+.011],
+    [e.radius+.0015,e.verticalRadius+.0015,bandAt-.011],[e.radius+.0015,e.verticalRadius+.0015,bandAt+.011],
   ]),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a);
   // Short forward overhang and a rounded downward return below the radiator.
@@ -82,22 +82,30 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   const headerPoints:P[]=[
     [...SUPERMOTO_EXHAUST_OUTLET],
     SUPERMOTO_EXHAUST_OUTLET.map((value,index)=>value+SUPERMOTO_EXHAUST_TANGENT[index]) as P,
-    [.015,.530,-.331],[.090,.508,-.341],[.160,.520,-.312],
-    [.190,.553,-.220],[.194,.610,-.110],[.130,.635,-.010],
-    [.081,.650,.075],[.078,.675,.200],[.074,.692,.280],[.049,.708,.350],
-    [.047,.711,.380],
+    [.015,.530,-.328],[.090,.510,-.333],[.158,.523,-.300],
+    [.175,.557,-.218],[.185,.630,-.150],[.178,.652,-.090],[.127,.663,-.015],
+    [.081,.667,.075],[.078,.677,.200],[.074,.690,.280],[.049,.705,.350],
+    [.047,.708,.380],
   ];
   const headerCurve=new THREE.CurvePath<THREE.Vector3>();
   headerCurve.add(new THREE.CatmullRomCurve3(headerPoints.map(p=>new THREE.Vector3(...p)),false,'centripetal'));
   headerCurve.add(new THREE.CubicBezierCurve3(
     new THREE.Vector3(...headerPoints[headerPoints.length-1]),
-    new THREE.Vector3(.041667,.719,.460),
+    new THREE.Vector3(.039,.720,.500),
     a.clone().addScaledVector(axis,-.05),
     a.clone(),
   ));
   add(group,new THREE.TubeGeometry(headerCurve,80,.0185,12,false),headerFinish,'connected-exhaust-pipe');
-  const bandTop=new THREE.Vector3(0,bandAt,-.075).applyQuaternion(orient).add(a);
-  tube(group,[[.073,.924,.618],[.121,.891,.618],[bandTop.x,bandTop.y,bandTop.z]],.0075,carbon,'exhaust-frame-hanger');
+  const bandTop=new THREE.Vector3(0,bandAt,-e.verticalRadius-.002).applyQuaternion(orient).add(a);
+  // Read the real upper subframe rod so a shortened tail cannot leave the
+  // hanger's upper eye suspended between the two frame rails.
+  const upperRail=body.getObjectsByProperty('name','supermoto-upper-subframe')
+    .find(part=>part.position.x>0) as THREE.Mesh<THREE.CylinderGeometry>;
+  const halfRail=upperRail.geometry.parameters.height/2;
+  const railStart=new THREE.Vector3(0,-halfRail,0).applyQuaternion(upperRail.quaternion).add(upperRail.position);
+  const railEnd=new THREE.Vector3(0,halfRail,0).applyQuaternion(upperRail.quaternion).add(upperRail.position);
+  const hangerTop=railStart.clone().lerp(railEnd,THREE.MathUtils.clamp((bandTop.z-railStart.z)/(railEnd.z-railStart.z),0,1));
+  tube(group,[hangerTop.toArray() as P,[.121,(hangerTop.y+bandTop.y)/2,bandTop.z],[bandTop.x,bandTop.y,bandTop.z]],.0075,carbon,'exhaust-frame-hanger');
   // Small, real joints at the outlet and bracket make the separated surfaces
   // legible without adding heavy decorative geometry to the running game.
   for(const fraction of [.13,.83]){
@@ -107,7 +115,7 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
     bead.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),curve.getTangentAt(fraction));
   }
   const liner=body.getObjectByName('supermoto-under-tail-liner');
-  if(liner)liner.userData.exhaustChannelRaised=0;
+  if(liner)liner.userData.exhaustChannelRaised=1;
   group.userData.sideCutouts=0;group.userData.boxPanels=0;
 }
 

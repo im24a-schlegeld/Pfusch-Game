@@ -258,14 +258,14 @@ export function addSupermotoEngine(body: THREE.Group): void {
   // only the casting outline and barrel foot change, not the assembly scale.
   const core = new THREE.Shape();
   core.moveTo(-0.137, 0.645);
-  core.quadraticCurveTo(-0.189, 0.647, -0.213, 0.617);
-  core.quadraticCurveTo(-0.243, 0.581, -0.228, 0.528);
+  core.quadraticCurveTo(-0.178, 0.647, -0.205, 0.617);
+  core.quadraticCurveTo(-0.236, 0.581, -0.224, 0.528);
   core.quadraticCurveTo(-0.213, 0.458, -0.157, 0.421);
   core.quadraticCurveTo(-0.121, 0.398, -0.05, 0.398);
   core.quadraticCurveTo(0.063, 0.398, 0.111, 0.415);
-  core.quadraticCurveTo(0.157, 0.43, 0.165, 0.486);
-  core.quadraticCurveTo(0.173, 0.55, 0.126, 0.584);
-  core.quadraticCurveTo(0.105, 0.602, 0.027, 0.605);
+  core.quadraticCurveTo(0.148, 0.43, 0.153, 0.486);
+  core.quadraticCurveTo(0.155, 0.55, 0.113, 0.584);
+  core.quadraticCurveTo(0.093, 0.602, 0.027, 0.605);
   core.quadraticCurveTo(-0.005, 0.605, -0.024, 0.627);
   core.quadraticCurveTo(-0.07, 0.648, -0.137, 0.645);
   add(
@@ -382,45 +382,45 @@ export function addSupermotoEngine(body: THREE.Group): void {
       [0.605, -0.14, 0.089, 0.082],
       [0.613, -0.141, 0.088, 0.081],
       [0.619, -0.142, 0.081, 0.077],
-      [0.686, -0.15, 0.083, 0.074],
-      [0.697, -0.152, 0.086, 0.073],
+      [0.686, -0.15, 0.077, 0.069],
+      [0.697, -0.152, 0.080, 0.069],
     ]),
     cylinder,
     'engine-water-jacket',
   );
   add(
     jacket([
-      [0.696, -0.152, 0.088, 0.075],
-      [0.701, -0.153, 0.089, 0.076],
+      [0.696, -0.152, 0.082, 0.071],
+      [0.701, -0.153, 0.083, 0.072],
     ]),
     dark,
     'engine-head-gasket',
   );
   add(
     jacket([
-      [0.7, -0.153, 0.089, 0.076],
-      [0.708, -0.156, 0.102, 0.084],
-      [0.739, -0.163, 0.103, 0.085],
-      [0.749, -0.164, 0.098, 0.08],
-      [0.755, -0.164, 0.095, 0.078],
+      [0.7, -0.153, 0.083, 0.072],
+      [0.708, -0.156, 0.094, 0.078],
+      [0.739, -0.163, 0.095, 0.079],
+      [0.749, -0.164, 0.091, 0.075],
+      [0.755, -0.164, 0.089, 0.073],
     ]),
     head,
     'engine-cylinder-head',
   );
   add(
     jacket([
-      [0.754, -0.164, 0.099, 0.081],
-      [0.758, -0.164, 0.099, 0.081],
+      [0.754, -0.164, 0.092, 0.076],
+      [0.758, -0.164, 0.092, 0.076],
     ]),
     rubber,
     'engine-valve-gasket',
   );
   add(
     jacket([
-      [0.757, -0.164, 0.099, 0.081],
-      [0.764, -0.165, 0.101, 0.081],
-      [0.784, -0.164, 0.091, 0.074],
-      [0.79, -0.163, 0.076, 0.063],
+      [0.757, -0.164, 0.092, 0.076],
+      [0.764, -0.165, 0.094, 0.076],
+      [0.784, -0.164, 0.085, 0.070],
+      [0.79, -0.163, 0.072, 0.060],
     ]),
     dark,
     'engine-valve-cover',

@@ -196,9 +196,10 @@ describe('bike sticker geometry', () => {
     const probe = new THREE.Mesh(shell.geometry, material);
     const origin = new THREE.Vector3(...placement.point);
     const direction = new THREE.Vector3(-side, 0, 0);
-    // The formerly painted area is now open. A bounding-box clamp cannot
-    // recover this sticker because the old position still lies inside it.
-    expect(shell.geometry.boundingBox!.containsPoint(origin)).toBe(true);
+    // The old save remains untouched. The newly slimmed shroud is narrower
+    // than that historical lateral coordinate, and the formerly painted area
+    // at this Y/Z is still open, so recovery must locate the actual surface.
+    expect(shell.geometry.boundingBox!.containsPoint(origin)).toBe(false);
     expect(new THREE.Raycaster(origin.clone().add(new THREE.Vector3(side * 0.2, 0, 0)), direction)
       .intersectObject(probe, false)).toHaveLength(0);
     try {
@@ -211,7 +212,7 @@ describe('bike sticker geometry', () => {
       expect(index.count).toBeGreaterThan(0);
       const localDecal = new THREE.Mesh(sticker.geometry, sticker.material);
       const triangle = new THREE.Triangle(), frontNormal = new THREE.Vector3(side, 0, 0);
-      let largest = 0, target = new THREE.Vector3();
+      let largest = 0, target = new THREE.Vector3(), targetNormal = new THREE.Vector3();
       let meanU = 0, meanZ = 0;
       for (let i = 0; i < index.count; i++) {
         meanU += uv.getX(index.getX(i)); meanZ += p.getZ(index.getX(i));
@@ -238,16 +239,73 @@ describe('bike sticker geometry', () => {
           .intersectObject(probe, false);
         expect(hits.length).toBeGreaterThan(0);
         expect(hits[0].point.distanceTo(center)).toBeLessThan(1e-6);
-        if (area > largest) { largest = area; target = center; }
+        if (area > largest) { largest = area; target = center; targetNormal = surfaceNormal.clone(); }
       }
       expect(largest).toBeGreaterThan(0);
       const outside = new THREE.Raycaster(target.clone().addScaledVector(frontNormal, 0.2), direction);
       const inside = new THREE.Raycaster(target.clone().addScaledVector(frontNormal, -0.2), frontNormal);
-      expect(outside.intersectObject(localDecal, false).length).toBeGreaterThan(0);
+      expect(outside.intersectObject(localDecal, false).length,
+        `Recovered outer face ${target.toArray().join(',')} normal ${targetNormal.toArray().join(',')}`).toBeGreaterThan(0);
       expect(inside.intersectObject(localDecal, false)).toHaveLength(0);
       const other = [...surfaces.values()].find(mesh => mesh !== shell && mesh.name === shell.name)!;
       expect(other.getObjectByName(`sticker-${placement.id}`)).toBeUndefined();
     } finally { material.dispose(); }
+  });
+
+  it('recovers a saved right rear-panel sticker after the exhaust overlap is moulded', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
+    const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
+    const [surface, shell] = [...surfaces].find(([, mesh]) =>
+      mesh.name === 'supermoto-side-cover' && mesh.geometry.getAttribute('position').getX(0) > 0,
+    )!;
+    // A real outside triangle hit from the previous side-cover geometry.
+    // Its 4 cm saved projection becomes empty after the new wrap is formed.
+    const placement: StickerPlacement = {
+      id: 'old-rear-panel', productId: 'chrome-product', surface,
+      point: [0.1672525535197834, 0.83, 0.27],
+      normal: [0.9376365516039037, 0.027859110529868603, -0.3464990145106109],
+      size: 0.04, rotation: 0,
+    };
+    const before = structuredClone(placement);
+    applyBikeStickers(bike.body, bike.rider, paint, [placement]);
+    const sticker = decal(shell, placement.id);
+    expect(sticker.parent).toBe(shell);
+    expect(placement).toEqual(before);
+    const p = sticker.geometry.getAttribute('position'), uv = sticker.geometry.getAttribute('uv');
+    const index = sticker.geometry.getIndex()!;
+    expect(index.count).toBeGreaterThan(0);
+    const finish = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    const probe = new THREE.Mesh(shell.geometry, finish);
+    const triangle = new THREE.Triangle();
+    let area = 0, meanU = 0, meanZ = 0;
+    try {
+      for (let i = 0; i < index.count; i += 3) {
+        triangle.a.fromBufferAttribute(p, index.getX(i));
+        triangle.b.fromBufferAttribute(p, index.getX(i + 1));
+        triangle.c.fromBufferAttribute(p, index.getX(i + 2));
+        if (triangle.getArea() < 1e-12) continue;
+        area += triangle.getArea();
+        const center = triangle.getMidpoint(new THREE.Vector3());
+        const normal = triangle.getNormal(new THREE.Vector3());
+        const hit = new THREE.Raycaster(center.clone().addScaledVector(normal, 0.01), normal.clone().negate())
+          .intersectObject(probe, false)[0];
+        expect(hit).toBeDefined();
+        expect(hit.point.distanceTo(center)).toBeLessThan(1e-6);
+      }
+      expect(area).toBeGreaterThan(0.0001);
+      for (let i = 0; i < index.count; i++) {
+        meanU += uv.getX(index.getX(i)); meanZ += p.getZ(index.getX(i));
+      }
+      meanU /= index.count; meanZ /= index.count;
+      let printDirection = 0;
+      for (let i = 0; i < index.count; i++) {
+        const vertex = index.getX(i);
+        printDirection += (uv.getX(vertex) - meanU) * (p.getZ(vertex) - meanZ);
+      }
+      expect(printDirection).toBeLessThan(0);
+      const other = [...surfaces.values()].find(mesh => mesh !== shell && mesh.name === shell.name)!;
+      expect(other.getObjectByName(`sticker-${placement.id}`)).toBeUndefined();
+    } finally { finish.dispose(); }
   });
 
   it('renders a sticker only on the selected side of thin bodywork', () => {

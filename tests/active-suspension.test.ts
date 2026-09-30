@@ -9,7 +9,9 @@ import {
 import {
   SUPERMOTO_SHOCK_BOTTOM,
   SUPERMOTO_SHOCK_TOP,
+  SUPERMOTO_CHASSIS,
 } from '../app/game/supermotoFit';
+import { SUPERMOTO_STATIC_SAG, supermotoSettledOffset } from '../app/game/supermotoRideHeight';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -41,6 +43,8 @@ describe('active fork and rear suspension', () => {
       const bike = makeBike({ ...newPlayer(), bike: model }, []);
       const rootScale = bike.root.scale.clone(),
         riderScale = bike.rider.scale.clone();
+      bike.body.updateMatrix();
+      const settledBody = bike.body.matrix.clone();
       const parents = new Map(
         bike.body.children.map((part, index) => [part, index]),
       );
@@ -85,18 +89,7 @@ describe('active fork and rear suspension', () => {
       }
       bike.animateSuspension(0, 0);
       bike.root.updateMatrixWorld(true);
-      closeMatrix(
-        bike.body.matrix
-          .clone()
-          .scale(
-            new Vector3(
-              1 / bike.body.scale.x,
-              1 / bike.body.scale.y,
-              1 / bike.body.scale.z,
-            ),
-          ),
-        new Matrix4(),
-      );
+      closeMatrix(bike.body.matrix, settledBody);
     },
   );
 
@@ -109,6 +102,9 @@ describe('active fork and rear suspension', () => {
       const top = new Vector3(...anchors[model][0]),
         bottom = new Vector3(...anchors[model][1]);
       const length = top.distanceTo(bottom);
+      bike.animateSuspension(0, 0);
+      const settledShock = shock.matrix.clone(), settledRear = rear.matrix.clone();
+      const settledLength = top.distanceTo(bottom.clone().applyMatrix4(settledShock));
       bike.animateSuspension(0, 0.12);
       expect(
         top.clone().applyMatrix4(shock.matrix).distanceTo(top),
@@ -126,10 +122,10 @@ describe('active fork and rear suspension', () => {
       bike.animateSuspension(0, -0.025);
       expect(
         top.distanceTo(bottom.clone().applyMatrix4(shock.matrix)),
-      ).toBeGreaterThan(length);
+      ).toBeGreaterThan(settledLength);
       bike.animateSuspension(0, 0);
-      closeMatrix(shock.matrix, new Matrix4());
-      closeMatrix(rear.matrix, new Matrix4());
+      closeMatrix(shock.matrix, settledShock);
+      closeMatrix(rear.matrix, settledRear);
     },
   );
 
@@ -145,10 +141,13 @@ describe('active fork and rear suspension', () => {
         0.8,
       );
       const landing = activeSuspensionPose(model, 0, 0.17, 0.7, -0.72, 0.31);
-      expect(Math.abs(wheelie.frontTravel)).toBeLessThan(
-        landing.frontTravel / 4,
+      const neutral = activeSuspensionPose(model, 0, 0, 0.7, -0.72, 0.31);
+      expect(Math.abs(wheelie.frontTravel - neutral.frontTravel)).toBeLessThan(
+        (landing.frontTravel - neutral.frontTravel) / 4,
       );
-      expect(wheelie.rearTravel).toBeLessThanOrEqual(landing.rearTravel / 3);
+      expect(wheelie.rearTravel - neutral.rearTravel).toBeLessThanOrEqual(
+        (landing.rearTravel - neutral.rearTravel) / 3,
+      );
       expect(landing.frontTravel).toBeLessThanOrEqual(0.125);
       if (model === '125') expect(landing.rearAngle).toBe(0);
     }
@@ -175,5 +174,51 @@ describe('active fork and rear suspension', () => {
     }
     expect(Math.max(...samples)).toBeGreaterThan(0.07);
     expect(samples.at(-1)).toBeLessThan(0.001);
+  });
+
+  it('settles the Supermoto exactly 50 mm through the real suspension without changing axle datums', () => {
+    const rearRadius = 0.3059, rear = 0.736, front = -0.736;
+    const pose = activeSuspensionPose('450', 0, 0, rear, front, rearRadius);
+    expect(pose.frontTravel).toBe(SUPERMOTO_STATIC_SAG);
+    expect(pose.rearTravel).toBe(SUPERMOTO_STATIC_SAG);
+    expect(pose.pitch).toBe(0);
+    expect(pose.position.y).toBeCloseTo(-0.050, 12);
+    expect(pose.position.distanceTo(new Vector3(...supermotoSettledOffset(rearRadius, rear)))).toBeLessThan(1e-12);
+    const sprung = new Matrix4().makeRotationX(pose.pitch).setPosition(pose.position);
+    const rearRig = new Matrix4().makeRotationX(pose.rearAngle).setPosition(pose.rearPosition);
+    const frontRig = new Matrix4().makeRotationX(pose.axleAngle).setPosition(pose.axlePosition);
+    const rearAxle = new Vector3(0, rearRadius, rear).applyMatrix4(rearRig).applyMatrix4(sprung);
+    const frontAxle = new Vector3(0, 0.29355, front).applyMatrix4(frontRig).applyMatrix4(sprung);
+    expect(rearAxle.distanceTo(new Vector3(0, rearRadius, rear))).toBeLessThan(1e-12);
+    expect(frontAxle.distanceTo(new Vector3(0, 0.29355, front))).toBeLessThan(1e-12);
+    expect(rearAxle.z - frontAxle.z).toBeCloseTo(1.472, 12);
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.scale.setScalar(1);
+    bike.animateSuspension(0, 0);
+    bike.root.updateMatrixWorld(true);
+    const assembled = bike.wheels.map(wheel => wheel.getWorldPosition(new Vector3()).divideScalar(bike.body.scale.x));
+    expect(assembled[1].z - assembled[0].z).toBeCloseTo(1.472, 12);
+    expect(assembled[0].y).toBeCloseTo(SUPERMOTO_CHASSIS.frontRadius, 12);
+    expect(assembled[1].y).toBeCloseTo(SUPERMOTO_CHASSIS.rearRadius, 12);
+    expect(bike.body.position.y / bike.body.scale.y).toBeCloseTo(-0.050, 12);
+  });
+
+  it('keeps the lower brake hose attached to the Supermoto caliper through its settled and compressed poses', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const hose = bike.body.getObjectByName('supermoto-control-cable') as Mesh;
+    const geometry = hose.geometry;
+    const axle = bike.body.getObjectByName('front-suspension-axle')!;
+    const sourceEnd = new Vector3(-0.094, SUPERMOTO_CHASSIS.frontRadius + 0.055, SUPERMOTO_CHASSIS.frontAxle + 0.121);
+    for (const travel of [-0.025, 0, 0.06, 0.12]) {
+      bike.animateSuspension(0.5, travel);
+      bike.root.updateMatrixWorld(true);
+      const positions = geometry.getAttribute('position');
+      const center = new Vector3();
+      for (let index = positions.count - 9; index < positions.count - 1; index++)
+        center.add(new Vector3().fromBufferAttribute(positions, index));
+      center.divideScalar(8).applyMatrix4(hose.matrixWorld);
+      expect(center.distanceTo(sourceEnd.clone().applyMatrix4(axle.matrixWorld))).toBeLessThan(1e-7);
+      expect(hose.geometry).toBe(geometry);
+    }
   });
 });

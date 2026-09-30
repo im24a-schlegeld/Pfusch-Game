@@ -100,6 +100,7 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
       }
       expect(visible, `Black upper tank opening on side ${side}`).toBeGreaterThanOrEqual(5);
       let sideVisible = 0;
+      const sideHits: string[] = [];
       for (const y of [0.975, 0.985]) for (const z of [-0.29, -0.265, -0.24]) {
         const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
         const sideDirection = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
@@ -110,8 +111,9 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
             return true;
           });
         if (hit?.object === tank) sideVisible++;
+        else sideHits.push(`${y},${z}:${hit?.object.name}`);
       }
-      expect(sideVisible, `Upper tank must also show from the side ${side}`).toBeGreaterThanOrEqual(5);
+      expect(sideVisible, `Upper tank must also show from the side ${side} (${sideHits.join('; ')})`).toBeGreaterThanOrEqual(5);
     }
   });
 

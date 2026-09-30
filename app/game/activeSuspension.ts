@@ -1,5 +1,6 @@
 import { Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import { SUPERMOTO_SHOCK_BOTTOM, SUPERMOTO_SHOCK_TOP } from './supermotoFit';
+import { SUPERMOTO_REAR_PIVOT, SUPERMOTO_STATIC_SAG } from './supermotoRideHeight';
 
 type Point = readonly [number, number, number];
 const xAxis = new Vector3(1, 0, 0);
@@ -14,7 +15,7 @@ const profiles: Record<
     rear: 0.66,
     pivot: [0, 0.322, 0.184],
   },
-  '450': { front: 0.125, rebound: 0.035, rear: 0.72, pivot: [0, 0.5, 0.1] },
+  '450': { front: 0.125, rebound: 0.035, rear: 0.72, pivot: SUPERMOTO_REAR_PIVOT },
   '701': { front: 0.085, rebound: 0.025, rear: 0.68, pivot: [0, 0.51, 0.14] },
 };
 const clamp = (value: number, low: number, high: number) =>
@@ -50,14 +51,18 @@ export function activeSuspensionPose(
 ) {
   const profile = profiles[model] ?? profiles['125'];
   const wheelie = clamp(wheelieLoad, 0, 1);
+  // Lower the sprung chassis through its real telescopic fork, arm and shock.
+  // Equal static travel keeps the seat level; the original bump limits remain
+  // absolute limits, so lowering consumes travel instead of risking the tyre.
+  const staticSag = model === '450' ? SUPERMOTO_STATIC_SAG : 0;
   const frontTravel = clamp(
-    travel - wheelie * 0.009,
+    staticSag + travel - wheelie * 0.009,
     -profile.rebound,
     profile.front,
   );
   const rearTravel = profile.rear
     ? clamp(
-        travel * profile.rear + wheelie * 0.018,
+        staticSag + travel * profile.rear + wheelie * (model === '450' ? 0.015 : 0.018),
         -0.025,
         profile.front * 0.72,
       )

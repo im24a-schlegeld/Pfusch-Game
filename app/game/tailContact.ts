@@ -1,7 +1,9 @@
 import { SUPERMOTO_CHASSIS, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
+import { supermotoSettledOffset } from './supermotoRideHeight';
 
 export interface TailContact {
   readonly point: readonly [number, number, number];
+  readonly settledPoint: readonly [number, number, number];
   readonly rearPivotZ: number;
   readonly rearRadius: number;
   readonly angle: number;
@@ -12,11 +14,14 @@ function contact(
   rearPivotZ: number,
   rearRadius: number,
   material: TailContact['material'],
+  neutralOffset: readonly [number, number, number] = [0, 0, 0],
 ): TailContact {
-  const y = point[1] - rearRadius,
-    z = point[2] - rearPivotZ;
+  const settledPoint = point.map((value, index) => value + neutralOffset[index]) as [number, number, number];
+  const y = settledPoint[1] - rearRadius,
+    z = settledPoint[2] - rearPivotZ;
   return Object.freeze({
     point,
+    settledPoint,
     rearPivotZ,
     rearRadius,
     material,
@@ -48,6 +53,7 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
     SUPERMOTO_CHASSIS.rearAxle,
     SUPERMOTO_CHASSIS.rearRadius,
     'plastic',
+    supermotoSettledOffset(SUPERMOTO_CHASSIS.rearRadius, SUPERMOTO_CHASSIS.rearAxle),
   ),
   '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'metal'),
 };

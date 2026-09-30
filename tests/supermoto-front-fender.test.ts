@@ -10,6 +10,7 @@ import {
   supermotoFrontFenderGeometry,
   supermotoHeadlightMaskGeometry,
 } from '../app/game/supermotoBodywork';
+import { supermotoLampGeometry, supermotoProjectorGeometry } from '../app/game/supermotoHeadlight';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -19,7 +20,30 @@ vi.mock('../app/game/garmentTexture', () => ({
 }));
 
 describe('moulded Supermoto front fender and raked mask', () => {
-  it('forms a broad dropped blade with side steps and channels as one closed thin surface', () => {
+  it('opens the reference vent on the viewers right and recesses all five projectors behind glass', () => {
+    const finish = new MeshBasicMaterial({ side: DoubleSide });
+    const parts = [supermotoHeadlightMaskGeometry(), supermotoLampGeometry('glass'),
+      supermotoProjectorGeometry('lens'), supermotoLampGeometry('reflector')]
+      .map(geometry => new Mesh(geometry, finish));
+    const cast = (x: number, y: number, mesh: Mesh) => new Raycaster(
+      new Vector3(x, y, -1), new Vector3(0, 0, 1),
+    ).intersectObject(mesh, false);
+    try {
+      expect(cast(-0.12, 1.089, parts[0])).toHaveLength(0);
+      expect(cast(0.12, 1.089, parts[0]).length).toBeGreaterThan(0);
+      for (const [x, y] of [[-0.026,1.022],[0.026,1.022],[0,1.009],[-0.026,0.994],[0.026,0.994]]) {
+        expect(cast(x, y, parts[0])).toHaveLength(0);
+        const [glass, lens, housing] = parts.slice(1).map(part => cast(x, y, part)[0]?.point);
+        expect(glass).toBeDefined(); expect(lens).toBeDefined(); expect(housing).toBeDefined();
+        expect(lens.z - glass.z).toBeGreaterThan(0.002);
+        expect(housing.z - lens.z).toBeGreaterThan(0.01);
+      }
+    } finally {
+      parts.forEach(part => part.geometry.dispose()); finish.dispose();
+    }
+  });
+
+  it('forms the marked flatter blade with side steps and channels as one closed thin surface', () => {
     const geometry = supermotoFrontFenderGeometry();
     const finish = new MeshBasicMaterial({ side: DoubleSide });
     const fender = new Mesh(geometry, finish);
@@ -30,7 +54,9 @@ describe('moulded Supermoto front fender and raked mask', () => {
       return hits[0].point.y;
     };
     try {
-      expect(topAt(0, -0.62455) - topAt(0, -0.89045)).toBeGreaterThan(0.11);
+      const noseDrop = topAt(0, -0.62455) - topAt(0, -0.89045);
+      expect(noseDrop).toBeGreaterThan(0.03);
+      expect(noseDrop).toBeLessThan(0.06);
       // Both sides of the nose have material: this is a rounded broad blade,
       // not a zero-width spear. The side-step interrupts the outer outline.
       expect(topAt(0.0301, -0.89045)).toBeGreaterThan(0.74);
@@ -40,9 +66,9 @@ describe('moulded Supermoto front fender and raked mask', () => {
       expect(wide.intersectObject(fender).length).toBeGreaterThan(0);
       expect(inset.intersectObject(fender)).toHaveLength(0);
       const ridge = topAt(0, -0.62455), channel = topAt(0.043, -0.62455);
-      expect(ridge - channel).toBeGreaterThan(0.025);
-      expect(topAt(0.05805, -0.62455) - channel).toBeGreaterThan(0.005);
-      expect(topAt(0, -0.550)).toBeCloseTo(0.874, 5);
+      expect(ridge - channel).toBeGreaterThan(0.018);
+      expect(topAt(0.05805, -0.62455) - channel).toBeGreaterThan(0.003);
+      expect(topAt(0, -0.550)).toBeCloseTo(0.908, 5);
       const positions = geometry.getAttribute('position'), index = geometry.getIndex()!;
       expect(positions.count).toBeLessThan(2200);
       const uv = geometry.getAttribute('uv');
@@ -74,7 +100,9 @@ describe('moulded Supermoto front fender and raked mask', () => {
     const fender = bike.body.getObjectByName('supermoto-front-fender') as Mesh;
     const mask = bike.body.getObjectByName('supermoto-headlight-mask') as Mesh;
     const positions = mask.geometry.getAttribute('position');
-    const maskBottom = new Vector3().fromBufferAttribute(positions, 0);
+    let lowest = 0;
+    for (let i = 1; i < positions.count; i++) if (positions.getY(i) < positions.getY(lowest)) lowest = i;
+    const maskBottom = new Vector3().fromBufferAttribute(positions, lowest);
     expect(Math.abs(SUPERMOTO_FRONT_FENDER_MOUNT[2] - maskBottom.z)).toBeLessThan(0.010);
     const finish = new MeshBasicMaterial({ side: DoubleSide });
     const probe = new Mesh(fender.geometry, finish);
@@ -136,12 +164,11 @@ describe('moulded Supermoto front fender and raked mask', () => {
         expect(hits.length).toBeGreaterThan(0);
         expect(hits[0].point.distanceTo(new Vector3(side * x, y, z))).toBeLessThan(0.002);
       }
-      const positions = geometry.getAttribute('position');
-      const lowerZ = (positions.getZ(0) + positions.getZ(1)) / 2;
-      const upperZ = (positions.getZ(6) + positions.getZ(7)) / 2;
-      const lowerY = (positions.getY(0) + positions.getY(1)) / 2;
-      const upperY = (positions.getY(6) + positions.getY(7)) / 2;
-      const rake = Math.atan((upperZ - lowerZ) / (upperY - lowerY)) * 180 / Math.PI;
+      const [lower, upper] = [0.944, 1.145].map(y => new Raycaster(
+        new Vector3(0.068, y, 0), new Vector3(0, 0, -1),
+      ).intersectObject(mask, false)[0]?.point);
+      expect(lower).toBeDefined(); expect(upper).toBeDefined();
+      const rake = Math.atan((upper.z - lower.z) / (upper.y - lower.y)) * 180 / Math.PI;
       expect(rake).toBeGreaterThan(24);
       expect(rake).toBeLessThan(30);
       expect(SUPERMOTO_LAMP_BULB[2] - SUPERMOTO_LENS_FACE[2]).toBeCloseTo(0.030, 6);

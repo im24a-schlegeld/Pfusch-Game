@@ -1,19 +1,20 @@
 /** Metres in the unscaled 450 model; wheel axis X, front of the bike -Z.
  * These are chosen construction sizes, not measurements taken from a photo.
- * A nominal 17-inch bead seat is distinct from the outer visible alloy lip.
+ * Nominal 16.5-inch front / 17-inch rear bead seats follow the annotated target.
+ * The bead seat is distinct from the outer visible alloy lip.
  * Keep this data module independent of Three.js for physics/domain imports. */
 export const SUPERMOTO_WHEELS = Object.freeze({
   front: Object.freeze({
-    outerRadius: 0.2999,
+    outerRadius: 0.29355,
     tireWidth: 0.12,
-    beadRadius: 0.2159,
-    rimEdgeRadius: 0.2239,
+    beadRadius: 0.20955,
+    rimEdgeRadius: 0.21755,
     rimWidth: 0.0889,
     hubHalfWidth: 0.058,
     hubRadius: 0.032,
     spokeHubX: 0.043,
     spokeHubRadius: 0.047,
-    spokeBedRadius: 0.2039,
+    spokeBedRadius: 0.19755,
     brakeMountX: -0.085,
   }),
   rear: Object.freeze({

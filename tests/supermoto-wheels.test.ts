@@ -17,10 +17,10 @@ import {
 } from '../app/game/supermotoWheels';
 
 describe('Supermoto road wheel construction', () => {
-  it('uses a common nominal 17-inch bead seat with 120/70 and 150/60 sections', () => {
+  it('uses the annotated 16.5 / 17-inch bead seats with 120/70 and 150/60 sections', () => {
     const { front, rear } = SUPERMOTO_WHEELS;
-    expect((front.beadRadius * 2) / 0.0254).toBeCloseTo(17, 9);
-    expect(rear.beadRadius).toBe(front.beadRadius);
+    expect((front.beadRadius * 2) / 0.0254).toBeCloseTo(16.5, 9);
+    expect((rear.beadRadius * 2) / 0.0254).toBeCloseTo(17, 9);
     expect(front.outerRadius - front.beadRadius).toBeCloseTo(
       front.tireWidth * 0.7,
       9,
@@ -78,7 +78,7 @@ describe('Supermoto road wheel construction', () => {
       for (let index = 0; index < points.count; index++)
         expect(
           Math.hypot(points.getY(index), points.getZ(index)),
-        ).toBeGreaterThan(0.2);
+        ).toBeGreaterThan(size.beadRadius - 0.0159);
       geometry.dispose();
     }
   });
