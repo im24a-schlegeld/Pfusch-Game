@@ -1,4 +1,4 @@
-import {TUBE_EXHAUST} from './exhaustClearance';
+import {TUBE_EXHAUST, SUPERMOTO_EXHAUST_OUTLET, SUPERMOTO_EXHAUST_TANGENT} from './exhaustClearance';
 import * as THREE from 'three';
 type P = [number, number, number];
 function add(root: THREE.Object3D, g: THREE.BufferGeometry, m: THREE.Material, name: string) {
@@ -6,9 +6,9 @@ function add(root: THREE.Object3D, g: THREE.BufferGeometry, m: THREE.Material, n
   mesh.castShadow=mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
 function color(hex:string, metalness=0, roughness=.75) {return new THREE.MeshStandardMaterial({color:hex,metalness,roughness});}
-function tube(root:THREE.Object3D, points:P[], radius:number, mat:THREE.Material, name:string) {
+function tube(root:THREE.Object3D, points:P[], radius:number, mat:THREE.Material, name:string, segments=40) {
   const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)),false,'centripetal');
-  return add(root,new THREE.TubeGeometry(curve,40,radius,12,false),mat,name);
+  return add(root,new THREE.TubeGeometry(curve,segments,radius,12,false),mat,name);
 }
 function _panel(root:THREE.Object3D, vertices:number[], indices:number[], mat:THREE.Material,name:string) {
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);
@@ -74,16 +74,16 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
     [.0525,.0745,bandAt-.011],[.0525,.0745,bandAt+.011],
   ]),carbon,'exhaust-mount-band');
   band.quaternion.copy(orient);band.position.copy(a);
-  // The port and first tangent stay seated in the head. A compact return bend
-  // runs alongside the cylinder, above the coolant hose, rather than hanging
-  // down beside the crankcase as an oversized free loop.
+  // Short forward overhang and a rounded downward return below the radiator.
+  // The return and rear run stay outside the right frame rail, as marked.
   const headerPoints:P[]=[
-    [.046,.724,-.238],[.129,.718,-.263],[.167,.696,-.275],
-    [.180,.670,-.265],[.184,.668,-.225],[.182,.686,-.161],
-    [.184,.702,-.071],[.184,.720,.006],[.180,.719,.164],
-    [.174,.721,.292],[e.x,e.startY,e.startZ],
+    [...SUPERMOTO_EXHAUST_OUTLET],
+    SUPERMOTO_EXHAUST_OUTLET.map((value,index)=>value+SUPERMOTO_EXHAUST_TANGENT[index]) as P,
+    [.184,.550,-.325],[.185,.505,-.323],[.187,.505,-.290],
+    [.190,.553,-.220],[.194,.610,-.110],[.190,.663,.055],
+    [.185,.700,.230],[e.x,e.startY,e.startZ],
   ];
-  tube(group,headerPoints,.0185,headerFinish,'connected-exhaust-pipe');
+  tube(group,headerPoints,.0185,headerFinish,'connected-exhaust-pipe',80);
   const bandTop=new THREE.Vector3(0,bandAt,-.075).applyQuaternion(orient).add(a);
   tube(group,[[.073,.924,.618],[.121,.891,.618],[bandTop.x,bandTop.y,bandTop.z]],.0075,carbon,'exhaust-frame-hanger');
   // Small, real joints at the outlet and bracket make the separated surfaces

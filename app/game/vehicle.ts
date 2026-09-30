@@ -50,7 +50,7 @@ import {
 } from './carriedCapMotion';
 import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SEAT, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supermotoWheels';
-import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry, SUPERMOTO_LAMP_BULB, SUPERMOTO_MASK_STRAP_ANCHORS } from './supermotoBodywork';
+import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry, SUPERMOTO_LAMP_BULB, SUPERMOTO_MASK_STRAP_ANCHORS, SUPERMOTO_FRONT_FENDER_MOUNT } from './supermotoBodywork';
 import { supermotoFuelTankGeometry } from './supermotoTank';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
@@ -1367,7 +1367,7 @@ export function makeBike(player: Player, products: Product[]) {
     for (const s of [-1, 1]) {
       rod(
         body,
-        [s * 0.034, 0.884, -0.570],
+        [s * SUPERMOTO_FRONT_FENDER_MOUNT[0], SUPERMOTO_FRONT_FENDER_MOUNT[1], SUPERMOTO_FRONT_FENDER_MOUNT[2]],
         [s * 0.034, 0.900, forkAxisAt(0.900)[2]],
         0.007,
         dark,

@@ -1,5 +1,6 @@
 import {
   CurvePath,
+  CubicBezierCurve3,
   CatmullRomCurve3,
   CylinderGeometry,
   ExtrudeGeometry,
@@ -22,21 +23,23 @@ type Point = readonly [number, number, number];
 export const SUPERMOTO_PIVOT_FRAME_JOINT = [0.124, 0.496, 0.141] as const;
 export const SUPERMOTO_PIVOT_FRAME_RADIUS = 0.0105;
 
-/** Actual cradle centerline in bike coordinates. Small pipe bends hug the
- * sump instead of a free Catmull-Rom curve sagging between distant stations. */
+/** Wide sump rails merge into the down tube with one continuous rounded
+ * front sweep, following the drawn profile without a square outer corner. */
 export const SUPERMOTO_LOWER_FRAME = Object.freeze({
   radius: 0.017,
   cornerTrim: 0.026,
   points: [
     SUPERMOTO_PIVOT_FRAME_JOINT,
-    [0.121, 0.436, 0.18],
+    // The bearing throat stays ahead of the moving lower chain return.
+    [0.121, 0.436, 0.16],
     [0.139, 0.39, 0.12],
     [0.139, 0.39, 0.084],
-    [0.134, 0.39, -0.126],
-    [0.115, 0.415, -0.208],
-    [0.087, 0.486, -0.228],
-    [0.043, 0.578, -0.3],
-    [0, 0.625, -0.35],
+    [0.134, 0.39, -0.070],
+  ] as readonly Point[],
+  frontBend: [
+    [0.134, 0.390, -0.225],
+    [0.070, 0.510, -0.255],
+    [0, 0.650, -0.290],
   ] as readonly Point[],
 });
 
@@ -63,6 +66,8 @@ export function supermotoLowerFramePath(side: number) {
     previous = exit;
   }
   path.add(new LineCurve3(previous, points[points.length - 1]));
+  const bend = SUPERMOTO_LOWER_FRAME.frontBend.map(([x, y, z]) => new Vector3(side * x, y, z));
+  path.add(new CubicBezierCurve3(points[points.length - 1], bend[0], bend[1], bend[2]));
   return path;
 }
 
@@ -98,8 +103,14 @@ export function supermotoLowerFrameGeometry(side: number) {
       point
         .fromBufferAttribute(positions, index)
         .sub(center)
-        .multiplyScalar(radius / SUPERMOTO_LOWER_FRAME.radius)
-        .add(center);
+        .multiplyScalar(radius / SUPERMOTO_LOWER_FRAME.radius);
+      // The concealed bearing throat is pressed oval between the case,
+      // moving swingarm and chain return; retain the full visible sump tubes.
+      const throat = MathUtils.smoothstep(center.y, 0.402, 0.418)
+        * (1 - MathUtils.smoothstep(center.y, 0.480, 0.496))
+        * MathUtils.smoothstep(center.z, 0.08, 0.11);
+      point.x *= 1 - 0.78 * throat;
+      point.add(center);
       positions.setXYZ(index, point.x, point.y, point.z);
     }
   }
@@ -260,7 +271,7 @@ export function addSupermotoMainFrame(
     add(geometry, 'supermoto-steering-neck-gusset');
   }
   pipe(
-    [[0, 0.625, -0.35], [0, 0.72, -0.365], [0, 0.84, -0.39], lowerNeck],
+    [[0, 0.650, -0.290], [0, 0.74, -0.340], [0, 0.84, -0.370], lowerNeck],
     0.022,
     'supermoto-frame-central-up-tube',
   );

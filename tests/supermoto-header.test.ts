@@ -29,19 +29,27 @@ describe('fitted Supermoto header', () => {
     ) as Mesh<TubeGeometry>;
     const path = header.geometry.parameters.path;
     const start = path.getPoint(0);
-    expect(start.distanceTo(new Vector3(0.046, 0.724, -0.238))).toBeLessThan(
+    expect(start.distanceTo(new Vector3(0.112, 0.578, -0.210))).toBeLessThan(
       1e-9,
     );
-    const portAxis = new Vector3(0.083, -0.006, -0.025).normalize();
+    const portAxis = new Vector3(0.05, -0.018, -0.080).normalize();
     expect(path.getTangent(0).dot(portAxis)).toBeGreaterThan(0.999);
     const frontBend = path
       .getSpacedPoints(256)
       .filter((point) => point.z < -0.07);
-    // A header beside the head must not hang down level with the crankcase.
+    // The short external return drops below the radiator without extending
+    // far toward the front tyre or hanging below the sump.
     expect(Math.min(...frontBend.map((point) => point.y))).toBeGreaterThan(
-      0.65,
+      0.48,
     );
-    expect(Math.max(...frontBend.map((point) => point.x))).toBeLessThan(0.19);
+    expect(Math.min(...frontBend.map((point) => point.y))).toBeLessThan(0.53);
+    expect(Math.min(...frontBend.map((point) => point.z))).toBeGreaterThan(-0.35);
+    expect(Math.max(...frontBend.map((point) => point.x))).toBeLessThan(0.20);
+    const externalRun = path.getSpacedPoints(256).filter(point => point.z > 0.045 && point.z < 0.165);
+    expect(externalRun.length).toBeGreaterThan(12);
+    for (const point of externalRun) {
+      expect(point.x - header.geometry.parameters.radius).toBeGreaterThan(0.165);
+    }
 
     const finish = new MeshBasicMaterial({ side: DoubleSide });
     const names = new Set([
@@ -67,9 +75,10 @@ describe('fitted Supermoto header', () => {
     const points = header.geometry.getAttribute('position');
     const sides = header.geometry.parameters.radialSegments;
     try {
-      // The first ring intentionally seats inside the exhaust port. All later
-      // surface rings must remain outside the real assembled closed volumes.
-      for (let index = (sides + 1) * 2; index < points.count; index++) {
+      // The seated port occupied the first 2 of 40 longitudinal sections.
+      // Preserve that same physical interval when increasing curve resolution.
+      const firstExternalRing = Math.ceil(header.geometry.parameters.tubularSegments * 0.05);
+      for (let index = (sides + 1) * firstExternalRing; index < points.count; index++) {
         const point = new Vector3()
           .fromBufferAttribute(points, index)
           .applyMatrix4(header.matrixWorld);
@@ -89,17 +98,34 @@ describe('fitted Supermoto header', () => {
       const coolantPath = coolant.geometry.parameters.path
         .getSpacedPoints(128)
         .map((point) => point.applyMatrix4(coolant.matrixWorld));
+      const hosePoints = coolant.geometry.getAttribute('position');
+      const hoseStride = coolant.geometry.parameters.radialSegments + 1;
+      // The hose still joins the pump and radiator at its unchanged ends.
+      // Its new inboard middle must clear the cast engine volumes as well.
+      for (let i = hoseStride * 2; i < hosePoints.count - hoseStride * 2; i++) {
+        const point = new Vector3().fromBufferAttribute(hosePoints, i).applyMatrix4(coolant.matrixWorld);
+        for (const obstacle of obstacles.filter(part => part.name.startsWith('engine-') && part.name !== 'engine-water-pump')) {
+          const hits = new Raycaster(point, direction).intersectObject(obstacle, false)
+            .map(hit => hit.distance).filter((d, j, all) => !j || d - all[j - 1] > 1e-6);
+          expect(hits.length % 2, `coolant hose inside ${obstacle.name}`).toBe(0);
+        }
+      }
       const headerPath = path
         .getSpacedPoints(256)
         .map((point) => point.applyMatrix4(header.matrixWorld));
       let closest = Infinity;
+      let closestPair = '';
       for (const a of headerPath)
         for (const b of coolantPath)
-          closest = Math.min(closest, a.distanceTo(b));
+          if (a.distanceTo(b) < closest) {
+            closest = a.distanceTo(b);
+            closestPair = `header ${a.toArray()} coolant ${b.toArray()}`;
+          }
       expect(
         closest -
           header.geometry.parameters.radius -
           coolant.geometry.parameters.radius,
+        closestPair,
       ).toBeGreaterThan(0.003);
       for (const frame of bike.body.getObjectsByProperty('name',
         'supermoto-frame-main-spar') as Mesh<TubeGeometry>[]) {

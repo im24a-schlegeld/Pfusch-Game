@@ -172,18 +172,18 @@ describe('formed Supermoto single-cylinder engine', () => {
     }
   });
 
-  it('keeps the fixed exhaust-port seat inside the new head casting', () => {
+  it('seats the marked lower front exhaust outlet inside the engine casting', () => {
     const port = part('engine-exhaust-port');
     const length = (port.geometry as CylinderGeometry).parameters.height;
     const start = new Vector3(0, -length / 2, 0).applyMatrix4(port.matrixWorld);
     const end = new Vector3(0, length / 2, 0).applyMatrix4(port.matrixWorld);
-    const datum = new Vector3(0.046, 0.724, -0.238);
+    const datum = new Vector3(0.112, 0.578, -0.210);
     const axis = end.clone().sub(start).normalize();
     expect(datum.clone().sub(start).cross(axis).length()).toBeLessThan(1e-7);
     const finish = new MeshBasicMaterial({ side: DoubleSide });
-    const head = part('engine-cylinder-head'),
-      probe = new Mesh(head.geometry, finish);
-    probe.matrixWorld.copy(head.matrixWorld);
+    const casing = part('engine-crankcase'),
+      probe = new Mesh(casing.geometry, finish);
+    probe.matrixWorld.copy(casing.matrixWorld);
     try {
       const hits = new Raycaster(start, new Vector3(0, 0, 1)).intersectObject(
         probe,
@@ -194,7 +194,7 @@ describe('formed Supermoto single-cylinder engine', () => {
       );
       expect(
         distinct.length % 2,
-        'the port starts inside its cylinder-head casting',
+        'the marked front outlet must have a physical seat in the engine casting',
       ).toBe(1);
     } finally {
       finish.dispose();

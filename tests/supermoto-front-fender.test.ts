@@ -5,6 +5,7 @@ import { makeBike } from '../app/game/vehicle';
 import {
   SUPERMOTO_LAMP_BULB,
   SUPERMOTO_LENS_FACE,
+  SUPERMOTO_FRONT_FENDER_MOUNT,
   SUPERMOTO_MASK_STRAP_ANCHORS,
   supermotoFrontFenderGeometry,
   supermotoHeadlightMaskGeometry,
@@ -29,19 +30,19 @@ describe('moulded Supermoto front fender and raked mask', () => {
       return hits[0].point.y;
     };
     try {
-      expect(topAt(0, -0.76) - topAt(0, -1.02)).toBeGreaterThan(0.11);
+      expect(topAt(0, -0.62455) - topAt(0, -0.89045)).toBeGreaterThan(0.11);
       // Both sides of the nose have material: this is a rounded broad blade,
       // not a zero-width spear. The side-step interrupts the outer outline.
-      expect(topAt(0.035, -1.02)).toBeGreaterThan(0.79);
-      expect(topAt(-0.035, -1.02)).toBeCloseTo(topAt(0.035, -1.02), 7);
-      const wide = new Raycaster(new Vector3(0.09, 1.5, -0.91), new Vector3(0, -1, 0));
-      const inset = new Raycaster(new Vector3(0.09, 1.5, -0.85), new Vector3(0, -1, 0));
+      expect(topAt(0.0301, -0.89045)).toBeGreaterThan(0.74);
+      expect(topAt(-0.0301, -0.89045)).toBeCloseTo(topAt(0.0301, -0.89045), 7);
+      const wide = new Raycaster(new Vector3(0.0774, 1.5, -0.737), new Vector3(0, -1, 0));
+      const inset = new Raycaster(new Vector3(0.0774, 1.5, -0.715), new Vector3(0, -1, 0));
       expect(wide.intersectObject(fender).length).toBeGreaterThan(0);
       expect(inset.intersectObject(fender)).toHaveLength(0);
-      const ridge = topAt(0, -0.76), channel = topAt(0.05, -0.76);
+      const ridge = topAt(0, -0.62455), channel = topAt(0.043, -0.62455);
       expect(ridge - channel).toBeGreaterThan(0.025);
-      expect(topAt(0.0675, -0.76) - channel).toBeGreaterThan(0.005);
-      expect(topAt(0, -0.572)).toBeCloseTo(0.893, 5);
+      expect(topAt(0.05805, -0.62455) - channel).toBeGreaterThan(0.005);
+      expect(topAt(0, -0.550)).toBeCloseTo(0.874, 5);
       const positions = geometry.getAttribute('position'), index = geometry.getIndex()!;
       expect(positions.count).toBeLessThan(2200);
       const uv = geometry.getAttribute('uv');
@@ -51,7 +52,7 @@ describe('moulded Supermoto front fender and raked mask', () => {
         const last = previous.get(column);
         if (last) {
           expect(point.z - last.z, 'nose and side strips must never fold back').toBeGreaterThan(0);
-          if (point.z < -0.98) expect(point.y - last.y, 'nose must descend without a curled lip').toBeGreaterThan(0);
+          if (point.z < -0.858) expect(point.y - last.y, 'nose must descend without a curled lip').toBeGreaterThan(0);
         }
         previous.set(column, point);
       }
@@ -65,6 +66,33 @@ describe('moulded Supermoto front fender and raked mask', () => {
     } finally {
       geometry.dispose(); finish.dispose();
     }
+  });
+
+  it('places the mounting crown directly beneath the mask and seats both holders on it', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.updateMatrixWorld(true);
+    const fender = bike.body.getObjectByName('supermoto-front-fender') as Mesh;
+    const mask = bike.body.getObjectByName('supermoto-headlight-mask') as Mesh;
+    const positions = mask.geometry.getAttribute('position');
+    const maskBottom = new Vector3().fromBufferAttribute(positions, 0);
+    expect(Math.abs(SUPERMOTO_FRONT_FENDER_MOUNT[2] - maskBottom.z)).toBeLessThan(0.010);
+    const finish = new MeshBasicMaterial({ side: DoubleSide });
+    const probe = new Mesh(fender.geometry, finish);
+    try {
+      const center = new Raycaster(new Vector3(0, 1.2, maskBottom.z), new Vector3(0, -1, 0))
+        .intersectObject(probe, false)[0];
+      expect(center).toBeDefined();
+      expect(maskBottom.y - center.point.y).toBeGreaterThan(0.008);
+      expect(maskBottom.y - center.point.y).toBeLessThan(0.025);
+      const holders = bike.body.getObjectsByProperty('name', 'front-fender-mount') as Mesh[];
+      expect(holders).toHaveLength(2);
+      for (const side of [-1, 1]) {
+        const [x, y, z] = SUPERMOTO_FRONT_FENDER_MOUNT;
+        const hit = new Raycaster(new Vector3(side * x, y + 0.02, z), new Vector3(0, -1, 0))
+          .intersectObject(probe, false)[0];
+        expect(hit.point.distanceTo(new Vector3(side * x, y, z))).toBeLessThan(0.0002);
+      }
+    } finally { finish.dispose(); }
   });
 
   it('clears the actual tyre through rebound, rest and maximum landing compression', () => {

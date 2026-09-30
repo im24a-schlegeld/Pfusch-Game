@@ -1,4 +1,9 @@
 /** Unscaled chassis coordinates. +Z points to the back. */
+// The requested visible outlet is on the lower front casting. Keep the
+// fitting and tube start on the same authored datum.
+export const SUPERMOTO_EXHAUST_OUTLET = [0.112, 0.578, -0.210] as const;
+export const SUPERMOTO_EXHAUST_TANGENT = [0.05, -0.018, -0.080] as const;
+
 export const TUBE_EXHAUST = Object.freeze({
   x: 0.185,
   startZ: 0.38,

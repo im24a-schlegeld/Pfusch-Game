@@ -131,11 +131,26 @@ function frontFenderSectionAt(u: number): Section {
   return [MathUtils.lerp(a[0], b[0], t), MathUtils.lerp(a[1], b[1], t), bend(2), bend(3)];
 }
 
-/** One thin moulded part: broad central spine, recessed side channels,
- * kicked-out shoulders, rounded descending nose and short rear return. */
-export function supermotoFrontFenderGeometry() {
+/** Fit the marked crown beneath the mask and shorten the forward blade.
+ * Monotone tangents avoid a kink at the mounting row or rear return. */
+function frontFenderMountedZ(z: number) {
+  const nose = -1.045, crown = -0.665, rear = -0.452, fittedCrown = -0.550, fittedNose = -0.925;
+  const frontSlope = (fittedCrown - fittedNose) / (crown - nose);
+  const rearSlope = (rear - fittedCrown) / (rear - crown);
+  const tangent = 2 * frontSlope * rearSlope / (frontSlope + rearSlope);
+  const before = z <= crown;
+  const a = before ? nose : crown, b = before ? crown : rear;
+  const outA = before ? fittedNose : fittedCrown, outB = before ? fittedCrown : rear;
+  const m0 = before ? frontSlope : tangent, m1 = before ? tangent : rearSlope;
+  const t = MathUtils.clamp((z - a) / (b - a), 0, 1);
+  return (2 * t ** 3 - 3 * t * t + 1) * outA
+    + (t ** 3 - 2 * t * t + t) * (b - a) * m0
+    + (-2 * t ** 3 + 3 * t * t) * outB
+    + (t ** 3 - t * t) * (b - a) * m1;
+}
+
+function frontFenderPointAt(u: number, v: number): Point {
   const folds = [[0, 1], [0.25, 0.94], [0.50, 0.35], [0.625, 0.35], [0.75, 0.50], [1, 0]];
-  return formedSheet(60, 16, (u, v) => {
     const section = frontFenderSectionAt(u), [z, width] = section, across = Math.abs(v);
     const segment = Math.max(0, folds.findIndex(p => p[0] >= across) - 1);
     const a = folds[segment], b = folds[segment + 1];
@@ -164,8 +179,19 @@ export function supermotoFrontFenderGeometry() {
     const foldStrength = MathUtils.smoothstep(pointZ, -1.015, -0.945)
       * (1 - MathUtils.smoothstep(pointZ, -0.520, -0.470));
     const crownHeight = MathUtils.lerp(1 - v * v, height, foldStrength);
-    return [Math.sign(v) * x, profile[3] + profile[2] * crownHeight, pointZ];
-  }, [0, -0.004, 0], true);
+    return [Math.sign(v) * x * 0.86, profile[3] + profile[2] * crownHeight - 0.050, frontFenderMountedZ(pointZ)];
+}
+
+/** The holder seats on the actual moulded crown, not its previous rear slope. */
+export const SUPERMOTO_FRONT_FENDER_MOUNT: Point = frontFenderPointAt(
+  SUPERMOTO_FRONT_FENDER.findIndex(row => row[0] === -0.665) / (SUPERMOTO_FRONT_FENDER.length - 1),
+  0.034 / 0.091,
+);
+
+/** One thin moulded part: broad central spine, recessed side channels,
+ * kicked-out shoulders, rounded descending nose and short rear return. */
+export function supermotoFrontFenderGeometry() {
+  return formedSheet(60, 16, frontFenderPointAt, [0, -0.004, 0], true);
 }
 
 type Outline = readonly (readonly [number, number])[];

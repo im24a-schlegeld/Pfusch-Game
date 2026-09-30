@@ -203,7 +203,11 @@ describe('compact Supermoto engine cradle', () => {
               chain.matrixWorld,
               instance,
             );
-            clear(point, chainProbe, frame.name);
+            clear(
+              point,
+              chainProbe,
+              `${frame.name}, travel ${travel}, local ${local.toArray().join(',')}`,
+            );
           }
         }
       }
@@ -242,7 +246,7 @@ describe('compact Supermoto engine cradle', () => {
           ),
       ).toBeLessThan(1e-8);
       expect(
-        path.getPoint(1).distanceTo(new Vector3(0, 0.625, -0.35)),
+        path.getPoint(1).distanceTo(new Vector3(0, 0.65, -0.29)),
       ).toBeLessThan(1e-8);
       const geometry = supermotoLowerFrameGeometry(side);
       expect(geometry.boundingBox!.min.y).toBeGreaterThan(0.371);
@@ -254,6 +258,37 @@ describe('compact Supermoto engine cradle', () => {
         expect(point.z).toBeLessThanOrEqual(0.18 + 1e-8);
       }
       geometry.dispose();
+    }
+  });
+
+  it('sweeps smoothly from the broad sump floor up around the front of the engine', () => {
+    for (const side of [-1, 1]) {
+      const samples = supermotoLowerFramePath(side).getSpacedPoints(512);
+      const forwardFloor = samples.filter(
+        (point) => point.z < 0.05 && point.z > -0.06,
+      );
+      expect(forwardFloor.length).toBeGreaterThan(20);
+      for (const point of forwardFloor) {
+        expect(point.y).toBeCloseTo(0.39, 5);
+        expect(side * point.x).toBeGreaterThan(0.13);
+      }
+      // A gradual outward sweep replaces the square corner. It must never
+      // double back toward the engine or dip below the sump floor.
+      const frontLeg = samples.filter(
+        (point) => point.z < -0.07,
+      );
+      expect(frontLeg.length).toBeGreaterThan(50);
+      for (let i = 1; i < frontLeg.length; i++) {
+        expect(frontLeg[i].y).toBeGreaterThan(frontLeg[i - 1].y);
+        expect(frontLeg[i].z).toBeLessThan(frontLeg[i - 1].z);
+        if (i > 1) {
+          const before = frontLeg[i - 1].clone().sub(frontLeg[i - 2]);
+          const after = frontLeg[i].clone().sub(frontLeg[i - 1]);
+          expect(before.angleTo(after)).toBeLessThan(0.04);
+        }
+      }
+      // The paired rails retain a broad cradle without crossing each other.
+      expect(samples.every((point) => side * point.x >= -1e-8)).toBe(true);
     }
   });
 

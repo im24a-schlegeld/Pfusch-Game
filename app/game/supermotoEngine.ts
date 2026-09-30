@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SUPERMOTO_EXHAUST_OUTLET, SUPERMOTO_EXHAUST_TANGENT } from './exhaustClearance';
 
 type Point = [number, number, number];
 type SidePoint = [z: number, y: number];
@@ -252,19 +253,21 @@ export function addSupermotoEngine(body: THREE.Group): void {
     return mesh;
   };
 
-  // The rounded crank chamber narrows into the gearbox, with a shallow sump
-  // and a distinct shoulder below the forward-leaning cylinder.
+  // The timing-side shoulder fills the front of the cradle beneath the barrel.
+  // The sump, gearbox/output shaft and cylinder-head datums remain fixed;
+  // only the casting outline and barrel foot change, not the assembly scale.
   const core = new THREE.Shape();
-  core.moveTo(-0.113, 0.631);
-  core.quadraticCurveTo(-0.164, 0.621, -0.174, 0.553);
-  core.quadraticCurveTo(-0.178, 0.472, -0.137, 0.425);
-  core.quadraticCurveTo(-0.112, 0.398, -0.05, 0.398);
+  core.moveTo(-0.137, 0.645);
+  core.quadraticCurveTo(-0.189, 0.647, -0.213, 0.617);
+  core.quadraticCurveTo(-0.243, 0.581, -0.228, 0.528);
+  core.quadraticCurveTo(-0.213, 0.458, -0.157, 0.421);
+  core.quadraticCurveTo(-0.121, 0.398, -0.05, 0.398);
   core.quadraticCurveTo(0.063, 0.398, 0.111, 0.415);
   core.quadraticCurveTo(0.157, 0.43, 0.165, 0.486);
   core.quadraticCurveTo(0.173, 0.55, 0.126, 0.584);
   core.quadraticCurveTo(0.105, 0.602, 0.027, 0.605);
   core.quadraticCurveTo(-0.005, 0.605, -0.024, 0.627);
-  core.quadraticCurveTo(-0.06, 0.64, -0.113, 0.631);
+  core.quadraticCurveTo(-0.07, 0.648, -0.137, 0.645);
   add(
     casting(
       core,
@@ -286,14 +289,14 @@ export function addSupermotoEngine(body: THREE.Group): void {
   // Separate asymmetric side castings. The broad gasket shoulder rolls into
   // a smaller raised face, so depth reads from both side and three-quarter views.
   const clutch = new THREE.Shape();
-  clutch.moveTo(-0.039, 0.588);
-  clutch.quadraticCurveTo(-0.084, 0.579, -0.09, 0.531);
-  clutch.quadraticCurveTo(-0.092, 0.469, -0.051, 0.44);
-  clutch.quadraticCurveTo(-0.021, 0.42, 0.045, 0.435);
-  clutch.quadraticCurveTo(0.111, 0.444, 0.128, 0.49);
-  clutch.quadraticCurveTo(0.144, 0.533, 0.106, 0.57);
-  clutch.quadraticCurveTo(0.087, 0.592, 0.026, 0.597);
-  clutch.quadraticCurveTo(-0.011, 0.6, -0.039, 0.588);
+  clutch.moveTo(-0.021, 0.606);
+  clutch.quadraticCurveTo(-0.083, 0.601, -0.096, 0.549);
+  clutch.quadraticCurveTo(-0.109, 0.487, -0.071, 0.446);
+  clutch.quadraticCurveTo(-0.04, 0.414, 0.015, 0.421);
+  clutch.quadraticCurveTo(0.075, 0.425, 0.103, 0.469);
+  clutch.quadraticCurveTo(0.13, 0.519, 0.098, 0.565);
+  clutch.quadraticCurveTo(0.073, 0.605, 0.026, 0.608);
+  clutch.quadraticCurveTo(0.002, 0.61, -0.021, 0.606);
   add(
     casting(
       clutch,
@@ -375,11 +378,11 @@ export function addSupermotoEngine(body: THREE.Group): void {
 
   add(
     jacket([
-      [0.595, -0.111, 0.068, 0.061],
-      [0.605, -0.117, 0.084, 0.073],
-      [0.613, -0.122, 0.083, 0.072],
-      [0.619, -0.124, 0.073, 0.065],
-      [0.686, -0.148, 0.078, 0.067],
+      [0.595, -0.14, 0.074, 0.071],
+      [0.605, -0.14, 0.089, 0.082],
+      [0.613, -0.141, 0.088, 0.081],
+      [0.619, -0.142, 0.081, 0.077],
+      [0.686, -0.15, 0.083, 0.074],
       [0.697, -0.152, 0.086, 0.073],
     ]),
     cylinder,
@@ -443,8 +446,8 @@ export function addSupermotoEngine(body: THREE.Group): void {
   path(
     [
       [0.152, 0.609, -0.141],
-      [0.157, 0.645, -0.18],
-      [0.144, 0.67, -0.246],
+      [0.142, 0.647, -0.18],
+      [0.090, 0.647, -0.255],
       [0.133, 0.65, -0.315],
     ],
     0.0105,
@@ -477,9 +480,9 @@ export function addSupermotoEngine(body: THREE.Group): void {
     8,
   );
 
-  // Preserve the independently authored header's exact seated port.
-  const port = new THREE.Vector3(0.046, 0.724, -0.238);
-  const direction = new THREE.Vector3(0.083, -0.006, -0.025).normalize();
+  // Seat the newly marked lower/front outlet into the actual casting.
+  const port = new THREE.Vector3(...SUPERMOTO_EXHAUST_OUTLET);
+  const direction = new THREE.Vector3(...SUPERMOTO_EXHAUST_TANGENT).normalize();
   const portStart = port.clone().addScaledVector(direction, -0.019);
   const portEnd = port.clone().addScaledVector(direction, 0.01);
   rod(

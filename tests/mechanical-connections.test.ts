@@ -288,9 +288,12 @@ describe('assembled motorcycle connections', () => {
       const nearest = mufflerAxis.closestPointToPoint(end, true, new Vector3());
       expect(nearest.distanceTo(end)).toBeLessThan(0.016);
       const start = ringCenter(pipe, 0, pipeSides);
-      expect(start.y).toBeGreaterThan(
-        bikeId === '450' ? 0.7 : bikeId === '701' ? 0.35 : 0.27,
-      );
+      if (bikeId === '450') {
+        // The user's marked outlet now seats on the lower front casting.
+        expect(start.distanceTo(new Vector3(0.112, 0.578, -0.210))).toBeLessThan(1e-6);
+      } else {
+        expect(start.y).toBeGreaterThan(bikeId === '701' ? 0.35 : 0.27);
+      }
       expect(start.z).toBeLessThan(-0.14);
       expect(bike.body.getObjectByName('exhaust-frame-hanger')).toBeDefined();
       expect(bike.body.getObjectByName('exhaust-mount-band')).toBeDefined();
