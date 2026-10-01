@@ -1076,14 +1076,14 @@ export function makeBike(player: Player, products: Product[]) {
   } else if (!sport) {
     // Double cradle: steering head -> engine rails -> swingarm pivot, with a separate alloy subframe.
     const subframeFinish = material('#252b2d', 0.48, 0.52);
-    rod(body, forkAxisAt(forkTop[1] - 0.025), [0, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ], 0.023, alloy).name =
+    rod(body, forkAxisAt(forkTop[1] - 0.025), [0, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ], 0.019, alloy).name =
       'handlebar-stem';
     for (const s of [-1, 1])
       rod(
         body,
         [s * 0.075, 1.050, -0.410],
         [s * 0.075, SUPERMOTO_BAR.clampY, SUPERMOTO_BAR.clampZ],
-        0.021,
+        0.017,
         dark,
       ).name = 'handlebar-clamp';
     addSupermotoMainFrame(body, dark,
@@ -1101,7 +1101,7 @@ export function makeBike(player: Player, products: Product[]) {
           pivotJoint,
           [s * 0.111, 0.594, 0.208],
           [s * 0.081, 0.803, 0.48],
-          [s * 0.060, 0.982, 0.77],
+          [s * 0.06154, 0.97806, 0.73],
         ],
         [SUPERMOTO_PIVOT_FRAME_RADIUS, 0.014, 0.014, 0.012],
         subframeFinish,
@@ -1111,7 +1111,7 @@ export function makeBike(player: Player, products: Product[]) {
       rod(
         body,
         [s * 0.085, 0.918, 0.12],
-        [s * 0.060, 0.982, 0.77],
+        [s * 0.06154, 0.97806, 0.73],
         0.013,
         subframeFinish,
       ).name = 'supermoto-upper-subframe';
@@ -1158,9 +1158,9 @@ export function makeBike(player: Player, products: Product[]) {
       sidePanel(body, s, [
         [0.125, 0.933, 0.155],
         [0.127, 0.863, 0.159],
-        [0.135, 0.724, 0.191],
-        [0.132, 0.674, 0.244],
-        [0.120, 0.713, 0.117],
+        [0.135, 0.802, 0.191],
+        [0.132, 0.779, 0.244],
+        [0.120, 0.812, 0.117],
         [0.112, 0.833, 0.067],
       ], matteBlack, 0.004).name = 'supermoto-airbox-access-panel';
       // A shallow upper airbox cover continues the tank wing to the rear
@@ -1262,8 +1262,8 @@ export function makeBike(player: Player, products: Product[]) {
         [0.075, 0.084, 0.046, 0.890],
         [0.22, 0.108, 0.079, 0.862],
         [0.43, 0.099, 0.044, 0.905],
-        [0.61, 0.075, 0.029, 0.945],
-        [0.78, 0.061, 0.018, 0.985],
+        [0.61, 0.064, 0.027, 0.990],
+        [0.74, 0.053, 0.018, 1.031],
       ],
       dark,
       'z',
@@ -1276,14 +1276,14 @@ export function makeBike(player: Player, products: Product[]) {
     addSupermotoRearProtection(body, matteBlack, rubber);
     // The lamp nestles in the dark underside. No projecting registration carrier.
     const tailLampHousing = loft(body, [
-      [0.827, 0.051, 0.018, 1.008],
-      [0.889, 0.049, 0.015, 1.012],
-      [0.911, 0.042, 0.011, 1.014],
+      [0.777, 0.051, 0.018, 1.038],
+      [0.839, 0.049, 0.015, 1.048],
+      [0.861, 0.042, 0.011, 1.059],
     ], matteBlack, 'z', 16);
     tailLampHousing.name = 'supermoto-tail-light-housing';
     const tailLens = mesh(body, new THREE.SphereGeometry(1, 20, 10),
       new THREE.MeshStandardMaterial({ color: '#9c1018', emissive: '#b90c12', emissiveIntensity: 0.45, roughness: 0.25 }));
-    tailLens.position.set(0, 1.014, 0.912);
+    tailLens.position.set(0, 1.059, 0.862);
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
     // The visible spindle uses the same axis as the moving arm's bearing.
@@ -2027,7 +2027,7 @@ export function makeBike(player: Player, products: Product[]) {
       player.bike === '450'
         ? supermotoGripPoint(pose.grip, s, 0.055)
         : [s * (pose.grip[0] + 0.055), pose.grip[1], pose.grip[2]],
-      0.024,
+      player.bike === '450' ? 0.018 : 0.024,
       rubber,
     );
     if (player.bike === '450') grip.name = 'supermoto-handgrip';

@@ -15,7 +15,7 @@ function sideEdgeAt(edge: readonly Point[], z: number): Point {
   return [MathUtils.lerp(a[0], b[0], t), MathUtils.lerp(a[1], b[1], t), z];
 }
 
-/** Mould a number panel around the upper quarter of the right-hand oval can.
+/** Mould a number panel around a small upper lip of the right-hand oval can.
  * The matching left panel retains a straight lower line and a flatter face.
  * Both skins share an ordered outline before the interior surface vertices. */
 export function supermotoSideCoverGeometry(side: number) {
@@ -31,6 +31,14 @@ export function supermotoSideCoverGeometry(side: number) {
   const raw: Point[] = [];
   for (const z of stations) {
     const a = sideEdgeAt(upper, z), b = sideEdgeAt(lower, z);
+    if (side > 0) {
+      const e = TUBE_EXHAUST;
+      const lip = MathUtils.smoothstep(z, e.startZ - 0.150, e.startZ - 0.070)
+        * (1 - MathUtils.smoothstep(z, e.endZ - 0.080, e.endZ - 0.035));
+      // Only the upper few millimetres of the compact can sit behind the
+      // plastic return. The main number panel stays shallow and narrow.
+      b[1] = MathUtils.lerp(b[1], Math.min(b[1], exhaustAxisY(z) + e.verticalRadius * 0.92), lip);
+    }
     for (let col = 0; col <= cols; col++) {
       const v = col / cols;
       const y = MathUtils.lerp(a[1], b[1], v);

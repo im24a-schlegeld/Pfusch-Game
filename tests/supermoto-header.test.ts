@@ -73,6 +73,11 @@ describe('fitted Supermoto header', () => {
     expect(exit.z).toBeLessThan(-0.295);
     const exhaustAxis = new Vector3(0, TUBE_EXHAUST.endY - TUBE_EXHAUST.startY, TUBE_EXHAUST.endZ - TUBE_EXHAUST.startZ).normalize();
     expect(path.getTangent(1).dot(exhaustAxis), 'pipe enters the muffler axially').toBeGreaterThan(0.999);
+    const rearNeck = path.getSpacedPoints(512).filter(point => point.z > 0.2);
+    expect(Math.max(...rearNeck.map(point => point.y)), 'rear neck must not arch over then drop into the can')
+      .toBeLessThanOrEqual(TUBE_EXHAUST.startY + 0.003);
+    for (let i = 1; i < rearNeck.length; i++)
+      expect(rearNeck[i].z - rearNeck[i - 1].z, 'rear connector must not double back').toBeGreaterThan(0);
     const frontBend = path
       .getSpacedPoints(256)
       .filter((point) => point.z < -0.07);
@@ -107,6 +112,8 @@ describe('fitted Supermoto header', () => {
       'supermoto-rear-subframe',
       'supermoto-upper-subframe',
       'airbox-inner-splash-wall',
+      'supermoto-airbox',
+      'supermoto-under-tail-liner',
       'supermoto-shock-damper',
       'supermoto-shock-reservoir',
       'supermoto-shock-spring-seat',

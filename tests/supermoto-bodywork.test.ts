@@ -71,8 +71,8 @@ describe('reference Supermoto bodywork', () => {
         const roof = Math.max(...fender), bottom = Math.min(...seat);
         // Allow a small upholstery seam, but no floating saddle or a fender
         // pushed through the seating surface after either profile is changed.
-        expect(bottom - roof).toBeLessThanOrEqual(0.008);
-        expect(bottom - roof).toBeGreaterThanOrEqual(-0.012);
+        expect(bottom - roof, `saddle seam at z=${z}`).toBeLessThanOrEqual(0.008);
+        expect(bottom - roof, `saddle seam at z=${z}`).toBeGreaterThanOrEqual(-0.012);
         expect(Math.max(...seat) - roof).toBeGreaterThan(0.005);
       }
     } finally {

@@ -50,15 +50,15 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
     return geometry;
   };
   const shell=ovalShell([
-    [.0185,.0185,-.008],[.022,.023,0],[.034,.043,.025],[e.radius,e.verticalRadius,.067],
+    [.0185,.0185,-.008],[.021,.021,0],[.027,.032,.030],[e.radius,e.verticalRadius,.075],
     [e.radius,e.verticalRadius,len-.067],[e.radius-.002,e.verticalRadius-.004,len-.032],
     [.0255,.0255,len-.032],[.0185,.0185,.012],
   ],true);
   const can=add(group,shell,silver,'single-exhaust');can.position.copy(a);can.quaternion.copy(orient);
   const capGeometry=ovalShell([
     [e.radius+.001,e.verticalRadius+.001,len-.069],
-    [e.radius-.001,e.verticalRadius-.003,len-.032],[e.radius-.007,e.verticalRadius-.015,len-.009],
-    [.033,.038,len+.009],[.031,.031,len+.015],
+    [e.radius-.001,e.verticalRadius-.003,len-.032],[.030,.036,len-.009],
+    [.030,.033,len+.009],[.031,.031,len+.015],
     [.026,.026,len+.015],[.026,.026,len-.059],
   ],true);
   const cap=add(group,capGeometry,carbon,'open-silencer-outlet');cap.position.copy(a);cap.quaternion.copy(orient);
@@ -82,17 +82,22 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   const headerPoints:P[]=[
     [...SUPERMOTO_EXHAUST_OUTLET],
     SUPERMOTO_EXHAUST_OUTLET.map((value,index)=>value+SUPERMOTO_EXHAUST_TANGENT[index]) as P,
-    [.015,.530,-.328],[.090,.510,-.333],[.158,.523,-.300],
-    [.175,.557,-.218],[.185,.630,-.150],[.178,.652,-.090],[.127,.663,-.015],
-    [.081,.667,.075],[.078,.677,.200],[.074,.690,.280],[.049,.705,.350],
-    [.047,.708,.380],
+    [.015,.530,-.320],[.075,.514,-.325],[.143,.528,-.294],
+    [.164,.570,-.212],[.171,.658,-.150],[.160,.668,-.085],[.118,.669,-.010],
+    [.081,.667,.075],[.078,.677,.200],
   ];
   const headerCurve=new THREE.CurvePath<THREE.Vector3>();
   headerCurve.add(new THREE.CatmullRomCurve3(headerPoints.map(p=>new THREE.Vector3(...p)),false,'centripetal'));
   headerCurve.add(new THREE.CubicBezierCurve3(
     new THREE.Vector3(...headerPoints[headerPoints.length-1]),
-    new THREE.Vector3(.039,.720,.500),
-    a.clone().addScaledVector(axis,-.05),
+    new THREE.Vector3(.082,.688,.270),
+    new THREE.Vector3(.043,.702,.345),
+    new THREE.Vector3(.038,.718,.390),
+  ));
+  headerCurve.add(new THREE.CubicBezierCurve3(
+    new THREE.Vector3(.038,.718,.390),
+    new THREE.Vector3(.041,.734,.435),
+    a.clone().addScaledVector(axis,-.030),
     a.clone(),
   ));
   add(group,new THREE.TubeGeometry(headerCurve,80,.0185,12,false),headerFinish,'connected-exhaust-pipe');
@@ -105,7 +110,7 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   const railStart=new THREE.Vector3(0,-halfRail,0).applyQuaternion(upperRail.quaternion).add(upperRail.position);
   const railEnd=new THREE.Vector3(0,halfRail,0).applyQuaternion(upperRail.quaternion).add(upperRail.position);
   const hangerTop=railStart.clone().lerp(railEnd,THREE.MathUtils.clamp((bandTop.z-railStart.z)/(railEnd.z-railStart.z),0,1));
-  tube(group,[hangerTop.toArray() as P,[.121,(hangerTop.y+bandTop.y)/2,bandTop.z],[bandTop.x,bandTop.y,bandTop.z]],.0075,carbon,'exhaust-frame-hanger');
+  tube(group,[hangerTop.toArray() as P,[.040,hangerTop.y-.022,bandTop.z],[.040,bandTop.y+.017,bandTop.z],bandTop.toArray() as P],.0075,carbon,'exhaust-frame-hanger');
   // Small, real joints at the outlet and bracket make the separated surfaces
   // legible without adding heavy decorative geometry to the running game.
   for(const fraction of [.13,.83]){

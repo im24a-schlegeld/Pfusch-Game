@@ -5,13 +5,13 @@ export const SUPERMOTO_EXHAUST_OUTLET = [0, 0.560, -0.236] as const;
 export const SUPERMOTO_EXHAUST_TANGENT = [0, -0.012, -0.070] as const;
 
 export const TUBE_EXHAUST = Object.freeze({
-  x: 0.185,
-  startZ: 0.475,
-  endZ: 0.815,
-  startY: 0.782,
-  endY: 0.884,
-  radius: 0.048,
-  verticalRadius: 0.069,
+  x: 0.060,
+  startZ: 0.490,
+  endZ: 0.790,
+  startY: 0.760,
+  endY: 0.853,
+  radius: 0.032,
+  verticalRadius: 0.042,
   clearance: 0.008,
 });
 // The oval can is mounted beside the liner, below the side-cover lower edge.
