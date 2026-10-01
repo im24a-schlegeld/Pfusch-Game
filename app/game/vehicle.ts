@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { addSupermotoRearProtection } from './supermotoRearProtection';
+import { supermotoAirboxGeometry } from './supermotoAirbox';
 import type { Player, Product } from '../domain/types';
 import {
   garmentMaterial,
@@ -60,6 +61,7 @@ import { SUPERMOTO_SWINGARM, supermotoSwingarmGeometry } from './supermotoSwinga
 import { supermotoTireMaterial } from './supermotoTire';
 import { supermotoGripPoint } from './supermotoCockpit';
 import { supermotoSettledOffset } from './supermotoRideHeight';
+import { SUPERMOTO_LINKAGE, addSupermotoLinkage } from './supermotoLinkage';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
 import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, finishRequestedModelParts } from './v40ModelFinish';
@@ -1158,7 +1160,7 @@ export function makeBike(player: Player, products: Product[]) {
       sidePanel(body, s, [
         [0.125, 0.933, 0.155],
         [0.127, 0.863, 0.159],
-        [0.135, 0.802, 0.191],
+        [0.128, 0.802, 0.191],
         [0.132, 0.779, 0.244],
         [0.120, 0.812, 0.117],
         [0.112, 0.833, 0.067],
@@ -1256,19 +1258,7 @@ export function makeBike(player: Player, products: Product[]) {
     }
     // Airbox bridges the tank and subframe under the saddle; side covers wrap
     // this volume instead of floating above a wholly open rear triangle.
-    loft(
-      body,
-      [
-        [0.075, 0.084, 0.046, 0.890],
-        [0.22, 0.108, 0.079, 0.862],
-        [0.43, 0.099, 0.044, 0.905],
-        [0.61, 0.064, 0.027, 0.990],
-        [0.74, 0.053, 0.018, 1.031],
-      ],
-      dark,
-      'z',
-      16,
-    ).name = 'supermoto-airbox';
+    mesh(body, supermotoAirboxGeometry(), dark).name = 'supermoto-airbox';
     // Narrow rear mudguard continues beneath the saddle and covers the wheel
     // through the subframe, tapering beyond the seat rather than ending square.
     mesh(body, supermotoTailFenderGeometry(), paint).name = 'supermoto-tail-fender';
@@ -1278,12 +1268,12 @@ export function makeBike(player: Player, products: Product[]) {
     const tailLampHousing = loft(body, [
       [0.777, 0.051, 0.018, 1.038],
       [0.839, 0.049, 0.015, 1.048],
-      [0.861, 0.042, 0.011, 1.059],
+      [0.861, 0.042, 0.011, 1.063],
     ], matteBlack, 'z', 16);
     tailLampHousing.name = 'supermoto-tail-light-housing';
     const tailLens = mesh(body, new THREE.SphereGeometry(1, 20, 10),
       new THREE.MeshStandardMaterial({ color: '#9c1018', emissive: '#b90c12', emissiveIntensity: 0.45, roughness: 0.25 }));
-    tailLens.position.set(0, 1.059, 0.862);
+    tailLens.position.set(0, 1.063, 0.862);
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
     // The visible spindle uses the same axis as the moving arm's bearing.
@@ -1304,20 +1294,20 @@ export function makeBike(player: Player, products: Product[]) {
       0.024,
       dark,
     ).name = 'shock-upper-mount';
+    for (const side of [-1, 1]) {
+      const supportT = (damperTop.z - 0.120) / (0.730 - 0.120);
+      rod(body, [side * THREE.MathUtils.lerp(0.085, 0.06154, supportT),
+        THREE.MathUtils.lerp(0.918, 0.97806, supportT), damperTop.z],
+      [side * 0.028, damperTop.y, damperTop.z], 0.012, dark).name = 'supermoto-shock-upper-brace';
+    }
     rod(
       body,
-      [CHAIN_DRIVE.leftSwingarmX, 0.414, 0.405],
-      [CHAIN_DRIVE.rightSwingarmX, 0.414, 0.405],
+      [CHAIN_DRIVE.leftSwingarmX, SUPERMOTO_LINKAGE.bridge[1], SUPERMOTO_LINKAGE.bridge[2]],
+      [CHAIN_DRIVE.rightSwingarmX, SUPERMOTO_LINKAGE.bridge[1], SUPERMOTO_LINKAGE.bridge[2]],
       0.022,
       alloy,
     ).name = 'swingarm-crossmember';
-    rod(
-      body,
-      [0, 0.414, 0.405],
-      damperBottom.toArray() as Point,
-      0.023,
-      dark,
-    ).name = 'shock-lower-link';
+    addSupermotoLinkage(body, alloy, dark);
     rod(
       body,
       damperTop.toArray() as Point,

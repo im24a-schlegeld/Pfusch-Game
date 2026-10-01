@@ -33,19 +33,21 @@ function section(stations: readonly Station[], z: number): number[] {
 }
 
 // z, inner shoulder x, outer x, upper y, lower y. The shallow upper wing
-// exposes the tank below it; only its forward radiator fin drops to the head.
+// exposes the tank below it; the broad EXC radiator fin drops around the
+// radiator's lower outer edge without closing the black reservoir opening.
 const WING: readonly Station[] = [
   [-0.47, 0.108, 0.146, 0.93, 0.925],
-  [-0.435, 0.104, 0.155, 0.953, 0.886],
-  [-0.36, 0.101, 0.167, 0.978, 0.838],
-  [-0.3, 0.120, 0.163, 0.967, 0.765],
-  [-0.255, 0.132, 0.163, 0.955, 0.710],
-  [-0.222, 0.136, 0.163, 0.956, 0.781],
-  [-0.19, 0.132, 0.163, 0.966, 0.878],
-  [-0.14, 0.117, 0.159, 0.977, 0.910],
-  [-0.05, 0.092, 0.149, 0.959, 0.917],
-  [0.05, 0.089, 0.137, 0.947, 0.915],
-  [0.165, 0.087, 0.128, 0.947, 0.922],
+  [-0.435, 0.104, 0.158, 0.960, 0.850],
+  [-0.36, 0.101, 0.169, 0.982, 0.740],
+  [-0.315, 0.116, 0.168, 0.970, 0.675],
+  [-0.285, 0.125, 0.168, 0.960, 0.688],
+  [-0.255, 0.132, 0.166, 0.955, 0.710],
+  [-0.222, 0.136, 0.165, 0.956, 0.767],
+  [-0.19, 0.132, 0.163, 0.966, 0.862],
+  [-0.14, 0.117, 0.159, 0.977, 0.900],
+  [-0.05, 0.092, 0.149, 0.966, 0.906],
+  [0.05, 0.089, 0.137, 0.957, 0.908],
+  [0.165, 0.087, 0.123, 0.947, 0.914],
 ];
 
 /** One continuous rounded shoulder and radiator wing, with an actual return

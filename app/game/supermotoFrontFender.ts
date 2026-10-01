@@ -29,10 +29,10 @@ function frontFenderSectionAt(u: number): Section {
   return [MathUtils.lerp(a[0], b[0], t), MathUtils.lerp(a[1], b[1], t), bend(2), bend(3)];
 }
 
-/** Fit the marked crown beneath the mask and shorten the forward blade.
+/** Keep the mounting crown beneath the mask while extending the EXC blade.
  * Monotone tangents avoid a kink at the mounting row or rear return. */
 function frontFenderMountedZ(z: number) {
-  const nose = -1.045, crown = -0.665, rear = -0.452, fittedCrown = -0.550, fittedNose = -0.925;
+  const nose = -1.045, crown = -0.665, rear = -0.452, fittedCrown = -0.550, fittedNose = -0.995;
   const frontSlope = (fittedCrown - fittedNose) / (crown - nose);
   const rearSlope = (rear - fittedCrown) / (rear - crown);
   const tangent = 2 * frontSlope * rearSlope / (frontSlope + rearSlope);
@@ -77,7 +77,8 @@ function frontFenderPointAt(u: number, v: number): Point {
     const foldStrength = MathUtils.smoothstep(pointZ, -1.015, -0.945)
       * (1 - MathUtils.smoothstep(pointZ, -0.520, -0.470));
     const crownHeight = MathUtils.lerp(1 - v * v, height, foldStrength);
-    return [Math.sign(v) * x * 0.86, profile[3] + profile[2] * crownHeight, frontFenderMountedZ(pointZ)];
+    const widthFit = MathUtils.lerp(0.98, 0.86, MathUtils.smoothstep(z, -0.870, -0.665));
+    return [Math.sign(v) * x * widthFit, profile[3] + profile[2] * crownHeight, frontFenderMountedZ(pointZ)];
 }
 
 /** The holder seats on the actual moulded crown, not its previous rear slope. */

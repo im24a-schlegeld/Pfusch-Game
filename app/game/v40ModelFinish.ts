@@ -90,13 +90,19 @@ export function fitRearExitExhaust(body:THREE.Group, _paint:THREE.MeshStandardMa
   headerCurve.add(new THREE.CatmullRomCurve3(headerPoints.map(p=>new THREE.Vector3(...p)),false,'centripetal'));
   headerCurve.add(new THREE.CubicBezierCurve3(
     new THREE.Vector3(...headerPoints[headerPoints.length-1]),
-    new THREE.Vector3(.082,.688,.270),
-    new THREE.Vector3(.043,.702,.345),
-    new THREE.Vector3(.038,.718,.390),
+    new THREE.Vector3(.077,.681,.247),
+    new THREE.Vector3(.087,.746,.302),
+    new THREE.Vector3(.078,.751,.330),
   ));
   headerCurve.add(new THREE.CubicBezierCurve3(
-    new THREE.Vector3(.038,.718,.390),
-    new THREE.Vector3(.041,.734,.435),
+    new THREE.Vector3(.078,.751,.330),
+    new THREE.Vector3(.069,.756,.358),
+    new THREE.Vector3(.046,.748,.371),
+    new THREE.Vector3(.040,.748,.401),
+  ));
+  headerCurve.add(new THREE.CubicBezierCurve3(
+    new THREE.Vector3(.040,.748,.401),
+    new THREE.Vector3(.034,.748,.431),
     a.clone().addScaledVector(axis,-.030),
     a.clone(),
   ));

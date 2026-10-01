@@ -40,12 +40,13 @@ describe('reference Supermoto bodywork', () => {
     }
   });
 
-  it('mounts the actual rear damper at 45 degrees leaning toward the steering head', () => {
+  it('mounts the actual rear damper near upright while leaning toward the steering head', () => {
     const damper = bike.body.getObjectByName('supermoto-shock-damper') as Mesh;
-    const axis = new Vector3(0, 1, 0).applyQuaternion(damper.quaternion);
+    const axis = new Vector3(0, 1, 0).transformDirection(damper.matrix);
     expect(Math.abs(axis.x)).toBeLessThan(1e-6);
-    expect(Math.abs(axis.y)).toBeCloseTo(Math.SQRT1_2, 6);
-    expect(Math.abs(axis.z)).toBeCloseTo(Math.SQRT1_2, 6);
+    const angleFromVertical = Math.atan2(Math.abs(axis.z), Math.abs(axis.y)) * 180 / Math.PI;
+    expect(angleFromVertical).toBeGreaterThan(10);
+    expect(angleFromVertical).toBeLessThan(20);
     expect(axis.y * axis.z).toBeLessThan(0);
     expect(bike.body.getObjectsByProperty('name', 'supermoto-shock-eyelet')).toHaveLength(2);
     expect(bike.body.getObjectsByProperty('name', 'supermoto-shock-spring-seat')).toHaveLength(2);

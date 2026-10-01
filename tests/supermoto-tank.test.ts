@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
+  Box3,
   CylinderGeometry,
   Mesh,
   MeshStandardMaterial,
@@ -80,6 +81,60 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
       // A plane would have the same slope. The shoulder rolls increasingly
       // steeply down to the side face, as in the marked reference area.
       expect((b - c) / 0.025).toBeGreaterThan(((a - b) / 0.03) * 1.5);
+    }
+  });
+
+  it('covers the EXC lower radiator fin and wider upper band while retaining a thin closed shell', () => {
+    for (const side of [-1, 1]) {
+      const shroud = (bike.body.getObjectsByProperty('name', 'radiator-shroud') as Mesh[])
+        .find(part => part.geometry.getAttribute('position').getX(0) * side > 0)!;
+      for (const [y, z] of [[0.710, -0.315], [0.775, -0.360], [0.875, -0.430], [0.955, 0.025]]) {
+        const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
+        const direction = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
+        const hit = new Raycaster(origin, direction).intersectObject(shroud, false)[0];
+        expect(hit, `EXC plastic coverage at ${side}/${y}/${z}`).toBeDefined();
+      }
+      const geometry = shroud.geometry, index = geometry.getIndex()!;
+      const edges = new Map<string, number>();
+      for (let i = 0; i < index.count; i += 3) for (let k = 0; k < 3; k++) {
+        const a = index.getX(i + k), b = index.getX(i + (k + 1) % 3);
+        const key = a < b ? `${a}/${b}` : `${b}/${a}`;
+        edges.set(key, (edges.get(key) ?? 0) + 1);
+      }
+      expect([...edges.values()].every(count => count === 2)).toBe(true);
+    }
+  });
+
+  it('keeps every enlarged shroud triangle at least 8 mm from the unchanged hot header', () => {
+    const inverse = bike.body.matrixWorld.clone().invert();
+    const triangles = (mesh: Mesh) => {
+      const transform = inverse.clone().multiply(mesh.matrixWorld);
+      const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.getIndex();
+      const result: Box3[] = [];
+      for (let i = 0; i < (index?.count ?? position.count); i += 3) {
+        const bounds = new Box3();
+        for (let k = 0; k < 3; k++) bounds.expandByPoint(new Vector3()
+          .fromBufferAttribute(position, index ? index.getX(i + k) : i + k).applyMatrix4(transform));
+        result.push(bounds);
+      }
+      return result;
+    };
+    const distance = (a: Box3, b: Box3) => Math.hypot(
+      Math.max(0, a.min.x - b.max.x, b.min.x - a.max.x),
+      Math.max(0, a.min.y - b.max.y, b.min.y - a.max.y),
+      Math.max(0, a.min.z - b.max.z, b.min.z - a.max.z),
+    );
+    const header = triangles(bike.body.getObjectByName('connected-exhaust-pipe') as Mesh);
+    const headerBounds = header.reduce((result, box) => result.union(box), new Box3());
+    for (const shroud of bike.body.getObjectsByProperty('name', 'radiator-shroud') as Mesh[]) {
+      for (const face of triangles(shroud)) {
+        if (distance(face, headerBounds) > 0.008) continue;
+        // Positive separation of each transformed triangle box proves the
+        // complete hot/cold surfaces clear, including triangle interiors.
+        let minimum = Infinity;
+        for (const pipe of header) minimum = Math.min(minimum, distance(face, pipe));
+        expect(minimum).toBeGreaterThan(0.008);
+      }
     }
   });
 

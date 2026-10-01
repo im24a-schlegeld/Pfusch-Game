@@ -97,13 +97,27 @@ describe('Supermoto moulded rear overlap', () => {
     } finally { material.dispose(); }
   });
 
-  it('keeps the left return straight and raises a shorter narrow blade behind the shallow covers', () => {
+  it('extends the EXC side panel forward and the blade rearward without adding an outboard flare', () => {
     const cover = (bike.body.getObjectsByProperty('name', 'supermoto-side-cover') as Mesh[])
       .find(part => part.geometry.getAttribute('position').getX(0) < 0)!;
     const p = cover.geometry.getAttribute('position'), boundary = cover.geometry.userData.sideBoundaryCount as number;
     const frontTip = Array.from({ length: boundary }, (_, i) => new Vector3().fromBufferAttribute(p, i))
       .filter(point => Math.abs(point.z - 0.278) < 1e-6);
     expect(Math.min(...frontTip.map(point => point.y))).toBeCloseTo(0.705, 6);
+    expect(Math.min(...Array.from({ length: boundary }, (_, i) => p.getZ(i)))).toBeCloseTo(0.115, 6);
+    const material = new MeshBasicMaterial({ side: DoubleSide });
+    try {
+      for (const part of bike.body.getObjectsByProperty('name', 'supermoto-side-cover') as Mesh[]) {
+        const side = Math.sign(part.geometry.getAttribute('position').getX(0));
+        const probe = new Mesh(part.geometry, material); probe.matrixWorld.copy(part.matrixWorld);
+        for (const [y, z] of [[0.90, 0.15], [0.82, 0.18]]) {
+          const ray = new Raycaster(bike.body.localToWorld(new Vector3(side * 0.6, y, z)),
+            new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
+          expect(ray.intersectObject(probe, false).length,
+            `full forward EXC panel coverage at ${side},${y},${z}`).toBeGreaterThan(0);
+        }
+      }
+    } finally { material.dispose(); }
     const lower = [];
     for (let i = 0; i < boundary; i++) {
       const y = p.getY(i), z = p.getZ(i);
@@ -113,7 +127,7 @@ describe('Supermoto moulded rear overlap', () => {
     for (const point of lower) {
       const expected = point.z <= 0.625
         ? 0.894 + (point.z - 0.530) * (0.929 - 0.894) / (0.625 - 0.530)
-        : 0.929 + (point.z - 0.625) * (0.965 - 0.929) / (0.715 - 0.625);
+        : 0.929 + (point.z - 0.625) * (0.963 - 0.929) / (0.760 - 0.625);
       expect(Math.abs(point.y - expected)).toBeLessThan(1e-6);
       expect(Math.abs(point.x)).toBeLessThan(0.140);
     }
@@ -132,11 +146,11 @@ describe('Supermoto moulded rear overlap', () => {
       expect(ordered[i][1] - ordered[i - 1][1], `no notch before the can at z ${ordered[i][0]}`).toBeGreaterThanOrEqual(-1e-6);
     const tail = bike.body.getObjectByName('supermoto-tail-fender') as Mesh;
     const tp = tail.geometry.getAttribute('position');
-    const rear = Array.from({ length: tp.count }, (_, i) => new Vector3().fromBufferAttribute(tp, i)).filter(p => p.z > 0.84);
-    expect(Math.max(...rear.map(p => Math.abs(p.x)))).toBeLessThan(0.062);
-    expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(0.90, 6);
-    const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > 0.899);
-    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.079, 6);
+    const rear = Array.from({ length: tp.count }, (_, i) => new Vector3().fromBufferAttribute(tp, i)).filter(p => p.z > 0.94);
+    expect(Math.max(...rear.map(p => Math.abs(p.x)))).toBeLessThan(0.071);
+    expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(1.010, 6);
+    const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > 1.009);
+    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.100, 6);
   });
 
   it('keeps the inner thermal channel concealed behind each actual outer panel', () => {
@@ -184,6 +198,32 @@ describe('Supermoto moulded rear overlap', () => {
         }
         expect(closestRoof, `${name} must meet the blade, rather than float beneath it`).toBeLessThan(0.004);
       }
+    } finally { material.dispose(); }
+  });
+
+  it('keeps the black airbox access-panel return behind the forward white skin', () => {
+    const material = new MeshBasicMaterial({ side: DoubleSide });
+    let samples = 0;
+    try {
+      for (const side of [-1, 1]) {
+        const probes = ['supermoto-side-cover', 'supermoto-airbox-access-panel'].map(name => {
+          const source = (bike.body.getObjectsByProperty('name', name) as Mesh[])
+            .find(part => Math.sign(part.geometry.getAttribute('position').getX(0)) === side)!;
+          const probe = new Mesh(source.geometry, material); probe.matrixWorld.copy(source.matrixWorld);
+          return probe;
+        });
+        for (let z = 0.14; z < 0.22; z += 0.004) for (let y = 0.79; y < 0.88; y += 0.005) {
+          const ray = new Raycaster(bike.body.localToWorld(new Vector3(side * 0.6, y, z)),
+            new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
+          const skin = ray.intersectObject(probes[0], false)[0];
+          const backing = ray.intersectObject(probes[1], false)[0];
+          if (!skin || !backing) continue;
+          samples++;
+          expect(backing.distance - skin.distance,
+            `black return protrudes through ${side} side at y=${y}, z=${z}`).toBeGreaterThan(0.001);
+        }
+      }
+      expect(samples).toBeGreaterThan(25);
     } finally { material.dispose(); }
   });
 });

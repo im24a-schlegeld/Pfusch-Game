@@ -36,48 +36,49 @@ export const SUPERMOTO_SEAT: [number, number, number, number][] = [
   [0.708, 0.060, 0.007, 1.052],
 ];
 
-// The upper seam follows the gently rising rear saddle. A separate broad side
-// number panel masks the subframe without filling the open shock triangle.
+// The EXC number panel extends forward under the tank seam and continues
+// behind the fixed saddle. Keep its full depth without an outboard bulge.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
-  [0.125, 0.941, 0.170],
+  [0.130, 0.941, 0.115],
   [0.111, 0.950, 0.345],
   [0.103, 0.975, 0.530],
   [0.090, 1.023, 0.675],
-  [0.074, 1.052, 0.755],
-  [0.083, 1.012, 0.738],
-  [0.117, 0.965, 0.715],
+  [0.080, 1.0635, 0.810],
+  [0.087, 1.026, 0.790],
+  [0.117, 0.963, 0.760],
   [0.125, 0.929, 0.625],
   [0.137, 0.894, 0.530],
   [0.142, 0.756, 0.370],
   [0.142, 0.720, 0.305],
   [0.138, 0.705, 0.278],
-  [0.125, 0.782, 0.220],
-  [0.129, 0.881, 0.176],
+  [0.132, 0.782, 0.190],
+  [0.133, 0.881, 0.128],
 ];
 
 /** Sheet cross-sections: z, half width, crown height, edge height.
  * Tail-contact physics reads the final station's upper center tip. */
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
-  [0.17, 0.123, 0.008, 0.941],
+  [0.115, 0.128, 0.008, 0.941],
   [0.34, 0.111, 0.009, 0.9485],
   [0.53, 0.103, 0.010, 0.975],
   [0.675, 0.090, 0.010, 1.023],
-  [0.76, 0.074, 0.008, 1.052],
-  [0.85, 0.060, 0.006, 1.069],
-  [0.90, 0.052, 0.005, 1.074],
+  [0.76, 0.081, 0.008, 1.052],
+  [0.87, 0.077, 0.007, 1.077],
+  [0.96, 0.068, 0.006, 1.089],
+  [1.01, 0.057, 0.005, 1.095],
 ];
 
-/** z, half width, crown height, edge height. The marked flatter forward blade
+/** z, half width, crown height, edge height. The higher EXC forward blade
  * meets the mask at its crown; the short rear skirt turns steeply downward.
  * Longitudinal fit and tyre clearance are independent of this moulded profile. */
 export const SUPERMOTO_FRONT_FENDER: [number, number, number, number][] = [
-  [-1.045, 0.050, 0.003, 0.855],
-  [-1.020, 0.067, 0.007, 0.857],
-  [-0.970, 0.088, 0.014, 0.865],
-  [-0.915, 0.099, 0.022, 0.875],
-  [-0.870, 0.096, 0.027, 0.879],
-  [-0.858, 0.078, 0.028, 0.880],
-  [-0.760, 0.090, 0.030, 0.880],
+  [-1.045, 0.050, 0.003, 0.870],
+  [-1.020, 0.067, 0.007, 0.874],
+  [-0.970, 0.088, 0.014, 0.888],
+  [-0.915, 0.099, 0.022, 0.898],
+  [-0.870, 0.096, 0.027, 0.900],
+  [-0.858, 0.078, 0.028, 0.899],
+  [-0.760, 0.090, 0.030, 0.890],
   [-0.665, 0.091, 0.028, 0.880],
   [-0.572, 0.080, 0.019, 0.876],
   [-0.535, 0.074, 0.013, 0.850],
@@ -86,8 +87,9 @@ export const SUPERMOTO_FRONT_FENDER: [number, number, number, number][] = [
   [-0.452, 0.066, 0.006, 0.740],
 ];
 
-export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.840, 0.090];
-export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.500, 0.430];
+// More upright shock with its lower eye carried by the articulated rocker.
+export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.820, 0.300];
+export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.414, 0.385];
 
 export interface FitSurface {
   name: string;
