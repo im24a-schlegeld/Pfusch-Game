@@ -180,6 +180,9 @@ export function addSupermotoEngine(body: THREE.Group): void {
     metalness: 0.44,
     roughness: 0.49,
   });
+  const clutchFinish = new THREE.MeshStandardMaterial({
+    color: '#151b1d', metalness: 0.45, roughness: 0.40,
+  });
   const cylinder = new THREE.MeshStandardMaterial({
     color: '#6b7370',
     metalness: 0.42,
@@ -309,7 +312,7 @@ export function addSupermotoEngine(body: THREE.Group): void {
     rubber,
     'engine-clutch-gasket',
   );
-  add(
+  const clutchHousing = add(
     casting(
       clutch,
       [0.022, 0.516],
@@ -317,17 +320,92 @@ export function addSupermotoEngine(body: THREE.Group): void {
         [0.101, 0.92],
         [0.109, 1],
         [0.116, 1],
-        [0.125, 0.993],
-        [0.133, 0.973],
-        [0.14, 0.941],
-        [0.146, 0.9],
-        [0.15, 0.852],
-        [0.152, 0.8],
+        [0.124, 0.98],
+        [0.131, 0.93],
       ],
     ),
     cover,
+    'engine-clutch-housing',
+  );
+  // Separate round removable clutch cover, seated inside the asymmetric alloy
+  // housing. Its formed perimeter rolls into a broad, unbranded black face.
+  const clutchDisc = new THREE.Shape();
+  clutchDisc.absarc(0.006, 0.516, 0.088, 0, Math.PI * 2, false);
+  const clutchCover = add(
+    casting(clutchDisc, [0.006, 0.516], [
+      [0.112, 0.88], [0.119, 0.99], [0.127, 1], [0.135, 1],
+      [0.142, 0.98], [0.149, 0.925], [0.152, 0.86],
+    ]),
+    clutchFinish,
     'engine-clutch-cover',
   );
+
+  // The forward timing chest has its own contoured casting and gasket flange,
+  // rather than another oval protruding from the side of the engine.
+  const timing = new THREE.Shape();
+  timing.moveTo(-0.105, 0.616);
+  timing.quadraticCurveTo(-0.164, 0.633, -0.195, 0.603);
+  timing.quadraticCurveTo(-0.221, 0.573, -0.203, 0.532);
+  timing.quadraticCurveTo(-0.185, 0.487, -0.140, 0.450);
+  timing.quadraticCurveTo(-0.111, 0.430, -0.079, 0.435);
+  timing.quadraticCurveTo(-0.109, 0.478, -0.098, 0.530);
+  timing.quadraticCurveTo(-0.087, 0.569, -0.105, 0.616);
+  const timingChest = add(casting(timing, [-0.146, 0.535], [
+    [0.102, 0.91], [0.111, 1], [0.117, 0.985], [0.124, 0.93],
+  ]), cover, 'engine-timing-chest');
+
+  // Sample the actual cast face before placing a rib or fastener. Every foot
+  // enters its housing slightly, avoiding decorative hardware floating above
+  // curved shoulders when a casting profile changes.
+  const faceAt = (meshes: THREE.Mesh[], y: number, z: number) => {
+    for (const mesh of meshes) mesh.updateMatrixWorld(true);
+    return new THREE.Raycaster(new THREE.Vector3(1, y, z), new THREE.Vector3(-1, 0, 0))
+      .intersectObjects(meshes, false)[0]?.point.x;
+  };
+  const fastener = (surface: number, y: number, z: number, name: string, radius = 0.0035) => {
+    const outline = new THREE.Shape(), socket = new THREE.Path();
+    for (let i = 0; i <= 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const x = Math.cos(a), yy = Math.sin(a);
+      if (i === 0) { outline.moveTo(x * radius, yy * radius); socket.moveTo(x * radius * 0.43, yy * radius * 0.43); }
+      else { outline.lineTo(x * radius, yy * radius); socket.lineTo(x * radius * 0.43, yy * radius * 0.43); }
+    }
+    outline.holes.push(socket);
+    const geometry = new THREE.ExtrudeGeometry(outline, { depth: 0.0021, bevelEnabled: false, curveSegments: 1 });
+    geometry.rotateY(Math.PI / 2);
+    const bolt = add(geometry, head, name);
+    bolt.position.set(surface - 0.0012, y, z);
+    rod([surface - 0.0018, y, z], [surface + 0.0001, y, z], radius * 0.53,
+      dark, `${name}-socket-floor`, 6);
+  };
+  for (let i = 0; i < 8; i++) {
+    const angle = (i + 0.5) / 8 * Math.PI * 2;
+    const y = 0.516 + Math.sin(angle) * 0.079, z = 0.006 + Math.cos(angle) * 0.079;
+    const surface = faceAt([clutchCover], y, z);
+    if (surface !== undefined) fastener(surface, y, z, 'engine-clutch-fastener');
+  }
+  const coreCasting = group.getObjectByName('engine-crankcase') as THREE.Mesh;
+  const alloyCastings = [coreCasting, clutchHousing, timingChest];
+  for (const [z, y] of [
+    [-0.158, 0.610], [-0.198, 0.571], [-0.180, 0.521], [-0.148, 0.474],
+    [-0.093, 0.440], [-0.035, 0.432], [0.072, 0.444], [0.102, 0.491], [0.065, 0.589],
+  ]) {
+    // Keep alloy perimeter hardware outside the black cover's raised face.
+    if (Math.hypot(z - 0.006, y - 0.516) < 0.090) continue;
+    const surface = faceAt(alloyCastings, y, z);
+    if (surface !== undefined) fastener(surface, y, z, 'engine-case-fastener', 0.0032);
+  }
+  for (const profile of [
+    [[-0.174, 0.590], [-0.184, 0.558], [-0.169, 0.523], [-0.147, 0.498]],
+    [[-0.157, 0.484], [-0.137, 0.461], [-0.106, 0.448]],
+  ]) {
+    const points: Point[] = [];
+    for (const [z, y] of profile) {
+      const surface = faceAt(alloyCastings, y, z);
+      if (surface !== undefined) points.push([surface - 0.0018, y, z]);
+    }
+    if (points.length > 2) path(points, 0.0032, cover, 'engine-cast-reinforcing-rib');
+  }
 
   const ignition = new THREE.Shape();
   ignition.moveTo(-0.108, 0.599);

@@ -102,15 +102,23 @@ describe('Supermoto moulded rear overlap', () => {
       .find(part => part.geometry.getAttribute('position').getX(0) < 0)!;
     const p = cover.geometry.getAttribute('position'), boundary = cover.geometry.userData.sideBoundaryCount as number;
     const frontTip = Array.from({ length: boundary }, (_, i) => new Vector3().fromBufferAttribute(p, i))
-      .filter(point => Math.abs(point.z - 0.278) < 1e-6);
-    expect(Math.min(...frontTip.map(point => point.y))).toBeCloseTo(0.705, 6);
-    expect(Math.min(...Array.from({ length: boundary }, (_, i) => p.getZ(i)))).toBeCloseTo(0.115, 6);
+      .filter(point => Math.abs(point.z - 0.260) < 1e-6);
+    expect(Math.min(...frontTip.map(point => point.y))).toBeCloseTo(0.672, 6);
+    expect(Math.min(...Array.from({ length: boundary }, (_, i) => p.getZ(i)))).toBeCloseTo(0.070, 6);
+    let projectedArea = 0;
+    for (let i = 0; i < boundary; i++) {
+      const j = (i + 1) % boundary;
+      projectedArea += p.getY(i) * p.getZ(j) - p.getY(j) * p.getZ(i);
+    }
+    // The prior 0.088 m² panel left the marked middle and shock shoulder open.
+    // Require substantial actual coverage, rather than only moving its tip.
+    expect(Math.abs(projectedArea) / 2).toBeGreaterThan(0.115);
     const material = new MeshBasicMaterial({ side: DoubleSide });
     try {
       for (const part of bike.body.getObjectsByProperty('name', 'supermoto-side-cover') as Mesh[]) {
         const side = Math.sign(part.geometry.getAttribute('position').getX(0));
         const probe = new Mesh(part.geometry, material); probe.matrixWorld.copy(part.matrixWorld);
-        for (const [y, z] of [[0.90, 0.15], [0.82, 0.18]]) {
+        for (const [y, z] of [[0.90, 0.15], [0.82, 0.18], [0.86, 0.12], [0.77, 0.18], [0.735, 0.36], [0.90, 0.61]]) {
           const ray = new Raycaster(bike.body.localToWorld(new Vector3(side * 0.6, y, z)),
             new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
           expect(ray.intersectObject(probe, false).length,
@@ -126,8 +134,8 @@ describe('Supermoto moulded rear overlap', () => {
     expect(lower.length).toBeGreaterThan(8);
     for (const point of lower) {
       const expected = point.z <= 0.625
-        ? 0.894 + (point.z - 0.530) * (0.929 - 0.894) / (0.625 - 0.530)
-        : 0.929 + (point.z - 0.625) * (0.963 - 0.929) / (0.760 - 0.625);
+        ? 0.852 + (point.z - 0.530) * (0.883 - 0.852) / (0.625 - 0.530)
+        : 0.883 + (point.z - 0.625) * (0.925 - 0.883) / (0.755 - 0.625);
       expect(Math.abs(point.y - expected)).toBeLessThan(1e-6);
       expect(Math.abs(point.x)).toBeLessThan(0.140);
     }
@@ -148,9 +156,9 @@ describe('Supermoto moulded rear overlap', () => {
     const tp = tail.geometry.getAttribute('position');
     const rear = Array.from({ length: tp.count }, (_, i) => new Vector3().fromBufferAttribute(tp, i)).filter(p => p.z > 0.94);
     expect(Math.max(...rear.map(p => Math.abs(p.x)))).toBeLessThan(0.071);
-    expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(1.010, 6);
-    const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > 1.009);
-    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.100, 6);
+    expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(1.030, 6);
+    const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > 1.029);
+    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.112, 6);
   });
 
   it('keeps the inner thermal channel concealed behind each actual outer panel', () => {

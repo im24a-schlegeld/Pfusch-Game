@@ -39,20 +39,20 @@ export const SUPERMOTO_SEAT: [number, number, number, number][] = [
 // The EXC number panel extends forward under the tank seam and continues
 // behind the fixed saddle. Keep its full depth without an outboard bulge.
 export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
-  [0.130, 0.941, 0.115],
+  [0.140, 0.943, 0.070],
   [0.111, 0.950, 0.345],
   [0.103, 0.975, 0.530],
   [0.090, 1.023, 0.675],
-  [0.080, 1.0635, 0.810],
-  [0.087, 1.026, 0.790],
-  [0.117, 0.963, 0.760],
-  [0.125, 0.929, 0.625],
-  [0.137, 0.894, 0.530],
-  [0.142, 0.756, 0.370],
-  [0.142, 0.720, 0.305],
-  [0.138, 0.705, 0.278],
-  [0.132, 0.782, 0.190],
-  [0.133, 0.881, 0.128],
+  [0.078, 1.0702, 0.840],
+  [0.089, 1.012, 0.807],
+  [0.117, 0.925, 0.755],
+  [0.125, 0.883, 0.625],
+  [0.137, 0.852, 0.530],
+  [0.142, 0.720, 0.370],
+  [0.142, 0.681, 0.305],
+  [0.138, 0.672, 0.260],
+  [0.139, 0.755, 0.160],
+  [0.142, 0.860, 0.105],
 ];
 
 /** Sheet cross-sections: z, half width, crown height, edge height.
@@ -64,8 +64,8 @@ export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.675, 0.090, 0.010, 1.023],
   [0.76, 0.081, 0.008, 1.052],
   [0.87, 0.077, 0.007, 1.077],
-  [0.96, 0.068, 0.006, 1.089],
-  [1.01, 0.057, 0.005, 1.095],
+  [0.97, 0.068, 0.006, 1.101],
+  [1.03, 0.057, 0.005, 1.107],
 ];
 
 /** z, half width, crown height, edge height. The higher EXC forward blade
@@ -87,9 +87,10 @@ export const SUPERMOTO_FRONT_FENDER: [number, number, number, number][] = [
   [-0.452, 0.066, 0.006, 0.740],
 ];
 
-// More upright shock with its lower eye carried by the articulated rocker.
-export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.820, 0.300];
-export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.414, 0.385];
+// Reference-led inclined shock, seated below the tank. The compact lower
+// clevis sits above the arm bridge; rear wheel and swingarm datums stay fixed.
+export const SUPERMOTO_SHOCK_TOP: FitPoint = [0, 0.810, 0.125];
+export const SUPERMOTO_SHOCK_BOTTOM: FitPoint = [0, 0.463, 0.345];
 
 export interface FitSurface {
   name: string;

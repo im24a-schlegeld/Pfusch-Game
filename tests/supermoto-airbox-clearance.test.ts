@@ -12,6 +12,8 @@ vi.mock('../app/game/garmentTexture', () => ({
 }));
 
 const clearance = 0.003;
+const bodyworkNames = ['supermoto-airbox', 'airbox-inner-splash-wall',
+  'supermoto-airbox-access-panel', 'supermoto-middle-side-cover', 'supermoto-side-cover'];
 type Face = { triangle: Triangle; bounds: Box3 };
 type Tree = { bounds: Box3; faces?: Face[]; children?: [Tree, Tree] };
 
@@ -142,23 +144,43 @@ function surfaceSamples(faces: Face[], bounds: Box3) {
 }
 
 describe('actual Supermoto airbox / moving shock clearance', () => {
+  it('provides real openings around the relocated upper frame supports', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.updateMatrixWorld(true);
+    const inverse = bike.body.matrixWorld.clone().invert();
+    const airbox = bike.body.getObjectByName('supermoto-airbox') as Mesh;
+    const housing = tree(faces(airbox, inverse));
+    const supports = ['supermoto-shock-bridge-support', 'supermoto-shock-upper-brace']
+      .flatMap(name => bike.body.getObjectsByProperty('name', name)) as Mesh[];
+    expect(supports).toHaveLength(4);
+    for (const part of supports) for (const face of faces(part, inverse))
+      expect(nearbyGap(face, housing), part.name).toBeGreaterThanOrEqual(clearance);
+  });
+
   it('keeps every shock surface at least 3 mm outside the airbox over rebound, sag and compression', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     bike.root.updateMatrixWorld(true);
     // Cancel the full current body transform, including scale and suspension;
     // transform each moving mesh independently into the same chassis space.
     const initialInverse = bike.body.matrixWorld.clone().invert();
-    const airboxes = ['supermoto-airbox', 'airbox-inner-splash-wall', 'supermoto-airbox-access-panel']
-      .flatMap(name => bike.body.getObjectsByProperty('name', name)) as Mesh[];
-    expect(airboxes).toHaveLength(5);
+    const airboxes = bodyworkNames.flatMap(name => bike.body.getObjectsByProperty('name', name)) as Mesh[];
+    expect(airboxes).toHaveLength(9);
     const obstacles = airboxes.map(part => {
       const geometry = faces(part, initialInverse), hierarchy = tree(geometry);
       return { part, hierarchy, samples: surfaceSamples(geometry, hierarchy.bounds) };
     });
     const movingNames = ['supermoto-shock-damper', 'supermoto-shock-reservoir',
       'supermoto-shock-spring-seat', 'supermoto-shock-eyelet', 'rear-shock-spring'];
-    const moving = movingNames.flatMap(name => bike.body.getObjectsByProperty('name', name)) as Mesh[];
-    expect(moving).toHaveLength(7);
+    const movingRoots = movingNames.flatMap(name => bike.body.getObjectsByProperty('name', name));
+    expect(movingRoots).toHaveLength(7);
+    const moving: Mesh[] = [];
+    for (const root of movingRoots) root.traverse(part => {
+      if (part instanceof Mesh && !moving.includes(part)) moving.push(part);
+    });
+    // The separate upper barrel, reservoir caps and connecting neck are real
+    // moving solids too, even though they inherit their parent rig transform.
+    for (const name of ['supermoto-shock-upper-body', 'supermoto-shock-reservoir-cap',
+      'supermoto-shock-reservoir-neck']) expect(moving.some(part => part.name === name)).toBe(true);
     // Include both absolute travel stops, the exact zero input (static sag),
     // and densely spaced intermediate poses. Wheelie load exercises the other
     // real rear-load input; the animator determines linkage motion in all cases.
@@ -190,4 +212,29 @@ describe('actual Supermoto airbox / moving shock clearance', () => {
     }
     expect(insufficient, 'all actual faces and enclosed solids must retain at least 3 mm').toEqual([]);
   }, 60000);
+
+  it('keeps the header outside the expanded airbox and painted backing, including between mesh vertices', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.updateMatrixWorld(true);
+    const inverse = bike.body.matrixWorld.clone().invert();
+    const header = bike.body.getObjectByName('connected-exhaust-pipe') as Mesh;
+    const headerFaces = faces(header, inverse), hierarchy = tree(headerFaces);
+    const obstacles = [...bodyworkNames, 'radiator-shroud']
+      .flatMap(name => bike.body.getObjectsByProperty('name', name)) as Mesh[];
+    expect(obstacles).toHaveLength(11);
+    const insufficient: string[] = [];
+    for (const obstacle of obstacles) {
+      const geometry = faces(obstacle, inverse), target = tree(geometry);
+      if (boundsGap(hierarchy.bounds, target.bounds) >= clearance) continue;
+      let minimum = Infinity, closest: Vector3 | undefined;
+      for (const face of headerFaces) {
+        const gap = nearbyGap(face, target);
+        if (gap < minimum) { minimum = gap; closest = face.triangle.getMidpoint(new Vector3()); }
+      }
+      const enclosed = surfaceSamples(headerFaces, hierarchy.bounds).some(point => isInside(point, target));
+      if (enclosed || minimum < clearance)
+        insufficient.push(`${obstacle.name}; gap=${minimum}, enclosed=${enclosed}, near=${closest?.toArray().join(',')}`);
+    }
+    expect(insufficient, 'the complete pipe must retain at least 3 mm from the denser bodywork').toEqual([]);
+  });
 });

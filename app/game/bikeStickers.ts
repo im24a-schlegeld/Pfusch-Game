@@ -60,7 +60,7 @@ export function stickerSurfaces(
           (m) =>
             m instanceof THREE.MeshStandardMaterial && m.color.equals(color),
         ) ||
-        /tank|fairing|shroud|apron|leg-shield|fender|tail-shell/.test(
+        /tank|fairing|shroud|apron|leg-shield|fender|tail-shell|open-back-fork-guard/.test(
           object.name,
         )
       )
@@ -208,7 +208,7 @@ function projectedStickerGeometry(
  * a valid current placement and the persisted point/normal stay untouched. */
 function reshapedSurfacePoint(source: THREE.Mesh, point: THREE.Vector3, normal: THREE.Vector3) {
   if (!['radiator-shroud', 'supermoto-front-fender', 'supermoto-headlight-mask', 'supermoto-fuel-tank',
-    'supermoto-side-cover', 'supermoto-tail-fender'].includes(source.name))
+    'supermoto-side-cover', 'supermoto-tail-fender', 'open-back-fork-guard'].includes(source.name))
     return undefined;
   const positions = source.geometry.getAttribute('position'), index = source.geometry.getIndex();
   const triangle = new THREE.Triangle(), candidate = new THREE.Vector3(), faceNormal = new THREE.Vector3();

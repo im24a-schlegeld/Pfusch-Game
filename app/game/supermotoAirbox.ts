@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_SHOCK_DETAILS, SUPERMOTO_SHOCK_MOUNT_ROOT } from './supermotoShock';
 
 type Point = readonly [number, number, number];
 const rings = [
-  [0.075, 0.084, 0.046, 0.890],
-  [0.22, 0.108, 0.079, 0.862],
-  [0.43, 0.099, 0.044, 0.905],
+  [0.075, 0.110, 0.0805, 0.8555],
+  [0.22, 0.114, 0.102, 0.839],
+  [0.43, 0.108, 0.062, 0.887],
   [0.61, 0.064, 0.027, 0.990],
   [0.74, 0.053, 0.018, 1.031],
 ];
@@ -18,24 +19,40 @@ function capsuleSamples(a: Point, b: Point, radius: number) {
   }));
 }
 
-/** The original outer airbox profile is retained. A moulded underside tunnel
- * gives the upright shock and its forward mount room, with small pass-throughs
- * for the two braces that attach to the upper frame rails. */
+/** A deeper, broad-shouldered airbox closes the space under the number panels.
+ * Its saddle roof is retained. The moulded underside follows the inclined
+ * shock and piggyback reservoir, with pass-throughs for the upper braces. */
 export function supermotoAirboxGeometry() {
   const profile = new THREE.CatmullRomCurve3(rings.map(r => new THREE.Vector3(r[0], r[1], r[2])), false, 'catmullrom', 0.25);
   const centers = new THREE.CatmullRomCurve3(rings.map(r => new THREE.Vector3(r[0], r[3], 0)), false, 'catmullrom', 0.25);
   // The rounded 57 mm envelope encloses the 47.5 mm spring envelope and its
   // small lateral sweep near the fixed top eye over the full suspension travel.
+  const reservoirPoint = (t: number): Point => {
+    const point = new THREE.Vector3(...SUPERMOTO_SHOCK_TOP)
+      .lerp(new THREE.Vector3(...SUPERMOTO_SHOCK_BOTTOM), t);
+    point.x = SUPERMOTO_SHOCK_DETAILS.reservoirX;
+    return point.toArray() as [number, number, number];
+  };
+  const mount = SUPERMOTO_SHOCK_MOUNT_ROOT;
   const tunnel = [
     ...capsuleSamples(SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM, 0.057),
-    ...capsuleSamples([0, 0.885, 0.090], SUPERMOTO_SHOCK_TOP, 0.031),
+    ...capsuleSamples([0, mount[1], mount[2]], SUPERMOTO_SHOCK_TOP, 0.025),
+    ...capsuleSamples(reservoirPoint(SUPERMOTO_SHOCK_DETAILS.reservoirFrom - 0.006),
+      reservoirPoint(SUPERMOTO_SHOCK_DETAILS.reservoirTo + 0.006),
+      // Includes the cap's upward/rearward sweep as the inclined shock shortens.
+      SUPERMOTO_SHOCK_DETAILS.reservoirCapRadius + 0.012),
   ];
-  const supportT = (SUPERMOTO_SHOCK_TOP[2] - 0.120) / (0.730 - 0.120);
-  const braces = [-1, 1].map(side => new THREE.Line3(
-    new THREE.Vector3(side * THREE.MathUtils.lerp(0.085, 0.06154, supportT),
-      THREE.MathUtils.lerp(0.918, 0.97806, supportT), SUPERMOTO_SHOCK_TOP[2]),
-    new THREE.Vector3(side * 0.028, SUPERMOTO_SHOCK_TOP[1], SUPERMOTO_SHOCK_TOP[2]),
-  ));
+  const braces = [-1, 1].flatMap(side => [
+    { axis: new THREE.Line3(
+      new THREE.Vector3(side * mount[0], mount[1], mount[2]),
+      new THREE.Vector3(side * 0.028, SUPERMOTO_SHOCK_TOP[1], SUPERMOTO_SHOCK_TOP[2]),
+    ), clearance: 0.020 },
+    { axis: new THREE.Line3(
+      new THREE.Vector3(side * mount[0], mount[1], mount[2]),
+      new THREE.Vector3(side * THREE.MathUtils.lerp(0.085, 0.06154, 0.200 / 0.610),
+        THREE.MathUtils.lerp(0.918, 0.97806, 0.200 / 0.610), 0.320),
+    ), clearance: 0.022 },
+  ]);
   const positions: number[] = [], uvs: number[] = [], indices: number[] = [];
   const longitudinal = 80, segments = 48;
   for (let i = 0; i <= longitudinal; i++) {
@@ -54,7 +71,7 @@ export function supermotoAirboxGeometry() {
   }
   const point = (index: number) => new THREE.Vector3().fromArray(positions, index * 3);
   const nearBrace = (p: THREE.Vector3) => braces.some(brace =>
-    brace.closestPointToPoint(p, true, new THREE.Vector3()).distanceTo(p) < 0.018);
+    brace.axis.closestPointToPoint(p, true, new THREE.Vector3()).distanceTo(p) < brace.clearance);
   const triangle = (a: number, b: number, c: number) => {
     const points = [point(a), point(b), point(c)];
     // Deliberate clearance slots in the housing, not a bracket penetrating a

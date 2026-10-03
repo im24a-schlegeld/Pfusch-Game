@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  Box3,
   CylinderGeometry,
   DoubleSide,
   InstancedMesh,
@@ -20,6 +21,7 @@ import {
   supermotoLowerFramePath,
   SUPERMOTO_PIVOT_FRAME_JOINT,
 } from '../app/game/supermotoFrame';
+import { envelope, faces, gap, triangleGap } from './helpers/solidClearance';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -29,6 +31,70 @@ vi.mock('../app/game/garmentTexture', () => ({
 }));
 
 describe('compact Supermoto engine cradle', () => {
+  it('wraps the main spars behind the case and seats the sculpted pivot-carrier fasteners in real metal', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.updateMatrixWorld(true);
+    const finish = new MeshBasicMaterial({ side: DoubleSide });
+    const spars = bike.body.getObjectsByProperty('name', 'supermoto-frame-main-spar') as Mesh[];
+    const carriers = bike.body.getObjectsByProperty('name', 'supermoto-frame-pivot-carrier') as Mesh[];
+    const bolts = bike.body.getObjectsByProperty('name', 'supermoto-frame-carrier-fastener') as Mesh<CylinderGeometry>[];
+    expect(carriers).toHaveLength(2); expect(bolts).toHaveLength(6);
+    for (const spar of spars) {
+      const p = spar.geometry.getAttribute('position');
+      const rearWrap: number[] = [];
+      for (let i = 0; i < p.count; i++) if (p.getY(i) > 0.635 && p.getY(i) < 0.68) rearWrap.push(p.getZ(i));
+      expect(rearWrap.length).toBeGreaterThan(10);
+      expect(Math.max(...rearWrap)).toBeGreaterThan(0.19);
+    }
+    try {
+      for (const carrier of carriers) {
+        const p = carrier.geometry.getAttribute('position');
+        const side = Math.sign(p.getX(0));
+        const probe = new Mesh(carrier.geometry, finish); probe.matrixWorld.copy(carrier.matrixWorld);
+        const direction = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
+        const opening = bike.body.localToWorld(new Vector3(side, 0.562, 0.179));
+        expect(new Raycaster(opening, direction).intersectObject(probe, false)).toHaveLength(0);
+        for (const bolt of bolts.filter(part => Math.sign(part.position.x) === side)) {
+          const center = bike.body.worldToLocal(bolt.getWorldPosition(new Vector3()));
+          const ray = new Raycaster(bike.body.localToWorld(center.clone().setX(side)), direction);
+          const hits = ray.intersectObject(probe, false);
+          expect(hits.length, 'carrier screw must pass through actual metal, not a floating detail').toBeGreaterThan(0);
+          const x = hits.map(hit => bike.body.worldToLocal(hit.point.clone()).x);
+          expect(Math.min(...x)).toBeLessThan(center.x);
+          expect(Math.max(...x)).toBeGreaterThan(center.x);
+        }
+      }
+    } finally { finish.dispose(); }
+  });
+
+  it('clears the new engine exterior and header with the whole curved frame and carrier surfaces', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike.root.updateMatrixWorld(true);
+    const inverse = bike.body.matrixWorld.clone().invert();
+    const frame = ['supermoto-frame-main-spar', 'supermoto-frame-pivot-carrier', 'supermoto-frame-carrier-fastener']
+      .flatMap(name => bike.body.getObjectsByProperty('name', name)) as Mesh[];
+    const obstacles: Mesh[] = [];
+    bike.body.traverse(part => {
+      if (part instanceof Mesh && (part.name.startsWith('engine-') || part.name === 'connected-exhaust-pipe')) obstacles.push(part);
+    });
+    const targets = obstacles.map(part => ({ part, bounds: envelope(part, inverse), faces: faces(part, inverse) }));
+    const failures: string[] = [];
+    for (const part of frame) {
+      const bounds = envelope(part, inverse), sourceFaces = faces(part, inverse);
+      for (const target of targets) {
+        const threshold = target.part.name === 'connected-exhaust-pipe' ? 0.002 : 0.001;
+        if (gap(bounds, target.bounds) > threshold) continue;
+        let minimum = Infinity;
+        for (const a of sourceFaces) for (const b of target.faces) {
+          if (gap(a.bounds, b.bounds) > Math.min(minimum, threshold)) continue;
+          minimum = Math.min(minimum, triangleGap(a.triangle, b.triangle));
+        }
+        if (minimum <= threshold) failures.push(`${part.name}/${target.part.name}: ${minimum}`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
   it('keeps the actual fixed bearing branches and moving forward bridge clear through full suspension travel', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     const finish = new MeshBasicMaterial({ side: DoubleSide });
@@ -39,6 +105,8 @@ describe('compact Supermoto engine cradle', () => {
       'supermoto-frame-central-up-tube',
       'supermoto-steering-neck-gusset',
       'supermoto-cradle-crossmember',
+      'supermoto-frame-pivot-carrier',
+      'supermoto-frame-carrier-fastener',
     ];
     const frames = frameNames.flatMap((name) =>
       bike.body.getObjectsByProperty('name', name),
@@ -54,20 +122,24 @@ describe('compact Supermoto engine cradle', () => {
     bike.body.traverse((object) => {
       if (
         object instanceof Mesh &&
-        /engine-(crankcase|clutch-cover|ignition-cover|water-jacket|cylinder-head|output-shaft)/.test(
+        /engine-(crankcase|clutch-cover|clutch-housing|timing-chest|ignition-cover|water-jacket|cylinder-head|output-shaft|cast-reinforcing-rib|case-fastener|clutch-fastener)/.test(
           object.name,
         )
       )
         cases.push(object);
     });
     const direction = new Vector3(0.719, 0.417, 0.557).normalize();
+    const proxyBounds = new WeakMap<Mesh, Box3>();
     const proxy = (object: Mesh) => {
       const mesh = new Mesh(object.geometry, finish);
       mesh.name = object.name;
       mesh.matrixWorld.copy(object.matrixWorld);
+      proxyBounds.set(mesh, envelope(object, new Matrix4()));
       return mesh;
     };
     const clear = (point: Vector3, target: Mesh, source: string) => {
+      const bounds = proxyBounds.get(target);
+      if (bounds && !bounds.containsPoint(point)) return;
       const hits = new Raycaster(point, direction)
         .intersectObject(target, false)
         .map((hit) => hit.distance)

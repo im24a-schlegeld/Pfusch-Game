@@ -13,9 +13,9 @@ export const SUPERMOTO_SWINGARM = Object.freeze({
   endZ: SUPERMOTO_CHASSIS.rearAxle + 0.036,
   pivotHalfWidth: 0.025,
   axleHalfWidth: 0.0185,
-  pivotHalfHeight: 0.042,
-  axleHalfHeight: 0.024,
-  chamfer: 0.003,
+  pivotHalfHeight: 0.056,
+  axleHalfHeight: 0.031,
+  chamfer: 0.0035,
   pivotBoreRadius: 0.0337,
   axleSlotRadius: 0.0127,
   axleSlotHalfTravel: 0.009,
@@ -35,30 +35,32 @@ const widthAt = (z: number) =>
   );
 const centerAt = (z: number) =>
   THREE.MathUtils.lerp(dimensions.pivotY, dimensions.axleY, fraction(z));
-const halfHeightAt = (z: number) =>
-  THREE.MathUtils.lerp(
-    dimensions.pivotHalfHeight,
-    dimensions.axleHalfHeight,
-    fraction(z),
-  );
-
-/** Clockwise side outline in (Z,Y), with clipped terminal corners. Both the
- * upper and lower load-bearing edges are straight manufactured surfaces. */
+/** The forged pivot shoulder widens into the box section, then the upper
+ * ridge and lower load path converge toward the machined axle carrier.
+ * Offsets are presentation datums; both bearing axes remain unchanged. */
 function outline(): Point[] {
   const start = dimensions.frontZ;
   const end = dimensions.endZ;
-  const top = (z: number) => centerAt(z) + halfHeightAt(z);
-  const bottom = (z: number) => centerAt(z) - halfHeightAt(z);
-  return [
-    new THREE.Vector2(start, top(start) - 0.008),
-    new THREE.Vector2(start + 0.014, top(start + 0.014)),
-    new THREE.Vector2(end - 0.014, top(end - 0.014)),
-    new THREE.Vector2(end, top(end) - 0.008),
-    new THREE.Vector2(end, bottom(end) + 0.008),
-    new THREE.Vector2(end - 0.014, bottom(end - 0.014)),
-    new THREE.Vector2(start + 0.014, bottom(start + 0.014)),
-    new THREE.Vector2(start, bottom(start) + 0.008),
+  const profile: [number, number][] = [
+    [start, 0.035], [0.080, 0.055], [0.130, 0.062],
+    [0.230, 0.058], [0.380, 0.048], [0.530, 0.039],
+    [0.650, 0.025], [0.690, 0.020], [0.710, 0.026],
+    [end - 0.010, 0.028], [end, 0.018],
+    [end, -0.018], [end - 0.010, -0.030], [0.708, -0.033],
+    [0.670, -0.029], [0.530, -0.040], [0.380, -0.052],
+    [0.230, -0.061], [0.130, -0.055], [0.080, -0.046],
+    [start, -0.028],
   ];
+  return profile.map(([z, offset]) => new THREE.Vector2(z, centerAt(z) + offset));
+}
+
+/** Shallow pressed channel in each outside face, not a painted stripe. */
+function sideChannel(): Point[] {
+  return [
+    [0.177, 0.016], [0.208, 0.027], [0.370, 0.020],
+    [0.548, 0.011], [0.649, -0.001], [0.623, -0.013],
+    [0.380, -0.025], [0.205, -0.030], [0.177, -0.019],
+  ].map(([z, offset]) => new THREE.Vector2(z, centerAt(z) + offset));
 }
 
 const cross2 = (a: Point, b: Point) => a.x * b.y - a.y * b.x;
@@ -121,6 +123,7 @@ export function supermotoSwingarmGeometry(side: number) {
   const contour = outline();
   const faceContour = inset(contour, dimensions.chamfer);
   const holes = [pivotHole(), axleSlot()];
+  const channel = sideChannel();
   const positions: number[] = [];
   const indices: number[] = [];
   const vertex = (point: Point, face: number, edge = false) =>
@@ -155,9 +158,10 @@ export function supermotoSwingarmGeometry(side: number) {
   };
 
   // Triangulation uses the true holes, never a black decal placed over metal.
-  const facePoints = [...faceContour, ...holes.flat()];
-  const faces = THREE.ShapeUtils.triangulateShape(faceContour, holes);
   for (const face of [-1, 1]) {
+    const faceHoles = face === side ? [...holes, channel] : holes;
+    const facePoints = [...faceContour, ...faceHoles.flat()];
+    const faces = THREE.ShapeUtils.triangulateShape(faceContour, faceHoles);
     const outward = new THREE.Vector3(face, 0, 0);
     for (const [a, b, c] of faces)
       triangle(
@@ -166,6 +170,18 @@ export function supermotoSwingarmGeometry(side: number) {
         vertex(facePoints[c], face),
         outward,
       );
+  }
+  const channelDepth = 0.003;
+  const floorVertex = (point: Point) => vertex(point, side)
+    .add(new THREE.Vector3(-side * channelDepth, 0, 0));
+  for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(channel, []))
+    triangle(floorVertex(channel[a]), floorVertex(channel[b]), floorVertex(channel[c]),
+      new THREE.Vector3(side, 0, 0));
+  for (let i = 0; i < channel.length; i++) {
+    const next = (i + 1) % channel.length;
+    const delta = channel[next].clone().sub(channel[i]);
+    quad(vertex(channel[i], side), vertex(channel[next], side), floorVertex(channel[next]), floorVertex(channel[i]),
+      new THREE.Vector3(0, -delta.x, delta.y));
   }
   for (let index = 0; index < contour.length; index++) {
     const next = (index + 1) % contour.length;

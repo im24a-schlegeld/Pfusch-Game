@@ -12,7 +12,6 @@ import {
   SUPERMOTO_CHASSIS,
 } from '../app/game/supermotoFit';
 import { SUPERMOTO_STATIC_SAG, supermotoSettledOffset } from '../app/game/supermotoRideHeight';
-import { solveSupermotoLinkage } from '../app/game/supermotoLinkage';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -114,7 +113,7 @@ describe('active fork and rear suspension', () => {
         bottom
           .clone()
           .applyMatrix4(shock.matrix)
-          .distanceTo(model === '450' ? solveSupermotoLinkage(rear.matrix).shock : bottom.clone().applyMatrix4(rear.matrix)),
+          .distanceTo(bottom.clone().applyMatrix4(rear.matrix)),
       ).toBeLessThan(1e-10);
       expect(
         top.distanceTo(bottom.clone().applyMatrix4(shock.matrix)),

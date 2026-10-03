@@ -6,6 +6,7 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  MeshStandardMaterial,
   Raycaster,
   Vector3,
 } from 'three';
@@ -196,6 +197,61 @@ describe('formed Supermoto single-cylinder engine', () => {
         distinct.length % 2,
         'the marked front outlet must have a physical seat in the engine casting',
       ).toBe(1);
+    } finally {
+      finish.dispose();
+    }
+  });
+
+  it('seats the round black removable cover in a separately formed alloy housing', () => {
+    const removable = part('engine-clutch-cover'), housing = part('engine-clutch-housing');
+    const outer = new Box3().setFromObject(removable), seat = new Box3().setFromObject(housing);
+    const size = outer.getSize(new Vector3());
+    expect(size.y / size.z, 'round cover silhouette').toBeCloseTo(1, 2);
+    expect(outer.min.x).toBeLessThan(seat.max.x);
+    expect(outer.max.x - seat.max.x).toBeGreaterThan(0.015);
+    expect(outer.max.x).toBeLessThanOrEqual(0.152001);
+    const finish = removable.material as MeshStandardMaterial;
+    expect(finish.color.r + finish.color.g + finish.color.b).toBeLessThan(0.05);
+    expect(finish.color.equals((housing.material as MeshStandardMaterial).color)).toBe(false);
+    const casting = part('engine-timing-chest');
+    expect(new Box3().setFromObject(casting).min.z).toBeLessThan(outer.min.z - 0.1);
+  });
+
+  it('seats actual recessed fasteners in the cast surfaces without expanding the engine envelope', () => {
+    const bolts = ['engine-clutch-fastener', 'engine-case-fastener']
+      .flatMap(name => body.getObjectsByProperty('name', name)) as Mesh[];
+    expect(body.getObjectsByProperty('name', 'engine-clutch-fastener')).toHaveLength(8);
+    expect(body.getObjectsByProperty('name', 'engine-case-fastener').length).toBeGreaterThanOrEqual(7);
+    const finish = new MeshBasicMaterial({ side: DoubleSide });
+    try {
+      for (const bolt of bolts) {
+        const substrates = (bolt.name === 'engine-clutch-fastener'
+          ? ['engine-clutch-cover']
+          : ['engine-crankcase', 'engine-clutch-housing', 'engine-timing-chest'])
+          .map(name => {
+            const source = part(name), proxy = new Mesh(source.geometry, finish);
+            proxy.matrixWorld.copy(source.matrixWorld);
+            return proxy;
+          });
+        const bounds = new Box3().setFromObject(bolt);
+        const origin = new Vector3(1, bolt.position.y, bolt.position.z);
+        const ray = new Raycaster(origin, new Vector3(-1, 0, 0));
+        const seat = ray.intersectObjects(substrates, false)[0]?.point.x;
+        expect(seat, 'each bolt reaches an actual cast face').toBeDefined();
+        expect(bounds.min.x).toBeLessThan(seat!);
+        expect(bounds.max.x).toBeGreaterThan(seat!);
+        expect(bounds.max.x).toBeLessThanOrEqual(0.152001);
+        const proxy = new Mesh(bolt.geometry, finish);
+        proxy.matrixWorld.copy(bolt.matrixWorld);
+        expect(ray.intersectObject(proxy, false), 'the hex socket must be a real recess').toHaveLength(0);
+        const floor = body.getObjectsByProperty('name', `${bolt.name}-socket-floor`)
+          .find(part => Math.abs(part.position.y - bolt.position.y) < 1e-8
+            && Math.abs(part.position.z - bolt.position.z) < 1e-8) as Mesh;
+        expect(floor).toBeInstanceOf(Mesh);
+        const floorSurface = ray.intersectObject(floor, false)[0]?.point.x;
+        expect(floorSurface).toBeGreaterThan(seat!);
+        expect(bounds.max.x - floorSurface!).toBeGreaterThan(0.0005);
+      }
     } finally {
       finish.dispose();
     }

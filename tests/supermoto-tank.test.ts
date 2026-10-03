@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   Box3,
-  CylinderGeometry,
+  DoubleSide,
   Mesh,
   MeshStandardMaterial,
   Raycaster,
@@ -20,7 +20,7 @@ vi.mock('../app/game/garmentTexture', () => ({
 describe('exposed Supermoto tank and rounded shrouds', () => {
   let bike: ReturnType<typeof makeBike>;
   beforeAll(() => {
-    bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    bike = makeBike({ ...newPlayer(), bike: '450', paint: '#879052' }, []);
     bike.root.updateMatrixWorld(true);
   }, 30000);
 
@@ -88,7 +88,8 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
     for (const side of [-1, 1]) {
       const shroud = (bike.body.getObjectsByProperty('name', 'radiator-shroud') as Mesh[])
         .find(part => part.geometry.getAttribute('position').getX(0) * side > 0)!;
-      for (const [y, z] of [[0.710, -0.315], [0.775, -0.360], [0.875, -0.430], [0.955, 0.025]]) {
+      for (const [y, z] of [[0.660, -0.315], [0.710, -0.360], [0.850, -0.430],
+        [0.725, -0.222], [0.775, -0.190], [0.955, 0.025]]) {
         const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
         const direction = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
         const hit = new Raycaster(origin, direction).intersectObject(shroud, false)[0];
@@ -180,23 +181,23 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
     expect(guards).toHaveLength(2);
     const tire = bike.wheels[0].getObjectByName('tire')!;
     for (const guard of guards) {
-      const g = guard.geometry as CylinderGeometry;
-      expect(g.parameters.openEnded).toBe(true);
-      expect(g.parameters.thetaLength).toBeLessThan(Math.PI * 1.5);
-      expect(g.parameters.height).toBeGreaterThan(0.4);
+      const g = guard.geometry;
+      g.computeBoundingBox();
+      expect(g.boundingBox!.max.y - g.boundingBox!.min.y).toBeGreaterThan(0.4);
+      expect((guard.material as MeshStandardMaterial).color.getHexString()).toBe('879052');
+      const localGuard = new Mesh(g, new MeshStandardMaterial({ side: DoubleSide }));
+      // A longitudinal ray behind the slider sees no closure at either end;
+      // the matching ray in front hits the actual moulded shell.
+      expect(new Raycaster(new Vector3(0, -0.3, 0.025), new Vector3(0, 1, 0))
+        .intersectObject(localGuard, false)).toHaveLength(0);
+      expect(new Raycaster(new Vector3(0, 0, -0.1), new Vector3(0, 0, 1))
+        .intersectObject(localGuard, false).length).toBeGreaterThan(1);
+      localGuard.material.dispose();
       const p = g.getAttribute('position');
       let checked = 0;
-      for (let i = 0; i <= g.parameters.radialSegments; i++)
-        for (const t of [0.2, 0.4, 0.6, 0.8]) {
+      for (let i = 0; i < p.count; i++) {
           const point = new Vector3()
             .fromBufferAttribute(p, i)
-            .lerp(
-              new Vector3().fromBufferAttribute(
-                p,
-                i + g.parameters.radialSegments + 1,
-              ),
-              t,
-            )
             .applyMatrix4(guard.matrixWorld);
           const local = bike.body.worldToLocal(point.clone()),
             side = Math.sign(local.x);

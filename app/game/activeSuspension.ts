@@ -1,7 +1,6 @@
 import { Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import { SUPERMOTO_SHOCK_BOTTOM, SUPERMOTO_SHOCK_TOP } from './supermotoFit';
 import { SUPERMOTO_REAR_PIVOT, SUPERMOTO_STATIC_SAG } from './supermotoRideHeight';
-import { createSupermotoLinkage } from './supermotoLinkage';
 
 type Point = readonly [number, number, number];
 const xAxis = new Vector3(1, 0, 0);
@@ -123,7 +122,6 @@ function shockRig(
   names: ReadonlySet<string>,
   top: Point,
   bottom: Point,
-  linkedBottom?: Vector3,
 ) {
   const group = new Group();
   group.name = 'active-rear-shock';
@@ -146,8 +144,7 @@ function shockRig(
     stretch = new Matrix4(),
     rotationMatrix = new Matrix4();
   return (rearMatrix: Matrix4) => {
-    if (linkedBottom) moved.copy(linkedBottom);
-    else moved.copy(end).applyMatrix4(rearMatrix);
+    moved.copy(end).applyMatrix4(rearMatrix);
     direction.subVectors(moved, origin);
     const ratio = direction.length() / length;
     rotation.setFromUnitVectors(axis, direction.normalize());
@@ -179,6 +176,7 @@ const motorcycleRear = new Set([
   'swingarm-crossmember',
   'swingarm-forward-crossmember',
   'shock-lower-link',
+  'supermoto-shock-lower-pin',
   'sport-shock-swingarm-bridge',
   'sport-rear-hugger',
   'sport-hugger-swingarm-foot',
@@ -211,7 +209,6 @@ export function createRearSuspension(body: Group, model: string) {
   rear.name = 'rear-suspension-axle';
   body.add(rear);
   const shockUpdates: ((matrix: Matrix4) => void)[] = [];
-  const linkage = model === '450' ? createSupermotoLinkage(body) : undefined;
   const parts =
     model === '125'
       ? []
@@ -231,7 +228,6 @@ export function createRearSuspension(body: Group, model: string) {
         ]),
         SUPERMOTO_SHOCK_TOP,
         SUPERMOTO_SHOCK_BOTTOM,
-        linkage?.pose.shock,
       ),
     );
   if (model === '701')
@@ -307,7 +303,6 @@ export function createRearSuspension(body: Group, model: string) {
           object.matrixWorldNeedsUpdate = true;
         }
       }
-      linkage?.update(rear.matrix);
       for (const update of shockUpdates) update(rear.matrix);
       for (const chain of chains) {
         for (let i = 0; i < chain.matrices.length; i++) {

@@ -54,6 +54,8 @@ import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supe
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry, SUPERMOTO_LAMP_BULB, SUPERMOTO_MASK_STRAP_ANCHORS, SUPERMOTO_FRONT_FENDER_MOUNT } from './supermotoBodywork';
 import { supermotoProjectorGeometry, supermotoLowerLightGuideGeometry } from './supermotoHeadlight';
 import { supermotoFuelTankGeometry } from './supermotoTank';
+import { supermotoForkGuardGeometry } from './supermotoForkGuards';
+import { SUPERMOTO_SHOCK_DETAILS } from './supermotoShock';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
 import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, addSupermotoMainFrame } from './supermotoFrame';
@@ -61,7 +63,7 @@ import { SUPERMOTO_SWINGARM, supermotoSwingarmGeometry } from './supermotoSwinga
 import { supermotoTireMaterial } from './supermotoTire';
 import { supermotoGripPoint } from './supermotoCockpit';
 import { supermotoSettledOffset } from './supermotoRideHeight';
-import { SUPERMOTO_LINKAGE, addSupermotoLinkage } from './supermotoLinkage';
+import { SUPERMOTO_SHOCK_LOWER_MOUNT, addSupermotoShockMount } from './supermotoShockMount';
 import { addCleanCrossbody, addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { finishSupermotoSuspension } from './v39SuspensionFinish';
 import { fitRearExitExhaust, finishWheelColors, fairShoulder, blackSprings, darkenWardrobe, finishRequestedModelParts } from './v40ModelFinish';
@@ -1133,48 +1135,51 @@ export function makeBike(player: Player, products: Product[]) {
         0.046,
         paint,
       );
-      // A moulded U-section shields the front and sides of the slider. The
-      // rear stays open, as on a real fork protector; no end caps seal it.
+      // A moulded shell follows the lower moving fork, with rounded
+      // shoulders, an open back and the existing selected body paint.
       const guardLength = (forkGuard.geometry as THREE.CylinderGeometry)
         .parameters.height;
       forkGuard.geometry.dispose();
-      forkGuard.geometry = new THREE.CylinderGeometry(
-        0.046,
-        0.036,
-        guardLength,
-        28,
-        1,
-        true,
-        Math.PI * 0.35,
-        Math.PI * 1.3,
-      );
+      forkGuard.geometry = supermotoForkGuardGeometry(guardLength, s);
       const guardMaterial = paint.clone();
       guardMaterial.side = THREE.DoubleSide;
       forkGuard.material = guardMaterial;
       forkGuard.name = 'open-back-fork-guard';
+      // Both lower bosses reach the actual slider. They are children of the
+      // existing guard, retaining the saved sticker and suspension paths.
+      for (const y of [-guardLength / 2 + 0.022, -guardLength / 2 + 0.060]) {
+        rod(forkGuard, [0, y, -0.038], [0, y, -0.019], 0.007, guardMaterial)
+          .name = 'supermoto-fork-guard-boss';
+        rod(forkGuard, [0, y, -0.0395], [0, y, -0.036], 0.005, alloy)
+          .name = 'supermoto-fork-guard-fastener';
+      }
       const shroud = mesh(body, supermotoShroudGeometry(s), paint);
       shroud.name = 'radiator-shroud';
       mesh(body, supermotoSideCoverGeometry(s), paint).name = 'supermoto-side-cover';
-      // A separate airbox access panel follows the front edge of the white
-      // number panel, with a small parting line and the black tank above it.
+      // The black airbox door continues behind the number panel and tank;
+      // its lower return closes the middle without occupying the hot pipe.
       sidePanel(body, s, [
-        [0.125, 0.933, 0.155],
-        [0.127, 0.863, 0.159],
-        [0.128, 0.802, 0.191],
-        [0.132, 0.779, 0.244],
-        [0.120, 0.812, 0.117],
-        [0.112, 0.833, 0.067],
+        [0.119, 0.925, 0.075],
+        [0.117, 0.929, 0.218],
+        [0.115, 0.875, 0.370],
+        [0.114, 0.811, 0.388],
+        [0.116, 0.797, 0.314],
+        [0.119, 0.766, 0.213],
+        [0.121, 0.743, 0.122],
+        [0.124, 0.749, 0.025],
+        [0.126, 0.795, -0.045],
+        [0.129, 0.866, -0.050],
       ], matteBlack, 0.004).name = 'supermoto-airbox-access-panel';
-      // A shallow upper airbox cover continues the tank wing to the rear
-      // number panel. Its lower edge leaves the shock and engine bay open.
+      // A continuous painted shoulder joins the front and rear skins, while
+      // the fitted black access door forms the recessed area beneath it.
       sidePanel(body, s, [
-        [0.128, 0.947, 0.165],
-        [0.125, 0.941, 0.170],
-        [0.129, 0.881, 0.176],
-        [0.138, 0.890, 0.071],
+        [0.129, 0.947, 0.025],
+        [0.127, 0.947, 0.165],
+        [0.125, 0.899, 0.184],
+        [0.127, 0.893, 0.064],
       ], paint, 0.004).name = 'supermoto-middle-side-cover';
-      // The inner liner closes the under-seat body at its sides, leaving
-      // clearance around the forward-inclined spring and its travel.
+      // Deep inner cheeks visually package the upper spring. They sit outside
+      // its swept envelope; the lower coil and actual linkage stay visible.
       sidePanel(
         body,
         s,
@@ -1182,9 +1187,9 @@ export function makeBike(player: Player, products: Product[]) {
           [0.096, 0.932, 0.184],
           [0.095, 0.953, 0.544],
           [0.092, 0.954, 0.603],
-          [0.100, 0.848, 0.444],
-          [0.104, 0.800, 0.307],
-          [0.100, 0.805, 0.193],
+          [0.105, 0.815, 0.444],
+          [0.105, 0.775, 0.307],
+          [0.102, 0.770, 0.193],
         ],
         dark,
         0.006,
@@ -1280,44 +1285,59 @@ export function makeBike(player: Player, products: Product[]) {
     rod(body, [-0.19, SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.pivotZ],
       [0.19, SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.pivotZ], 0.033, dark).name = 'swingarm-pivot';
     addSupermotoEngine(body);
+    const detail = SUPERMOTO_SHOCK_DETAILS;
     const damperTop = V(SUPERMOTO_SHOCK_TOP),
       damperBottom = V(SUPERMOTO_SHOCK_BOTTOM),
       axis = damperBottom.clone().sub(damperTop).normalize(),
       radial = new THREE.Vector3(1, 0, 0),
       cross = new THREE.Vector3().crossVectors(axis, radial);
-    rod(body, [-0.108, 0.885, 0.090], [0.108, 0.885, 0.090], 0.024, dark).name =
+    rod(body, [-detail.mountHalfWidth, detail.mountRoot[1], detail.mountRoot[2]],
+      [detail.mountHalfWidth, detail.mountRoot[1], detail.mountRoot[2]], 0.021, dark).name =
       'shock-frame-crossmember';
     rod(
       body,
-      [0, 0.885, 0.090],
+      [...detail.mountRoot],
       damperTop.toArray() as Point,
-      0.024,
+      0.018,
       dark,
     ).name = 'shock-upper-mount';
     for (const side of [-1, 1]) {
-      const supportT = (damperTop.z - 0.120) / (0.730 - 0.120);
-      rod(body, [side * THREE.MathUtils.lerp(0.085, 0.06154, supportT),
-        THREE.MathUtils.lerp(0.918, 0.97806, supportT), damperTop.z],
+      rod(body, [side * detail.mountHalfWidth, detail.mountRoot[1], detail.mountRoot[2]],
       [side * 0.028, damperTop.y, damperTop.z], 0.012, dark).name = 'supermoto-shock-upper-brace';
     }
     rod(
       body,
-      [CHAIN_DRIVE.leftSwingarmX, SUPERMOTO_LINKAGE.bridge[1], SUPERMOTO_LINKAGE.bridge[2]],
-      [CHAIN_DRIVE.rightSwingarmX, SUPERMOTO_LINKAGE.bridge[1], SUPERMOTO_LINKAGE.bridge[2]],
+      [CHAIN_DRIVE.leftSwingarmX, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]],
+      [CHAIN_DRIVE.rightSwingarmX, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]],
       0.022,
       alloy,
     ).name = 'swingarm-crossmember';
-    addSupermotoLinkage(body, alloy, dark);
-    rod(
+    addSupermotoShockMount(body, alloy, dark);
+    const damper = rod(
       body,
       damperTop.toArray() as Point,
       damperBottom.toArray() as Point,
       0.017,
       alloy,
-    ).name = 'supermoto-shock-damper';
+    );
+    damper.name = 'supermoto-shock-damper';
     const damperAt = (t: number): Point => damperTop.clone().lerp(damperBottom, t).toArray() as Point;
-    rod(body, damperAt(0.10), damperAt(0.65), 0.021, dark).name = 'supermoto-shock-reservoir';
-    for (const t of [0.115, 0.885])
+    const barrel = rod(body, damperAt(detail.bodyFrom), damperAt(detail.bodyTo), detail.bodyRadius, alloy);
+    barrel.name = 'supermoto-shock-upper-body';
+    damper.attach(barrel);
+    const reservoirAt = (t: number): Point => {
+      const at = damperAt(t); at[0] += detail.reservoirX; return at;
+    };
+    const reservoir = rod(body, reservoirAt(detail.reservoirFrom), reservoirAt(detail.reservoirTo),
+      detail.reservoirRadius, alloy);
+    reservoir.name = 'supermoto-shock-reservoir';
+    for (const t of [detail.reservoirFrom, detail.reservoirTo]) {
+      const cap = rod(body, reservoirAt(t - 0.006), reservoirAt(t + 0.006), detail.reservoirCapRadius, dark);
+      cap.name = 'supermoto-shock-reservoir-cap'; reservoir.attach(cap);
+    }
+    const reservoirMount = rod(body, damperAt(0.10), reservoirAt(0.10), 0.012, alloy);
+    reservoirMount.name = 'supermoto-shock-reservoir-neck'; reservoir.attach(reservoirMount);
+    for (const t of [detail.upperSpringSeat, detail.lowerSpringSeat])
       rod(body, damperAt(t - 0.015), damperAt(t + 0.015), 0.046, dark).name = 'supermoto-shock-spring-seat';
     for (const end of [damperTop, damperBottom])
       rod(body, [-0.028, end.y, end.z], [0.028, end.y, end.z], 0.017, alloy).name = 'supermoto-shock-eyelet';
@@ -1326,7 +1346,7 @@ export function makeBike(player: Player, products: Product[]) {
         a = t * Math.PI * 12;
       return damperTop
         .clone()
-        .lerp(damperBottom, 0.13 + t * 0.74)
+        .lerp(damperBottom, THREE.MathUtils.lerp(detail.coilFrom, detail.coilTo, t))
         .addScaledVector(radial, Math.cos(a) * 0.041)
         .addScaledVector(cross, Math.sin(a) * 0.041)
         .toArray() as Point;

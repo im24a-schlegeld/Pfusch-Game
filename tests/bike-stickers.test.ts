@@ -56,6 +56,27 @@ function decal(shell: THREE.Mesh, id = 'chrome-1') {
 }
 
 describe('bike sticker geometry', () => {
+  it('keeps saved fork-guard stickers on the same painted moving shell after its brake relief is shaped', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
+    const surfaces = [...stickerSurfaces(bike.body, bike.rider, paint)]
+      .filter(([, part]) => part.name === 'open-back-fork-guard');
+    expect(surfaces).toHaveLength(2);
+    const [surface, shell] = surfaces.find(([, part]) => part.position.x < 0)!;
+    const saved: StickerPlacement = {
+      id: 'old-fork-guard', productId: 'chrome-product', surface,
+      point: [0.030, -0.125, -0.020], normal: [0.83, 0, -0.56],
+      size: 0.04, rotation: 0,
+    };
+    const before = structuredClone(saved);
+    applyBikeStickers(bike.body, bike.rider, paint, [saved]);
+    const sticker = decal(shell, saved.id);
+    expect(sticker.parent).toBe(shell);
+    expect(sticker.geometry.getIndex()!.count).toBeGreaterThan(0);
+    expect(saved).toEqual(before);
+    bike.animateSuspension(0.68, 0.12);
+    expect(sticker.parent?.parent?.name).toBe('front-suspension-axle');
+  });
+
   it('restores the selected panel after unrelated model details shift child indices', () => {
     const { body, rider, suspension, shell, placement } = fixture();
     const otherSide = new THREE.Mesh(

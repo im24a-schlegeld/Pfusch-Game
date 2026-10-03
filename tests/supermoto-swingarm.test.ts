@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
+  Box3,
+  InstancedMesh,
   Matrix4,
   Mesh,
   MeshStandardMaterial,
@@ -11,10 +13,19 @@ import { activeSuspensionPose } from '../app/game/activeSuspension';
 import { CHAIN_DRIVE } from '../app/game/driveGeometry';
 import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 import { SUPERMOTO_WHEELS } from '../app/game/supermotoWheelDimensions';
+import { SUPERMOTO_SHOCK_LOWER_MOUNT } from '../app/game/supermotoShockMount';
+import { makeBike } from '../app/game/vehicle';
+import { newPlayer } from '../app/domain/progression';
+import { envelope, faces, gap, triangleGap } from './helpers/solidClearance';
 import {
   SUPERMOTO_SWINGARM,
   supermotoSwingarmGeometry,
 } from '../app/game/supermotoSwingarm';
+
+vi.mock('../app/game/garmentTexture', () => ({
+  garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
+  sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
+}));
 
 const dimensions = SUPERMOTO_SWINGARM;
 function spar(side: number) {
@@ -162,8 +173,87 @@ describe('faceted Supermoto swingarm', () => {
         through(mesh, dimensions.axleY, dimensions.axleZ + 0.028).length,
       ).toBeGreaterThan(0);
       // The crossmember clears the tire and still enters a solid side panel.
-      expect(through(mesh, 0.414, 0.405).length).toBeGreaterThan(0);
+      expect(through(mesh, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]).length).toBeGreaterThan(0);
       mesh.geometry.dispose();
+    }
+  });
+
+  it('forms a deep pivot shoulder, tapered box and actual shallow side channel without enlarging the lateral envelope', () => {
+    for (const side of [-1, 1]) {
+      const mesh = spar(side);
+      const centerX = side * CHAIN_DRIVE.rightSwingarmX;
+      const depths = [0.23, 0.40, 0.63].map(z => {
+        const top = new Raycaster(new Vector3(centerX, 1, z), new Vector3(0, -1, 0)).intersectObject(mesh, false)[0];
+        const bottom = new Raycaster(new Vector3(centerX, 0, z), new Vector3(0, 1, 0)).intersectObject(mesh, false)[0];
+        expect(top).toBeDefined(); expect(bottom).toBeDefined();
+        return top.point.y - bottom.point.y;
+      });
+      expect(depths[0]).toBeGreaterThan(0.11);
+      expect(depths[1]).toBeGreaterThan(0.09);
+      expect(depths[2]).toBeLessThan(0.065);
+      const z = 0.38;
+      const y = dimensions.pivotY + (dimensions.axleY - dimensions.pivotY)
+        * (z - dimensions.pivotZ) / (dimensions.axleZ - dimensions.pivotZ);
+      const faceX = (height: number) => new Raycaster(new Vector3(side, height, z),
+        new Vector3(-side, 0, 0)).intersectObject(mesh, false)[0].point.x * side;
+      expect(faceX(y + 0.035) - faceX(y)).toBeCloseTo(0.003, 6);
+      mesh.geometry.dispose();
+    }
+  });
+
+  it('keeps the complete forged solids clear of tyre, every chain instance, shock and direct mount through travel', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const arms = bike.body.getObjectsByProperty('name', 'box-section-swingarm') as Mesh[];
+    const tire = bike.wheels[1].getObjectByName('tire') as Mesh;
+    const mechanism = new Set<Mesh>();
+    const movingRoots = ['supermoto-shock-damper', 'supermoto-shock-reservoir',
+      'supermoto-shock-spring-seat', 'supermoto-shock-eyelet', 'rear-shock-spring',
+      'supermoto-shock-lower-pin', 'shock-lower-link']
+      .flatMap(name => bike.body.getObjectsByProperty('name', name));
+    for (const root of movingRoots) root.traverse(part => {
+      if (part instanceof Mesh) mechanism.add(part);
+    });
+    // Upper barrel, both reservoir caps and the reservoir neck move as real
+    // children. Include their complete surfaces, not only parent cylinders.
+    expect([...mechanism].filter(part => part.name === 'supermoto-shock-upper-body')).toHaveLength(1);
+    expect([...mechanism].filter(part => part.name === 'supermoto-shock-reservoir-cap')).toHaveLength(2);
+    expect([...mechanism].filter(part => part.name === 'supermoto-shock-reservoir-neck')).toHaveLength(1);
+    expect([...mechanism].filter(part => part.name === 'supermoto-shock-lower-pin')).toHaveLength(1);
+    expect([...mechanism].filter(part => part.name === 'shock-lower-link')).toHaveLength(2);
+    const chains = ['left-drive-chain', 'chain-rollers']
+      .map(name => bike.body.getObjectByName(name) as InstancedMesh);
+    expect(arms).toHaveLength(2); expect(mechanism.size).toBeGreaterThan(12);
+    const instance = new Matrix4(), transform = new Matrix4(), vertex = new Vector3();
+    for (const pitch of [0, 0.85]) for (const travel of [-0.20, 0, 0.20]) {
+      bike.animateSuspension(pitch, travel, pitch > 0 ? 1 : 0);
+      bike.root.updateMatrixWorld(true);
+      const inverse = bike.body.matrixWorld.clone().invert();
+      const chainBounds = chains.map(chain => {
+        expect(chain).toBeInstanceOf(InstancedMesh);
+        const bounds = new Box3(), positions = chain.geometry.getAttribute('position');
+        for (let i = 0; i < chain.count; i++) {
+          chain.getMatrixAt(i, instance);
+          transform.copy(inverse).multiply(chain.matrixWorld).multiply(instance);
+          for (let j = 0; j < positions.count; j++)
+            bounds.expandByPoint(vertex.fromBufferAttribute(positions, j).applyMatrix4(transform));
+        }
+        return bounds;
+      });
+      for (const arm of arms) {
+        const bounds = envelope(arm, inverse), armFaces = faces(arm, inverse);
+        expect(gap(bounds, envelope(tire, inverse)), `rear tyre, pitch ${pitch}, travel ${travel}`).toBeGreaterThan(0.05);
+        for (const chain of chainBounds) expect(gap(bounds, chain), 'all chain plates and rollers').toBeGreaterThan(0.006);
+        for (const part of mechanism) {
+          if (gap(bounds, envelope(part, inverse)) > 0.003) continue;
+          let minimum = Infinity;
+          const partFaces = faces(part, inverse);
+          for (const a of armFaces) for (const b of partFaces) {
+            if (gap(a.bounds, b.bounds) > Math.min(minimum, 0.003)) continue;
+            minimum = Math.min(minimum, triangleGap(a.triangle, b.triangle));
+          }
+          expect(minimum, `${part.name}, pitch ${pitch}, travel ${travel}`).toBeGreaterThan(0.003);
+        }
+      }
     }
   });
 

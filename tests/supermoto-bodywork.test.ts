@@ -40,13 +40,13 @@ describe('reference Supermoto bodywork', () => {
     }
   });
 
-  it('mounts the actual rear damper near upright while leaning toward the steering head', () => {
+  it('inclines the actual rear damper beneath the tank as in the circled frame reference', () => {
     const damper = bike.body.getObjectByName('supermoto-shock-damper') as Mesh;
     const axis = new Vector3(0, 1, 0).transformDirection(damper.matrix);
     expect(Math.abs(axis.x)).toBeLessThan(1e-6);
     const angleFromVertical = Math.atan2(Math.abs(axis.z), Math.abs(axis.y)) * 180 / Math.PI;
-    expect(angleFromVertical).toBeGreaterThan(10);
-    expect(angleFromVertical).toBeLessThan(20);
+    expect(angleFromVertical).toBeGreaterThan(30);
+    expect(angleFromVertical).toBeLessThan(40);
     expect(axis.y * axis.z).toBeLessThan(0);
     expect(bike.body.getObjectsByProperty('name', 'supermoto-shock-eyelet')).toHaveLength(2);
     expect(bike.body.getObjectsByProperty('name', 'supermoto-shock-spring-seat')).toHaveLength(2);
@@ -118,6 +118,7 @@ describe('reference Supermoto bodywork', () => {
         ['supermoto-under-seat-frame-rail', 'supermoto-frame-main-spar', 'supermoto-upper-subframe', 2],
         ['supermoto-shock-bridge-support', 'shock-frame-crossmember', 'supermoto-upper-subframe', 2],
         ['shock-upper-mount', 'shock-frame-crossmember', 'supermoto-shock-damper', 1],
+        ['supermoto-shock-upper-brace', 'supermoto-frame-main-spar', 'supermoto-shock-damper', 2],
       ] as const) {
         const connectors = bike.body.getObjectsByProperty('name', name) as Mesh[];
         expect(connectors).toHaveLength(count);

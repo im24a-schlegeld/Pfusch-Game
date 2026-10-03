@@ -168,12 +168,20 @@ export function addSupermotoMainFrame(
             .fromBufferAttribute(positions, index)
             .sub(center)
             .multiplyScalar(localRadius / radius);
+          // A pressed, guarded spar sweeps behind the case. Its visible side
+          // is broad in the load plane while the inboard/outboard faces stay
+          // slim enough for the engine, pipe and fixed chain corridor.
+          const shoulder = MathUtils.smoothstep(center.y, 0.57, 0.65)
+            * (1 - MathUtils.smoothstep(center.y, 0.81, 0.875));
+          point.x *= 1 - 0.38 * shoulder;
+          point.y *= 1 + 0.45 * shoulder;
+          point.z *= 1 + 0.45 * shoulder;
           // The welded bearing throat has a pressed oval section between the
           // chain and swinging arm. Preserve its side-view depth while making
           // room laterally; the exposed frame above retains its full diameter.
           const throat = MathUtils.smoothstep(center.y, 0.499, 0.516) *
             (1 - MathUtils.smoothstep(center.y, 0.56, 0.59));
-          point.x *= 1 - 0.35 * throat;
+          point.x *= 1 - 0.55 * throat;
           point.add(center);
           positions.setXYZ(index, point.x, point.y, point.z);
         }
@@ -201,8 +209,9 @@ export function addSupermotoMainFrame(
         [side * 0.018, upperNeck[1], upperNeck[2]],
         [side * 0.094, 0.98, -0.32],
         [side * 0.118, 0.855, -0.15],
-        [side * 0.137, 0.69, 0.035],
-        [side * 0.132, 0.596, 0.142],
+        [side * 0.137, 0.820, -0.030],
+        [side * 0.143, 0.744, 0.095],
+        [side * 0.132, 0.610, 0.190],
         [side * 0.132, 0.543, 0.172],
         [
           side * SUPERMOTO_PIVOT_FRAME_JOINT[0],
@@ -214,6 +223,33 @@ export function addSupermotoMainFrame(
       'supermoto-frame-main-spar',
       true,
     );
+    // The shaped rear pivot/peg carrier meets the bowed spar above and the
+    // original cradle below. Its narrow X section remains inside the moving
+    // swingarm and outside the exposed chain, rather than covering either.
+    const carrier = new Shape();
+    carrier.moveTo(-0.145, 0.586);
+    carrier.quadraticCurveTo(-0.177, 0.613, -0.204, 0.596);
+    carrier.quadraticCurveTo(-0.218, 0.576, -0.211, 0.541);
+    carrier.lineTo(-0.192, 0.467);
+    carrier.quadraticCurveTo(-0.189, 0.445, -0.175, 0.423);
+    carrier.lineTo(-0.146, 0.410);
+    carrier.lineTo(-0.122, 0.425);
+    carrier.quadraticCurveTo(-0.115, 0.438, -0.129, 0.465);
+    carrier.quadraticCurveTo(-0.144, 0.492, -0.131, 0.516);
+    carrier.quadraticCurveTo(-0.120, 0.549, -0.145, 0.586);
+    carrier.closePath();
+    const relief = new Path();
+    relief.absellipse(-0.179, 0.562, 0.010, 0.021, 0, Math.PI * 2, true);
+    carrier.holes.push(relief);
+    const carrierGeometry = new ExtrudeGeometry(carrier, {
+      depth: 0.004, bevelEnabled: true, bevelThickness: 0.0005,
+      bevelSize: 0.0012, bevelSegments: 1, steps: 1, curveSegments: 10,
+    });
+    carrierGeometry.rotateY(Math.PI / 2);
+    carrierGeometry.translate(side * 0.133 - 0.002, 0, 0);
+    add(carrierGeometry, 'supermoto-frame-pivot-carrier');
+    for (const [y, z] of [[0.586, 0.182], [0.454, 0.162], [0.433, 0.146]])
+      rod([side * 0.1325, y, z], [side * 0.136, y, z], 0.0053, 'supermoto-frame-carrier-fastener');
     add(supermotoLowerFrameGeometry(side), 'supermoto-frame-merge-branch');
     rod(
       [side * 0.118, 0.855, -0.15],
@@ -222,8 +258,9 @@ export function addSupermotoMainFrame(
       'supermoto-under-seat-frame-rail',
     );
     rod(
-      [side * 0.108, 0.885, 0.09],
-      [side * 0.085, 0.918, 0.12],
+      [side * 0.143, 0.744, 0.095],
+      [side * MathUtils.lerp(0.085, 0.06154, 0.200 / 0.610),
+        MathUtils.lerp(0.918, 0.97806, 0.200 / 0.610), 0.320],
       0.016,
       'supermoto-shock-bridge-support',
     );
