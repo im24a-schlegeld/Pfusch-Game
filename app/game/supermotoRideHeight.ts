@@ -1,7 +1,7 @@
 /** Supermoto ride-height datum in unscaled motorcycle metres. The 50 mm
  * lowering is equal static fork/rear travel, not a scale change or axle move. */
 export const SUPERMOTO_STATIC_SAG = 0.050;
-export const SUPERMOTO_REAR_PIVOT = [0, 0.5, 0.1] as const;
+export const SUPERMOTO_REAR_PIVOT = [0, 0.486, 0.183] as const;
 
 /** Neutral sprung-body offset with the rear axle held at its ground datum.
  * This pure calculation is also used by deterministic tail-contact physics. */

@@ -63,6 +63,19 @@ describe('physical immutable ragdoll', () => {
           expect(length(arm.joint, arm.end)).toBeCloseTo(d.forearm, 8);
           expect(length(leg.start, leg.joint)).toBeCloseTo(d.thigh, 8);
           expect(length(leg.joint, leg.end)).toBeCloseTo(d.shin, 8);
+          // Exact lengths alone allow a limb to fold through itself or lock
+          // straight. Keep articulated elbows/knees throughout road contact.
+          for (const limb of [arm, leg]) {
+            const upper = new Vector3(...limb.start).sub(
+              new Vector3(...limb.joint),
+            );
+            const lower = new Vector3(...limb.end).sub(
+              new Vector3(...limb.joint),
+            );
+            const angle = (upper.angleTo(lower) * 180) / Math.PI;
+            expect(angle).toBeGreaterThanOrEqual(25 - 1e-5);
+            expect(angle).toBeLessThanOrEqual(176 + 1e-5);
+          }
         }
       }
       const end = ragdoll.pose();

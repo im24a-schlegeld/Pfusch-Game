@@ -27,7 +27,10 @@ export function supermotoForkGuardGeometry(length: number, side: number) {
       // The left guard has a swept lower inboard cutout above the brake
       // rotor. The front paddle and outboard fastener support stay full length.
       const brakeRelief = side < 0 ? 0.130 * MathUtils.smoothstep(s, 0.08, 0.34) * (1 - t) : 0;
-      positions.push(s * width, (t - 0.5) * length - topTrim + bottomTrim + brakeRelief,
+      // Relieve only the lower inboard return beside the brake disc. Keep the
+      // front paddle, outer silhouette and slider fastening surfaces unchanged.
+      const rotorSideRelief = side < 0 ? 0.0012 * MathUtils.smoothstep(s, 0, 0.2) * (1 - t) ** 4 : 0;
+      positions.push(s * width - rotorSideRelief, (t - 0.5) * length - topTrim + bottomTrim + brakeRelief,
         co * depth - crest - 0.003 * (1 - t) ** 4);
       uv.push(u, t);
     }

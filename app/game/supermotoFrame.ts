@@ -15,6 +15,7 @@ import {
   TubeGeometry,
   Vector3,
 } from 'three';
+import { SUPERMOTO_REAR_PIVOT } from './supermotoRideHeight';
 
 type Point = readonly [number, number, number];
 
@@ -109,7 +110,9 @@ export function supermotoLowerFrameGeometry(side: number) {
       const throat = MathUtils.smoothstep(center.y, 0.402, 0.418)
         * (1 - MathUtils.smoothstep(center.y, 0.480, 0.496))
         * MathUtils.smoothstep(center.z, 0.08, 0.11);
-      point.x *= 1 - 0.78 * throat;
+      // Keep the full moving chain-link plates clear of this concealed
+      // pressed throat, including the slightly higher enlarged-wheel route.
+      point.x *= 1 - 0.90 * throat;
       point.add(center);
       positions.setXYZ(index, point.x, point.y, point.z);
     }
@@ -241,6 +244,11 @@ export function addSupermotoMainFrame(
     const relief = new Path();
     relief.absellipse(-0.179, 0.562, 0.010, 0.021, 0, Math.PI * 2, true);
     carrier.holes.push(relief);
+    // Machine the bearing seat into the existing pickup; preserve its outline,
+    // thickness and position. The arm now pivots inside the original frame.
+    const bearingSeat = new Path();
+    bearingSeat.absarc(-SUPERMOTO_REAR_PIVOT[2], SUPERMOTO_REAR_PIVOT[1], 0.0105, 0, Math.PI * 2, true);
+    carrier.holes.push(bearingSeat);
     const carrierGeometry = new ExtrudeGeometry(carrier, {
       depth: 0.004, bevelEnabled: true, bevelThickness: 0.0005,
       bevelSize: 0.0012, bevelSegments: 1, steps: 1, curveSegments: 10,

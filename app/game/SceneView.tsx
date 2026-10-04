@@ -11,13 +11,18 @@ import { DAY_SKY, makeWorldLighting } from './worldLighting';
 import { createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
 import { createGarmentGlowUpdater } from './garmentGlow';
-import { TRAFFIC_KINDS } from './trafficDomain';
+import {
+  TRAFFIC_KINDS,
+  TRAFFIC_SHAPES,
+  trafficFrontReach,
+} from './trafficDomain';
 import { animateTraffic } from './trafficModels';
 import { createRideParticles, particleAnchors } from './rideParticles';
-import { createCrashTravel } from './crashTravel';
+import { createCrashTravel, type CrashDirection } from './crashTravel';
 import { makeSignCollectibleView } from './signCollectibleView';
 import { TAIL_CONTACT } from './tailContact';
 import { applyBikeStickers, clearBikeStickers } from './bikeStickers';
+import { createPoliceCrashEffect } from './policeCrashEffect';
 
 // Match makeBike's body selection, including its default Supermoto geometry.
 const headlightModel = (id: string) =>
@@ -209,6 +214,9 @@ export default function SceneView({
     const exhaustPosition = new THREE.Vector3(),
       tailPosition = new THREE.Vector3();
     const particles = mode === 'ride' ? createRideParticles(scene, low) : null;
+    const policeCrashEffect = mode === 'ride'
+      ? createPoliceCrashEffect(el, engine?.policeImpact.serial ?? 0)
+      : null;
     const signs =
       mode === 'ride' ? makeSignCollectibleView(8, LANE, low) : null;
     if (signs) scene.add(signs.root);
@@ -366,15 +374,43 @@ export default function SceneView({
         const crashed =
           engine.phase === 'crashed' && engine.event.text !== 'Ride ended';
         const crashActive = focused && visible;
+        const rearImpact =
+          !!engine.policeRamObstacle &&
+          engine.crashObstacle === engine.policeRamObstacle;
+        const hitKind = TRAFFIC_KINDS.find(
+          (kind) => kind === engine.crashObstacle?.kind,
+        );
+        const solidImpact =
+          !!engine.crashObstacle &&
+          (!!hitKind || engine.crashObstacle.kind === 'barrier');
+        const sideImpact =
+          hitKind &&
+          engine.crashObstacle!.z <
+            TRAFFIC_SHAPES[hitKind].rearZ +
+              trafficFrontReach(
+                engine.bike.id,
+                Math.max(engine.towPitch, engine.wheelieAngle),
+              ) - 0.05;
+        const impactDirection: CrashDirection = rearImpact
+          ? 'rear'
+          : solidImpact
+            ? sideImpact
+              ? 'side'
+              : 'front'
+            : 'fall';
+        const impactLateralVelocity = previousLateralSpeed;
         let longitudinalAcceleration = 0,
           lateralAcceleration = 0;
         if (crashed && !crashTravel)
           crashTravel = createCrashTravel(
             engine.speed,
-            /collision/i.test(engine.event.text),
+            impactDirection,
             appearance.current.player.settings.reducedMotion,
           );
-        crashTravel?.advance(dt, crashed && crashActive);
+        // Freeze solid traffic at the exact contact pose before advancing the
+        // presentation. Applying this frame's coast first embeds its bumper
+        // in the bike and causes a visible separation jump on impact.
+        crashTravel?.advance(dt, crashed && crashActive && !!crash);
         const distance = engine.distance + (crashTravel?.distance ?? 0);
         worldView!.update(engine.world, distance);
         worldView!.updateSpeedCamera(
@@ -575,12 +611,6 @@ export default function SceneView({
                 : impactIndex >= 0
                   ? traffic[impactIndex]
                   : undefined;
-            const solidImpact =
-              engine.crashObstacle &&
-              (TRAFFIC_KINDS.some(
-                (kind) => kind === engine.crashObstacle!.kind,
-              ) ||
-                engine.crashObstacle.kind === 'barrier');
             if (impactTraffic?.visible && solidImpact) {
               impactTraffic.updateWorldMatrix(true, true);
             } else {
@@ -608,6 +638,8 @@ export default function SceneView({
               impactObstacle: impactTraffic,
               collisionObstacles: [...collisionTraffic.keys()],
               impactSpeed: engine.speed,
+              impactDirection,
+              lateralVelocity: impactLateralVelocity,
             });
           }
           crashComplete = crash.advance(dt, crashActive);
@@ -664,28 +696,30 @@ export default function SceneView({
             : Math.sin(clock * 23) * 0.016;
         const portraitRide = camera.aspect < 0.8;
         const chaseZ = portraitRide ? 10.4 : 8.4;
-        camera.position.set(
-          engine.x * 0.27 + shake,
-          4.4 + engine.height * 0.13,
-          chaseZ,
-        );
-        camera.lookAt(engine.x * 0.38, 1.4, -12);
-        if (crash) {
-          const blend = crash.cameraBlend;
+        if (engine.phase !== 'paused') {
           camera.position.set(
-            THREE.MathUtils.lerp(engine.x * 0.27, crash.focus.x, blend),
-            THREE.MathUtils.lerp(
-              4.4 + engine.height * 0.13,
-              3.5,
-              blend,
-            ),
-            THREE.MathUtils.lerp(chaseZ, 7.2, blend),
+            engine.x * 0.27 + shake,
+            4.4 + engine.height * 0.13,
+            chaseZ,
           );
-          camera.lookAt(
-            THREE.MathUtils.lerp(engine.x * 0.38, crash.focus.x, blend),
-            THREE.MathUtils.lerp(1.4, crash.focus.y, blend),
-            THREE.MathUtils.lerp(-12, crash.focus.z, blend),
-          );
+          camera.lookAt(engine.x * 0.38, 1.4, -12);
+          if (crash && !rearImpact) {
+            const blend = crash.cameraBlend;
+            camera.position.set(
+              THREE.MathUtils.lerp(engine.x * 0.27, crash.focus.x, blend),
+              THREE.MathUtils.lerp(
+                4.4 + engine.height * 0.13,
+                3.5,
+                blend,
+              ),
+              THREE.MathUtils.lerp(chaseZ, 7.2, blend),
+            );
+            camera.lookAt(
+              THREE.MathUtils.lerp(engine.x * 0.38, crash.focus.x, blend),
+              THREE.MathUtils.lerp(1.4, crash.focus.y, blend),
+              THREE.MathUtils.lerp(-12, crash.focus.z, blend),
+            );
+          }
         }
         const speedFov = 61 + (engine.speed - 22) * 0.22;
         // Keep the rider visible on either outer lane without a distant phone camera.
@@ -704,6 +738,11 @@ export default function SceneView({
           camera.fov = fov;
           camera.updateProjectionMatrix();
         }
+        policeCrashEffect?.update(
+          engine.policeImpact, camera, distance, dt,
+          focused && visible && engine.phase !== 'paused' && engine.phase !== 'ready',
+          appearance.current.player.settings.reducedMotion,
+        );
         hud += dt;
         if (hud > 0.075 || (engine.phase === 'crashed' && !crashReported)) {
           frameCallback.current?.(engine);
@@ -743,6 +782,7 @@ export default function SceneView({
     raf = requestAnimationFrame(animate);
     return () => {
       cancelAnimationFrame(raf);
+      policeCrashEffect?.dispose();
       observer.disconnect();
       window.removeEventListener('blur', visualBlur);
       window.removeEventListener('focus', visualFocus);

@@ -170,6 +170,10 @@ function pose(page: Page) {
     );
     return {
       scene: scene.id,
+      camera: {
+        position: window.crashProbe.camera!.position.toArray(),
+        quaternion: window.crashProbe.camera!.quaternion.toArray(),
+      },
       root: {
         position: root.position.toArray(),
         quaternion: root.quaternion.toArray(),
@@ -232,6 +236,9 @@ test('the production rider and bike collide with a car and release their riding 
   }
   await expect(ride).toHaveAttribute('data-phase', 'crashed');
   const initial = await pose(page);
+  // A bumper hit must not project the whole bike sideways into another lane.
+  expect(Math.abs(initial.root.position[0])).toBeLessThan(0.45);
+  expect(Math.abs(initial.root.position[2])).toBeLessThan(0.2);
   await capture(page, testInfo, 'car-impact');
   await page.clock.runFor(400);
   const airborne = await pose(page);
@@ -250,32 +257,93 @@ test('the production rider and bike collide with a car and release their riding 
     const car = scene.children.find(
       (child) => child.visible && String(child.userData.key).startsWith('car:'),
     )!;
-    const bounds = new Box3().setFromObject(car);
+    const bounds = new Box3();
+    car.traverseVisible((item) => {
+      const mesh = item as THREE.Mesh;
+      if (mesh.isMesh && mesh.name !== 'traffic-contact-shadow')
+        bounds.union(new Box3().setFromObject(mesh));
+    });
     const helmet = scene.getObjectByName('full-face-helmet')!;
     const rider = helmet.parent!;
     let penetratingVertices = 0,
       sampled = 0;
+    const contactsByMesh: Record<string, number> = {};
     const vertex = new Vector3();
-    rider.traverse((item) => {
+    rider.traverseVisible((item) => {
       const mesh = item as THREE.SkinnedMesh;
       if (!mesh.isMesh || !mesh.visible) return;
       if (mesh.isSkinnedMesh) mesh.skeleton.update();
       const positions = mesh.geometry.getAttribute('position');
       for (let index = 0; index < positions.count; index += 3) {
         mesh.getVertexPosition(index, vertex).applyMatrix4(mesh.matrixWorld);
-        if (bounds.containsPoint(vertex)) penetratingVertices++;
+        if (bounds.containsPoint(vertex)) {
+          penetratingVertices++;
+          contactsByMesh[mesh.name] = (contactsByMesh[mesh.name] ?? 0) + 1;
+        }
         sampled++;
       }
     });
     return {
       penetratingVertices,
+      contactsByMesh,
       sampled,
       impact: window.crashProbe.engine!.crashObstacle?.kind,
     };
   });
   expect(contact.impact).toBe('car');
   expect(contact.sampled).toBeGreaterThan(100);
-  expect(contact.penetratingVertices).toBe(0);
+  expect(
+    contact.penetratingVertices,
+    JSON.stringify(contact.contactsByMesh),
+  ).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('a real police rear impact keeps the ride camera fixed and settles the run once', async ({ page }, testInfo) => {
+  const errors = await install(page);
+  await start(page);
+  await page.evaluate(() => {
+    const engine = window.crashProbe.engine!;
+    engine.clearInput();
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    engine.spawn('car', 1, -3.95, 0, 0, true);
+    engine.wheelieAngle = 0.6;
+    engine.advance(1 / 60);
+    if (!engine.policeChase) throw new Error('Real patrol failed to trigger');
+    engine.wheelieAngle = 0;
+    engine.wheelieAngularVelocity = 0;
+    engine.wheelie = false;
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    // Exercise the real contact transition without waiting the entire pursuit.
+    engine.policeRamRemaining = 0.05;
+    engine.policeVehicle.x = engine.x;
+    engine.policeVehicle.z = -4.35;
+  });
+  const ride = page.getByTestId('ride-screen');
+  for (let frame = 0; frame < 90; frame++) {
+    if ((await ride.getAttribute('data-phase')) === 'crashed') break;
+    await page.clock.runFor(16);
+  }
+  await expect(ride).toHaveAttribute('data-phase', 'crashed');
+  const initial = await pose(page);
+  const saved = await readSave(page);
+  expect(saved.runsPlayed).toBe(1);
+  expect(await page.evaluate(() => ({
+    outcome: window.crashProbe.engine!.policeOutcome,
+    serial: window.crashProbe.engine!.policeOutcomeSerial,
+    police: window.crashProbe.engine!.crashObstacle?.police,
+  }))).toEqual({ outcome: 'caught', serial: 1, police: true });
+  await page.clock.runFor(480);
+  const falling = await pose(page);
+  expect(falling.camera).toEqual(initial.camera);
+  expect(falling.helmet).not.toEqual(initial.helmet);
+  expect(falling.root.position[2]).toBeLessThan(initial.root.position[2]);
+  expect(await readSave(page)).toEqual(saved);
+  await capture(page, testInfo, 'police-rear-impact');
+  await page.clock.runFor(900);
+  await expect(page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true })).toBeVisible();
+  await expect(ride).toHaveCount(0);
+  expect(await readSave(page)).toEqual(saved);
   expect(errors).toEqual([]);
 });
 

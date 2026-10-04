@@ -49,17 +49,18 @@ import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
 } from './carriedCapMotion';
-import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SEAT, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { SUPERMOTO_CHASSIS, SUPERMOTO_BAR, SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
+import { supermotoSeatGeometry } from './supermotoSeat';
 import { SUPERMOTO_WHEELS, addSupermotoRim, supermotoTireGeometry } from './supermotoWheels';
 import { supermotoFrontFenderGeometry, supermotoTailFenderGeometry, supermotoHeadlightMaskGeometry, supermotoLampGeometry, supermotoShroudGeometry, supermotoSideCoverGeometry, SUPERMOTO_LAMP_BULB, SUPERMOTO_MASK_STRAP_ANCHORS, SUPERMOTO_FRONT_FENDER_MOUNT } from './supermotoBodywork';
-import { supermotoProjectorGeometry, supermotoLowerLightGuideGeometry } from './supermotoHeadlight';
-import { supermotoFuelTankGeometry } from './supermotoTank';
+import { supermotoProjectorGeometry, supermotoLowerLightGuideGeometry, supermotoLampWellGeometry } from './supermotoHeadlight';
+import { supermotoFuelTankGeometry, SUPERMOTO_FUEL_CAP_MOUNT } from './supermotoTank';
 import { supermotoForkGuardGeometry } from './supermotoForkGuards';
 import { SUPERMOTO_SHOCK_DETAILS } from './supermotoShock';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
 import { addSupermotoEngine } from './supermotoEngine';
 import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, addSupermotoMainFrame } from './supermotoFrame';
-import { SUPERMOTO_SWINGARM, supermotoSwingarmGeometry } from './supermotoSwingarm';
+import { supermotoSwingarmGeometry, supermotoSwingarmBridgeGeometry, supermotoSwingarmSection, addSupermotoPivotConnection } from './supermotoSwingarm';
 import { supermotoTireMaterial } from './supermotoTire';
 import { supermotoGripPoint } from './supermotoCockpit';
 import { supermotoSettledOffset } from './supermotoRideHeight';
@@ -1159,8 +1160,8 @@ export function makeBike(player: Player, products: Product[]) {
       // The black airbox door continues behind the number panel and tank;
       // its lower return closes the middle without occupying the hot pipe.
       sidePanel(body, s, [
-        [0.119, 0.925, 0.075],
-        [0.117, 0.929, 0.218],
+        [0.119, 0.921, 0.075],
+        [0.117, 0.924, 0.218],
         [0.115, 0.875, 0.370],
         [0.114, 0.811, 0.388],
         [0.116, 0.797, 0.314],
@@ -1216,7 +1217,25 @@ export function makeBike(player: Player, products: Product[]) {
           }
         }
         const mountX = surfaceX ?? x;
-        rod(body, [s * 0.065, y, z], [s * (mountX - 0.002), y, z], 0.008, dark).name =
+        // Fit the whole boss footprint behind the curved skin, not only its
+        // centre: otherwise the rim cuts small black shards through the roll.
+        let bossX = mountX;
+        for (let sample = 0; sample < 24; sample++) {
+          const angle = sample / 24 * Math.PI * 2;
+          mountRay.origin.set(s * 0.6, y + Math.cos(angle) * 0.008, z + Math.sin(angle) * 0.008);
+          let rimX: number | undefined;
+          for (const candidate of body.getObjectsByProperty('name', panelName)) {
+            if (!(candidate instanceof THREE.Mesh)) continue;
+            const p = candidate.geometry.getAttribute('position'), ix = candidate.geometry.index!;
+            for (let face = 0; face < ix.count; face += 3) {
+              a.fromBufferAttribute(p, ix.getX(face)); b.fromBufferAttribute(p, ix.getX(face + 1)); c.fromBufferAttribute(p, ix.getX(face + 2));
+              if (mountRay.intersectTriangle(a, b, c, false, hit) && hit.x * s > 0)
+                rimX = Math.max(Math.abs(hit.x), rimX ?? 0);
+            }
+          }
+          if (rimX !== undefined) bossX = Math.min(bossX, rimX);
+        }
+        rod(body, [s * 0.065, y, z], [s * (bossX - 0.002), y, z], 0.008, dark).name =
           'plastic-mount-boss';
         rod(body, [s * (mountX - 0.0005), y, z], [s * (mountX + 0.003), y, z], 0.0045, alloy).name =
           'plastic-fastener';
@@ -1282,8 +1301,7 @@ export function makeBike(player: Player, products: Product[]) {
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
     // The visible spindle uses the same axis as the moving arm's bearing.
-    rod(body, [-0.19, SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.pivotZ],
-      [0.19, SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.pivotZ], 0.033, dark).name = 'swingarm-pivot';
+    addSupermotoPivotConnection(body, matteBlack);
     addSupermotoEngine(body);
     const detail = SUPERMOTO_SHOCK_DETAILS;
     const damperTop = V(SUPERMOTO_SHOCK_TOP),
@@ -1307,8 +1325,8 @@ export function makeBike(player: Player, products: Product[]) {
     }
     rod(
       body,
-      [CHAIN_DRIVE.leftSwingarmX, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]],
-      [CHAIN_DRIVE.rightSwingarmX, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]],
+      [-supermotoSwingarmSection(SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]).centerX, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]],
+      [supermotoSwingarmSection(SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]).centerX, SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1], SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[2]],
       0.022,
       alloy,
     ).name = 'swingarm-crossmember';
@@ -1363,14 +1381,10 @@ export function makeBike(player: Player, products: Product[]) {
     tank.castShadow = tank.receiveShadow = true;
     body.add(tank);
     tank.name = 'supermoto-fuel-tank';
-    rod(body, [0, 1.01, -0.299], [0, 1.024, -0.299], 0.027, dark).name =
+    rod(body, [...SUPERMOTO_FUEL_CAP_MOUNT],
+      [SUPERMOTO_FUEL_CAP_MOUNT[0], SUPERMOTO_FUEL_CAP_MOUNT[1] + 0.014, SUPERMOTO_FUEL_CAP_MOUNT[2]], 0.027, dark).name =
       'fuel-cap';
-    loft(
-      body,
-      SUPERMOTO_SEAT,
-      seat,
-      'z',
-    ).name = 'supermoto-seat';
+    mesh(body, supermotoSeatGeometry(), seat).name = 'supermoto-seat';
     mesh(body, supermotoFrontFenderGeometry(), paint).name = 'supermoto-front-fender';
     for (const s of [-1, 1]) {
       rod(
@@ -1391,8 +1405,14 @@ export function makeBike(player: Player, products: Product[]) {
     }
     mesh(body, supermotoHeadlightMaskGeometry(), paint).name = 'supermoto-headlight-mask';
     mesh(body, supermotoLampGeometry('bezel'), material('#1c272a', 0.1, 0.2)).name = 'supermoto-headlight-bezel';
+    const lampWell = material('#272e34', 0.45, 0.25);
+    lampWell.side = THREE.DoubleSide;
+    mesh(body, supermotoLampWellGeometry(), lampWell).name = 'supermoto-headlight-recess';
     const reflector = mesh(body, supermotoLampGeometry('reflector'), material('#13181c', 0.25, 0.38));
     reflector.name = 'supermoto-headlight-reflector';
+    const opticalMetal = material('#8f9ca7', 0.85, 0.17);
+    opticalMetal.side = THREE.DoubleSide;
+    mesh(body, supermotoProjectorGeometry('cup'), opticalMetal).name = 'supermoto-headlight-projector-cups';
     mesh(body, supermotoProjectorGeometry('socket'), material('#c8cdd0', 0.76, 0.19)).name = 'supermoto-headlight-projector-rings';
     const lightGuide = new THREE.MeshStandardMaterial({
       color: '#edf4f7', emissive: '#d2e9ff', emissiveIntensity: 0.35, roughness: 0.2,
@@ -1403,8 +1423,11 @@ export function makeBike(player: Player, products: Product[]) {
     const glass = new THREE.MeshPhysicalMaterial({
       color: '#eef7ff',
       transparent: true,
-      opacity: 0.24,
-      roughness: 0.08,
+      opacity: 0.16,
+      thickness: 0.003,
+      ior: 1.48,
+      envMapIntensity: 1.2,
+      roughness: 0.045,
       metalness: 0,
       clearcoat: 1,
       side: THREE.DoubleSide,
@@ -1826,16 +1849,8 @@ export function makeBike(player: Player, products: Product[]) {
       0.012,
       alloy,
     ).name = 'rear-axle';
-    const forwardBridgeY = sport ? 0.46 : SUPERMOTO_SWINGARM.forwardBridgeY;
-    const forwardBridgeZ = sport ? 0.18 : SUPERMOTO_SWINGARM.forwardBridgeZ;
-    const forwardBridge = rod(
-      body,
-      [CHAIN_DRIVE.leftSwingarmX, forwardBridgeY, forwardBridgeZ],
-      [0.16, forwardBridgeY, forwardBridgeZ],
-      0.022,
-      dark,
-    );
-    if (!sport) forwardBridge.name = 'swingarm-forward-crossmember';
+    if (sport) rod(body, [CHAIN_DRIVE.leftSwingarmX, 0.46, 0.18], [0.16, 0.46, 0.18], 0.022, dark);
+    else mesh(body, supermotoSwingarmBridgeGeometry(), dark).name = 'swingarm-forward-crossmember';
   } else makeBeltDrive(body, wheels[1], engine, rubber);
   // One exhaust only, on the rider's right; curved header joins the engine.
   const exhaustX = moped ? 0.15 : sport ? 0.272 : 0.130;

@@ -23,6 +23,7 @@ import {
   towRampPose,
   towDeckPosition,
   RAMP_FRONT_CONTACT,
+  trafficFrontReach,
   type TrafficKind,
 } from './trafficDomain';
 import { SIGN_IDS, type SignId } from './signCollectibles';
@@ -44,10 +45,10 @@ import {
   POLICE,
   createPoliceVehicle,
   firstPoliceHit,
-  policeCatchPosition,
   policeImpactOffset,
   policeRampPose,
   policeTargetShape,
+  type PoliceImpactEvent,
 } from './policePursuit';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
@@ -140,6 +141,14 @@ export class Engine {
   policeOutcomeSerial = 0;
   policeImpactTarget: Obstacle | null = null;
   readonly policeVehicle = createPoliceVehicle();
+  readonly policeImpact: PoliceImpactEvent = {
+    serial: 0,
+    targetSpawnId: 0,
+    x: 0,
+    z: 0,
+    worldDistance: 0,
+    fallback: false,
+  };
   policeRamObstacle: Obstacle | null = null;
   private readonly cameraSchedule = new SpeedCameraSchedule();
   get speedCamera() {
@@ -210,8 +219,14 @@ export class Engine {
   resumeRemaining = 0;
   private towWarningFor: Obstacle | null = null;
   private policeTargetId = 0;
-  private policeImpactFromX = 0;
   private policeImpactEndZ = 0;
+  private policeImpactReported = false;
+  private readonly policeTargetLast = {
+    x: 0,
+    worldDistance: 0,
+    velocity: 0,
+    elapsed: 0,
+  };
   private policeJumpTarget: { obstacle: Obstacle; spawnId: number } | null =
     null;
   private id: string;
@@ -775,30 +790,43 @@ export class Engine {
     this.policeOutcome = 'escaped';
     this.policeOutcomeSerial++;
     this.policeJumpTarget = null;
-    this.policeImpactTarget = null;
-    this.policeTargetId = 0;
+    this.policeImpactTarget = target;
+    this.policeTargetId = target.spawnId;
+    this.policeImpactEndZ = policeImpactOffset(target);
+    this.policeImpactReported = false;
+    this.rememberPoliceTarget(target);
     const p = this.policeVehicle;
     p.phase = 'approach';
     p.visible = true;
     p.age = 0;
-    this.choosePoliceImpactTarget(target);
     this.skill('POLIZEI ABGEHÄNGT', STUNT_POINTS.policeEscape);
   }
-  private choosePoliceImpactTarget(preferred?: Obstacle) {
-    const visible = (obstacle: Obstacle) =>
-      obstacle.active &&
-      !obstacle.police &&
-      !!policeTargetShape(obstacle) &&
-      obstacle.z + policeImpactOffset(obstacle) >= this.policeVehicle.z &&
-      policeCatchPosition(obstacle, this.policeVehicle.z, this.speed) >=
-        POLICE.visibleImpactZ;
-    const target =
-      preferred && visible(preferred)
-        ? preferred
-        : this.obstacles.filter(visible).sort((a, b) => a.z - b.z)[0];
-    this.policeImpactTarget = target ?? null;
-    this.policeTargetId = target?.spawnId ?? 0;
-    this.policeImpactEndZ = target ? policeImpactOffset(target) : 0;
+  private rememberPoliceTarget(target: Obstacle) {
+    Object.assign(this.policeTargetLast, {
+      x: target.lane * LANE + target.offsetX,
+      worldDistance: this.distance + target.z,
+      velocity: target.velocity,
+      elapsed: this.elapsed,
+    });
+  }
+  private reportPoliceImpact(fallback: boolean) {
+    if (this.policeImpactReported) return;
+    this.policeImpactReported = true;
+    const last = this.policeTargetLast;
+    const worldDistance = fallback
+      ? last.worldDistance +
+        last.velocity * (this.elapsed - last.elapsed) +
+        this.policeImpactEndZ -
+        TRAFFIC_SHAPES.car.frontZ
+      : this.distance + this.policeVehicle.z - TRAFFIC_SHAPES.car.frontZ;
+    Object.assign(this.policeImpact, {
+      serial: this.policeImpact.serial + 1,
+      targetSpawnId: this.policeTargetId,
+      x: fallback ? last.x : this.policeVehicle.x,
+      z: worldDistance - this.distance,
+      worldDistance,
+      fallback,
+    });
   }
   private policeRearEnd() {
     if (!this.policeChase) return;
@@ -811,13 +839,11 @@ export class Engine {
     Object.assign(p, {
       phase: 'ramming',
       visible: true,
-      x: this.x,
-      z: POLICE.ramZ,
       age: 0,
       yaw: 0,
       roll: 0,
       pitch: 0,
-      velocity: this.speed,
+      impactSpeed: Math.max(0, p.velocity - this.speed),
     });
     this.policeRamObstacle = {
       ...this.obstacles[0],
@@ -825,10 +851,10 @@ export class Engine {
       active: true,
       kind: 'car',
       lane: this.lane,
-      offsetX: this.x - this.lane * LANE,
+      offsetX: p.x - this.lane * LANE,
       z: p.z,
       police: true,
-      velocity: this.speed,
+      velocity: p.velocity,
       passed: true,
       color: 0,
     };
@@ -847,24 +873,17 @@ export class Engine {
     p.age += dt;
     if (p.phase === 'approach') {
       p.z -= travel;
-      let target = this.policeImpactTarget;
-      if (
-        !target?.active ||
-        target.spawnId !== this.policeTargetId ||
-        target.z + this.policeImpactEndZ < p.z ||
-        policeCatchPosition(target, p.z, this.speed) < POLICE.visibleImpactZ
-      ) {
-        this.choosePoliceImpactTarget();
-        target = this.policeImpactTarget;
+      const target = this.policeImpactTarget;
+      if (!target?.active || target.spawnId !== this.policeTargetId) {
+        this.reportPoliceImpact(true);
+        this.clearPoliceVehicle();
+        return;
       }
-      // The close-call vehicle can already be behind the rider. Catch another
-      // existing vehicle ahead instead of moving the camera or teleporting NPCs.
-      const goalX = target
-        ? target.lane * LANE + target.offsetX
-        : this.lane * LANE;
-      const goalZ = target
-        ? target.z + this.policeImpactEndZ
-        : POLICE.visibleImpactZ + 3;
+      this.rememberPoliceTarget(target);
+      // The cause of this escape owns the impact even after it passes behind
+      // the rider. Offscreen feedback belongs to presentation, never retargeting.
+      const goalX = target.lane * LANE + target.offsetX;
+      const goalZ = target.z + this.policeImpactEndZ;
       const startX = p.x,
         startZ = p.z;
       const riderBlocks = (
@@ -904,10 +923,26 @@ export class Engine {
       const aligned = Math.abs(p.x - goalX) < 0.1;
       // Finish the lane change behind a target's bumper, then drive into it.
       const limitZ = goalZ - (aligned ? 0 : 0.35);
-      const nextZ = Math.min(
-        limitZ,
-        p.z + (this.speed + POLICE.escapeClosingSpeed) * dt,
+      const gap = Math.max(0, limitZ - p.z);
+      const contactSpeed = POLICE.impactClosingSpeed;
+      const targetVelocity = target.velocity;
+      const desiredVelocity = Math.min(
+        this.speed + POLICE.escapeClosingSpeed,
+        targetVelocity +
+          Math.sqrt(
+            contactSpeed * contactSpeed + 2 * POLICE.escapeBraking * gap,
+          ),
       );
+      const velocity =
+        p.velocity +
+        Math.max(
+          -POLICE.escapeBraking * dt,
+          Math.min(
+            POLICE.escapeAcceleration * dt,
+            desiredVelocity - p.velocity,
+          ),
+        );
+      const nextZ = Math.min(limitZ, p.z + velocity * dt);
       if (nextZ > p.z && !riderBlocks(p.x, p.x, p.z, nextZ)) {
         const obstruction = firstPoliceHit(
           this.obstacles,
@@ -933,32 +968,51 @@ export class Engine {
           : { y: 0, pitch: 0 };
       p.y = ramp.y;
       p.pitch = ramp.pitch;
-      if (
-        target &&
-        aligned &&
-        p.z >= goalZ - 0.001 &&
-        p.z >= POLICE.visibleImpactZ
-      ) {
+      if (aligned && p.z >= goalZ - 0.001 && p.z <= goalZ + 0.04) {
         p.phase = 'wrecked';
         p.age = 0;
-        p.yaw = 0;
-        p.velocity = target.velocity;
-        this.policeImpactFromX = p.x - goalX;
+        p.impactSpeed = Math.max(0, velocity - target.velocity);
+        p.impactSide = p.x < this.x ? -1 : 1;
+        // The short collision impulse removes forward closing speed. The car
+        // then recoils and brakes independently; it is never parented to an NPC.
+        p.velocity = target.velocity - Math.min(2, p.impactSpeed * 0.2);
+        this.reportPoliceImpact(false);
       } else if (p.age > POLICE.escapeSeconds) {
+        this.reportPoliceImpact(true);
         this.clearPoliceVehicle();
       }
       return;
     }
     if (p.phase === 'wrecked') {
-      const target = this.policeImpactTarget;
+      let target = this.policeImpactTarget;
       if (!target?.active || target.spawnId !== this.policeTargetId) {
-        this.clearPoliceVehicle();
-        return;
+        this.policeImpactTarget = null;
+        target = null;
       }
-      p.x = target.lane * LANE + target.offsetX + this.policeImpactFromX;
-      p.z = target.z + this.policeImpactEndZ;
-      p.velocity = target.velocity;
-      p.yaw = 0;
+      p.z -= travel;
+      const velocity =
+        Math.sign(p.velocity) *
+        Math.max(0, Math.abs(p.velocity) - POLICE.wreckBraking * dt);
+      const nextZ = p.z + (p.velocity + velocity) * 0.5 * dt;
+      const hit = firstPoliceHit(this.obstacles, p.x, p.z, p.x, nextZ, target);
+      p.z += (nextZ - p.z) * (hit ? Math.max(0, hit.fraction - 0.001) : 1);
+      p.velocity = hit ? 0 : velocity;
+      // Keep the recoil outside the target even if its own speed changes.
+      if (target) p.z = Math.min(p.z, target.z + this.policeImpactEndZ);
+      const ramp =
+        target?.kind === 'towtruck'
+          ? policeRampPose(target.z - p.z)
+          : { y: 0, pitch: 0 };
+      const response = Math.min(1, p.impactSpeed / 10) * Math.exp(-p.age * 3.8);
+      p.y = ramp.y + Math.max(0, Math.sin(p.age * 14)) * response * 0.022;
+      p.pitch = ramp.pitch - Math.sin(p.age * 15) * response * 0.065;
+      p.roll = Math.sin(p.age * 11) * response * p.impactSide * 0.018;
+      // Whole-car response pivots at the road origin: compensate the axle/tire
+      // corners so even the lowest wheel remains on or above its support plane.
+      p.y +=
+        1.85 * Math.abs(Math.sin(p.pitch - ramp.pitch)) +
+        1.055 * Math.abs(Math.sin(p.roll));
+      p.yaw += (p.impactSide * 0.045 - p.yaw) * (1 - Math.exp(-dt * 4));
       if (p.z < POLICE.retireZ) this.clearPoliceVehicle();
       return;
     }
@@ -990,11 +1044,16 @@ export class Engine {
     if (!firstPoliceHit(this.obstacles, p.x, p.z, nextX, p.z)) p.x = nextX;
     const approach = Math.max(0, Math.min(1, (2 - remaining) / 2));
     const goalZ = POLICE.followZ + (POLICE.ramZ - POLICE.followZ) * approach;
+    const approachVelocity =
+      remaining < 2 ? (POLICE.ramZ - POLICE.followZ) / 2 : 0;
     const velocity = Math.max(
       0,
-      Math.min(this.speed + 26, this.speed + (goalZ - p.z) * 5),
+      Math.min(
+        this.speed + 26,
+        this.speed + approachVelocity + (goalZ - p.z - travel) * 5,
+      ),
     );
-    const nextZ = p.z + velocity * dt;
+    const nextZ = Math.min(POLICE.ramZ, p.z + velocity * dt);
     const hit = firstPoliceHit(this.obstacles, p.x, p.z, p.x, nextZ);
     const fraction = hit ? Math.max(0, hit.fraction - 0.001) : 1;
     p.z += (nextZ - p.z) * fraction;
@@ -1004,7 +1063,7 @@ export class Engine {
       !!firstPoliceHit(this.obstacles, p.x, p.z, desiredX, p.z);
     if (!hit && !laneObstructed) {
       const canRam =
-        p.z >= POLICE.ramZ - 0.8 &&
+        p.z >= POLICE.ramZ - 0.005 &&
         Math.abs(p.x - this.x) < 0.3 &&
         this.height < 0.45 &&
         !firstPoliceHit(this.obstacles, p.x, p.z, this.x, POLICE.ramZ);
@@ -1253,7 +1312,13 @@ export class Engine {
         }
         continue;
       }
-      const rearContact = traffic ? traffic.rearZ + 1 : length;
+      const rearContact = traffic
+        ? traffic.rearZ +
+          trafficFrontReach(
+            this.bike.id,
+            Math.max(this.towPitch, this.wheelieAngle),
+          )
+        : length;
       const frontContact = traffic ? traffic.frontZ - 1 : -length;
       const overlap = o.z < rearContact && prev > frontContact;
       const contactWidth = road?.contactHalfWidth ?? traffic!.contactHalfWidth;
@@ -1305,6 +1370,11 @@ export class Engine {
               this.surfaceGrip = Math.min(this.surfaceGrip, response.grip);
             }
           } else {
+            // Resolve a freshly crossed bumper at the tire's first contact.
+            // Keeping a full fixed-step overshoot would start the visual crash
+            // inside the car and force the bike to jump backwards to escape it.
+            // Side/previously overlapping contacts and the ramp path stay put.
+            if (prev >= rearContact) o.z = rearContact;
             this.crash(
               o.kind === 'construction'
                 ? 'Construction barrier collision'
@@ -1350,11 +1420,18 @@ export class Engine {
             policeEscapeTarget ??= o;
         }
       }
-      // An impact partner stays an ordinary solid NPC and moves at its own
-      // speed. Keep its pool slot only until the coupled wreck is behind us.
+      // Preserve the causative pool slot throughout the bounded approach, even
+      // offscreen. It stays an ordinary solid NPC moving at its original speed.
       const retained =
-        o === this.policeImpactTarget || o === this.policeJumpTarget?.obstacle;
-      if (o.z < (retained ? POLICE.retireZ : -18)) o.active = false;
+        (o === this.policeImpactTarget && o.spawnId === this.policeTargetId) ||
+        (o === this.policeJumpTarget?.obstacle &&
+          o.spawnId === this.policeJumpTarget.spawnId);
+      const awaitingImpact =
+        o === this.policeImpactTarget &&
+        o.spawnId === this.policeTargetId &&
+        this.policeVehicle.phase === 'approach';
+      if (!awaitingImpact && o.z < (retained ? POLICE.retireZ : -18))
+        o.active = false;
     }
     if (landedTowJump && this.phase === 'playing') {
       this.jumps++;
@@ -1373,7 +1450,7 @@ export class Engine {
               this.x - (jump.obstacle.lane * LANE + jump.obstacle.offsetX),
             ) > TRAFFIC_SHAPES.towtruck.contactHalfWidth))
       )
-        policeEscapeTarget ??= jump.obstacle;
+        policeEscapeTarget = jump.obstacle;
       if (policeEscapeTarget) this.policeCrashInto(policeEscapeTarget);
       this.updatePolice(dt, travel);
     }

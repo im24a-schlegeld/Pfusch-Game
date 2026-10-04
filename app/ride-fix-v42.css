@@ -411,7 +411,7 @@
   .ride-screen .v42-hud {
     --ride-score-width: min(170px, calc(50vw - 18px));
     --ride-balance-width: clamp(72px, 22vw, 110px);
-    --ride-sign-width: clamp(52px, calc(39vw - 67px), 132px);
+    --ride-sign-width: min(164px, calc(50vw - 18px));
     grid-template-columns: minmax(0, var(--ride-score-width)) 1fr auto !important;
     grid-template-rows: 44px 72px 36px !important;
     gap: 6px 8px !important;
@@ -439,15 +439,26 @@
     padding: 7px 8px;
   }
   .ride-screen .v42-top-actions {
-    gap: 4px;
+    display: contents;
   }
   .ride-screen .v42-sign-slot {
-    height: 40px;
-    padding: 2px 5px;
+    grid-column: 3;
+    grid-row: 2;
+    align-self: start;
+    justify-self: end;
+    height: 72px;
+    padding: 3px 5px;
     background: #10131580;
     border: 1px solid #ffffff44;
   }
+  .ride-screen .v42-signs canvas {
+    height: auto !important;
+    max-height: none !important;
+  }
   .ride-screen .v42-pause {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
     width: 42px !important;
     height: 42px !important;
     min-width: 42px !important;

@@ -11,6 +11,7 @@ import {
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { createRagdoll, type RagdollPose } from './ragdoll';
 import type { Point } from './riderSkeleton';
+import type { CrashDirection } from './crashTravel';
 
 interface CrashBike {
   root: Object3D;
@@ -37,6 +38,9 @@ interface CrashOptions {
   impactObstacle?: Object3D;
   collisionObstacles?: Object3D[];
   impactSpeed?: number;
+  impactDirection?: CrashDirection;
+  /** World X velocity at contact; the fall retains an existing lane change. */
+  lateralVelocity?: number;
 }
 
 export const crashDuration = (cause: string, reducedMotion: boolean) =>
@@ -46,6 +50,50 @@ const smooth = (value: number) => {
   const t = Math.max(0, Math.min(1, value));
   return t * t * (3 - 2 * t);
 };
+
+/** Small relative motions sit on top of the road's continued forward travel. */
+function crashMotion(options: CrashOptions, initialRoll: number) {
+  const direction =
+    options.impactDirection ??
+    (/polizei.*gerammt/i.test(options.cause)
+      ? 'rear'
+      : options.impactObstacle || /collision/i.test(options.cause)
+        ? 'front'
+        : 'fall');
+  const wheelie = /overrotated/i.test(options.cause);
+  const speed = Math.max(0, Math.min(40, options.impactSpeed ?? 14));
+  const lateral = Math.max(-2.2, Math.min(2.2, options.lateralVelocity ?? 0));
+  // Falling follows the actual lean/sideways momentum, never the equipment.
+  const side =
+    Math.abs(initialRoll) > 0.025
+      ? -Math.sign(initialRoll)
+      : Math.abs(lateral) > 0.1
+        ? Math.sign(lateral)
+        : 1;
+  const front = direction === 'front';
+  const rear = direction === 'rear';
+  const forward = wheelie
+    ? 0.45 + speed * 0.025
+    : (front ? 2.2 : rear ? 2.7 : 1.5) + speed * 0.055;
+  return {
+    direction,
+    side,
+    wheelie,
+    fallTime: wheelie ? 0.88 : rear ? 0.82 : 0.74,
+    lateralSlide: lateral * 0.16 + side * (rear ? 0.28 : 0.22),
+    forwardSlide: (front ? 0.7 : rear ? 1.3 : 0.95) + speed * 0.025,
+    velocity: [
+      lateral * 0.42 + side * 0.48,
+      rear ? 0.12 : 0,
+      -forward,
+    ] as Point,
+    angularVelocity: [
+      wheelie ? 1.05 : front ? -1.05 : -0.3,
+      side * 0.08,
+      -side * (rear ? 1.15 : 1.35),
+    ] as Point,
+  };
+}
 
 function shiftWorldZ(object: Object3D, distance: number) {
   if (!object.parent) {
@@ -147,8 +195,39 @@ function shiftWorld(object: Object3D, movement: Vector3) {
   }
 }
 
+/** Ground-shadow quads are drawings, not bodywork or rider collision surfaces. */
+function solidObstacleBounds(object: Object3D) {
+  object.updateWorldMatrix(true, true);
+  const bounds = new Box3(),
+    part = new Box3(),
+    transform = new Matrix4(),
+    instance = new Matrix4();
+  object.traverseVisible((child) => {
+    if (!(child instanceof Mesh) || child.name === 'traffic-contact-shadow')
+      return;
+    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+    const count = child instanceof InstancedMesh ? child.count : 1;
+    for (let i = 0; i < count; i++) {
+      transform.copy(child.matrixWorld);
+      if (child instanceof InstancedMesh) {
+        child.getMatrixAt(i, instance);
+        transform.multiply(instance);
+      }
+      part.copy(child.geometry.boundingBox!).applyMatrix4(transform);
+      bounds.union(part);
+    }
+  });
+  return bounds;
+}
+
 /** Project the chassis to the closest horizontal surface of each obstacle. */
-function separateChassis(object: Object3D, bounds: Box3, obstacles: Box3[]) {
+function separateChassis(
+  object: Object3D,
+  bounds: Box3,
+  obstacles: Box3[],
+  impactBounds?: Box3,
+  direction?: CrashDirection,
+) {
   for (let iteration = 0; iteration < 3; iteration++) {
     for (const obstacle of obstacles) {
       if (!bounds.intersectsBox(obstacle)) continue;
@@ -158,9 +237,18 @@ function separateChassis(object: Object3D, bounds: Box3, obstacles: Box3[]) {
         new Vector3(0, 0, obstacle.min.z - bounds.max.z - 0.025),
         new Vector3(0, 0, obstacle.max.z - bounds.min.z + 0.025),
       ];
-      candidates.sort((a, b) => a.lengthSq() - b.lengthSq());
-      shiftWorld(object, candidates[0]);
-      bounds.translate(candidates[0]);
+      // At a known bumper contact, the shortest AABB overlap can be sideways.
+      // Resolving that way instantly moves the whole motorcycle into a lane
+      // beside the vehicle. Retain the actual contact normal instead.
+      const bumper =
+        obstacle === impactBounds &&
+        (direction === 'front' || direction === 'rear');
+      if (!bumper) candidates.sort((a, b) => a.lengthSq() - b.lengthSq());
+      const correction = bumper
+        ? candidates[direction === 'front' ? 3 : 2]
+        : candidates[0];
+      shiftWorld(object, correction);
+      bounds.translate(correction);
     }
   }
 }
@@ -168,21 +256,22 @@ function separateChassis(object: Object3D, bounds: Box3, obstacles: Box3[]) {
 /** The real rider is skinned by world-space joint physics independently of the sliding bike. */
 function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
   const duration = crashDuration(options.cause, options.reducedMotion);
-  const obstacles = [
+  const obstacleObjects = [
     ...new Set([
       ...(options.collisionObstacles ?? []),
       ...(options.impactObstacle ? [options.impactObstacle] : []),
     ]),
-  ].map((object) => {
-    object.updateWorldMatrix(true, true);
-    return new Box3().setFromObject(object);
-  });
+  ];
+  const obstacles = obstacleObjects.map(solidObstacleBounds);
+  const impactBounds = options.impactObstacle
+    ? obstacles[obstacleObjects.indexOf(options.impactObstacle)]
+    : undefined;
   const chassis = contacts(bike.body, bike.rider);
   const initialRoot = bike.root.position.clone();
   const initialRoll = bike.root.rotation.z,
     initialYaw = bike.root.rotation.y;
-  const side =
-    !bike.rider.getObjectByName('carried-cap') && initialRoll > 0.025 ? -1 : 1;
+  const motion = crashMotion(options, initialRoll);
+  const { side } = motion;
   bike.rider.updateWorldMatrix(true, true);
   const riderWorld = bike.rider.matrixWorld.clone();
   const riderInverse = riderWorld.clone().invert();
@@ -195,12 +284,11 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
     riderWorld,
     riderRotation,
   );
-  const speed = Math.max(0, Math.min(40, options.impactSpeed ?? 14));
   const ragdoll = createRagdoll(initialPose, {
     obstacles,
     scale: riderScale.x,
-    velocity: [side * 1.4, 0.35, -Math.min(4.3, 1.5 + speed * 0.07)],
-    angularVelocity: [-0.7, side * 0.2, -side * 2.85],
+    velocity: motion.velocity,
+    angularVelocity: motion.angularVelocity,
   });
   const bodyBounds = new Box3(),
     riderBounds = new Box3();
@@ -211,15 +299,15 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
     settled = false;
 
   function bodyPose(time: number) {
-    const fall = smooth(time / 0.68);
+    const fall = smooth(time / motion.fallTime);
     const slide = 1 - (1 - Math.min(1, time / 1.2)) ** 3;
     bike.root.position.set(
-      initialRoot.x + side * 0.45 * slide,
+      initialRoot.x + motion.lateralSlide * slide,
       initialRoot.y * (1 - fall),
-      initialRoot.z - 1.25 * slide,
+      initialRoot.z - motion.forwardSlide * slide,
     );
     bike.root.rotation.z = initialRoll + (-side * 1.46 - initialRoll) * fall;
-    bike.root.rotation.y = initialYaw + side * 0.16 * fall;
+    bike.root.rotation.y = initialYaw + side * 0.11 * fall;
     bike.animateSuspension(
       options.pitch * (1 - fall),
       options.travel * (1 - fall),
@@ -233,7 +321,13 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
     const lift = Math.max(0, 0.025 - bodyBounds.min.y);
     shiftWorld(bike.root, new Vector3(0, lift, 0));
     bodyBounds.translate(new Vector3(0, lift, 0));
-    separateChassis(bike.root, bodyBounds, obstacles);
+    separateChassis(
+      bike.root,
+      bodyBounds,
+      obstacles,
+      impactBounds,
+      motion.direction,
+    );
     bike.body.updateWorldMatrix(true, false);
     // The rider remains under the bike for ownership/disposal, but its frame is
     // held in world space while physics positions every joint independently.
@@ -293,7 +387,9 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
     const correction = floor - riderBounds.min.y;
     shiftWorld(bike.rider, new Vector3(0, correction, 0));
     riderBounds.translate(new Vector3(0, correction, 0));
-    separateChassis(bike.rider, riderBounds, obstacles);
+    // Joint/capsule contacts have already separated the physical rider. Its
+    // enclosing AABB may still overlap a vehicle corner; pushing that entire
+    // box away here would teleport a correctly resting articulated body.
     focus
       .copy(bodyBounds.getCenter(new Vector3()))
       .add(riderBounds.getCenter(new Vector3()))
@@ -348,15 +444,13 @@ export function createCrashAnimation(bike: CrashBike, options: CrashOptions) {
   const duration = crashDuration(options.cause, options.reducedMotion);
   options.impactObstacle?.updateWorldMatrix(true, true);
   const impactBounds = options.impactObstacle
-    ? new Box3().setFromObject(options.impactObstacle)
+    ? solidObstacleBounds(options.impactObstacle)
     : undefined;
   const chassis = contacts(bike.body, bike.rider);
   const initialRoot = bike.root.position.clone();
   const initialRoll = bike.root.rotation.z;
-  // Keep the left hip's hanging cap on the upper side of this staged fall, so
-  // gravity can keep acting on it without pushing its brim through the road.
-  const cap = bike.rider.getObjectByName('carried-cap');
-  const side = !cap && initialRoll > 0.025 ? -1 : 1;
+  const motion = crashMotion(options, initialRoll);
+  const { side } = motion;
   const riderAtImpact = contacts(bike.rider);
   // Cache a conservative support envelope for both the riding and thrown
   // poses. This avoids scanning the full skinned rider every crash frame.
@@ -399,7 +493,7 @@ export function createCrashAnimation(bike: CrashBike, options: CrashOptions) {
       elapsed = Math.min(duration, elapsed + Math.max(0, Math.min(dt, 0.1)));
     if (duration === 0) return true;
     if (finalGroundSettled) return elapsed >= duration;
-    const fall = options.reducedMotion ? 1 : smooth(elapsed / 0.68);
+    const fall = options.reducedMotion ? 1 : smooth(elapsed / motion.fallTime);
     bike.animateCrashPose?.(
       fall,
       side,
@@ -410,12 +504,12 @@ export function createCrashAnimation(bike: CrashBike, options: CrashOptions) {
       ? 1
       : 1 - (1 - Math.min(1, elapsed / duration)) ** 3;
     bike.root.position.set(
-      initialRoot.x + side * 0.45 * slide,
+      initialRoot.x + motion.lateralSlide * slide,
       initialRoot.y * (1 - fall),
-      initialRoot.z - 1.25 * slide,
+      initialRoot.z - motion.forwardSlide * slide,
     );
     bike.root.rotation.z = initialRoll + (-side * 1.46 - initialRoll) * fall;
-    bike.root.rotation.y = initialYaw + side * 0.16 * fall;
+    bike.root.rotation.y = initialYaw + side * 0.11 * fall;
     bike.animateSuspension(
       options.pitch * (1 - fall),
       options.travel * (1 - fall),

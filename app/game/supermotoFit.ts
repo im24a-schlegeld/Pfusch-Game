@@ -1,4 +1,5 @@
 import { SUPERMOTO_WHEELS } from './supermotoWheelDimensions';
+import { supermotoSettledOffset } from './supermotoRideHeight';
 
 /** Supermoto-only dimensions, in unscaled motorcycle coordinates. Front is -Z. */
 export type FitPoint = [number, number, number];
@@ -48,8 +49,8 @@ export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
   [0.117, 0.925, 0.755],
   [0.125, 0.883, 0.625],
   [0.137, 0.852, 0.530],
-  [0.142, 0.720, 0.370],
-  [0.142, 0.681, 0.305],
+  [0.142, 0.7453, 0.370],
+  [0.142, 0.7020, 0.305],
   [0.138, 0.672, 0.260],
   [0.139, 0.755, 0.160],
   [0.142, 0.860, 0.105],
@@ -57,6 +58,8 @@ export const SUPERMOTO_SIDE_COVER: FitPoint[] = [
 
 /** Sheet cross-sections: z, half width, crown height, edge height.
  * Tail-contact physics reads the final station's upper center tip. */
+export const SUPERMOTO_REAR_TIP_Z = SUPERMOTO_CHASSIS.rearAxle + SUPERMOTO_CHASSIS.rearRadius
+  - supermotoSettledOffset(SUPERMOTO_CHASSIS.rearRadius, SUPERMOTO_CHASSIS.rearAxle)[2];
 export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.115, 0.128, 0.008, 0.941],
   [0.34, 0.111, 0.009, 0.9485],
@@ -64,8 +67,8 @@ export const SUPERMOTO_TAIL_FENDER: [number, number, number, number][] = [
   [0.675, 0.090, 0.010, 1.023],
   [0.76, 0.081, 0.008, 1.052],
   [0.87, 0.077, 0.007, 1.077],
-  [0.97, 0.068, 0.006, 1.101],
-  [1.03, 0.057, 0.005, 1.107],
+  [0.97, 0.057, 0.005, 1.103],
+  [SUPERMOTO_REAR_TIP_Z, 0.035, 0.003, 1.112],
 ];
 
 /** z, half width, crown height, edge height. The higher EXC forward blade

@@ -8,8 +8,9 @@ export const TUBE_EXHAUST = Object.freeze({
   x: 0.060,
   startZ: 0.490,
   endZ: 0.790,
-  startY: 0.760,
-  endY: 0.853,
+  // Clear the enlarged rear tyre at full compression without widening the tail.
+  startY: 0.764,
+  endY: 0.857,
   radius: 0.032,
   verticalRadius: 0.042,
   clearance: 0.008,

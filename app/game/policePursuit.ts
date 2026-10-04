@@ -7,12 +7,26 @@ export const POLICE = Object.freeze({
   followZ: -12,
   ramZ: -4.35,
   escapeClosingSpeed: 38,
-  visibleImpactZ: 5,
+  escapeAcceleration: 22,
+  escapeBraking: 14,
+  impactClosingSpeed: 7,
+  wreckBraking: 6.5,
   escapeSeconds: 12,
   retireZ: -48,
   lateralSpeed: 4.8,
   encounterCooldownSeconds: 12,
 });
+
+/** One bounded notification per escaped encounter; positions use engine metres. */
+export interface PoliceImpactEvent {
+  serial: number;
+  targetSpawnId: number;
+  x: number;
+  z: number;
+  worldDistance: number;
+  /** Original target unavailable or unreachable in time; no substitute NPC. */
+  fallback: boolean;
+}
 
 /** Separate from the NPC pool: no recycled car can become the pursuing car. */
 export interface PoliceVehicleState {
@@ -25,6 +39,9 @@ export interface PoliceVehicleState {
   yaw: number;
   roll: number;
   velocity: number;
+  /** Closing speed at the single real bumper contact, for impact presentation. */
+  impactSpeed: number;
+  impactSide: number;
   age: number;
 }
 
@@ -39,6 +56,8 @@ export function createPoliceVehicle(): PoliceVehicleState {
     yaw: 0,
     roll: 0,
     velocity: 0,
+    impactSpeed: 0,
+    impactSide: 1,
     age: 0,
   };
 }
@@ -108,21 +127,6 @@ export function firstPoliceHit(
 export function policeImpactOffset(target: Obstacle) {
   if (target.kind === 'towtruck') return -4.8;
   return TRAFFIC_SHAPES.car.frontZ - policeTargetShape(target)!.rearZ - 0.02;
-}
-
-/** Where bumper contact will occur if the police catches up at its surge speed. */
-export function policeCatchPosition(
-  target: Obstacle,
-  fromZ: number,
-  riderSpeed: number,
-) {
-  const contactZ = target.z + policeImpactOffset(target);
-  const closingSpeed = Math.max(
-    1,
-    riderSpeed + POLICE.escapeClosingSpeed - target.velocity,
-  );
-  const seconds = Math.max(0, contactZ - fromZ) / closingSpeed;
-  return contactZ - (riderSpeed - target.velocity) * seconds;
 }
 
 /** Both police axles follow the ramp; never sink a car through the loading bed. */

@@ -2,10 +2,8 @@ import * as THREE from 'three';
 import { SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { SUPERMOTO_SWINGARM } from './supermotoSwingarm';
 
-const bridgeZ = 0.315;
 export const SUPERMOTO_SHOCK_LOWER_MOUNT = Object.freeze({
-  bridge: [0, THREE.MathUtils.lerp(SUPERMOTO_SWINGARM.pivotY, SUPERMOTO_SWINGARM.axleY,
-    (bridgeZ - SUPERMOTO_SWINGARM.pivotZ) / (SUPERMOTO_SWINGARM.axleZ - SUPERMOTO_SWINGARM.pivotZ)), bridgeZ] as const,
+  bridge: [0, SUPERMOTO_SWINGARM.shockBridgeY, SUPERMOTO_SWINGARM.shockBridgeZ] as const,
   eye: SUPERMOTO_SHOCK_BOTTOM,
 });
 

@@ -8,6 +8,7 @@ import {
   Matrix4,
   Mesh,
   MeshStandardMaterial,
+  PlaneGeometry,
   Scene,
   SkinnedMesh,
   SpotLight,
@@ -15,6 +16,9 @@ import {
   type Object3D,
 } from 'three';
 import { newPlayer } from '../app/domain/progression';
+import { BIKES } from '../app/domain/config';
+import { Engine } from '../app/game/engine';
+import { makeDetailedTraffic } from '../app/game/trafficModels';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { createBikeHeadlightRig } from '../app/game/bikeHeadlight';
@@ -94,6 +98,179 @@ function minimumVisibleY(owner: Object3D, excluded?: Object3D) {
 }
 
 describe('bounded crash presentation', () => {
+  it('keeps visible helmet and clothing outside a real car throughout the fall', () => {
+    const engine = new Engine(
+      BIKES.find(({ id }) => id === '125')!,
+      999,
+    );
+    engine.start();
+    engine.speed = 140 / 3.6;
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    engine.spawn('car', 0, 5, 0, 0);
+    for (let step = 0; step < 30 && engine.phase === 'playing'; step++)
+      engine.advance(1 / 120);
+    const bike = makeBike(
+      { ...newPlayer(), bike: '125', helmet: 'fullface' },
+      [],
+    );
+    const scene = new Scene();
+    const traffic = makeDetailedTraffic('car', 0);
+    traffic.position.z = -engine.crashObstacle!.z;
+    scene.add(bike.root, traffic);
+    scene.updateMatrixWorld(true);
+    const bounds = new Box3();
+    traffic.traverseVisible((object) => {
+      if (object instanceof Mesh && object.name !== 'traffic-contact-shadow')
+        bounds.union(new Box3().setFromObject(object));
+    });
+    const animation = createCrashAnimation(bike, {
+      cause: engine.event.text,
+      pitch: 0,
+      travel: 0,
+      reducedMotion: false,
+      impactObstacle: traffic,
+      impactDirection: 'front',
+      impactSpeed: engine.speed,
+    });
+    const vertex = new Vector3();
+    const failures: Array<{
+      frame: number;
+      penetrations: Record<string, number>;
+    }> = [];
+    for (let frame = 0; frame < 72; frame++) {
+      animation.advance(1 / 60, true);
+      scene.updateMatrixWorld(true);
+      const penetrations: Record<string, number> = {};
+      bike.rider.traverseVisible((object) => {
+        if (!(object instanceof Mesh)) return;
+        if (object instanceof SkinnedMesh) object.skeleton.update();
+        for (
+          let index = 0;
+          index < object.geometry.getAttribute('position').count;
+          index += 3
+        ) {
+          object
+            .getVertexPosition(index, vertex)
+            .applyMatrix4(object.matrixWorld);
+          if (bounds.containsPoint(vertex)) {
+            const name = object.name || String(object.id);
+            penetrations[name] = (penetrations[name] ?? 0) + 1;
+          }
+        }
+      });
+      if (Object.keys(penetrations).length)
+        failures.push({ frame, penetrations });
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it('starts a real domain bumper collision without repositioning the whole motorcycle', () => {
+    const engine = new Engine(
+      BIKES.find(({ id }) => id === '450')!,
+      999,
+    );
+    engine.start();
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    engine.spawn('car', 0, 5, 0, 0);
+    for (let step = 0; step < 600 && engine.phase === 'playing'; step++)
+      engine.advance(1 / 120);
+    expect(engine.phase).toBe('crashed');
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const scene = new Scene();
+    const traffic = makeDetailedTraffic('car', 0);
+    traffic.position.z = -engine.crashObstacle!.z;
+    scene.add(bike.root, traffic);
+    scene.updateMatrixWorld(true);
+    const animation = createCrashAnimation(bike, {
+      cause: engine.event.text,
+      pitch: 0,
+      travel: 0,
+      reducedMotion: false,
+      impactObstacle: traffic,
+      impactDirection: 'front',
+      impactSpeed: engine.speed,
+    });
+    animation.advance(0, true);
+    expect(
+      Math.abs(bike.root.position.z),
+      JSON.stringify({
+        contactZ: engine.crashObstacle!.z,
+        correction: bike.root.position.z,
+      }),
+    ).toBeLessThan(0.08);
+    expect(bike.root.position.x).toBeCloseTo(0, 10);
+  });
+
+  it('does not treat a painted traffic shadow as a solid bumper', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const scene = new Scene();
+    const traffic = new Group();
+    traffic.add(
+      new Mesh(new BoxGeometry(2.35, 1.5, 5.8), new MeshStandardMaterial()),
+    );
+    const shadow = new Mesh(
+      new PlaneGeometry(4, 12),
+      new MeshStandardMaterial(),
+    );
+    shadow.name = 'traffic-contact-shadow';
+    shadow.rotation.x = -Math.PI / 2;
+    traffic.add(shadow);
+    traffic.position.z = -5;
+    scene.add(bike.root, traffic);
+    const animation = createCrashAnimation(bike, {
+      cause: 'Traffic collision',
+      pitch: 0,
+      travel: 0,
+      reducedMotion: false,
+      impactObstacle: traffic,
+      impactDirection: 'front',
+    });
+    animation.advance(0, true);
+    expect(bike.root.position.z).toBeCloseTo(0, 10);
+    expect(bike.root.position.x).toBeCloseTo(0, 10);
+  });
+
+  it('retains the existing lean and finishes without a last-frame rider teleport', () => {
+    for (const direction of ['front', 'rear', 'fall'] as const) {
+      const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+      const scene = new Scene();
+      scene.add(bike.root);
+      bike.root.rotation.z = 0.14;
+      const animation = createCrashAnimation(bike, {
+        cause:
+          direction === 'rear'
+            ? 'POLIZEI HAT DICH GERAMMT'
+            : 'Traffic collision',
+        pitch: 0,
+        travel: 0,
+        reducedMotion: false,
+        impactDirection: direction,
+        impactSpeed: 25,
+        lateralVelocity: -0.5,
+      });
+      for (let frame = 0; frame < 71; frame++) animation.advance(1 / 60, true);
+      bike.root.updateMatrixWorld(true);
+      const before = new Vector3(
+        ...bike.captureRagdollPose().head,
+      ).applyMatrix4(bike.rider.matrixWorld);
+      animation.advance(1 / 60, true);
+      bike.root.updateMatrixWorld(true);
+      const after = new Vector3(...bike.captureRagdollPose().head).applyMatrix4(
+        bike.rider.matrixWorld,
+      );
+      expect(bike.root.rotation.z).toBeGreaterThan(1.4);
+      expect(bike.root.position.x).toBeLessThan(0);
+      expect(
+        after.distanceTo(before),
+        JSON.stringify({
+          direction,
+          before: before.toArray(),
+          after: after.toArray(),
+        }),
+      ).toBeLessThan(0.08);
+    }
+  });
+
   it('makes the real skinned rider hit nearby vehicles while its limbs leave the grips and pegs', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     const scene = new Scene();
@@ -111,12 +288,15 @@ describe('bounded crash presentation', () => {
       pitch: 0,
       travel: 0,
       reducedMotion: false,
+      impactObstacle: obstacle,
+      impactDirection: 'front',
       collisionObstacles: [obstacle],
       impactSpeed: 25,
     });
     for (let frame = 0; frame < 72; frame++) {
       animation.advance(1 / 60, true);
       scene.updateMatrixWorld(true);
+      expect(Math.abs(bike.root.position.x)).toBeLessThan(0.4);
       const current = bike.captureRagdollPose();
       const joints = [
         current.hip,
@@ -318,7 +498,7 @@ describe('bounded crash presentation', () => {
           bike.animateAccessories({ longitudinalAcceleration: -10 }, 1 / 60);
         }
         bike.root.updateMatrixWorld(true);
-        expect(bike.root.rotation.z).toBeLessThan(-1.4);
+        expect(bike.root.rotation.z * Math.sign(roll)).toBeGreaterThan(1.4);
         expect(
           minimumVisibleY(bike.rider.getObjectByName('carried-cap')!),
         ).toBeGreaterThan(0.035);

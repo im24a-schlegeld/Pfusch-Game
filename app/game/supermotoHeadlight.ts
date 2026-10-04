@@ -1,4 +1,4 @@
-import { BufferGeometry, CylinderGeometry, Float32BufferAttribute, ShapeUtils, TorusGeometry, Vector2, Vector3, Quaternion } from 'three';
+import { BufferGeometry, Float32BufferAttribute, LatheGeometry, ShapeUtils, SphereGeometry, TorusGeometry, Vector2, Vector3, Quaternion } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 type Point = [number, number, number];
 type Outline = readonly (readonly [number, number])[];
@@ -15,12 +15,12 @@ function maskFrontZ(y: number, x: number) {
 }
 /** Shared light anchor stays recessed behind the actual transparent lens. */
 export const SUPERMOTO_LENS_FACE: Point = [0,1.008,maskFrontZ(1.008,0)-0.004];
-export const SUPERMOTO_LAMP_BULB: Point = [0,1.008,SUPERMOTO_LENS_FACE[2]+0.030];
+export const SUPERMOTO_LAMP_BULB: Point = [0,1.008,SUPERMOTO_LENS_FACE[2]+0.045];
 export const SUPERMOTO_MASK_STRAP_ANCHORS: Point[] = [[0.076,0.954],[0.128,1.080]]
   .map(([x,y])=>[x,y,maskFrontZ(y,x)+0.004]);
 
 /** Thin shaped front and back faces, including real return walls around holes. */
-function maskShell(outline: Outline, hole: Outline | undefined, thickness: number, offset: number, lensCenter = false, ridge?: Outline) {
+function maskShell(outline: Outline, hole: Outline | undefined, thickness: number, offset: number, lensCenter = false, ridge?: Outline, dome = 0) {
   const contours = [outline, ...(hole ? [hole] : [])];
   const points = contours.flat();
   const ridgeStart = points.length;
@@ -40,7 +40,8 @@ function maskShell(outline: Outline, hole: Outline | undefined, thickness: numbe
   const positions: number[] = [], indices: number[] = [], uv: number[] = [];
   for (const depth of [offset, offset + thickness]) for (const [i, [x, y]] of points.entries()) {
     const ridgeDepth = ridge && i >= ridgeStart ? -0.008 : 0;
-    positions.push(x, y, maskFrontZ(y, x) + depth + ridgeDepth); uv.push((x + 0.145) / 0.290, (y - 0.885) / 0.280);
+    const crown = lensCenter && i === count - 1 ? -dome : 0;
+    positions.push(x, y, maskFrontZ(y, x) + depth + ridgeDepth + crown); uv.push((x + 0.145) / 0.290, (y - 0.885) / 0.280);
   }
   for (const [a, b, c] of triangles) {
     const pa = points[a], pb = points[b], pc = points[c];
@@ -94,29 +95,49 @@ function lampOutline(scale: number): Outline {
 
 export function supermotoLampGeometry(part: 'bezel' | 'reflector' | 'glass' | 'light-guide') {
   if(part==='bezel')return maskShell(lampOutline(1.035),lampOutline(0.89),0.012,-0.001);
-  if(part==='glass')return maskShell(lampOutline(0.90),undefined,0.0025,-0.004,true);
+  if(part==='glass')return maskShell(lampOutline(0.90),undefined,0.0025,-0.001,true,undefined,0.003);
   if(part==='light-guide')return maskShell([
     [-0.071,1.058],[-0.035,1.048],[0,1.045],[0.035,1.048],[0.071,1.058],
     [0.078,1.043],[0.072,1.029],[0.034,1.037],[0,1.034],[-0.034,1.037],[-0.072,1.029],[-0.078,1.043],
-  ],undefined,0.003,0.001);
-  // A dark recessed optical housing, rather than a single opaque silver pane.
-  return maskShell(lampOutline(0.90),undefined,0.003,0.018,true);
+  ],undefined,0.003,0.014);
+  return maskShell(lampOutline(0.81),undefined,0.004,0.060,true);
+}
+
+/** Tapered cavity walls connect the front glazing to the deeply recessed back. */
+export function supermotoLampWellGeometry() {
+  const front = lampOutline(0.89), rear = lampOutline(0.81);
+  const positions: number[] = [], indices: number[] = [];
+  for (const [outline, depth] of [[front, 0.004], [rear, 0.060]] as const)
+    for (const [x, y] of outline) positions.push(x, y, maskFrontZ(y, x) + depth);
+  const count = front.length;
+  for (let i = 0; i < count; i++) {
+    const next = (i + 1) % count;
+    indices.push(i, next, i + count, next, next + count, i + count);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+  return geometry;
 }
 
 const PROJECTORS: readonly (readonly [number,number])[] = [
   [-0.026,1.022],[0.026,1.022],[0,1.009],[-0.026,0.994],[0.026,0.994],
 ];
-/** Five real projector rings and lenses, merged into two bounded draw calls. */
-export function supermotoProjectorGeometry(part: 'socket' | 'lens') {
+/** Five real projector rings, cups and lenses, merged by material. */
+export function supermotoProjectorGeometry(part: 'socket' | 'lens' | 'cup') {
   const front=new Vector3(0,0.475,-1).normalize();
   const rotation=new Quaternion().setFromUnitVectors(new Vector3(0,0,1),front);
   const parts=PROJECTORS.map(([x,y])=>{
     const geometry=part==='socket'
-      ? new TorusGeometry(0.0105,0.0022,6,20)
-      : new CylinderGeometry(0.0084,0.0084,0.004,20,1);
-    if(part==='lens')geometry.rotateX(Math.PI/2);
+      ? new TorusGeometry(0.012,0.0016,8,24)
+      : part==='cup'
+        ? new LatheGeometry([[0.005,0],[0.007,0.005],[0.010,0.014],[0.013,0.027]].map(p=>new Vector2(...p)),24)
+        : new SphereGeometry(0.0086,24,12);
+    if(part==='cup')geometry.rotateX(Math.PI/2);
+    if(part==='lens')geometry.scale(1,1,0.38);
     geometry.applyQuaternion(rotation);
-    geometry.translate(x,y,maskFrontZ(y,x)+(part==='socket'?0.004:0.003));
+    geometry.translate(x,y,maskFrontZ(y,x)+(part==='cup'?0.054:part==='socket'?0.027:0.030));
     return geometry;
   });
   const merged=mergeGeometries(parts,false)!;
@@ -128,5 +149,5 @@ export function supermotoLowerLightGuideGeometry() {
   return maskShell([
     [-0.063,0.995],[-0.053,0.962],[-0.020,0.946],[0,0.942],[0.020,0.946],[0.053,0.962],[0.063,0.995],
     [0.053,0.990],[0.044,0.967],[0.015,0.953],[0,0.951],[-0.015,0.953],[-0.044,0.967],[-0.053,0.990],
-  ],undefined,0.003,0.001);
+  ],undefined,0.003,0.014);
 }

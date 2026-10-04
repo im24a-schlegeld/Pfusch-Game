@@ -25,6 +25,8 @@ interface Bone {
   end: number;
   upper: number;
   lower: number;
+  minimumReach: number;
+  maximumReach: number;
 }
 
 const STEP = 1 / 120;
@@ -71,7 +73,9 @@ export function createRagdoll(
   };
   add(initial.hip, 0.15, 0.2);
   add(initial.shoulder, 0.15, 0.2);
-  add(initial.head, 0.19, 0.18);
+  // The full-face chin projects about 0.225 m from the helmet centre after
+  // its authored scale. A head-only sphere lets that shell enter a bumper.
+  add(initial.head, 0.23, 0.18);
   for (const { arm, leg } of initial.limbs) {
     add(arm.start, 0.095, 0.2);
     add(leg.start, 0.095, 0.2);
@@ -89,16 +93,34 @@ export function createRagdoll(
       [leg, 4 + side * 2, 0.09],
     ] as const) {
       const joint = add(limb.joint, radius, 0.85);
-      const end = add(limb.end, radius, 1);
-      // Different inertia at each joint releases the riding contact naturally.
-      particles[end].previous.x -= (side ? 1 : -1) * STEP * 0.55;
-      particles[joint].previous.y += STEP * 0.25;
+      // Cover the authored toe and curled glove beyond ankle/wrist joints.
+      // These are contact envelopes; the visible geometry and bone lengths stay fixed.
+      const end = add(limb.end, limb === leg ? 0.2 : 0.1, 1);
+      // A small release of grip/peg contacts; impact momentum drives the fall.
+      particles[end].previous.x -= (side ? 1 : -1) * STEP * 0.15;
+      const upper = particles[start].position.distanceTo(
+        particles[joint].position,
+      );
+      const lower = particles[joint].position.distanceTo(
+        particles[end].position,
+      );
       bones.push({
         start,
         joint,
         end,
-        upper: particles[start].position.distanceTo(particles[joint].position),
-        lower: particles[joint].position.distanceTo(particles[end].position),
+        upper,
+        lower,
+        // Keep a slight bend and prevent elbows/knees folding completely shut.
+        minimumReach: Math.sqrt(
+          upper ** 2 +
+            lower ** 2 +
+            2 * upper * lower * Math.cos((155 * Math.PI) / 180),
+        ),
+        maximumReach: Math.sqrt(
+          upper ** 2 +
+            lower ** 2 +
+            2 * upper * lower * Math.cos((4 * Math.PI) / 180),
+        ),
       });
     }
   });
@@ -253,8 +275,8 @@ export function createRagdoll(
       const end = particles[bone.end].position;
       delta.subVectors(end, start);
       const reach = Math.max(
-        Math.abs(bone.upper - bone.lower) + 1e-5,
-        Math.min(bone.upper + bone.lower - 1e-5, delta.length()),
+        bone.minimumReach,
+        Math.min(bone.maximumReach, delta.length()),
       );
       if (delta.lengthSq() < 1e-10) delta.set(0, -1, 0);
       end.copy(delta.setLength(reach).add(start));
@@ -285,6 +307,15 @@ export function createRagdoll(
       for (const bone of bones) {
         distance(bone.start, bone.joint, bone.upper);
         distance(bone.joint, bone.end, bone.lower);
+        const reach = particles[bone.start].position.distanceTo(
+          particles[bone.end].position,
+        );
+        if (reach < bone.minimumReach || reach > bone.maximumReach)
+          distance(
+            bone.start,
+            bone.end,
+            Math.max(bone.minimumReach, Math.min(bone.maximumReach, reach)),
+          );
       }
       contacts();
     }
@@ -312,8 +343,19 @@ export function createRagdoll(
       }
       if (touching) {
         const incoming = delta.dot(normal);
-        if (incoming < 0) delta.addScaledVector(normal, -1.12 * incoming);
-        delta.multiplyScalar(0.82);
+        delta.addScaledVector(normal, -incoming);
+        // Coulomb friction spends a bounded amount of speed per second. A
+        // single boot touching the road must not stop the whole rider at once.
+        const tangent = delta.length();
+        if (tangent > 1e-10)
+          delta.multiplyScalar(
+            Math.max(0, 1 - ((groundContact ? 8 : 5) * STEP * STEP) / tangent),
+          );
+        // Soft body/garment contact dissipates almost all normal energy.
+        delta.addScaledVector(
+          normal,
+          incoming < 0 ? -incoming * 0.025 : incoming,
+        );
       }
       particle.previous.copy(particle.position).sub(delta);
     }

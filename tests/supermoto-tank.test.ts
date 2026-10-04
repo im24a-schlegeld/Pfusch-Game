@@ -9,6 +9,8 @@ import {
 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
+import { SUPERMOTO_FUEL_CAP_MOUNT } from '../app/game/supermotoTank';
+import { envelope, faces, gap, triangleGap } from './helpers/solidClearance';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -55,16 +57,14 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
     }
   });
 
-  it('rounds the shoulder in real geometry, with no disconnected cover strip', () => {
+  it('removes the broad tank shelves while retaining a small rounded return on the side band', () => {
     expect(bike.body.getObjectByName('shroud-shoulder')).toBeUndefined();
     for (const side of [-1, 1]) {
       const shroud = (
         bike.body.getObjectsByProperty('name', 'radiator-shroud') as Mesh[]
       ).find((p) => p.geometry.getAttribute('position').getX(0) * side > 0)!;
-      const ray = (x: number) => {
-        // Sample the remaining front shoulder; z=-0.2 now belongs to the
-        // requested open tank recess and is checked separately below.
-        const start = bike.body.localToWorld(new Vector3(side * x, 1.2, -0.355));
+      const ray = (x: number, z: number) => {
+        const start = bike.body.localToWorld(new Vector3(side * x, 1.2, z));
         const direction = new Vector3(0, -1, 0).transformDirection(
           bike.body.matrixWorld,
         );
@@ -72,16 +72,66 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
           .intersectObject(shroud, false)
           .map((hit) => bike.body.worldToLocal(hit.point.clone()).y);
       };
-      const a = Math.max(...ray(0.11)),
-        b = Math.max(...ray(0.14)),
-        c = Math.max(...ray(0.165));
-      expect([a, b, c].every(Number.isFinite)).toBe(true);
-      expect(a).toBeGreaterThan(b);
-      expect(b).toBeGreaterThan(c);
-      // A plane would have the same slope. The shoulder rolls increasingly
-      // steeply down to the side face, as in the marked reference area.
-      expect((b - c) / 0.025).toBeGreaterThan(((a - b) / 0.03) * 1.5);
+      // These rays formerly hit the painted wrap around both tank flanks.
+      // The thin green side bridge remains, but those broad caps are gone.
+      for (const [x, z] of [[0.11, -0.355], [0.14, -0.355],
+        [0.11, -0.08], [0.105, 0.1]]) expect(ray(x, z)).toHaveLength(0);
+      const inner = Math.max(...ray(0.166, -0.355)),
+        outer = Math.max(...ray(0.170, -0.355));
+      expect([inner, outer].every(Number.isFinite)).toBe(true);
+      expect(inner - outer).toBeGreaterThan(0.001);
+      expect(inner - outer).toBeLessThan(0.004);
     }
+  });
+
+  it('raises the separate tank neck ahead of the unchanged seat and squares its visible lower reservoir', () => {
+    const tank = bike.body.getObjectByName('supermoto-fuel-tank') as Mesh;
+    const roof = (z: number, x = 0) => {
+      const origin = bike.body.localToWorld(new Vector3(x, 1.3, z));
+      const direction = new Vector3(0, -1, 0).transformDirection(bike.body.matrixWorld);
+      const hit = new Raycaster(origin, direction).intersectObject(tank, false)[0];
+      return bike.body.worldToLocal(hit.point.clone()).y;
+    };
+    expect(roof(-0.299)).toBeGreaterThan(1.07);
+    for (let i = 0; i < 16; i++) {
+      const angle = i / 16 * Math.PI * 2;
+      const support = roof(-0.299 + Math.cos(angle) * 0.027, Math.sin(angle) * 0.027);
+      expect(support).toBeGreaterThan(SUPERMOTO_FUEL_CAP_MOUNT[1]);
+      expect(support - SUPERMOTO_FUEL_CAP_MOUNT[1]).toBeLessThan(0.002);
+    }
+    expect(roof(-0.220)).toBeLessThan(1.011);
+    expect(roof(-0.085)).toBeCloseTo(0.967, 3);
+    const position = tank.geometry.getAttribute('position');
+    let floor = Infinity;
+    for (let i = 0; i < position.count; i++) floor = Math.min(floor, position.getY(i));
+    expect(floor).toBeGreaterThanOrEqual(0.798 - 0.0001);
+    for (const side of [-1, 1]) {
+      const origin = bike.body.localToWorld(new Vector3(side * 0.8, 0.86, -0.085));
+      const direction = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
+      const hit = new Raycaster(origin, direction).intersectObject(tank, false)[0];
+      // The vertical lower flank remains substantial just above the engine,
+      // without extending the original tank floor down into the cylinder.
+      expect(Math.abs(bike.body.worldToLocal(hit.point.clone()).x)).toBeGreaterThan(0.13);
+    }
+  });
+
+  it('keeps the complete raised tank surface separate from the handlebar stem', () => {
+    const inverse = bike.body.matrixWorld.clone().invert();
+    const tank = faces(bike.body.getObjectByName('supermoto-fuel-tank') as Mesh, inverse);
+    const stem = bike.body.getObjectByName('handlebar-stem') as Mesh;
+    const stemFaces = faces(stem, inverse), stemBounds = envelope(stem, inverse);
+    let checked = 0;
+    for (const face of tank) {
+      if (face.triangle.getArea() < 1e-12 || gap(face.bounds, stemBounds) > 0.001) continue;
+      for (const other of stemFaces) {
+        if (other.triangle.getArea() < 1e-12 || gap(face.bounds, other.bounds) > 0.001) continue;
+        // The unchanged front tank edge is close to the stem. Test actual
+        // triangle separation so a raised skin cannot cut through it.
+        expect(triangleGap(face.triangle, other.triangle)).toBeGreaterThan(0.000001);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('covers the EXC lower radiator fin and wider upper band while retaining a thin closed shell', () => {

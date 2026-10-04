@@ -175,7 +175,7 @@ describe('moulded Supermoto front fender and raked mask', () => {
       const rake = Math.atan((upper.z - lower.z) / (upper.y - lower.y)) * 180 / Math.PI;
       expect(rake).toBeGreaterThan(24);
       expect(rake).toBeLessThan(30);
-      expect(SUPERMOTO_LAMP_BULB[2] - SUPERMOTO_LENS_FACE[2]).toBeCloseTo(0.030, 6);
+      expect(SUPERMOTO_LAMP_BULB[2] - SUPERMOTO_LENS_FACE[2]).toBeCloseTo(0.045, 6);
     } finally {
       geometry.dispose(); finish.dispose();
     }

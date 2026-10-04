@@ -15,7 +15,6 @@ import {
 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
-import { SUPERMOTO_SWINGARM } from '../app/game/supermotoSwingarm';
 import {
   supermotoLowerFrameGeometry,
   supermotoLowerFramePath,
@@ -117,7 +116,7 @@ describe('compact Supermoto engine cradle', () => {
     ) as Mesh[];
     const bridge = bike.body.getObjectByName(
       'swingarm-forward-crossmember',
-    ) as Mesh<CylinderGeometry>;
+    ) as Mesh;
     const cases: Mesh[] = [];
     bike.body.traverse((object) => {
       if (
@@ -219,7 +218,7 @@ describe('compact Supermoto engine cradle', () => {
             .fromBufferAttribute(points, index)
             .applyMatrix4(frame.matrixWorld);
           for (const target of [...armProbes, ...caseProbes])
-            clear(point, target, frame.name);
+            clear(point, target, `${frame.name}, travel ${travel}`);
           if (points.getY(index) < 0.65 && points.getZ(index) > 0.03) {
             const gap = distance(point, armSurfaces) / scale;
             if (gap < armGap) {
@@ -234,17 +233,14 @@ describe('compact Supermoto engine cradle', () => {
           }
         }
       }
-      // Sample the entire bridge surface, including its midspan, not only
-      // cylinder vertices located at its two ends outside the engine width.
-      const params = bridge.geometry.parameters;
-      for (let along = 0; along <= 16; along++)
-        for (let around = 0; around < 24; around++) {
-          const angle = (around / 24) * Math.PI * 2;
-          const point = new Vector3(
-            Math.cos(angle) * params.radiusTop,
-            (along / 16 - 0.5) * params.height,
-            Math.sin(angle) * params.radiusTop,
-          ).applyMatrix4(bridge.matrixWorld);
+      // Inspect the whole cast bridge, including triangle interiors across its
+      // broad web. It is no longer a cylinder with only two end rings.
+      for (const face of triangles([bridge]))
+        for (const point of [face.a, face.b, face.c,
+          face.a.clone().add(face.b).multiplyScalar(0.5),
+          face.b.clone().add(face.c).multiplyScalar(0.5),
+          face.c.clone().add(face.a).multiplyScalar(0.5),
+          face.getMidpoint(new Vector3())]) {
           for (const target of caseProbes) clear(point, target, bridge.name);
           bridgeFrameGap = Math.min(
             bridgeFrameGap,
@@ -284,18 +280,11 @@ describe('compact Supermoto engine cradle', () => {
         }
       }
       const rear = bike.body.getObjectByName('rear-suspension-axle')!;
-      const bridgePosition = new Vector3(
-        0,
-        SUPERMOTO_SWINGARM.forwardBridgeY,
-        SUPERMOTO_SWINGARM.forwardBridgeZ,
-      ).applyMatrix4(rear.matrix);
-      const actual = bridge
-        .getWorldPosition(new Vector3())
-        .applyMatrix4(bike.body.matrixWorld.clone().invert());
-      // The original crossmember ends are slightly asymmetric in X.
-      expect(
-        actual.distanceTo(bridgePosition.clone().setX(-0.002)),
-      ).toBeLessThan(1e-8);
+      // Absolute body-coordinate cast vertices follow exactly the same rigid
+      // hinge transform as the two arm castings; no shifted rod origin remains.
+      const bridgeLocal = new Matrix4().copy(bike.body.matrixWorld).invert().multiply(bridge.matrixWorld);
+      for (let element = 0; element < 16; element++)
+        expect(bridgeLocal.elements[element]).toBeCloseTo(rear.matrix.elements[element], 8);
     }
     expect(armGap, armGapContext).toBeGreaterThan(0.001);
     expect(caseGap).toBeGreaterThan(0.001);

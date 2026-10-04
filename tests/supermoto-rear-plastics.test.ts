@@ -3,6 +3,7 @@ import { DoubleSide, Mesh, MeshBasicMaterial, MeshStandardMaterial, Raycaster, T
 import { newPlayer } from '../app/domain/progression';
 import { exhaustAxisY, TUBE_EXHAUST } from '../app/game/exhaustClearance';
 import { makeBike } from '../app/game/vehicle';
+import { SUPERMOTO_REAR_TIP_Z } from '../app/game/supermotoFit';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
@@ -118,7 +119,7 @@ describe('Supermoto moulded rear overlap', () => {
       for (const part of bike.body.getObjectsByProperty('name', 'supermoto-side-cover') as Mesh[]) {
         const side = Math.sign(part.geometry.getAttribute('position').getX(0));
         const probe = new Mesh(part.geometry, material); probe.matrixWorld.copy(part.matrixWorld);
-        for (const [y, z] of [[0.90, 0.15], [0.82, 0.18], [0.86, 0.12], [0.77, 0.18], [0.735, 0.36], [0.90, 0.61]]) {
+        for (const [y, z] of [[0.90, 0.15], [0.82, 0.18], [0.86, 0.12], [0.77, 0.18], [0.775, 0.36], [0.90, 0.61]]) {
           const ray = new Raycaster(bike.body.localToWorld(new Vector3(side * 0.6, y, z)),
             new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
           expect(ray.intersectObject(probe, false).length,
@@ -156,9 +157,9 @@ describe('Supermoto moulded rear overlap', () => {
     const tp = tail.geometry.getAttribute('position');
     const rear = Array.from({ length: tp.count }, (_, i) => new Vector3().fromBufferAttribute(tp, i)).filter(p => p.z > 0.94);
     expect(Math.max(...rear.map(p => Math.abs(p.x)))).toBeLessThan(0.071);
-    expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(1.030, 6);
-    const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > 1.029);
-    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.112, 6);
+    expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(SUPERMOTO_REAR_TIP_Z, 6);
+    const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > SUPERMOTO_REAR_TIP_Z - 0.001);
+    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.115, 6);
   });
 
   it('keeps the inner thermal channel concealed behind each actual outer panel', () => {
@@ -220,7 +221,7 @@ describe('Supermoto moulded rear overlap', () => {
           const probe = new Mesh(source.geometry, material); probe.matrixWorld.copy(source.matrixWorld);
           return probe;
         });
-        for (let z = 0.14; z < 0.22; z += 0.004) for (let y = 0.79; y < 0.88; y += 0.005) {
+        for (let z = 0.14; z < 0.38; z += 0.004) for (let y = 0.79; y < 0.95; y += 0.005) {
           const ray = new Raycaster(bike.body.localToWorld(new Vector3(side * 0.6, y, z)),
             new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
           const skin = ray.intersectObject(probes[0], false)[0];

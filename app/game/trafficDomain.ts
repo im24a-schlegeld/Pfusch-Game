@@ -61,6 +61,17 @@ export const RAMP_FRONT_CONTACT: Readonly<
     radius: 0.2999 * BIKE_MODEL_SCALES['701'] * 1.45,
   },
 };
+
+/** Leading tire surface of the posed motorcycle, relative to its ride origin. */
+export function trafficFrontReach(bikeId: string, pitch = 0) {
+  const tire = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
+  // Matches the chassis rotation used for wheelies; a circular tire retains
+  // its radius while the axle moves backwards as the front rises.
+  return (
+    tire.radius - tire.axle * Math.cos(pitch) - tire.radius * Math.sin(pitch)
+  );
+}
+
 const RAMP_REAR_CONTACT: Readonly<
   Record<string, { axle: number; radius: number }>
 > = {

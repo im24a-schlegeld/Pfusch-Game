@@ -2,10 +2,21 @@ import { BufferGeometry, Float32BufferAttribute, MathUtils } from 'three';
 import { SUPERMOTO_SIDE_COVER, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
 import { formedSheet } from './supermotoSheet';
 import { exhaustAxisY, TUBE_EXHAUST } from './exhaustClearance';
+import { supermotoSeatLowerWidth, supermotoSeatSection } from './supermotoSeat';
 export { supermotoShroudGeometry } from './supermotoTank';
 
 type Section = readonly [number, number, number, number];
 type Point = [number, number, number];
+
+/** One upholstery seam for the visible side shoulder and concealed seat pan. */
+function seatJoinAt(z: number) {
+  const saddle = supermotoSeatSection(z);
+  const influence = MathUtils.smoothstep(z, 0.185, 0.255)
+    * (1 - MathUtils.smoothstep(z, 0.675, 0.780));
+  const cosine = 0.22 + 0.53 * MathUtils.clamp(saddle.skirt / 0.020, 0, 1);
+  return { saddle, influence, x: supermotoSeatLowerWidth(saddle.width, cosine),
+    y: saddle.centerY - (saddle.halfDepth + saddle.skirt) * cosine };
+}
 
 /** Interpolate the authored upper/lower silhouette without changing seat or frame mounts. */
 function sideEdgeAt(edge: readonly Point[], z: number): Point {
@@ -27,10 +38,16 @@ export function supermotoSideCoverGeometry(side: number) {
     const steps = Math.max(1, Math.ceil((stops[i] - stops[i - 1]) / 0.018));
     for (let j = 1; j <= steps; j++) stations.push(MathUtils.lerp(stops[i - 1], stops[i], j / steps));
   }
-  const cols = 12, rows = stations.length - 1, stride = cols + 1;
+  const cols = 24, rollCols = 8, rows = stations.length - 1, stride = cols + 1;
   const raw: Point[] = [];
   for (const z of stations) {
     const a = sideEdgeAt(upper, z), b = sideEdgeAt(lower, z);
+    const join = seatJoinAt(z), shoulder = join.influence;
+    // Begin beneath the actual rounded upholstery edge. The raised inner
+    // seam turns outward and down into the number panel, rather than joining
+    // a horizontal top strip to a flat side at a hard right-angle corner.
+    a[0] = MathUtils.lerp(a[0], join.x, shoulder);
+    a[1] = MathUtils.lerp(a[1], join.y, shoulder);
     if (side > 0) {
       const e = TUBE_EXHAUST;
       const lip = MathUtils.smoothstep(z, e.startZ - 0.150, e.startZ - 0.070)
@@ -40,9 +57,21 @@ export function supermotoSideCoverGeometry(side: number) {
       b[1] = MathUtils.lerp(b[1], Math.min(b[1], exhaustAxisY(z) + e.verticalRadius * 0.92), lip);
     }
     for (let col = 0; col <= cols; col++) {
-      const v = col / cols;
-      const y = MathUtils.lerp(a[1], b[1], v);
-      let x = MathUtils.lerp(a[0], b[0], v) + Math.sin(v * Math.PI) * 0.007;
+      const depth = a[1] - b[1], shoulderDepth = Math.min(MathUtils.lerp(0.055, 0.026, shoulder), depth * 0.42);
+      const shoulderFraction = shoulderDepth / Math.max(0.001, depth);
+      // Keep a smooth eight-segment turn even where the shoulder is shallow.
+      const v = col <= rollCols ? col / rollCols * shoulderFraction
+        : MathUtils.lerp(shoulderFraction, 1, (col - rollCols) / (cols - rollCols));
+      const roll = MathUtils.clamp(v / Math.max(0.001, shoulderFraction), 0, 1);
+      const rolledY = a[1] - shoulderDepth * (1 - Math.cos(roll * Math.PI / 2));
+      const remaining = MathUtils.clamp((v - shoulderFraction) / Math.max(0.001, 1 - shoulderFraction), 0, 1);
+      const y = v <= shoulderFraction ? rolledY : MathUtils.lerp(a[1] - shoulderDepth, b[1], remaining);
+      const shoulderX = MathUtils.lerp(Math.max(a[0], MathUtils.lerp(a[0], b[0], shoulderFraction)),
+        Math.max(b[0], a[0] + 0.025), shoulder);
+      let x = v <= shoulderFraction
+        ? MathUtils.lerp(a[0], shoulderX, Math.sin(roll * Math.PI / 2))
+        : MathUtils.lerp(shoulderX, b[0], remaining);
+      x += Math.sin(v * Math.PI) * 0.007;
       if (side > 0) {
         // Circumscribe the actual inclined oval shell, including a thermal
         // gap. The rolled shoulder joins the narrow upper saddle seam.
@@ -107,12 +136,30 @@ function sectionAt(sections: readonly Section[], u: number): Section {
   ];
 }
 
-/** Broad, gently squared-off tail, with a narrow seat continuing into its root. */
+/** Long tapered blade; its concealed pan follows the wedge upholstery while
+ * the outer lip rolls into the number panels. The rear tip tracks the tyre. */
 export function supermotoTailFenderGeometry() {
   return formedSheet(40, 16, (u, v) => {
     const [z, width, crown, edgeY] = sectionAt(SUPERMOTO_TAIL_FENDER, u);
     const corner = MathUtils.smoothstep(u, 0.94, 1) * MathUtils.smoothstep(Math.abs(v), 0.66, 1);
-    return [v * width, edgeY + crown * (1 - v * v), z - corner * 0.013];
+    const join = seatJoinAt(z);
+    const panWidth = MathUtils.lerp(width, join.x, join.influence);
+    const x = v * panWidth;
+    let y = edgeY + crown * (1 - v * v);
+    if (z < 0.710) {
+      const saddle = join.saddle;
+      // The front blend can still be wider than the upholstery. Its hidden
+      // return stops at the lower seam height instead of climbing up to the
+      // seat centre line outside the rounded cross-section.
+      const panX = Math.min(Math.abs(x), join.x);
+      const pan = saddle.centerY - (saddle.halfDepth + saddle.skirt)
+        * Math.pow(Math.max(0, 1 - (panX / saddle.width) ** 2), 1 / 8) - 0.003;
+      const across = MathUtils.lerp(1 - MathUtils.smoothstep(Math.abs(x) / saddle.width, 0.84, 1.12), 1, join.influence);
+      const longitudinal = MathUtils.smoothstep(z, 0.115, 0.18)
+        * (1 - MathUtils.smoothstep(z, 0.670, 0.710));
+      y = MathUtils.lerp(y, pan, across * longitudinal);
+    }
+    return [x, y, z - corner * 0.013];
   }, [0, -0.007, 0]);
 }
 
