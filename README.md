@@ -40,7 +40,13 @@ All 16 PFUSCH products and 186 variants were verified on 8 September 2026 agains
 
 Every bike, finish and wearable can be tried while locked, at level 1 and with zero coins. Garage changes form a temporary combined setup. `RETURN TO EQUIPPED` clears it; leaving Garage discards it. Unlock purchases ownership only. Explicit `EQUIP FOR GAMEPLAY` or `EQUIP BIKE SETUP` saves owned selections. Stock full-face/motocross helmets and four colors are free; `EQUIP HELMET` saves only the helmet selection. Racing Zipper supports a temporary 1–2 digit Merriweather oldstyle proportional number on the rider and a separate proof; its unedited shop back photograph displays example 23. Number and variant persist only after Equip.
 
-Töffli, Supermoto and Sport have separate reference-led silhouettes, tailored smooth rider geometry, per-bike riding poses, shared grip/peg contact coordinates and one exhaust each. Front, side and rear inspection controls plus drag rotation are available. Paint and rim selection applies to every class. Vehicle license plates and their dedicated rewards were removed; garment numbers remain.
+Töffli, Roller, Supermoto and Sport share one immutable adult skeleton with fixed-length arm/leg IK and different contact targets. Front, side and rear inspection controls plus drag rotation are available. Paint and rim selection applies to every class. Vehicle license plates and their dedicated rewards were removed; garment numbers remain.
+
+## Imported motorcycle assets
+
+Supermoto, Sport and Roller load static rigged geometry from `public/models` only when selected. Their current budgets are 43,178, 42,731 and 21,339 triangles. Visible engine cases retain their recognizable geometry; enclosed components, duplicate surfaces, branding textures, mirrors and plate supports are removed. Paint, rims, matte rubber, trim, glass and metal have separate materials. The Supermoto uses the supplied second model's recessed headlight mask with a modest contour adjustment. Source USDZ files are offline inputs and are not shipped to browsers.
+
+The `scripts/build-fs450-asset.mjs`, `build-r6-asset.mjs` and `build-nitro-asset.mjs` converters take the local source USDZ as their first argument. The Supermoto converter also accepts its headlight USDZ as the second argument. Offline conversion needs Three.js, meshoptimizer and sharp; gameplay does not parse USD or run mesh simplification. After any export, run `node scripts/sync-imported-bike-dimensions.mjs` to regenerate deterministic collision datums from the final geometry. Asset/rig tests check real brake bores, material separation, all exported vertices, wheel contacts, lamp anchors and unchanged rider bone lengths.
 
 ## Architecture
 

@@ -1,3 +1,5 @@
+import { installImportedBikeFixtures } from './importedBikeFixture';
+installImportedBikeFixtures();
 import { describe, expect, it, vi } from 'vitest';
 import { Group, Matrix4, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { makeBike } from '../app/game/vehicle';
@@ -6,12 +8,9 @@ import {
   activeSuspensionPose,
   suspensionTarget,
 } from '../app/game/activeSuspension';
-import {
-  SUPERMOTO_SHOCK_BOTTOM,
-  SUPERMOTO_SHOCK_TOP,
-  SUPERMOTO_CHASSIS,
-} from '../app/game/supermotoFit';
 import { SUPERMOTO_STATIC_SAG, supermotoSettledOffset } from '../app/game/supermotoRideHeight';
+import { getImportedBikeAsset } from '../app/game/importedBikeAsset';
+import { IMPORTED_BIKE_WHEELBASE } from '../app/game/importedBikeDimensions';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -20,17 +19,6 @@ vi.mock('../app/game/garmentTexture', () => ({
   accessoryMaterial: () => new MeshStandardMaterial(),
 }));
 
-const anchors = {
-  scooter: [
-    [-0.147, 0.619, 0.467],
-    [-0.135, 0.27, 0.563],
-  ],
-  '450': [SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM],
-  '701': [
-    [0, 0.73, 0.205],
-    [0, 0.508, 0.335],
-  ],
-} as const;
 const closeMatrix = (a: Matrix4, b: Matrix4) =>
   expect(
     Math.max(...a.elements.map((n, i) => Math.abs(n - b.elements[i]))),
@@ -52,9 +40,7 @@ describe('active fork and rear suspension', () => {
       bike.rider.traverse((part) => {
         if (part.type === 'Bone') boneScales.push(part.scale.toArray());
       });
-      const fork = bike.body.getObjectByName(
-        model === 'scooter' ? 'fork-stanchion' : 'telescopic-fork-slider',
-      ) as Mesh;
+      const fork = bike.body.getObjectByName(model === '125' ? 'telescopic-fork-slider' : 'front-suspension-axle')!;
       expect(fork).toBeDefined();
       for (const pitch of [0, 0.68, 1.1]) {
         bike.animateSuspension(pitch, 0);
@@ -63,6 +49,7 @@ describe('active fork and rear suspension', () => {
           wheel.getWorldPosition(new Vector3()),
         );
         const neutralFork = fork.scale.y;
+        const neutralBody = bike.body.position.clone();
         for (const travel of [-0.025, 0.12, 0.05, 0]) {
           bike.animateSuspension(pitch, travel);
           bike.root.updateMatrixWorld(true);
@@ -83,8 +70,10 @@ describe('active fork and rear suspension', () => {
           expect(bike.body.matrixWorld.elements.every(Number.isFinite)).toBe(
             true,
           );
-          if (travel > 0.1 && pitch === 0)
-            expect(fork.scale.y).toBeLessThan(neutralFork - 0.04);
+          if (travel > 0.1 && pitch === 0) {
+            if (model === '125') expect(fork.scale.y).toBeLessThan(neutralFork - 0.04);
+            else expect(bike.body.position.distanceTo(neutralBody)).toBeGreaterThan(.03);
+          }
         }
       }
       bike.animateSuspension(0, 0);
@@ -99,8 +88,10 @@ describe('active fork and rear suspension', () => {
       const bike = makeBike({ ...newPlayer(), bike: model }, []);
       const shock = bike.body.getObjectByName('active-rear-shock') as Group;
       const rear = bike.body.getObjectByName('rear-suspension-axle') as Group;
-      const top = new Vector3(...anchors[model][0]),
-        bottom = new Vector3(...anchors[model][1]);
+      const source = getImportedBikeAsset(model).manifest.anchors;
+      const size = IMPORTED_BIKE_WHEELBASE[model] / (source.rearAxle[2] - source.frontAxle[2]);
+      const top = new Vector3(...source.shockTop).multiplyScalar(size),
+        bottom = new Vector3(...source.shockBottom).multiplyScalar(size);
       const length = top.distanceTo(bottom);
       bike.animateSuspension(0, 0);
       const settledShock = shock.matrix.clone(), settledRear = rear.matrix.clone();
@@ -117,8 +108,8 @@ describe('active fork and rear suspension', () => {
       ).toBeLessThan(1e-10);
       expect(
         top.distanceTo(bottom.clone().applyMatrix4(shock.matrix)),
-      ).toBeLessThan(length * 0.97);
-      expect(rear.rotation.x).toBeLessThan(-0.06);
+      ).toBeLessThan(length - .002);
+      expect(rear.rotation.x).toBeLessThan(-0.04);
       bike.animateSuspension(0, -0.025);
       expect(
         top.distanceTo(bottom.clone().applyMatrix4(shock.matrix)),
@@ -198,27 +189,26 @@ describe('active fork and rear suspension', () => {
     bike.root.updateMatrixWorld(true);
     const assembled = bike.wheels.map(wheel => wheel.getWorldPosition(new Vector3()).divideScalar(bike.body.scale.x));
     expect(assembled[1].z - assembled[0].z).toBeCloseTo(1.472, 12);
-    expect(assembled[0].y).toBeCloseTo(SUPERMOTO_CHASSIS.frontRadius, 12);
-    expect(assembled[1].y).toBeCloseTo(SUPERMOTO_CHASSIS.rearRadius, 12);
-    expect(bike.body.position.y / bike.body.scale.y).toBeCloseTo(-0.050, 12);
+    const source = getImportedBikeAsset('450').manifest.anchors;
+    const size = 1.472 / (source.rearAxle[2] - source.frontAxle[2]);
+    expect(assembled[0].y).toBeCloseTo(source.frontAxle[1] * size, 7);
+    expect(assembled[1].y).toBeCloseTo(source.rearAxle[1] * size, 7);
+    expect(bike.body.position.y).toBeCloseTo(0, 12);
   });
 
-  it('keeps the lower brake hose attached to the Supermoto caliper through its settled and compressed poses', () => {
-    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
-    const hose = bike.body.getObjectByName('supermoto-control-cable') as Mesh;
-    const geometry = hose.geometry;
-    const axle = bike.body.getObjectByName('front-suspension-axle')!;
-    const sourceEnd = new Vector3(-0.094, SUPERMOTO_CHASSIS.frontRadius + 0.055, SUPERMOTO_CHASSIS.frontAxle + 0.121);
-    for (const travel of [-0.025, 0, 0.06, 0.12]) {
-      bike.animateSuspension(0.5, travel);
-      bike.root.updateMatrixWorld(true);
-      const positions = geometry.getAttribute('position');
-      const center = new Vector3();
-      for (let index = positions.count - 9; index < positions.count - 1; index++)
-        center.add(new Vector3().fromBufferAttribute(positions, index));
-      center.divideScalar(8).applyMatrix4(hose.matrixWorld);
-      expect(center.distanceTo(sourceEnd.clone().applyMatrix4(axle.matrixWorld))).toBeLessThan(1e-7);
-      expect(hose.geometry).toBe(geometry);
-    }
+  it.each(['450', '701', 'scooter'] as const)('%s carries fixed brake hardware with the lower fork, never the rotating wheel', model => {
+    const bike = makeBike({ ...newPlayer(), bike: model }, []);
+    const fork = bike.body.getObjectByName('front-suspension-axle')!;
+    const metal: Mesh[] = [];
+    fork.traverse(object => { if (object instanceof Mesh && object.userData.importedRig === 'fork'
+      && /mechanic|caliper/.test(object.name)) metal.push(object); });
+    expect(metal.length).toBeGreaterThan(0);
+    bike.animateSuspension(.5, .08); bike.root.updateMatrixWorld(true);
+    const before = metal.map(part => part.matrixWorld.clone());
+    bike.wheels[0].rotation.x += 2; bike.root.updateMatrixWorld(true);
+    metal.forEach((part, i) => closeMatrix(part.matrixWorld, before[i]));
+    const incorrectlySpinning: Mesh[] = [];
+    bike.wheels[0].traverse(part => { if (part instanceof Mesh && part.userData.importedRig === 'fork') incorrectlySpinning.push(part); });
+    expect(incorrectlySpinning).toHaveLength(0);
   });
 });

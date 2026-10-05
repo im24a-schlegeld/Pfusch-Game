@@ -600,6 +600,16 @@ export function addCleanCrossbody(torso: THREE.Group) {
 /** Locate the actual chassis surface so an ignition never floats beside it. */
 function ignitionMount(body: THREE.Group, bike: string, grip: readonly number[]) {
   body.updateWorldMatrix(true, true);
+  const importedSupport = body.userData.ignitionSupport as THREE.Object3D | undefined;
+  if (importedSupport) {
+    const support = importedSupport.position.clone();
+    return {
+      support,
+      point: support.clone().add(new THREE.Vector3(-0.025, 0.02, 0.014)),
+      socketPitch: bike === 'scooter' ? Math.PI / 2 : 0,
+      surface: importedSupport.userData.supportSurface ?? importedSupport.name,
+    };
+  }
   if (bike === 'scooter') {
     const shell = body.getObjectByName('scooter-leg-shield');
     const origin = body.localToWorld(new THREE.Vector3(0.135, 0.86, 0.3));

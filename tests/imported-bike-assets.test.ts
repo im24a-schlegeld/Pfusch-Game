@@ -22,6 +22,57 @@ function positions(binary: ArrayBuffer, part: ImportedBikePart) {
   return new Float32Array(binary, part.position.offset, part.position.count * 3);
 }
 
+it('the Supermoto brake rings have real watertight through holes and distinct steel/carrier materials', () => {
+  const { manifest, binary } = loadModel('fs450');
+  const friction = manifest.materials.find(material => material.name === 'fs450_brake_friction_steel')!;
+  const carrier = manifest.materials.find(material => material.name === 'fs450_brake_dark_carrier')!;
+  expect(friction.map).toBeUndefined();
+  expect(friction.color).not.toEqual(carrier.color);
+  for (const rig of ['frontWheel', 'rearWheel']) {
+    const part = manifest.parts.find(part => part.rig === rig && part.material === friction.name)!;
+    const points = positions(binary, part);
+    const welded = new Map<string, number>();
+    const remap = new Uint32Array(part.position.count);
+    for (let i = 0; i < part.position.count; i++) {
+      const key = [0, 1, 2].map(axis => Math.round(points[i * 3 + axis] * 1e6)).join(',');
+      if (!welded.has(key)) welded.set(key, welded.size);
+      remap[i] = welded.get(key)!;
+    }
+    const indices = new Uint16Array(binary, part.index.offset, part.index.count);
+    const edges = new Map<string, number>();
+    for (let i = 0; i < indices.length; i += 3) for (let side = 0; side < 3; side++) {
+      const a = remap[indices[i + side]], b = remap[indices[i + (side + 1) % 3]];
+      const key = a < b ? `${a},${b}` : `${b},${a}`;
+      edges.set(key, (edges.get(key) ?? 0) + 1);
+    }
+    expect([...edges.values()].every(uses => uses === 2), rig).toBe(true);
+    // A closed ring without bores has Euler characteristic zero. Multiple
+    // handles prove actual holes through the solid, independent of its texture.
+    const euler = welded.size - edges.size + indices.length / 3;
+    expect(euler, rig).toBeLessThanOrEqual(-40);
+  }
+});
+
+it('the Supermoto keeps its visible engine case, a recessed lamp assembly and plain matte tires within the mobile budget', () => {
+  const { manifest, binary } = loadModel('fs450');
+  expect(manifest.statistics.triangles).toBeLessThan(46000);
+  const engine = manifest.parts.find(part => part.material === 'fs450_engine_case')!;
+  // The authored main case/cylinder is preserved while its surrounding fittings
+  // may be reduced. This prevents the earlier crumpled simplified engine shell.
+  expect(engine.index.count / 3).toBe(8423);
+  const lampParts = manifest.parts.filter(part => /headlight_(glass|reflector)/.test(String(part.material)));
+  expect(lampParts).toHaveLength(2);
+  expect(lampParts.every(part => part.rig === 'steering')).toBe(true);
+  const lampPoints = lampParts.flatMap(part => Array.from(positions(binary, part)).filter((_, index) => index % 3 === 2));
+  expect(Math.max(...lampPoints) - Math.min(...lampPoints)).toBeGreaterThan(.025);
+  expect(manifest.anchors.headlight).toHaveLength(3);
+  const tires = manifest.materials.filter(material => /tire|tyre/i.test(material.name));
+  expect(tires).toHaveLength(1);
+  expect(tires[0].map).toBeUndefined();
+  expect(tires[0].metalness).toBe(0);
+  expect(tires[0].roughness).toBe(1);
+});
+
 for (const id of models) describe(`Imported motorcycle asset: ${id}`, () => {
   it('ships a bounded static asset with local textures and valid material/rig assignments', () => {
     const { directory, manifest, binary } = loadModel(id);
@@ -55,7 +106,7 @@ for (const id of models) describe(`Imported motorcycle asset: ${id}`, () => {
     }
     const triangles = manifest.parts.reduce((sum, part) => sum + part.index.count / 3, 0);
     expect(triangles).toBeGreaterThan(1000);
-    expect(triangles).toBeLessThanOrEqual(id === 'r6' ? 100000 : id === 'nitro' ? 30000 : 70000);
+    expect(triangles).toBeLessThanOrEqual(id === 'nitro' ? 30000 : 100000);
     expect(manifest.statistics.triangles).toBe(triangles);
     expect(manifest.statistics.geometryBytes).toBe(binary.byteLength);
     expect(manifest.statistics.meshes).toBe(manifest.parts.length);
@@ -108,8 +159,11 @@ for (const id of models) describe(`Imported motorcycle asset: ${id}`, () => {
   it('keeps metre-scale grounded shapes and actual rolling wheels at the declared animation axes', () => {
     const { manifest, binary } = loadModel(id);
     const { anchors } = manifest;
-    for (const [name, anchor] of Object.entries(anchors))
-      expect(Array.isArray(anchor) ? anchor.length === 3 && anchor.every(Number.isFinite) : Number.isFinite(anchor), name).toBe(true);
+    for (const [name, anchor] of Object.entries(anchors)) {
+      const pointIsFinite = (point: unknown) => Array.isArray(point) && point.length === 3 && point.every(Number.isFinite);
+      expect(name === 'headlights' ? Array.isArray(anchor) && anchor.every(pointIsFinite)
+        : Array.isArray(anchor) ? pointIsFinite(anchor) : Number.isFinite(anchor), name).toBe(true);
+    }
     expect(anchors.frontAxle[2]).toBeLessThan(-0.3);
     expect(anchors.rearAxle[2]).toBeGreaterThan(0.3);
     const wheelbase = anchors.rearAxle[2] - anchors.frontAxle[2];

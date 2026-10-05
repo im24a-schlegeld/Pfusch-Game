@@ -51,7 +51,7 @@ export const RAMP_FRONT_CONTACT: Readonly<
   Record<string, { axle: number; radius: number }>
 > = {
   '125': { axle: -0.7 * 1.45, radius: 0.305 * 1.45 },
-  scooter: { axle: IMPORTED_BIKE_TAIL.scooter.frontAxle * 1.45, radius: IMPORTED_BIKE_TAIL.scooter.frontRadius * 1.45 },
+  scooter: { axle: IMPORTED_BIKE_TAIL.scooter.frontAxle * BIKE_MODEL_SCALES.scooter * 1.45, radius: IMPORTED_BIKE_TAIL.scooter.frontRadius * BIKE_MODEL_SCALES.scooter * 1.45 },
   '450': {
     axle: IMPORTED_BIKE_TAIL['450'].frontAxle * BIKE_MODEL_SCALES['450'] * 1.45,
     radius: IMPORTED_BIKE_TAIL['450'].frontRadius * BIKE_MODEL_SCALES['450'] * 1.45,
@@ -76,7 +76,7 @@ const RAMP_REAR_CONTACT: Readonly<
   Record<string, { axle: number; radius: number }>
 > = {
   '125': { axle: 0.55 * 1.45, radius: 0.305 * 1.45 },
-  scooter: { axle: IMPORTED_BIKE_TAIL.scooter.rearAxle * 1.45, radius: IMPORTED_BIKE_TAIL.scooter.rearRadius * 1.45 },
+  scooter: { axle: IMPORTED_BIKE_TAIL.scooter.rearAxle * BIKE_MODEL_SCALES.scooter * 1.45, radius: IMPORTED_BIKE_TAIL.scooter.rearRadius * BIKE_MODEL_SCALES.scooter * 1.45 },
   '450': {
     axle: IMPORTED_BIKE_TAIL['450'].rearAxle * BIKE_MODEL_SCALES['450'] * 1.45,
     radius: IMPORTED_BIKE_TAIL['450'].rearRadius * BIKE_MODEL_SCALES['450'] * 1.45,
@@ -187,7 +187,10 @@ export function towRampPose(bikeId: string, localZ: number, minimumPitch = 0) {
 /** Hold on the flat tray with a visible gap between the leading tire and cab. */
 export function towDeckPosition(bikeId: string) {
   const front = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
-  return Math.max(0.5, TOW_RAMP.cabRearZ - front.axle + front.radius + 0.12);
+  const rear = RAMP_REAR_CONTACT[bikeId] ?? RAMP_REAR_CONTACT['450'];
+  const frontGap = TOW_RAMP.cabRearZ - front.axle + front.radius + 0.12;
+  // The enlarged wheelbase must put both axle contacts on the flat tray.
+  return Math.max(0.5, Math.min(frontGap, TOW_RAMP.frontZ - rear.axle - 0.004));
 }
 /** Saturates gradually; traffic always retains its documented minimum spacing. */
 export function distanceDifficulty(distance: number) {

@@ -41,6 +41,7 @@ export interface ImportedBikeAnchors {
   exhaust: ImportedPoint;
   tail: ImportedPoint;
   headlight?: ImportedPoint;
+  headlights?: ImportedPoint[];
   steeringPivot?: ImportedPoint;
   steeringAxis?: ImportedPoint;
 }
@@ -93,7 +94,7 @@ export function preloadImportedBike(id: string): Promise<void> {
     // are not fetched after the user requested unprinted bodywork.
     const texturePaths = new Set(manifest.materials.flatMap((material) => {
       const plain = material.paintable ?? /livery|paint|fairing|bodywork/i.test(material.name);
-      const rim = material.rim ?? /rim/i.test(material.name);
+      const rim = material.rim ?? /(^|[_\s-])rims?(?=\d|$|[_\s-])/i.test(material.name);
       return [plain || rim ? undefined : material.map, material.normalMap, material.alphaMap]
         .filter((path): path is string => Boolean(path));
     }));

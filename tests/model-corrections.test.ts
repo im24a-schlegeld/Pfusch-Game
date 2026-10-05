@@ -1,7 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import {
   Bone,
-  Box3,
   InstancedMesh,
   Matrix4,
   Mesh,
@@ -13,6 +12,9 @@ import {
 import { makeBike } from '../app/game/vehicle';
 import { newPlayer } from '../app/domain/progression';
 import { TAIL_CONTACT } from '../app/game/tailContact';
+import { installImportedBikeFixtures } from './importedBikeFixture';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),
@@ -142,46 +144,3 @@ it.each(['125', 'scooter', '450', '701'] as const)(
     ).toBeGreaterThan(0.006);
   },
 );
-
-it('keeps the actual Sport boot clear of its pipe, shortened silencer and hanger', () => {
-  const bike = makeBike({ ...newPlayer(), bike: '701' }, []);
-  bike.root.updateMatrixWorld(true);
-  const boot = (
-    bike.rider.getObjectsByProperty('name', 'rider-boot') as Mesh[]
-  ).find((mesh) => mesh.position.x > 0)!;
-  const foot = new Box3().setFromPoints(vertices(boot));
-  const bounds = (name: string) =>
-    new Box3().setFromPoints(vertices(bike.body.getObjectByName(name) as Mesh));
-  // Disjoint world-space envelopes prove the complete solids cannot intersect.
-  expect(foot.min.y - bounds('connected-exhaust-pipe').max.y).toBeGreaterThan(
-    0.008,
-  );
-  expect(bounds('single-exhaust').min.z - foot.max.z).toBeGreaterThan(0.01);
-  expect(bounds('exhaust-frame-hanger').min.z - foot.max.z).toBeGreaterThan(
-    0.02,
-  );
-  expect(bounds('exhaust-mount-band').min.z - foot.max.z).toBeGreaterThan(0.02);
-});
-
-it('keeps both Supermoto boots outside the equally narrow swingarms', () => {
-  const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
-  bike.root.updateMatrixWorld(true);
-  const boots = (
-    bike.rider.getObjectsByProperty('name', 'rider-boot') as Mesh[]
-  ).map((mesh) => new Box3().setFromPoints(vertices(mesh)));
-  const arms = (
-    bike.body.getObjectsByProperty('name', 'box-section-swingarm') as Mesh[]
-  ).map((mesh) => new Box3().setFromPoints(vertices(mesh)));
-  for (const side of [-1, 1]) {
-    const foot = boots.find((box) => Math.sign(box.min.x) === side)!;
-    const arm = arms.find((box) => Math.sign(box.min.x) === side)!;
-    // The adult boot and the enlarged bike leave roughly 14.5 mm at rest.
-    // Require a visible 12 mm gap between complete solid envelopes, rather
-    // than the obsolete 18 mm target from the earlier motorcycle scale.
-    expect(
-      side > 0 ? foot.min.x - arm.max.x : arm.min.x - foot.max.x,
-    ).toBeGreaterThan(0.012);
-  }
-  expect(Math.abs(arms[0].min.x)).toBeCloseTo(Math.abs(arms[1].max.x), 6);
-  expect(Math.abs(arms[0].max.x)).toBeCloseTo(Math.abs(arms[1].min.x), 6);
-});

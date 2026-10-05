@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "MBK Nitro BCD",
+  "name": "Street Scooter",
   "binary": "model.bin",
   "axes": "+Y up; -Z forward; metres; axle midpoint Z=0; lowest point Y=0",
   "sourceTransform": {
@@ -79,9 +79,14 @@
       0.7740551
     ],
     "tail": [
-      0,
-      0.8872801,
-      0.8215597
+      0.00206228019669652,
+      0.9174324870109558,
+      0.8384588360786438
+    ],
+    "headlight": [
+      -0.0007129,
+      0.6755158,
+      -0.619217
     ]
   },
   "parts": [
@@ -112,19 +117,19 @@
       "material": "nitro_mechanics",
       "position": {
         "offset": 62912,
-        "count": 2723
+        "count": 2756
       },
       "normal": {
-        "offset": 95588,
-        "count": 2723
+        "offset": 95984,
+        "count": 2756
       },
       "uv": {
-        "offset": 128264,
-        "count": 2723
+        "offset": 129056,
+        "count": 2756
       },
       "index": {
-        "offset": 150048,
-        "count": 8199
+        "offset": 151104,
+        "count": 8307
       }
     },
     {
@@ -132,20 +137,20 @@
       "rig": "swingarm",
       "material": "nitro_dark",
       "position": {
-        "offset": 166448,
-        "count": 982
+        "offset": 167720,
+        "count": 970
       },
       "normal": {
-        "offset": 178232,
-        "count": 982
+        "offset": 179360,
+        "count": 970
       },
       "uv": {
-        "offset": 190016,
-        "count": 982
+        "offset": 191000,
+        "count": 970
       },
       "index": {
-        "offset": 197872,
-        "count": 3258
+        "offset": 198760,
+        "count": 3210
       }
     },
     {
@@ -153,20 +158,20 @@
       "rig": "shockLower",
       "material": "nitro_mechanics",
       "position": {
-        "offset": 204388,
-        "count": 175
+        "offset": 205180,
+        "count": 177
       },
       "normal": {
-        "offset": 206488,
-        "count": 175
+        "offset": 207304,
+        "count": 177
       },
       "uv": {
-        "offset": 208588,
-        "count": 175
+        "offset": 209428,
+        "count": 177
       },
       "index": {
-        "offset": 209988,
-        "count": 483
+        "offset": 210844,
+        "count": 489
       }
     },
     {
@@ -174,20 +179,20 @@
       "rig": "shockUpper",
       "material": "nitro_mechanics",
       "position": {
-        "offset": 210956,
-        "count": 1270
+        "offset": 211824,
+        "count": 1289
       },
       "normal": {
-        "offset": 226196,
-        "count": 1270
+        "offset": 227292,
+        "count": 1289
       },
       "uv": {
-        "offset": 241436,
-        "count": 1270
+        "offset": 242760,
+        "count": 1289
       },
       "index": {
-        "offset": 251596,
-        "count": 4614
+        "offset": 253072,
+        "count": 4674
       }
     },
     {
@@ -195,19 +200,19 @@
       "rig": "body",
       "material": "nitro_tail_light",
       "position": {
-        "offset": 260824,
+        "offset": 262420,
         "count": 339
       },
       "normal": {
-        "offset": 264892,
+        "offset": 266488,
         "count": 339
       },
       "uv": {
-        "offset": 268960,
+        "offset": 270556,
         "count": 339
       },
       "index": {
-        "offset": 271672,
+        "offset": 273268,
         "count": 1050
       }
     },
@@ -216,19 +221,19 @@
       "rig": "body",
       "material": "nitro_mechanics",
       "position": {
-        "offset": 273772,
-        "count": 1088
+        "offset": 275368,
+        "count": 1072
       },
       "normal": {
-        "offset": 286828,
-        "count": 1088
+        "offset": 288232,
+        "count": 1072
       },
       "uv": {
-        "offset": 299884,
-        "count": 1088
+        "offset": 301096,
+        "count": 1072
       },
       "index": {
-        "offset": 308588,
+        "offset": 309672,
         "count": 3792
       }
     },
@@ -237,19 +242,19 @@
       "rig": "body",
       "material": "nitro_light",
       "position": {
-        "offset": 316172,
+        "offset": 317256,
         "count": 132
       },
       "normal": {
-        "offset": 317756,
+        "offset": 318840,
         "count": 132
       },
       "uv": {
-        "offset": 319340,
+        "offset": 320424,
         "count": 132
       },
       "index": {
-        "offset": 320396,
+        "offset": 321480,
         "count": 396
       }
     },
@@ -258,20 +263,20 @@
       "rig": "fork",
       "material": "nitro_mechanics",
       "position": {
-        "offset": 321188,
-        "count": 445
+        "offset": 322272,
+        "count": 376
       },
       "normal": {
-        "offset": 326528,
-        "count": 445
+        "offset": 326784,
+        "count": 376
       },
       "uv": {
-        "offset": 331868,
-        "count": 445
+        "offset": 331296,
+        "count": 376
       },
       "index": {
-        "offset": 335428,
-        "count": 1356
+        "offset": 334304,
+        "count": 1161
       }
     },
     {
@@ -279,20 +284,20 @@
       "rig": "body",
       "material": "nitro_dark",
       "position": {
-        "offset": 338140,
-        "count": 783
+        "offset": 336628,
+        "count": 873
       },
       "normal": {
-        "offset": 347536,
-        "count": 783
+        "offset": 347104,
+        "count": 873
       },
       "uv": {
-        "offset": 356932,
-        "count": 783
+        "offset": 357580,
+        "count": 873
       },
       "index": {
-        "offset": 363196,
-        "count": 2976
+        "offset": 364564,
+        "count": 3066
       }
     },
     {
@@ -300,20 +305,20 @@
       "rig": "steering",
       "material": "nitro_dark",
       "position": {
-        "offset": 369148,
-        "count": 435
+        "offset": 370696,
+        "count": 430
       },
       "normal": {
-        "offset": 374368,
-        "count": 435
+        "offset": 375856,
+        "count": 430
       },
       "uv": {
-        "offset": 379588,
-        "count": 435
+        "offset": 381016,
+        "count": 430
       },
       "index": {
-        "offset": 383068,
-        "count": 1794
+        "offset": 384456,
+        "count": 1770
       }
     },
     {
@@ -321,20 +326,20 @@
       "rig": "steering",
       "material": "nitro_mechanics",
       "position": {
-        "offset": 386656,
-        "count": 426
+        "offset": 387996,
+        "count": 431
       },
       "normal": {
-        "offset": 391768,
-        "count": 426
+        "offset": 393168,
+        "count": 431
       },
       "uv": {
-        "offset": 396880,
-        "count": 426
+        "offset": 398340,
+        "count": 431
       },
       "index": {
-        "offset": 400288,
-        "count": 990
+        "offset": 401788,
+        "count": 1002
       }
     },
     {
@@ -342,19 +347,19 @@
       "rig": "body",
       "material": "nitro_seat",
       "position": {
-        "offset": 402268,
+        "offset": 403792,
         "count": 579
       },
       "normal": {
-        "offset": 409216,
+        "offset": 410740,
         "count": 579
       },
       "uv": {
-        "offset": 416164,
+        "offset": 417688,
         "count": 579
       },
       "index": {
-        "offset": 420796,
+        "offset": 422320,
         "count": 2358
       }
     },
@@ -363,20 +368,20 @@
       "rig": "fork",
       "material": "nitro_dark",
       "position": {
-        "offset": 425512,
-        "count": 187
+        "offset": 427036,
+        "count": 183
       },
       "normal": {
-        "offset": 427756,
-        "count": 187
+        "offset": 429232,
+        "count": 183
       },
       "uv": {
-        "offset": 430000,
-        "count": 187
+        "offset": 431428,
+        "count": 183
       },
       "index": {
-        "offset": 431496,
-        "count": 663
+        "offset": 432892,
+        "count": 651
       }
     },
     {
@@ -384,19 +389,19 @@
       "rig": "frontWheel",
       "material": "nitro_rim",
       "position": {
-        "offset": 432824,
+        "offset": 434196,
         "count": 1585
       },
       "normal": {
-        "offset": 451844,
+        "offset": 453216,
         "count": 1585
       },
       "uv": {
-        "offset": 470864,
+        "offset": 472236,
         "count": 1585
       },
       "index": {
-        "offset": 483544,
+        "offset": 484916,
         "count": 4713
       }
     },
@@ -405,19 +410,19 @@
       "rig": "rearWheel",
       "material": "nitro_rim",
       "position": {
-        "offset": 492972,
+        "offset": 494344,
         "count": 1492
       },
       "normal": {
-        "offset": 510876,
+        "offset": 512248,
         "count": 1492
       },
       "uv": {
-        "offset": 528780,
+        "offset": 530152,
         "count": 1492
       },
       "index": {
-        "offset": 540716,
+        "offset": 542088,
         "count": 4284
       }
     },
@@ -426,20 +431,20 @@
       "rig": "frontWheel",
       "material": "nitro_brake_steel",
       "position": {
-        "offset": 549284,
-        "count": 459
+        "offset": 550656,
+        "count": 2658
       },
       "normal": {
-        "offset": 554792,
-        "count": 459
+        "offset": 582552,
+        "count": 2658
       },
       "uv": {
-        "offset": 560300,
-        "count": 459
+        "offset": 614448,
+        "count": 2658
       },
       "index": {
-        "offset": 563972,
-        "count": 1677
+        "offset": 635712,
+        "count": 5784
       }
     },
     {
@@ -447,20 +452,20 @@
       "rig": "frontWheel",
       "material": "nitro_brake_carrier",
       "position": {
-        "offset": 567328,
-        "count": 417
+        "offset": 647280,
+        "count": 744
       },
       "normal": {
-        "offset": 572332,
-        "count": 417
+        "offset": 656208,
+        "count": 744
       },
       "uv": {
-        "offset": 577336,
-        "count": 417
+        "offset": 665136,
+        "count": 744
       },
       "index": {
-        "offset": 580672,
-        "count": 1545
+        "offset": 671088,
+        "count": 1560
       }
     },
     {
@@ -468,20 +473,20 @@
       "rig": "rearWheel",
       "material": "nitro_brake_steel",
       "position": {
-        "offset": 583764,
-        "count": 459
+        "offset": 674208,
+        "count": 2064
       },
       "normal": {
-        "offset": 589272,
-        "count": 459
+        "offset": 698976,
+        "count": 2064
       },
       "uv": {
-        "offset": 594780,
-        "count": 459
+        "offset": 723744,
+        "count": 2064
       },
       "index": {
-        "offset": 598452,
-        "count": 1677
+        "offset": 740256,
+        "count": 4488
       }
     },
     {
@@ -489,20 +494,20 @@
       "rig": "rearWheel",
       "material": "nitro_brake_carrier",
       "position": {
-        "offset": 601808,
-        "count": 417
+        "offset": 749232,
+        "count": 744
       },
       "normal": {
-        "offset": 606812,
-        "count": 417
+        "offset": 758160,
+        "count": 744
       },
       "uv": {
-        "offset": 611816,
-        "count": 417
+        "offset": 767088,
+        "count": 744
       },
       "index": {
-        "offset": 615152,
-        "count": 1545
+        "offset": 773040,
+        "count": 1560
       }
     },
     {
@@ -510,19 +515,19 @@
       "rig": "fork",
       "material": "nitro_livery",
       "position": {
-        "offset": 618244,
+        "offset": 776160,
         "count": 132
       },
       "normal": {
-        "offset": 619828,
+        "offset": 777744,
         "count": 132
       },
       "uv": {
-        "offset": 621412,
+        "offset": 779328,
         "count": 132
       },
       "index": {
-        "offset": 622468,
+        "offset": 780384,
         "count": 558
       }
     },
@@ -531,19 +536,19 @@
       "rig": "frontWheel",
       "material": "nitro_tyre",
       "position": {
-        "offset": 623584,
+        "offset": 781500,
         "count": 282
       },
       "normal": {
-        "offset": 626968,
+        "offset": 784884,
         "count": 282
       },
       "uv": {
-        "offset": 630352,
+        "offset": 788268,
         "count": 282
       },
       "index": {
-        "offset": 632608,
+        "offset": 790524,
         "count": 1200
       }
     },
@@ -552,19 +557,19 @@
       "rig": "rearWheel",
       "material": "nitro_mechanics",
       "position": {
-        "offset": 635008,
+        "offset": 792924,
         "count": 30
       },
       "normal": {
-        "offset": 635368,
+        "offset": 793284,
         "count": 30
       },
       "uv": {
-        "offset": 635728,
+        "offset": 793644,
         "count": 30
       },
       "index": {
-        "offset": 635968,
+        "offset": 793884,
         "count": 168
       }
     },
@@ -573,19 +578,19 @@
       "rig": "rearWheel",
       "material": "nitro_tyre",
       "position": {
-        "offset": 636304,
+        "offset": 794220,
         "count": 282
       },
       "normal": {
-        "offset": 639688,
+        "offset": 797604,
         "count": 282
       },
       "uv": {
-        "offset": 643072,
+        "offset": 800988,
         "count": 282
       },
       "index": {
-        "offset": 645328,
+        "offset": 803244,
         "count": 1200
       }
     }
@@ -647,16 +652,16 @@
     },
     {
       "name": "nitro_tyre",
-      "color": "#17191a",
+      "color": "#121314",
       "metalness": 0,
-      "roughness": 0.88
+      "roughness": 1
     }
   ],
   "statistics": {
-    "sourceTriangles": 46195,
-    "triangles": 19024,
-    "vertices": 16674,
-    "geometryBytes": 647728,
+    "sourceTriangles": 48237,
+    "triangles": 21339,
+    "vertices": 21175,
+    "geometryBytes": 805644,
     "meshes": 24
   }
 }

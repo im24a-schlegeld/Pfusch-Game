@@ -1,28 +1,15 @@
+import { installImportedBikeFixtures } from './importedBikeFixture';
+installImportedBikeFixtures();
 import { describe, expect, it, vi } from 'vitest';
-import {
-  Box3,
-  Color,
-  Line3,
-  Mesh,
-  MeshStandardMaterial,
-  Raycaster,
-  Vector3,
-} from 'three';
-import type { TubeGeometry } from 'three';
+import { Box3, Color, Line3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
-import { BIKE_CONTACTS } from '../app/game/riderSkeleton';
-import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
-
-// Mechanical meshes are built unchanged; only browser-only fabric painting is
-// replaced. These tests inspect the actual assembled geometry and transforms.
+import { getImportedBikeAsset } from '../app/game/importedBikeAsset';
+import { IMPORTED_BIKE_WHEELBASE } from '../app/game/importedBikeDimensions';
 vi.mock('../app/game/garmentTexture', () => ({
-  garmentMaterial: () => new MeshStandardMaterial(),
-  fabricMaterial: () => new MeshStandardMaterial(),
-  sleeveMaterial: () => new MeshStandardMaterial(),
-  accessoryMaterial: () => new MeshStandardMaterial(),
+  garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
+  sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
 }));
-
 function rodAxis(part: Mesh) {
   // The Supermoto silencer is an authored lathe, while forks and the other
   // silencers are cylinders. Both have their axial extent along local Y.
@@ -46,123 +33,35 @@ function ringCenter(part: Mesh, ring: number, sides = 14) {
 }
 
 describe('assembled motorcycle connections', () => {
-  it.each(['450', '701'] as const)(
-    '%s connects each caliper through a real carrier plate to its axle',
-    (bikeId) => {
-      const bike = makeBike({ ...newPlayer(), bike: bikeId }, []);
-      bike.root.scale.setScalar(1);
-      // Inspect the mechanical coordinate system; display scale is covered by
-      // the assembled motorcycle scale tests.
-      bike.body.scale.setScalar(1);
-      bike.root.updateMatrixWorld(true);
-      const calipers = bike.body.getObjectsByProperty(
-        'name',
-        'brake-caliper',
-      ) as Mesh[];
-      const carriers = bike.body.getObjectsByProperty(
-        'name',
-        'brake-caliper-carrier',
-      ) as Mesh[];
-      expect(carriers).toHaveLength(calipers.length);
-      const ray = new Raycaster();
-      for (const caliper of calipers) {
-        const caliperPosition = caliper.getWorldPosition(new Vector3());
-        ray.set(
-          new Vector3(1, caliperPosition.y, caliperPosition.z),
-          new Vector3(-1, 0, 0),
-        );
-        const connection = ray
-          .intersectObjects(carriers, false)
-          .find((hit) => Math.abs(hit.point.x - caliperPosition.x) < 0.024);
-        expect(connection).toBeDefined();
-        // The same solid plate reaches the axle; a detached decorative plate
-        // near the caliper is insufficient to pass this connectivity check.
-        const wheel =
-          caliper.parent === bike.wheels[0].parent
-            ? bike.wheels[0]
-            : bike.wheels[1];
-        const axlePosition = wheel.getWorldPosition(new Vector3());
-        ray.set(
-          new Vector3(1, axlePosition.y, axlePosition.z),
-          new Vector3(-1, 0, 0),
-        );
-        expect(
-          ray.intersectObject(connection!.object, false).length,
-        ).toBeGreaterThan(0);
-      }
-      expect(bike.body.getObjectByName('rear-brake-torque-link')).toBeDefined();
-      if (bikeId === '701') {
-        const rearsets = bike.body.getObjectsByProperty(
-          'name',
-          'frame-mounted-rearset',
-        );
-        expect(rearsets).toHaveLength(2);
-        const peg = BIKE_CONTACTS['701'].peg;
-        for (const rearset of rearsets as Mesh[]) {
-          ray.set(new Vector3(1, 0.56, 0.175), new Vector3(-1, 0, 0));
-          expect(ray.intersectObject(rearset, false).length).toBeGreaterThan(0);
-          // The relocated peg meets the carrier's lower corner; its old z=.4
-          // datum is no longer the contact. Require the actual plate to reach
-          // the peg's 18 mm radius, without assuming it covers the whole axis.
-          const vertices = rearset.geometry.getAttribute('position');
-          let pegClearance = Infinity;
-          for (let i = 0; i < vertices.count; i++) {
-            const point = rearset.getVertexPosition(i, new Vector3())
-              .applyMatrix4(rearset.matrixWorld);
-            pegClearance = Math.min(pegClearance, Math.hypot(point.y - peg[1], point.z - peg[2]));
-          }
-          expect(pegClearance).toBeLessThan(0.018);
-        }
-      }
-    },
-  );
-  it.each(['125', '450', '701'] as const)(
-    '%s joins both fork legs with coaxial yokes, bearings and a frame head',
-    (bikeId) => {
-      const bike = makeBike({ ...newPlayer(), bike: bikeId }, []);
-      const forks = bike.body.getObjectsByProperty(
-        'name',
-        'telescopic-fork-slider',
-      ) as Mesh[];
-      const yokes = bike.body.getObjectsByProperty(
-        'name',
-        'fork-yoke',
-      ) as Mesh[];
-      expect(forks).toHaveLength(2);
-      expect(yokes).toHaveLength(2);
-      expect(
-        bike.body.getObjectsByProperty('name', 'steering-head'),
-      ).toHaveLength(1);
-      const nearest = new Vector3();
-      for (const yoke of yokes) {
-        const endpoints = rodAxis(yoke);
-        for (const end of [endpoints.start, endpoints.end]) {
-          const fork = forks.find(
-            (part) => Math.sign(part.position.x) === Math.sign(end.x),
-          )!;
-          rodAxis(fork).closestPointToPoint(end, true, nearest);
-          expect(nearest.distanceTo(end)).toBeLessThan(1e-6);
-        }
-      }
-      const head = rodAxis(bike.body.getObjectByName('steering-head') as Mesh);
-      for (const bearing of bike.body.getObjectsByProperty(
-        'name',
-        'steering-head-bearing',
-      ) as Mesh[]) {
-        const center = rodAxis(bearing).getCenter(new Vector3());
-        head.closestPointToPoint(center, true, nearest);
-        expect(nearest.distanceTo(center)).toBeLessThan(1e-6);
-      }
-      // A yoke may not substitute for/relocate a wheel or stretch the fork.
-      expect(bike.wheels[0].position.z).toBe(
-        bikeId === '125' ? -0.7 : bikeId === '450' ? SUPERMOTO_CHASSIS.frontAxle : -0.72,
-      );
-      const upper = rodAxis(forks[0]).end;
-      bike.animateSuspension(0.035, 0.02);
-      expect(rodAxis(forks[0]).end.distanceTo(upper)).toBeLessThan(1e-6);
-    },
-  );
-
+  it('keeps the Töffli yokes and bearings coaxial with its actual fork legs and steering head', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '125' }, []);
+    const forks = bike.body.getObjectsByProperty('name', 'telescopic-fork-slider') as Mesh[];
+    const yokes = bike.body.getObjectsByProperty('name', 'fork-yoke') as Mesh[];
+    expect(forks).toHaveLength(2); expect(yokes).toHaveLength(2);
+    const nearest = new Vector3();
+    for (const yoke of yokes) for (const end of [rodAxis(yoke).start, rodAxis(yoke).end]) {
+      const fork = forks.find(part => Math.sign(part.position.x) === Math.sign(end.x))!;
+      expect(rodAxis(fork).closestPointToPoint(end, true, nearest).distanceTo(end)).toBeLessThan(1e-6);
+    }
+    const head = rodAxis(bike.body.getObjectByName('steering-head') as Mesh);
+    for (const bearing of bike.body.getObjectsByProperty('name', 'steering-head-bearing') as Mesh[])
+      expect(head.closestPointToPoint(rodAxis(bearing).getCenter(new Vector3()), true, nearest).distanceTo(rodAxis(bearing).getCenter(new Vector3()))).toBeLessThan(1e-6);
+    expect(bike.wheels[0].position.z).toBe(-.7);
+    for (const fork of forks) expect((fork.material as MeshStandardMaterial).color.getHexString()).toBe('101214');
+  });
+  it('keeps the Töffli exhaust continuously joined to its frame-mounted silencer', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '125' }, []);
+    const pipe = bike.body.getObjectByName('connected-exhaust-pipe') as Mesh;
+    const muffler = bike.body.getObjectByName('single-exhaust') as Mesh;
+    const sides = 14;
+    const lastRing = pipe.geometry.getAttribute('position').count / (sides + 1) - 1;
+    const end = ringCenter(pipe, lastRing, sides);
+    expect(rodAxis(muffler).closestPointToPoint(end, true, new Vector3()).distanceTo(end)).toBeLessThan(.016);
+    const start = ringCenter(pipe, 0, sides);
+    expect(start.y).toBeGreaterThan(.27); expect(start.z).toBeLessThan(-.14);
+    expect(bike.body.getObjectByName('exhaust-frame-hanger')).toBeDefined();
+    expect(bike.body.getObjectByName('exhaust-mount-band')).toBeDefined();
+  });
   it('bridges the photographed Töffli handlebar gap and mounts its lamp and rack', () => {
     const bike = makeBike({ ...newPlayer(), bike: '125' }, []);
     const stem = bike.body.getObjectByName('handlebar-stem') as Mesh;
@@ -205,125 +104,81 @@ describe('assembled motorcycle connections', () => {
     expect(halfWidth).toBeLessThan(0.094);
   });
 
-  it('sweeps both actual Supermoto grip axes toward the rider and keeps their IK centers', () => {
-    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
-    const bar = bike.body.getObjectByName('supermoto-handlebar') as Mesh;
-    const grips = bike.body.getObjectsByProperty('name', 'supermoto-handgrip') as Mesh[];
-    expect(grips).toHaveLength(2);
-    for (const grip of grips) {
-      const axis = rodAxis(grip);
-      const center = axis.getCenter(new Vector3());
-      const side = Math.sign(center.x);
-      const target = BIKE_CONTACTS['450'].grip;
-      expect(center.distanceTo(new Vector3(side * target[0], target[1], target[2])))
-        .toBeLessThan(1e-6);
-      expect(axis.end.z - axis.start.z).toBeGreaterThan(0.018);
-      expect(axis.end.z - axis.start.z).toBeLessThan(0.027);
-      expect(ringCenter(bar, side < 0 ? 0 : 36, 12).distanceTo(axis.end))
-        .toBeLessThan(1e-6);
-      const rearwardSweep = axis.end.z - ringCenter(bar, 18, 12).z;
-      // The requested compact cockpit reduces the clamp-to-tip rear sweep;
-      // the grip's own 12-degree sweep and its exact IK contact remain above.
-      expect(rearwardSweep).toBeGreaterThan(0.055);
-      expect(rearwardSweep).toBeLessThan(0.070);
+
+  it.each(['450', '701', 'scooter'] as const)('%s attaches imported forks, swingarm and shock at their actual source pivots', id => {
+    const bike = makeBike({ ...newPlayer(), bike: id }, []);
+    const source = getImportedBikeAsset(id).manifest.anchors;
+    const size = IMPORTED_BIKE_WHEELBASE[id] / (source.rearAxle[2] - source.frontAxle[2]);
+    const pivot = new Vector3(...source.pivot).multiplyScalar(size);
+    const rear = bike.body.getObjectByName('rear-suspension-axle')!;
+    const front = bike.body.getObjectByName('front-suspension-axle')!;
+    const steering = bike.body.getObjectByName('imported-steering')!;
+    expect(front.parent).toBe(steering);
+    expect(bike.wheels[0].parent).toBe(front); expect(bike.wheels[1].parent).toBe(rear);
+    const arms = rear.children.filter(part => part.userData.importedRig === 'swingarm');
+    expect(arms.length).toBeGreaterThan(0);
+    for (const travel of [-.025, 0, .12]) {
+      bike.animateSuspension(.6, travel); bike.root.updateMatrixWorld(true);
+      expect(pivot.clone().applyMatrix4(rear.matrix).distanceTo(pivot)).toBeLessThan(1e-9);
+      for (const part of arms) expect(part.scale.toArray()).toEqual([1, 1, 1]);
+      const shock = bike.body.getObjectByName('active-rear-shock')!;
+      const top = new Vector3(...source.shockTop).multiplyScalar(size), bottom = new Vector3(...source.shockBottom).multiplyScalar(size);
+      expect(top.clone().applyMatrix4(shock.matrix).distanceTo(top)).toBeLessThan(1e-8);
+      expect(bottom.clone().applyMatrix4(shock.matrix).distanceTo(bottom.clone().applyMatrix4(rear.matrix))).toBeLessThan(1e-8);
     }
   });
-
-  it('attaches the Supermoto fender holders to the lower yoke in the settled fork geometry', () => {
-    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
-    const yokes = bike.body.getObjectsByProperty('name', 'fork-yoke') as Mesh[];
-    const lower = yokes.map(rodAxis).sort((a, b) => a.start.y - b.start.y)[0];
-    const holders = bike.body.getObjectsByProperty('name', 'front-fender-mount') as Mesh[];
-    expect(holders).toHaveLength(2);
-    for (const holder of holders) {
-      const end = rodAxis(holder).end;
-      expect(lower.closestPointToPoint(end, true, new Vector3()).distanceTo(end)).toBeLessThan(1e-6);
-    }
-  });
-
-  it('leaves the Supermoto grips and levers open and applies the requested finishes', () => {
-    const player = { ...newPlayer(), bike: '450' as const };
-    const bike = makeBike(player, []);
-    bike.root.updateMatrixWorld(true);
-    const guards = bike.body.getObjectsByProperty('name', 'formed-handguard') as Mesh[];
-    const supports = bike.body.getObjectsByProperty('name', 'supermoto-handguard-support') as Mesh[];
-    expect(guards).toHaveLength(0);
-    expect(supports).toHaveLength(0);
-    expect(bike.body.getObjectsByProperty('name', 'supermoto-lever')).toHaveLength(2);
-    expect(bike.body.getObjectsByProperty('name', 'supermoto-handgrip')).toHaveLength(2);
-    const colorOf = (mesh: Mesh) => {
-      const material = Array.isArray(mesh.material)
-        ? mesh.material[0]
-        : mesh.material;
-      expect(material).toBeInstanceOf(MeshStandardMaterial);
-      return (material as MeshStandardMaterial).color.getHexString();
-    };
-    expect((bike.body.getObjectsByProperty('name', 'box-section-swingarm') as Mesh[]).map(colorOf)).toEqual(['101214', '101214']);
-    expect(colorOf(bike.body.getObjectByName('supermoto-handlebar') as Mesh)).toBe('101214');
-    const pegs: Mesh[] = [];
-    bike.body.traverse((object) => {
-      if (object instanceof Mesh && object.name.startsWith('supermoto-footpeg-')) pegs.push(object);
+  it.each(['450', '701'] as const)('%s keeps the metal caliper fixed while its steel rotor spins', id => {
+    const bike = makeBike({ ...newPlayer(), bike: id }, []);
+    const calipers: Mesh[] = [], rotors: Mesh[] = [];
+    bike.body.traverse(part => { if (part instanceof Mesh) {
+      if (/caliper/.test(part.name)) calipers.push(part);
+      if (/steel/.test(part.name) && part.userData.importedRig === 'frontWheel') rotors.push(part);
+    } });
+    expect(calipers.length).toBeGreaterThan(0); expect(rotors.length).toBeGreaterThan(0);
+    bike.animateSuspension(.35, .06); bike.root.updateMatrixWorld(true);
+    const fixed = calipers.map(part => part.matrixWorld.clone());
+    const rotor = rotors[0].matrixWorld.clone();
+    bike.wheels[0].rotation.x = 1.3; bike.root.updateMatrixWorld(true);
+    calipers.forEach((part, i) => {
+      expect(part.parent?.name).toBe('front-suspension-axle');
+      expect(part.matrixWorld.equals(fixed[i])).toBe(true);
+      expect((part.material as MeshStandardMaterial).metalness).toBeGreaterThan(.3);
     });
-    expect(pegs.length).toBeGreaterThan(0);
-    expect(pegs.every((peg) => colorOf(peg) === '101214')).toBe(true);
-    const spring = bike.body.getObjectByName('rear-shock-spring') as Mesh;
-    expect(colorOf(spring)).toBe(new Color(player.paint).getHexString());
-    const tank = bike.body.getObjectByName('supermoto-fuel-tank') as Mesh;
-    expect(colorOf(tank)).toBe('101214');
+    expect(rotors[0].matrixWorld.equals(rotor)).toBe(false);
+    expect((rotors[0].material as MeshStandardMaterial).metalness).toBeGreaterThan(.4);
   });
-
-  it.each(['125', '701'] as const)('%s receives black fork tubes and clamps', (model) => {
-    const bike = makeBike({ ...newPlayer(), bike: model }, []);
-    const forks = bike.body.getObjectsByProperty('name', 'telescopic-fork-slider') as Mesh[];
-    expect(forks).toHaveLength(2);
-    expect(forks.every((fork) => (fork.material as MeshStandardMaterial).color.getHexString() === '101214')).toBe(true);
-    const stanchions = bike.body.getObjectsByProperty('name', 'fork-stanchion') as Mesh[];
-    if (model === '701') {
-      expect(stanchions).toHaveLength(2);
-      expect(stanchions.every((part) => (part.material as MeshStandardMaterial).color.getHexString() === '101214')).toBe(true);
+  it.each(['450', '701', 'scooter'] as const)('%s paints only actual bodywork and keeps its seat and mechanics distinct', id => {
+    const bike = makeBike({ ...newPlayer(), bike: id, paint: '#e33126', rims: '#27d4c5' }, []);
+    const definitions = getImportedBikeAsset(id).manifest.materials;
+    const painted: Mesh[] = [], seats: Mesh[] = [];
+    bike.body.traverse(part => { if (!(part instanceof Mesh) || !part.userData.importedPart) return;
+      if (part.userData.bikePaintSurface) painted.push(part);
+      if (/seat/.test(part.name)) seats.push(part);
+    });
+    expect(painted.length).toBeGreaterThan(0); expect(seats.length).toBeGreaterThan(0);
+    for (const part of painted) expect((part.material as MeshStandardMaterial).color.getHexString()).toBe('e33126');
+    for (const part of seats) expect((part.material as MeshStandardMaterial).color.getHexString()).not.toBe('e33126');
+    const trim: Mesh[] = [], tyres: Mesh[] = [];
+    bike.body.traverse(part => {
+      if (!(part instanceof Mesh) || !part.userData.importedPart) return;
+      if (/trim|dark/.test((part.material as MeshStandardMaterial).name)) trim.push(part);
+      if (part.name === 'tire') tyres.push(part);
+    });
+    expect(trim.length).toBeGreaterThan(0);
+    for (const part of trim) {
+      const actual = part.material as MeshStandardMaterial;
+      const definition = definitions.find(material => material.name === actual.name)!;
+      const expected = Array.isArray(definition.color) ? new Color().fromArray(definition.color) : new Color(definition.color);
+      // "trim" contains "rim": selecting wheel paint must not recolor it.
+      expect(actual.color.equals(expected)).toBe(true);
     }
+    expect(tyres).toHaveLength(2);
+    for (const part of tyres) {
+      const material = part.material as MeshStandardMaterial;
+      expect(material.color.getHexString()).toBe('16181a');
+      expect(material.roughness).toBe(1); expect(material.metalness).toBe(0);
+      expect(material.map).toBeNull();
+    }
+    expect(bike.body.getObjectByName('open-silencer-outlet')).toBeDefined();
   });
-
-  it('matches the Scooter rear spring to the selected livery', () => {
-    const player = { ...newPlayer(), bike: 'scooter' as const, paint: '#e33126' };
-    const bike = makeBike(player, []);
-    const spring = bike.body.getObjectByName('scooter-rear-spring') as Mesh;
-    expect((spring.material as MeshStandardMaterial).color.getHexString()).toBe('e33126');
-  });
-
-  it.each(['125', '450', '701'] as const)(
-    '%s carries a continuous engine-to-muffler pipe with a frame attachment',
-    (bikeId) => {
-      const bike = makeBike({ ...newPlayer(), bike: bikeId }, []);
-      const pipe = bike.body.getObjectByName('connected-exhaust-pipe') as Mesh;
-      const muffler = bike.body.getObjectByName('single-exhaust') as Mesh;
-      const pipeParameters = (pipe.geometry as TubeGeometry).parameters;
-      const pipeSides = pipeParameters?.radialSegments ?? 14;
-      const end = ringCenter(pipe, pipeParameters?.tubularSegments ?? 24, pipeSides);
-      const mufflerAxis = rodAxis(muffler);
-      const nearest = mufflerAxis.closestPointToPoint(end, true, new Vector3());
-      expect(nearest.distanceTo(end)).toBeLessThan(0.016);
-      const start = ringCenter(pipe, 0, pipeSides);
-      if (bikeId === '450') {
-        // The user's marked outlet now seats on the lower front casting.
-        expect(start.distanceTo(new Vector3(0, 0.560, -0.236))).toBeLessThan(1e-6);
-      } else {
-        expect(start.y).toBeGreaterThan(bikeId === '701' ? 0.35 : 0.27);
-      }
-      expect(start.z).toBeLessThan(-0.14);
-      expect(bike.body.getObjectByName('exhaust-frame-hanger')).toBeDefined();
-      expect(bike.body.getObjectByName('exhaust-mount-band')).toBeDefined();
-      if (bikeId === '701') {
-        const headers = bike.body.getObjectsByProperty(
-          'name',
-          'four-cylinder-exhaust-header',
-        ) as Mesh[];
-        expect(headers).toHaveLength(4);
-        for (const header of headers)
-          expect(ringCenter(header, 18, 10).distanceTo(start)).toBeLessThan(
-            1e-6,
-          );
-      }
-    },
-  );
 });

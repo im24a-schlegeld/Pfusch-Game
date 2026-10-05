@@ -45,13 +45,13 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
     0.305,
     'metal',
   ),
-  scooter: contact(IMPORTED_BIKE_TAIL.scooter.tail, IMPORTED_BIKE_TAIL.scooter.rearAxle, IMPORTED_BIKE_TAIL.scooter.rearRadius, 'plastic'),
+  scooter: contact(IMPORTED_BIKE_TAIL.scooter.tail, IMPORTED_BIKE_TAIL.scooter.rearAxle, IMPORTED_BIKE_TAIL.scooter.rearRadius, IMPORTED_BIKE_TAIL.scooter.material),
   '450': contact(
     IMPORTED_BIKE_TAIL['450'].tail,
     IMPORTED_BIKE_TAIL['450'].rearAxle,
     IMPORTED_BIKE_TAIL['450'].rearRadius,
-    'plastic',
+    IMPORTED_BIKE_TAIL['450'].material,
   ),
-  '701': contact(IMPORTED_BIKE_TAIL['701'].tail, IMPORTED_BIKE_TAIL['701'].rearAxle, IMPORTED_BIKE_TAIL['701'].rearRadius, 'plastic'),
+  '701': contact(IMPORTED_BIKE_TAIL['701'].tail, IMPORTED_BIKE_TAIL['701'].rearAxle, IMPORTED_BIKE_TAIL['701'].rearRadius, IMPORTED_BIKE_TAIL['701'].material),
 };
 export const TAIL_RECOVERY_ANGLE = 0.12;

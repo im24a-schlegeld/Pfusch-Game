@@ -58,13 +58,16 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     const color = Array.isArray(definition.color)
       ? new THREE.Color().fromArray(definition.color) : new THREE.Color(definition.color);
     const paintable = definition.paintable ?? /livery|paint|fairing|bodywork/i.test(definition.name);
-    const rimMaterial = definition.rim ?? /rim/i.test(definition.name);
+    const rimMaterial = definition.rim ?? /(^|[_\s-])rims?(?=\d|$|[_\s-])/i.test(definition.name);
+    const tireMaterial = /tyre|tire/i.test(definition.name);
     if (paintable) color.set(player.paint);
     if (rimMaterial) color.set(player.rims);
+    if (tireMaterial) color.set('#16181a');
     const material = new THREE.MeshStandardMaterial({
       name: definition.name, color,
-      metalness: definition.metalness, roughness: definition.roughness,
-      map: !paintable && !rimMaterial && definition.map ? textures.get(definition.map) : undefined,
+      metalness: tireMaterial ? 0 : definition.metalness,
+      roughness: tireMaterial ? 1 : definition.roughness,
+      map: !paintable && !rimMaterial && !tireMaterial && definition.map ? textures.get(definition.map) : undefined,
       normalMap: definition.normalMap ? textures.get(definition.normalMap) : undefined,
       alphaMap: definition.alphaMap ? textures.get(definition.alphaMap) : undefined,
       opacity: definition.opacity ?? 1,
@@ -109,12 +112,16 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   const exhaust = new THREE.Object3D();
   exhaust.name = 'open-silencer-outlet'; exhaust.position.copy(point(source.exhaust)); body.add(exhaust);
   body.userData.tailContact = point(source.tail).toArray();
-  const headlightAnchor = new THREE.Object3D();
-  headlightAnchor.name = 'imported-headlight-anchor';
-  headlightAnchor.position.copy(point(source.headlight ?? source.steeringPivot ?? source.grip));
-  if (!source.headlight) { headlightAnchor.position.y -= 0.15; headlightAnchor.position.z -= 0.07; }
-  steering.add(headlightAnchor);
-  body.userData.headlightAnchors = [headlightAnchor];
+  const lampPoints = source.headlights ?? [source.headlight ?? source.steeringPivot ?? source.grip];
+  body.userData.headlightAnchors = lampPoints.map((position, index) => {
+    const anchor = new THREE.Object3D();
+    anchor.name = `imported-headlight-anchor-${index}`;
+    anchor.position.copy(point(position));
+    if (!source.headlight && !source.headlights) { anchor.position.y -= 0.15; anchor.position.z -= 0.07; }
+    // The sport/scooter fairing is chassis-mounted; only the off-road plate steers.
+    (id === '450' ? steering : body).add(anchor);
+    return anchor;
+  });
   const hip = point(source.hip).multiplyScalar(modelScale).toArray() as Point;
   // An imported seat anchor is the upholstery surface, not the human hip joint.
   // The immutable trouser shell extends 92 mm below that joint. Measure the
@@ -154,6 +161,36 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   if (!pose) throw new Error('Die Kontaktpunkte des importierten Motorrads liegen außerhalb der festen Fahreranatomie.');
   const rider = makeRider(body, pose, player, products);
   rider.group.scale.setScalar(1 / modelScale);
+  const selectedKeychain = player.equipped.keychain ?? player.equipped.accessory;
+  if (products.some(product => product.id === selectedKeychain && product.handle === 'schlusselanhanger')) {
+    const ignitionSupport = new THREE.Object3D();
+    ignitionSupport.name = 'imported-ignition-support';
+    ignitionSupport.position.copy(point(source.steeringPivot ?? source.grip));
+    if (id === 'scooter') { ignitionSupport.position.x += 0.08; ignitionSupport.position.y -= 0.12; ignitionSupport.position.z += 0.06; }
+    else ignitionSupport.position.y -= 0.018;
+    // Find a real mounting surface only when an equipped keychain needs it.
+    body.updateWorldMatrix(true, true);
+    const inverseBody = body.matrixWorld.clone().invert();
+    const supportPoint = new THREE.Vector3(), supportMatrix = new THREE.Matrix4();
+    const desiredSupport = ignitionSupport.position.clone();
+    let nearestSupport = Infinity;
+    body.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || !['body', 'steering', 'fork'].includes(object.userData.importedRig)) return;
+      supportMatrix.multiplyMatrices(inverseBody, object.matrixWorld);
+      const positions = object.geometry.getAttribute('position');
+      for (let vertex = 0; vertex < positions.count; vertex++) {
+        supportPoint.fromBufferAttribute(positions, vertex).applyMatrix4(supportMatrix);
+        const distance = supportPoint.distanceToSquared(desiredSupport);
+        if (distance < nearestSupport) {
+          nearestSupport = distance;
+          ignitionSupport.position.copy(supportPoint);
+          ignitionSupport.userData.supportSurface = object.name;
+        }
+      }
+    });
+    body.add(ignitionSupport);
+    body.userData.ignitionSupport = ignitionSupport;
+  }
   const key = addIgnitionKey(body, player, products, point(source.grip).toArray() as Point);
   const steeringPivot = point(source.steeringPivot ?? source.frontAxle);
   const steeringAxis = new THREE.Vector3(...(source.steeringAxis ?? [0, 0.93, 0.37] as Point)).normalize();

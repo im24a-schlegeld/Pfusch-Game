@@ -54,7 +54,11 @@ export function createBikeHeadlightRig(model: BikeModelId): BikeHeadlightRig {
         const anchors = body.userData.headlightAnchors as Object3D[] | undefined;
         const anchor = anchors?.[i] ?? anchors?.[0];
         if (anchor) {
-          anchor.updateWorldMatrix(true, false);
+          // The steering group owns a manual matrix. Force its world refresh
+          // when only the chassis moved, without walking its render meshes.
+          if (anchor.parent && anchor.parent !== body)
+            anchor.parent.updateWorldMatrix(false, false, true);
+          anchor.updateWorldMatrix(false, false, true);
           lights[i].position.setFromMatrixPosition(anchor.matrixWorld);
           lights[i].target.position.set(0, -AIM_DROP, -AIM_DISTANCE).applyMatrix4(anchor.matrixWorld);
           continue;

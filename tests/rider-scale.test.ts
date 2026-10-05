@@ -31,7 +31,7 @@ describe('motorcycle scale with one adult skeleton', () => {
   it.each(['450', '701'] as BikeModelId[])(
     '%s reaches its motorcycle with unchanged hand and boot offsets',
     (id) => {
-      expect(BIKE_MODEL_SCALES[id]).toBe(id === '450' ? 1.06 : 1.12);
+      expect(BIKE_MODEL_SCALES[id]).toBe(1.18);
       for (const contact of ['hip', 'grip', 'peg'] as const)
         for (let axis = 0; axis < 3; axis++)
           expect(POSES[id][contact][axis]).toBeCloseTo(
@@ -46,7 +46,7 @@ describe('motorcycle scale with one adult skeleton', () => {
   );
 
   it('seats the scooter rider at full adult scale with feet on the floorboard', () => {
-    expect(BIKE_MODEL_SCALES.scooter).toBe(1);
+    expect(BIKE_MODEL_SCALES.scooter).toBe(1.08);
     expect(RIDER_TARGETS.scooter).toEqual({
       hip: [0, 0.87, 0.25],
       grip: [0.31, 1.12, -0.4],

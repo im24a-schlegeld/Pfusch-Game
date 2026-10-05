@@ -1,3 +1,5 @@
+import { installImportedBikeFixtures } from './importedBikeFixture';
+installImportedBikeFixtures();
 import { SPORT_LENS_FACES } from '../app/game/sportDesign';
 import { SUPERMOTO_LENS_FACE } from '../app/game/supermotoBodywork';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,7 +10,9 @@ import {
   Mesh,
   MeshStandardMaterial,
   Scene,
+  Object3D,
   SpotLight,
+  Triangle,
   Vector3,
 } from 'three';
 import { newPlayer } from '../app/domain/progression';
@@ -85,20 +89,48 @@ function expectSourceAndAim(
   model: BikeModelId,
   lights: readonly SpotLight[],
 ) {
+  const imported = bike.body.userData.headlightAnchors as Object3D[] | undefined;
   lensFaces[model].forEach(([x, y, z], index) => {
-    expectVector(
-      lights[index].position,
-      bike.body.localToWorld(new Vector3(x, y, z)),
-    );
-    expectVector(
-      lights[index].target.position,
-      bike.body.localToWorld(new Vector3(x, y - (20 * 1.22) / 23, z - 20)),
-    );
+    const anchor = imported?.[index];
+    if (imported) expect(anchor, 'one optical anchor per active beam').toBeDefined();
+    expectVector(lights[index].position, anchor
+      ? anchor.localToWorld(new Vector3()) : bike.body.localToWorld(new Vector3(x, y, z)));
+    expectVector(lights[index].target.position, anchor
+      ? anchor.localToWorld(new Vector3(0, -(20 * 1.22) / 23, -20))
+      : bike.body.localToWorld(new Vector3(x, y - (20 * 1.22) / 23, z - 20)));
   });
 }
 
 function expectAnchorsOnVisibleLenses(bike: Bike, model: BikeModelId) {
   bike.root.updateMatrixWorld(true);
+  if (model !== '125') {
+    const anchors = bike.body.userData.headlightAnchors as Object3D[];
+    expect(anchors).toHaveLength(lensFaces[model].length);
+    const toBody = bike.body.matrixWorld.clone().invert();
+    const optics: Mesh[] = [];
+    bike.body.traverse(part => {
+      if (part instanceof Mesh && part.userData.importedPart && /headlight|reflector|nitro_light/.test(part.name)) optics.push(part);
+    });
+    expect(optics.length).toBeGreaterThan(0);
+    for (const anchor of anchors) {
+      expect(anchor.parent).toBe(model === '450' ? bike.body.getObjectByName('imported-steering') : bike.body);
+      expect(anchor.getWorldPosition(new Vector3()).toArray().every(Number.isFinite)).toBe(true);
+      const source = anchor.getWorldPosition(new Vector3()).applyMatrix4(toBody);
+      let nearest = Infinity;
+      for (const mesh of optics) {
+        const transform = toBody.clone().multiply(mesh.matrixWorld);
+        const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.getIndex()!;
+        for (let i = 0; i < indices.count; i += 3) {
+          const triangle = new Triangle(...[0, 1, 2].map(corner => new Vector3().fromBufferAttribute(positions, indices.getX(i + corner)).applyMatrix4(transform)) as [Vector3, Vector3, Vector3]);
+          nearest = Math.min(nearest, triangle.closestPointToPoint(source, new Vector3()).distanceTo(source));
+        }
+      }
+      // The scooter uses one road beam between its two physical lenses.
+      expect(nearest).toBeLessThan(model === 'scooter' ? .075 : .035);
+    }
+    if (anchors.length === 2) expect(anchors[0].position.distanceTo(anchors[1].position)).toBeGreaterThan(.08);
+    return;
+  }
   const toBody = new Matrix4().copy(bike.body.matrixWorld).invert();
   const nearest = lensFaces[model].map(() => Infinity);
   let count = 0;
@@ -108,13 +140,7 @@ function expectAnchorsOnVisibleLenses(bike: Bike, model: BikeModelId) {
       object.material instanceof MeshStandardMaterial
         ? object.material.color.getHexString()
         : '';
-    const isLens =
-      model === '125'
-        ? color === 'e7e4b8'
-        : model === '450'
-          ? object.name === 'supermoto-headlight-glass'
-          : object.name ===
-            (model === '701' ? 'sport-projector-lens' : 'scooter-headlight');
+    const isLens = color === 'e7e4b8';
     if (!isLens) return;
     count++;
     const transform = new Matrix4().multiplyMatrices(

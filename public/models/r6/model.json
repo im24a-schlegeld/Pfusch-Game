@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "Yamaha YZF-R6 3rd Gen",
+  "name": "Sport Bike",
   "binary": "model.bin",
   "axes": "+Y up; -Z forward; metres; axle midpoint Z=0; lowest point Y=0",
   "sourceTransform": {
@@ -78,9 +78,21 @@
       0.7081902
     ],
     "tail": [
-      0,
-      1.0247752,
-      0.945291
+      0.0004479128692764789,
+      1.0247751474380493,
+      0.9452909827232361
+    ],
+    "headlights": [
+      [
+        0.145513,
+        0.8013229,
+        -0.6850718
+      ],
+      [
+        -0.1455131,
+        0.8013229,
+        -0.6850718
+      ]
     ]
   },
   "parts": [
@@ -90,19 +102,19 @@
       "material": "r6_brake_caliper",
       "position": {
         "offset": 0,
-        "count": 2421
+        "count": 1162
       },
       "normal": {
-        "offset": 29052,
-        "count": 2421
+        "offset": 13944,
+        "count": 1162
       },
       "uv": {
-        "offset": 58104,
-        "count": 2421
+        "offset": 27888,
+        "count": 1162
       },
       "index": {
-        "offset": 77472,
-        "count": 7626
+        "offset": 37184,
+        "count": 2997
       }
     },
     {
@@ -110,83 +122,83 @@
       "rig": "body",
       "material": "r6_engine_detail",
       "position": {
-        "offset": 92724,
-        "count": 25351
+        "offset": 43180,
+        "count": 9803
       },
       "normal": {
-        "offset": 396936,
-        "count": 25351
+        "offset": 160816,
+        "count": 9803
       },
       "uv": {
-        "offset": 701148,
-        "count": 25351
+        "offset": 278452,
+        "count": 9803
       },
       "index": {
-        "offset": 903956,
-        "count": 89520
+        "offset": 356876,
+        "count": 28920
       }
     },
     {
-      "name": "mat_mechanics624_001:body",
+      "name": "r6_metal:body",
       "rig": "body",
-      "material": "mat_mechanics624_001",
+      "material": "r6_metal",
       "position": {
-        "offset": 1082996,
-        "count": 2492
+        "offset": 414716,
+        "count": 2468
       },
       "normal": {
-        "offset": 1112900,
-        "count": 2492
+        "offset": 444332,
+        "count": 2468
       },
       "uv": {
-        "offset": 1142804,
-        "count": 2492
+        "offset": 473948,
+        "count": 2468
       },
       "index": {
-        "offset": 1162740,
-        "count": 5703
+        "offset": 493692,
+        "count": 5478
       }
     },
     {
-      "name": "mat_mechanics624_001:swingarm",
+      "name": "r6_metal:swingarm",
       "rig": "swingarm",
-      "material": "mat_mechanics624_001",
+      "material": "r6_metal",
       "position": {
-        "offset": 1174148,
-        "count": 1021
+        "offset": 504648,
+        "count": 957
       },
       "normal": {
-        "offset": 1186400,
-        "count": 1021
+        "offset": 516132,
+        "count": 957
       },
       "uv": {
-        "offset": 1198652,
-        "count": 1021
+        "offset": 527616,
+        "count": 957
       },
       "index": {
-        "offset": 1206820,
-        "count": 2358
+        "offset": 535272,
+        "count": 2145
       }
     },
     {
-      "name": "mat_mechanics624_001:shockLower",
+      "name": "r6_metal:shockLower",
       "rig": "shockLower",
-      "material": "mat_mechanics624_001",
+      "material": "r6_metal",
       "position": {
-        "offset": 1211536,
-        "count": 155
+        "offset": 539564,
+        "count": 157
       },
       "normal": {
-        "offset": 1213396,
-        "count": 155
+        "offset": 541448,
+        "count": 157
       },
       "uv": {
-        "offset": 1215256,
-        "count": 155
+        "offset": 543332,
+        "count": 157
       },
       "index": {
-        "offset": 1216496,
-        "count": 315
+        "offset": 544588,
+        "count": 321
       }
     },
     {
@@ -194,419 +206,41 @@
       "rig": "shockUpper",
       "material": "r6_engine_detail",
       "position": {
-        "offset": 1217128,
-        "count": 2325
+        "offset": 545232,
+        "count": 383
       },
       "normal": {
-        "offset": 1245028,
-        "count": 2325
+        "offset": 549828,
+        "count": 383
       },
       "uv": {
-        "offset": 1272928,
-        "count": 2325
+        "offset": 554424,
+        "count": 383
       },
       "index": {
-        "offset": 1291528,
-        "count": 10278
+        "offset": 557488,
+        "count": 1005
       }
     },
     {
-      "name": "mat_mechanics624_001:fork",
+      "name": "r6_metal:fork",
       "rig": "fork",
-      "material": "mat_mechanics624_001",
+      "material": "r6_metal",
       "position": {
-        "offset": 1312084,
-        "count": 571
+        "offset": 559500,
+        "count": 619
       },
       "normal": {
-        "offset": 1318936,
-        "count": 571
+        "offset": 566928,
+        "count": 619
       },
       "uv": {
-        "offset": 1325788,
-        "count": 571
+        "offset": 574356,
+        "count": 619
       },
       "index": {
-        "offset": 1330356,
-        "count": 1311
-      }
-    },
-    {
-      "name": "mat_mechanics624_001:shockUpper",
-      "rig": "shockUpper",
-      "material": "mat_mechanics624_001",
-      "position": {
-        "offset": 1332980,
-        "count": 60
-      },
-      "normal": {
-        "offset": 1333700,
-        "count": 60
-      },
-      "uv": {
-        "offset": 1334420,
-        "count": 60
-      },
-      "index": {
-        "offset": 1334900,
-        "count": 141
-      }
-    },
-    {
-      "name": "mat_mechanics624_001:steering",
-      "rig": "steering",
-      "material": "mat_mechanics624_001",
-      "position": {
-        "offset": 1335184,
-        "count": 276
-      },
-      "normal": {
-        "offset": 1338496,
-        "count": 276
-      },
-      "uv": {
-        "offset": 1341808,
-        "count": 276
-      },
-      "index": {
-        "offset": 1344016,
-        "count": 846
-      }
-    },
-    {
-      "name": "r6_engine_detail:shockLower",
-      "rig": "shockLower",
-      "material": "r6_engine_detail",
-      "position": {
-        "offset": 1345708,
-        "count": 6
-      },
-      "normal": {
-        "offset": 1345780,
-        "count": 6
-      },
-      "uv": {
-        "offset": 1345852,
-        "count": 6
-      },
-      "index": {
-        "offset": 1345900,
-        "count": 6
-      }
-    },
-    {
-      "name": "mat_cockpit624_001:steering",
-      "rig": "steering",
-      "material": "mat_cockpit624_001",
-      "position": {
-        "offset": 1345912,
-        "count": 2703
-      },
-      "normal": {
-        "offset": 1378348,
-        "count": 2703
-      },
-      "uv": {
-        "offset": 1410784,
-        "count": 2703
-      },
-      "index": {
-        "offset": 1432408,
-        "count": 6831
-      }
-    },
-    {
-      "name": "mat_cockpit624_001:body",
-      "rig": "body",
-      "material": "mat_cockpit624_001",
-      "position": {
-        "offset": 1446072,
-        "count": 991
-      },
-      "normal": {
-        "offset": 1457964,
-        "count": 991
-      },
-      "uv": {
-        "offset": 1469856,
-        "count": 991
-      },
-      "index": {
-        "offset": 1477784,
-        "count": 2760
-      }
-    },
-    {
-      "name": "r6_rim:rearWheel",
-      "rig": "rearWheel",
-      "material": "r6_rim",
-      "position": {
-        "offset": 1483304,
-        "count": 1561
-      },
-      "normal": {
-        "offset": 1502036,
-        "count": 1561
-      },
-      "uv": {
-        "offset": 1520768,
-        "count": 1561
-      },
-      "index": {
-        "offset": 1533256,
-        "count": 5829
-      }
-    },
-    {
-      "name": "r6_rim:frontWheel",
-      "rig": "frontWheel",
-      "material": "r6_rim",
-      "position": {
-        "offset": 1544916,
-        "count": 2146
-      },
-      "normal": {
-        "offset": 1570668,
-        "count": 2146
-      },
-      "uv": {
-        "offset": 1596420,
-        "count": 2146
-      },
-      "index": {
-        "offset": 1613588,
-        "count": 7068
-      }
-    },
-    {
-      "name": "r6_brake_carrier:frontWheel",
-      "rig": "frontWheel",
-      "material": "r6_brake_carrier",
-      "position": {
-        "offset": 1627724,
-        "count": 520
-      },
-      "normal": {
-        "offset": 1633964,
-        "count": 520
-      },
-      "uv": {
-        "offset": 1640204,
-        "count": 520
-      },
-      "index": {
-        "offset": 1644364,
-        "count": 1536
-      }
-    },
-    {
-      "name": "r6_brake_steel:frontWheel",
-      "rig": "frontWheel",
-      "material": "r6_brake_steel",
-      "position": {
-        "offset": 1647436,
-        "count": 584
-      },
-      "normal": {
-        "offset": 1654444,
-        "count": 584
-      },
-      "uv": {
-        "offset": 1661452,
-        "count": 584
-      },
-      "index": {
-        "offset": 1666124,
-        "count": 1536
-      }
-    },
-    {
-      "name": "r6_brake_carrier:rearWheel",
-      "rig": "rearWheel",
-      "material": "r6_brake_carrier",
-      "position": {
-        "offset": 1669196,
-        "count": 130
-      },
-      "normal": {
-        "offset": 1670756,
-        "count": 130
-      },
-      "uv": {
-        "offset": 1672316,
-        "count": 130
-      },
-      "index": {
-        "offset": 1673356,
-        "count": 384
-      }
-    },
-    {
-      "name": "r6_brake_steel:rearWheel",
-      "rig": "rearWheel",
-      "material": "r6_brake_steel",
-      "position": {
-        "offset": 1674124,
-        "count": 140
-      },
-      "normal": {
-        "offset": 1675804,
-        "count": 140
-      },
-      "uv": {
-        "offset": 1677484,
-        "count": 140
-      },
-      "index": {
-        "offset": 1678604,
-        "count": 384
-      }
-    },
-    {
-      "name": "exmanifold624_001:body",
-      "rig": "body",
-      "material": "exmanifold624_001",
-      "position": {
-        "offset": 1679372,
-        "count": 1051
-      },
-      "normal": {
-        "offset": 1691984,
-        "count": 1051
-      },
-      "uv": {
-        "offset": 1704596,
-        "count": 1051
-      },
-      "index": {
-        "offset": 1713004,
-        "count": 2400
-      }
-    },
-    {
-      "name": "mat_glass624_001:body",
-      "rig": "body",
-      "material": "mat_glass624_001",
-      "position": {
-        "offset": 1717804,
-        "count": 1498
-      },
-      "normal": {
-        "offset": 1735780,
-        "count": 1498
-      },
-      "uv": {
-        "offset": 1753756,
-        "count": 1498
-      },
-      "index": {
-        "offset": 1765740,
-        "count": 6588
-      }
-    },
-    {
-      "name": "r6_exhaust:body",
-      "rig": "body",
-      "material": "r6_exhaust",
-      "position": {
-        "offset": 1778916,
-        "count": 1197
-      },
-      "normal": {
-        "offset": 1793280,
-        "count": 1197
-      },
-      "uv": {
-        "offset": 1807644,
-        "count": 1197
-      },
-      "index": {
-        "offset": 1817220,
-        "count": 2547
-      }
-    },
-    {
-      "name": "mat_backtyre001:rearWheel",
-      "rig": "rearWheel",
-      "material": "mat_backtyre001",
-      "position": {
-        "offset": 1822316,
-        "count": 1229
-      },
-      "normal": {
-        "offset": 1837064,
-        "count": 1229
-      },
-      "uv": {
-        "offset": 1851812,
-        "count": 1229
-      },
-      "index": {
-        "offset": 1861644,
-        "count": 5400
-      }
-    },
-    {
-      "name": "mat_fronttyre001:frontWheel",
-      "rig": "frontWheel",
-      "material": "mat_fronttyre001",
-      "position": {
-        "offset": 1872444,
-        "count": 1385
-      },
-      "normal": {
-        "offset": 1889064,
-        "count": 1385
-      },
-      "uv": {
-        "offset": 1905684,
-        "count": 1385
-      },
-      "index": {
-        "offset": 1916764,
-        "count": 5400
-      }
-    },
-    {
-      "name": "mat_gear624:rearWheel",
-      "rig": "rearWheel",
-      "material": "mat_gear624",
-      "position": {
-        "offset": 1927564,
-        "count": 72
-      },
-      "normal": {
-        "offset": 1928428,
-        "count": 72
-      },
-      "uv": {
-        "offset": 1929292,
-        "count": 72
-      },
-      "index": {
-        "offset": 1929868,
-        "count": 204
-      }
-    },
-    {
-      "name": "mat_light624:body",
-      "rig": "body",
-      "material": "mat_light624",
-      "position": {
-        "offset": 1930276,
-        "count": 847
-      },
-      "normal": {
-        "offset": 1940440,
-        "count": 847
-      },
-      "uv": {
-        "offset": 1950604,
-        "count": 847
-      },
-      "index": {
-        "offset": 1957380,
-        "count": 2997
+        "offset": 579308,
+        "count": 1473
       }
     },
     {
@@ -614,41 +248,20 @@
       "rig": "body",
       "material": "r6_trim",
       "position": {
-        "offset": 1963376,
-        "count": 1399
+        "offset": 582256,
+        "count": 1583
       },
       "normal": {
-        "offset": 1980164,
-        "count": 1399
+        "offset": 601252,
+        "count": 1583
       },
       "uv": {
-        "offset": 1996952,
-        "count": 1399
+        "offset": 620248,
+        "count": 1583
       },
       "index": {
-        "offset": 2008144,
-        "count": 4488
-      }
-    },
-    {
-      "name": "r6_plain_paint:body",
-      "rig": "body",
-      "material": "r6_plain_paint",
-      "position": {
-        "offset": 2017120,
-        "count": 8729
-      },
-      "normal": {
-        "offset": 2121868,
-        "count": 8729
-      },
-      "uv": {
-        "offset": 2226616,
-        "count": 8729
-      },
-      "index": {
-        "offset": 2296448,
-        "count": 37134
+        "offset": 632912,
+        "count": 4341
       }
     },
     {
@@ -656,20 +269,440 @@
       "rig": "swingarm",
       "material": "r6_trim",
       "position": {
-        "offset": 2370716,
-        "count": 697
+        "offset": 641596,
+        "count": 581
       },
       "normal": {
-        "offset": 2379080,
-        "count": 697
+        "offset": 648568,
+        "count": 581
       },
       "uv": {
-        "offset": 2387444,
-        "count": 697
+        "offset": 655540,
+        "count": 581
       },
       "index": {
-        "offset": 2393020,
-        "count": 3006
+        "offset": 660188,
+        "count": 1896
+      }
+    },
+    {
+      "name": "r6_metal:shockUpper",
+      "rig": "shockUpper",
+      "material": "r6_metal",
+      "position": {
+        "offset": 663980,
+        "count": 297
+      },
+      "normal": {
+        "offset": 667544,
+        "count": 297
+      },
+      "uv": {
+        "offset": 671108,
+        "count": 297
+      },
+      "index": {
+        "offset": 673484,
+        "count": 1221
+      }
+    },
+    {
+      "name": "r6_metal:steering",
+      "rig": "steering",
+      "material": "r6_metal",
+      "position": {
+        "offset": 675928,
+        "count": 296
+      },
+      "normal": {
+        "offset": 679480,
+        "count": 296
+      },
+      "uv": {
+        "offset": 683032,
+        "count": 296
+      },
+      "index": {
+        "offset": 685400,
+        "count": 939
+      }
+    },
+    {
+      "name": "r6_engine_detail:shockLower",
+      "rig": "shockLower",
+      "material": "r6_engine_detail",
+      "position": {
+        "offset": 687280,
+        "count": 6
+      },
+      "normal": {
+        "offset": 687352,
+        "count": 6
+      },
+      "uv": {
+        "offset": 687424,
+        "count": 6
+      },
+      "index": {
+        "offset": 687472,
+        "count": 6
+      }
+    },
+    {
+      "name": "r6_trim:steering",
+      "rig": "steering",
+      "material": "r6_trim",
+      "position": {
+        "offset": 687484,
+        "count": 1431
+      },
+      "normal": {
+        "offset": 704656,
+        "count": 1431
+      },
+      "uv": {
+        "offset": 721828,
+        "count": 1431
+      },
+      "index": {
+        "offset": 733276,
+        "count": 3288
+      }
+    },
+    {
+      "name": "r6_rim:rearWheel",
+      "rig": "rearWheel",
+      "material": "r6_rim",
+      "position": {
+        "offset": 739852,
+        "count": 1006
+      },
+      "normal": {
+        "offset": 751924,
+        "count": 1006
+      },
+      "uv": {
+        "offset": 763996,
+        "count": 1006
+      },
+      "index": {
+        "offset": 772044,
+        "count": 3525
+      }
+    },
+    {
+      "name": "r6_rim:frontWheel",
+      "rig": "frontWheel",
+      "material": "r6_rim",
+      "position": {
+        "offset": 779096,
+        "count": 1364
+      },
+      "normal": {
+        "offset": 795464,
+        "count": 1364
+      },
+      "uv": {
+        "offset": 811832,
+        "count": 1364
+      },
+      "index": {
+        "offset": 822744,
+        "count": 4272
+      }
+    },
+    {
+      "name": "r6_brake_steel:frontWheel",
+      "rig": "frontWheel",
+      "material": "r6_brake_steel",
+      "position": {
+        "offset": 831288,
+        "count": 5280
+      },
+      "normal": {
+        "offset": 894648,
+        "count": 5280
+      },
+      "uv": {
+        "offset": 958008,
+        "count": 5280
+      },
+      "index": {
+        "offset": 1000248,
+        "count": 11568
+      }
+    },
+    {
+      "name": "r6_brake_carrier:frontWheel",
+      "rig": "frontWheel",
+      "material": "r6_brake_carrier",
+      "position": {
+        "offset": 1023384,
+        "count": 1488
+      },
+      "normal": {
+        "offset": 1041240,
+        "count": 1488
+      },
+      "uv": {
+        "offset": 1059096,
+        "count": 1488
+      },
+      "index": {
+        "offset": 1071000,
+        "count": 3120
+      }
+    },
+    {
+      "name": "r6_brake_steel:rearWheel",
+      "rig": "rearWheel",
+      "material": "r6_brake_steel",
+      "position": {
+        "offset": 1077240,
+        "count": 2064
+      },
+      "normal": {
+        "offset": 1102008,
+        "count": 2064
+      },
+      "uv": {
+        "offset": 1126776,
+        "count": 2064
+      },
+      "index": {
+        "offset": 1143288,
+        "count": 4488
+      }
+    },
+    {
+      "name": "r6_brake_carrier:rearWheel",
+      "rig": "rearWheel",
+      "material": "r6_brake_carrier",
+      "position": {
+        "offset": 1152264,
+        "count": 744
+      },
+      "normal": {
+        "offset": 1161192,
+        "count": 744
+      },
+      "uv": {
+        "offset": 1170120,
+        "count": 744
+      },
+      "index": {
+        "offset": 1176072,
+        "count": 1560
+      }
+    },
+    {
+      "name": "r6_headers:body",
+      "rig": "body",
+      "material": "r6_headers",
+      "position": {
+        "offset": 1179192,
+        "count": 846
+      },
+      "normal": {
+        "offset": 1189344,
+        "count": 846
+      },
+      "uv": {
+        "offset": 1199496,
+        "count": 846
+      },
+      "index": {
+        "offset": 1206264,
+        "count": 1950
+      }
+    },
+    {
+      "name": "r6_indicator:body",
+      "rig": "body",
+      "material": "r6_indicator",
+      "position": {
+        "offset": 1210164,
+        "count": 92
+      },
+      "normal": {
+        "offset": 1211268,
+        "count": 92
+      },
+      "uv": {
+        "offset": 1212372,
+        "count": 92
+      },
+      "index": {
+        "offset": 1213108,
+        "count": 300
+      }
+    },
+    {
+      "name": "r6_exhaust:body",
+      "rig": "body",
+      "material": "r6_exhaust",
+      "position": {
+        "offset": 1213708,
+        "count": 880
+      },
+      "normal": {
+        "offset": 1224268,
+        "count": 880
+      },
+      "uv": {
+        "offset": 1234828,
+        "count": 880
+      },
+      "index": {
+        "offset": 1241868,
+        "count": 1947
+      }
+    },
+    {
+      "name": "r6_tyre:rearWheel",
+      "rig": "rearWheel",
+      "material": "r6_tyre",
+      "position": {
+        "offset": 1245764,
+        "count": 1047
+      },
+      "normal": {
+        "offset": 1258328,
+        "count": 1047
+      },
+      "uv": {
+        "offset": 1270892,
+        "count": 1047
+      },
+      "index": {
+        "offset": 1279268,
+        "count": 4500
+      }
+    },
+    {
+      "name": "r6_tyre:frontWheel",
+      "rig": "frontWheel",
+      "material": "r6_tyre",
+      "position": {
+        "offset": 1288268,
+        "count": 1167
+      },
+      "normal": {
+        "offset": 1302272,
+        "count": 1167
+      },
+      "uv": {
+        "offset": 1316276,
+        "count": 1167
+      },
+      "index": {
+        "offset": 1325612,
+        "count": 4500
+      }
+    },
+    {
+      "name": "r6_metal:rearWheel",
+      "rig": "rearWheel",
+      "material": "r6_metal",
+      "position": {
+        "offset": 1334612,
+        "count": 52
+      },
+      "normal": {
+        "offset": 1335236,
+        "count": 52
+      },
+      "uv": {
+        "offset": 1335860,
+        "count": 52
+      },
+      "index": {
+        "offset": 1336276,
+        "count": 144
+      }
+    },
+    {
+      "name": "r6_clear_glass:body",
+      "rig": "body",
+      "material": "r6_clear_glass",
+      "position": {
+        "offset": 1336564,
+        "count": 655
+      },
+      "normal": {
+        "offset": 1344424,
+        "count": 655
+      },
+      "uv": {
+        "offset": 1352284,
+        "count": 655
+      },
+      "index": {
+        "offset": 1357524,
+        "count": 2247
+      }
+    },
+    {
+      "name": "r6_rear_lamp:body",
+      "rig": "body",
+      "material": "r6_rear_lamp",
+      "position": {
+        "offset": 1362020,
+        "count": 176
+      },
+      "normal": {
+        "offset": 1364132,
+        "count": 176
+      },
+      "uv": {
+        "offset": 1366244,
+        "count": 176
+      },
+      "index": {
+        "offset": 1367652,
+        "count": 600
+      }
+    },
+    {
+      "name": "r6_reflector:body",
+      "rig": "body",
+      "material": "r6_reflector",
+      "position": {
+        "offset": 1368852,
+        "count": 542
+      },
+      "normal": {
+        "offset": 1375356,
+        "count": 542
+      },
+      "uv": {
+        "offset": 1381860,
+        "count": 542
+      },
+      "index": {
+        "offset": 1386196,
+        "count": 1950
+      }
+    },
+    {
+      "name": "r6_plain_paint:body",
+      "rig": "body",
+      "material": "r6_plain_paint",
+      "position": {
+        "offset": 1390096,
+        "count": 5458
+      },
+      "normal": {
+        "offset": 1455592,
+        "count": 5458
+      },
+      "uv": {
+        "offset": 1521088,
+        "count": 5458
+      },
+      "index": {
+        "offset": 1564752,
+        "count": 22005
       }
     },
     {
@@ -677,20 +710,20 @@
       "rig": "fork",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 2399032,
-        "count": 769
+        "offset": 1608764,
+        "count": 470
       },
       "normal": {
-        "offset": 2408260,
-        "count": 769
+        "offset": 1614404,
+        "count": 470
       },
       "uv": {
-        "offset": 2417488,
-        "count": 769
+        "offset": 1620044,
+        "count": 470
       },
       "index": {
-        "offset": 2423640,
-        "count": 3366
+        "offset": 1623804,
+        "count": 1992
       }
     },
     {
@@ -698,94 +731,45 @@
       "rig": "body",
       "material": "r6_seat",
       "position": {
-        "offset": 2430372,
-        "count": 1273
+        "offset": 1627788,
+        "count": 629
       },
       "normal": {
-        "offset": 2445648,
-        "count": 1273
+        "offset": 1635336,
+        "count": 629
       },
       "uv": {
-        "offset": 2460924,
-        "count": 1273
+        "offset": 1642884,
+        "count": 629
       },
       "index": {
-        "offset": 2471108,
-        "count": 6000
+        "offset": 1647916,
+        "count": 2700
       }
     },
     {
-      "name": "mat_chain_1_001:swingarm",
-      "rig": "swingarm",
-      "material": "mat_chain_1_001",
-      "position": {
-        "offset": 2483108,
-        "count": 455
-      },
-      "normal": {
-        "offset": 2488568,
-        "count": 455
-      },
-      "uv": {
-        "offset": 2494028,
-        "count": 455
-      },
-      "index": {
-        "offset": 2497668,
-        "count": 1290
-      }
-    },
-    {
-      "name": "mat_chain_1_001:body",
+      "name": "r6_gauge:body",
       "rig": "body",
-      "material": "mat_chain_1_001",
+      "material": "r6_gauge",
       "position": {
-        "offset": 2500248,
-        "count": 200
-      },
-      "normal": {
-        "offset": 2502648,
-        "count": 200
-      },
-      "uv": {
-        "offset": 2505048,
-        "count": 200
-      },
-      "index": {
-        "offset": 2506648,
-        "count": 546
-      }
-    },
-    {
-      "name": "mat_gauge624:body",
-      "rig": "body",
-      "material": "mat_gauge624",
-      "position": {
-        "offset": 2507740,
+        "offset": 1653316,
         "count": 308
       },
       "normal": {
-        "offset": 2511436,
+        "offset": 1657012,
         "count": 308
       },
       "uv": {
-        "offset": 2515132,
+        "offset": 1660708,
         "count": 308
       },
       "index": {
-        "offset": 2517596,
+        "offset": 1663172,
         "count": 795
       }
     }
   ],
   "materials": [
-    {
-      "name": "mat_mechanics624_001",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_mechanics624_001_baseColor.jpg"
-    },
     {
       "name": "r6_brake_caliper",
       "color": "#777263",
@@ -794,17 +778,21 @@
     },
     {
       "name": "r6_engine_detail",
-      "color": "#ffffff",
-      "metalness": 0.28,
-      "roughness": 0.6,
-      "map": "textures/mat_mechanics624_001_baseColor.jpg"
+      "color": "#626669",
+      "metalness": 0.48,
+      "roughness": 0.54
     },
     {
-      "name": "mat_cockpit624_001",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_cockpit624_001_baseColor.jpg"
+      "name": "r6_metal",
+      "color": "#aeb3b6",
+      "metalness": 0.72,
+      "roughness": 0.42
+    },
+    {
+      "name": "r6_trim",
+      "color": "#24272a",
+      "metalness": 0.1,
+      "roughness": 0.6
     },
     {
       "name": "r6_rim",
@@ -814,32 +802,28 @@
       "rim": true
     },
     {
-      "name": "r6_brake_carrier",
-      "color": "#30363b",
-      "metalness": 0.72,
-      "roughness": 0.43
-    },
-    {
       "name": "r6_brake_steel",
       "color": "#a4aaaf",
       "metalness": 0.88,
       "roughness": 0.3
     },
     {
-      "name": "exmanifold624_001",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "map": "textures/exmanifold624_001_baseColor.jpg"
+      "name": "r6_brake_carrier",
+      "color": "#30363b",
+      "metalness": 0.72,
+      "roughness": 0.43
     },
     {
-      "name": "mat_glass624_001",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "opacity": 0.25,
-      "transparent": true,
-      "map": "textures/mat_glass624_001_baseColor.jpg"
+      "name": "r6_headers",
+      "color": "#766e60",
+      "metalness": 0.72,
+      "roughness": 0.5
+    },
+    {
+      "name": "r6_indicator",
+      "color": "#da8b22",
+      "metalness": 0.05,
+      "roughness": 0.3
     },
     {
       "name": "r6_exhaust",
@@ -848,38 +832,30 @@
       "roughness": 0.38
     },
     {
-      "name": "mat_backtyre001",
-      "color": "#ffffff",
+      "name": "r6_tyre",
+      "color": "#121314",
       "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_backtyre001_baseColor.jpg"
+      "roughness": 1
     },
     {
-      "name": "mat_fronttyre001",
-      "color": "#ffffff",
+      "name": "r6_clear_glass",
+      "color": "#b3c2c9",
       "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_fronttyre001_baseColor.jpg"
+      "roughness": 0.14,
+      "transparent": true,
+      "opacity": 0.22
     },
     {
-      "name": "mat_gear624",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_gear624_baseColor.jpg"
+      "name": "r6_rear_lamp",
+      "color": "#9d1617",
+      "metalness": 0.05,
+      "roughness": 0.28
     },
     {
-      "name": "mat_light624",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_light624_baseColor.jpg"
-    },
-    {
-      "name": "r6_trim",
-      "color": "#24272a",
-      "metalness": 0.1,
-      "roughness": 0.6
+      "name": "r6_reflector",
+      "color": "#c7d2d9",
+      "metalness": 0.8,
+      "roughness": 0.24
     },
     {
       "name": "r6_plain_paint",
@@ -895,25 +871,17 @@
       "roughness": 0.88
     },
     {
-      "name": "mat_chain_1_001",
-      "color": "#ffffff",
-      "metalness": 0,
-      "roughness": 1,
-      "map": "textures/mat_chain_1_001_baseColor.jpg"
-    },
-    {
-      "name": "mat_gauge624",
-      "color": "#ffffff",
-      "metalness": 0.10000000149011612,
-      "roughness": 0.5,
-      "map": "textures/mat_gauge624_baseColor.jpg"
+      "name": "r6_gauge",
+      "color": "#19262c",
+      "metalness": 0.05,
+      "roughness": 0.25
     }
   ],
   "statistics": {
-    "sourceTriangles": 202436,
-    "triangles": 75531,
-    "vertices": 64562,
-    "geometryBytes": 2519186,
-    "meshes": 33
+    "sourceTriangles": 200799,
+    "triangles": 42731,
+    "vertices": 44011,
+    "geometryBytes": 1664762,
+    "meshes": 32
   }
 }

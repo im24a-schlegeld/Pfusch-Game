@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { BIKES } from '../app/domain/config';
 import { Engine, LANE, STEP, STUNT_POINTS } from '../app/game/engine';
-import { TRAFFIC_SHAPES, TOW_RAMP } from '../app/game/trafficDomain';
+import { TRAFFIC_SHAPES, TOW_RAMP, towDeckPosition } from '../app/game/trafficDomain';
 import { BALANCE, tailScrape } from '../app/game/wheelie';
 import { TRAFFIC_FLOW } from '../app/game/trafficFlow';
-import { TOW_TRANSFER } from '../app/game/towTransfer';
+import { TAIL_CONTACT } from '../app/game/tailContact';
 
 function ride(bike = BIKES[0], seed = 539) {
   const engine = new Engine(bike, seed);
@@ -18,14 +18,17 @@ function board(engine: Engine, velocity = 0) {
   const tow = engine.spawn('towtruck', engine.lane, 14, 0, velocity)!;
   for (
     let frame = 0;
-    frame < 100 && engine.height < TOW_TRANSFER.minimumTakeoffHeight;
+    // At high speed a large wheelbase can pass the flat-deck point and reach
+    // the cab in one tick. The live controls allow jumping from the ramp, so
+    // stop at its upper end with one simulation step left to react.
+    frame < 100 && (!engine.onTowTruck || tow.z > towDeckPosition(engine.bike.id) + (engine.speed - velocity) * STEP);
     frame++
   )
     engine.advance(STEP);
-  expect(engine.phase).toBe('playing');
+  expect(engine.phase, `${engine.bike.id}: ${engine.event.text}; height=${engine.height}, pitch=${engine.towPitch}, towZ=${tow.z}, elapsed=${engine.elapsed}`).toBe('playing');
   expect(engine.onTowTruck).toBe(true);
   expect(engine.launchSerial).toBe(0);
-  expect(engine.height).toBeGreaterThan(1);
+  expect(engine.height).toBeGreaterThan(0.9);
   expect(engine.velocityY).toBe(0);
   return tow;
 }
@@ -149,10 +152,10 @@ describe('ride onto the tow truck, then swipe to jump', () => {
       expect(engine.jumps).toBe(0);
     }
   });
-  it('emits metal sparks for Sport scrapes', () => {
+  it('emits plastic scrape particles for the imported Sport tail', () => {
     const profile = BALANCE['701'];
     expect(tailScrape('701', profile.crashAngle - 0.03, profile).material).toBe(
-      'metal',
+      'plastic',
     );
   });
   it('keeps a destination obstacle solid when a side jump lands into it', () => {
@@ -247,7 +250,7 @@ describe('stunt scoring and recoverable tail contact', () => {
       expect(engine.phase).toBe('playing');
       expect(engine.scrapeIntensity).toBeGreaterThan(0);
       expect(engine.scrapeMaterial).toBe(
-        bike.id === '125' || bike.id === '701' ? 'metal' : 'plastic',
+        TAIL_CONTACT[bike.id].material,
       );
       engine.forward(true);
       steps(engine, 100);

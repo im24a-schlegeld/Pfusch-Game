@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { Group, Matrix4, Mesh, Vector3 } from 'three';
+import { Color, Group, Matrix4, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import { makeImportedBike } from '../app/game/importedBike';
 import { installImportedBikeAsset, type ImportedBikeManifest, type ImportedBikeId } from '../app/game/importedBikeAsset';
@@ -52,10 +52,14 @@ describe.each(['450', '701', 'scooter'] as const)('Imported %s animation contrac
       const raw = new Float32Array(buffer.buffer, buffer.byteOffset + part.position.offset, part.position.count * 3);
       matrix.multiplyMatrices(inverse, mesh.matrixWorld);
       const positions = mesh.geometry.getAttribute('position');
-      for (const index of [0, Math.floor(positions.count / 2), positions.count - 1]) {
+      let maximumShapeError = 0;
+      const expected = new Vector3();
+      for (let index = 0; index < positions.count; index++) {
         point.fromBufferAttribute(positions, index).applyMatrix4(matrix);
-        expect(point.distanceTo(new Vector3(raw[index * 3], raw[index * 3 + 1], raw[index * 3 + 2]).multiplyScalar(size))).toBeLessThan(0.000001);
+        expected.set(raw[index * 3], raw[index * 3 + 1], raw[index * 3 + 2]).multiplyScalar(size);
+        maximumShapeError = Math.max(maximumShapeError, point.distanceTo(expected));
       }
+      expect(maximumShapeError, part.name).toBeLessThan(0.000001);
     }
   });
 
@@ -98,5 +102,26 @@ describe.each(['450', '701', 'scooter'] as const)('Imported %s animation contrac
     expect(firstTire.material).not.toBe(secondTire.material);
     firstTire.geometry.dispose();
     expect(secondTire.geometry.getAttribute('position').count).toBeGreaterThan(100);
+  });
+
+  it('keeps dark trim and matte tyre materials separate from configurable rims', () => {
+    const model = bike();
+    const finishes = new Map<string, MeshStandardMaterial>();
+    model.body.traverse((object) => {
+      if (object instanceof Mesh && object.material instanceof MeshStandardMaterial)
+        finishes.set(object.material.name, object.material);
+    });
+    for (const definition of manifest.materials.filter((material) => /trim/i.test(material.name))) {
+      const expected = Array.isArray(definition.color)
+        ? new Color().fromArray(definition.color) : new Color(definition.color);
+      expect(finishes.get(definition.name)!.color.getHex(), definition.name).toBe(expected.getHex());
+    }
+    for (const wheel of model.wheels) {
+      const material = (wheel.getObjectByName('tire') as Mesh).material as MeshStandardMaterial;
+      expect(material.color.getHex()).toBe(0x16181a);
+      expect(material.metalness).toBe(0);
+      expect(material.roughness).toBe(1);
+      expect(material.map).toBeNull();
+    }
   });
 });

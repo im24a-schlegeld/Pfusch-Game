@@ -22,12 +22,8 @@ const { mergeVertices } = await moduleAt('examples/jsm/utils/BufferGeometryUtils
 const { MeshoptSimplifier } = await import(pathToFileURL(require.resolve('meshoptimizer/simplifier')).href);
 await MeshoptSimplifier.ready;
 
-export async function buildMotorcycleAsset(config) {
-const source = config.source;
+export function loadMotorcycleSource(source, includeMesh) {
 if (!source) throw new Error('Pass the user-supplied USDZ path.');
-const output = path.join(root, 'public/models', config.id);
-fs.mkdirSync(output, { recursive: true });
-fs.mkdirSync(path.join(output, 'textures'), { recursive: true });
 const zip = unzipSync(new Uint8Array(fs.readFileSync(source)));
 const bytes = zip[Object.keys(zip)[0]];
 const data = new TextDecoder().decode(bytes.subarray(0, 8)) === 'PXR-USDC'
@@ -36,10 +32,9 @@ const data = new TextDecoder().decode(bytes.subarray(0, 8)) === 'PXR-USDC'
 class OfflineComposer extends USDComposer { _loadTexture() { return null; } }
 const group = new OfflineComposer().compose(data);
 group.updateMatrixWorld(true);
-const specs = data.specsByPath;
 const meshes = [];
 group.traverse(object => {
-  if (object.isMesh && (!config.includeMesh || config.includeMesh(object))) meshes.push(object);
+  if (object.isMesh && (!includeMesh || includeMesh(object))) meshes.push(object);
 });
 
 const p = new THREE.Vector3();
@@ -67,23 +62,44 @@ for (const mesh of meshes) {
 function meshBox(name) {
   return new THREE.Box3().setFromArray(worldPositions.get(name));
 }
-const { normalize, anchors, sourceTransform } = config.analyze({ meshes, meshBox, worldPositions, sourceBounds, THREE });
+return { meshes, meshBox, worldPositions, worldNormals, sourceBounds, THREE, zip, data };
+}
+
+/** Offline palette classification only; source artwork is never modified. */
+export async function readSourceAtlas(source, pattern) {
+  const filename = Object.keys(source.zip).find(name => pattern.test(name));
+  if (!filename) throw new Error('Source atlas not found: ' + pattern);
+  const sharp = (await import(pathToFileURL(require.resolve('sharp')).href)).default;
+  return sharp(Buffer.from(source.zip[filename])).raw().toBuffer({ resolveWithObject: true });
+}
+
+export async function buildMotorcycleAsset(config) {
+const output = path.join(root, 'public/models', config.id);
+fs.mkdirSync(output, { recursive: true });
+fs.mkdirSync(path.join(output, 'textures'), { recursive: true });
+const source = loadMotorcycleSource(config.source, config.includeMesh);
+const { meshes, worldPositions, worldNormals, zip, data } = source;
+const specs = data.specsByPath;
+const { normalize, anchors, sourceTransform } = await config.analyze(source);
+const normal = new THREE.Vector3();
 const normalizedOrigin = normalize([0, 0, 0]);
 const rigFor = config.rigFor;
 const materialByName = new Map();
 const buckets = new Map();
 for (const mesh of meshes) {
+  const suppliedMaterial = mesh.userData.exportMaterial;
   // Parent transforms may have the same name as other meshes (the Nitro USDZ
   // contains Object_10/Object_8 alongside a different Object_10 mesh).
   const meshPath = Object.keys(specs).find(name => name.endsWith('/' + mesh.name)
     && specs[name]?.fields.typeName === 'Mesh');
   let materialPath = specs[meshPath + '.material:binding']?.fields.targetPaths?.[0];
-  for (let parent = meshPath; !materialPath && parent.includes('/');) {
+  for (let parent = meshPath; !suppliedMaterial && !materialPath && parent?.includes('/');) {
     parent = parent.slice(0, parent.lastIndexOf('/'));
     materialPath = specs[parent + '.material:binding']?.fields.targetPaths?.[0];
   }
-  if (!materialPath) throw new Error('No material binding for mesh: ' + mesh.name);
-  const materialName = materialPath.split('/').at(-1);
+  if (!materialPath && !suppliedMaterial) throw new Error('No material binding for mesh: ' + mesh.name);
+  const materialName = suppliedMaterial?.name ?? materialPath.split('/').at(-1);
+  if (suppliedMaterial) materialByName.set(materialName, suppliedMaterial);
   const mat = mesh.material;
   if (!materialByName.has(materialName)) {
     const textureFile = specs[materialPath + '/tex_base.inputs:file']?.fields.default;
@@ -187,6 +203,14 @@ const manifest = {
     triangles: audit.reduce((sum, part) => sum + part.triangles, 0), vertices: audit.reduce((sum, part) => sum + part.vertices, 0),
     geometryBytes: byteOffset, meshes: parts.length },
 };
+// Keep only maps used by the final semantic materials (paint has no OEM atlas).
+const referencedTextures = new Set(manifest.materials.flatMap(material =>
+  [material.map, material.normalMap, material.alphaMap].filter(Boolean)));
+for (const filename of fs.readdirSync(path.join(output, 'textures'))) {
+  const relative = 'textures/' + filename;
+  const absolute = path.join(output, relative);
+  if (!referencedTextures.has(relative) && fs.statSync(absolute).isFile()) fs.unlinkSync(absolute);
+}
 fs.writeFileSync(path.join(output, 'model.bin'), Buffer.concat(chunks));
 fs.writeFileSync(path.join(output, 'model.json'), JSON.stringify(manifest, null, 2));
 const reportPath = path.join(root, 'outputs/usdz-reference/' + config.id + '-export.json');

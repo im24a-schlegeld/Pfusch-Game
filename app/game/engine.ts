@@ -1076,8 +1076,8 @@ export class Engine {
     this.policeProgress = 1 - this.policeRamRemaining / POLICE.chaseSeconds;
   }
   private cabContact(localZ: number) {
-    const front = RAMP_FRONT_CONTACT[this.bike.id] ?? RAMP_FRONT_CONTACT['450'];
-    return localZ + front.axle - front.radius < TOW_RAMP.cabRearZ + 0.08;
+    const reach = trafficFrontReach(this.bike.id, Math.max(this.towPitch, this.wheelieAngle));
+    return localZ - reach < TOW_RAMP.cabRearZ + 0.08;
   }
   private airBalance(dt: number) {
     this.liftPull *= Math.exp(-dt * 7);

@@ -195,6 +195,42 @@ function shiftWorld(object: Object3D, movement: Vector3) {
   }
 }
 
+/** Suspension can change the initial cached hull. Measure its final road
+ * contact once, after settling, while keeping the detached rider in place. */
+function settleChassisContact(bike: CrashBike) {
+  bike.body.updateWorldMatrix(true, true);
+  bike.body.updateMatrixWorld(true);
+  const point = new Vector3(), instance = new Matrix4(), transform = new Matrix4();
+  let minimumY = Infinity;
+  const visit = (object: Object3D) => {
+    if (object === bike.rider || !object.visible) return;
+    if (object instanceof Mesh) {
+      if (object instanceof SkinnedMesh) object.skeleton.update();
+      const instances = object instanceof InstancedMesh ? object.count : 1;
+      const count = object.geometry.getAttribute('position').count;
+      for (let i = 0; i < instances; i++) {
+        transform.copy(object.matrixWorld);
+        if (object instanceof InstancedMesh) {
+          object.getMatrixAt(i, instance);
+          transform.multiply(instance);
+        }
+        for (let vertex = 0; vertex < count; vertex++) {
+          object.getVertexPosition(vertex, point).applyMatrix4(transform);
+          minimumY = Math.min(minimumY, point.y);
+        }
+      }
+    }
+    object.children.forEach(visit);
+  };
+  visit(bike.body);
+  const correction = Number.isFinite(minimumY) ? 0.025 - minimumY : 0;
+  if (Math.abs(correction) > 1e-8) {
+    shiftWorld(bike.root, point.set(0, correction, 0));
+    shiftWorld(bike.rider, point.set(0, -correction, 0));
+  }
+  return correction;
+}
+
 /** Ground-shadow quads are drawings, not bodywork or rider collision surfaces. */
 function solidObstacleBounds(object: Object3D) {
   object.updateWorldMatrix(true, true);
@@ -366,6 +402,7 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
 
   function settle() {
     bike.animateAccessories?.({ reducedMotion: true }, 1 / 120);
+    bodyBounds.translate(new Vector3(0, settleChassisContact(bike), 0));
     const support = contacts(bike.rider);
     riderBounds.makeEmpty();
     for (const value of support.points)
@@ -586,6 +623,9 @@ export function createCrashAnimation(bike: CrashBike, options: CrashOptions) {
       (elapsed >= duration || options.reducedMotion) &&
       !finalGroundSettled
     ) {
+      const chassisCorrection = settleChassisContact(bike);
+      bodyBounds.translate(new Vector3(0, chassisCorrection, 0));
+      focus.y += chassisCorrection * 0.5;
       const finalSupport = contacts(bike.rider).points;
       let minimumY = Infinity;
       for (const support of finalSupport)
