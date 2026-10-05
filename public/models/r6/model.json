@@ -144,19 +144,19 @@
       "material": "r6_metal",
       "position": {
         "offset": 414716,
-        "count": 2468
+        "count": 2448
       },
       "normal": {
-        "offset": 444332,
-        "count": 2468
+        "offset": 444092,
+        "count": 2448
       },
       "uv": {
-        "offset": 473948,
-        "count": 2468
+        "offset": 473468,
+        "count": 2448
       },
       "index": {
-        "offset": 493692,
-        "count": 5478
+        "offset": 493052,
+        "count": 5469
       }
     },
     {
@@ -164,19 +164,19 @@
       "rig": "swingarm",
       "material": "r6_metal",
       "position": {
-        "offset": 504648,
+        "offset": 503992,
         "count": 957
       },
       "normal": {
-        "offset": 516132,
+        "offset": 515476,
         "count": 957
       },
       "uv": {
-        "offset": 527616,
+        "offset": 526960,
         "count": 957
       },
       "index": {
-        "offset": 535272,
+        "offset": 534616,
         "count": 2145
       }
     },
@@ -185,19 +185,19 @@
       "rig": "shockLower",
       "material": "r6_metal",
       "position": {
-        "offset": 539564,
+        "offset": 538908,
         "count": 157
       },
       "normal": {
-        "offset": 541448,
+        "offset": 540792,
         "count": 157
       },
       "uv": {
-        "offset": 543332,
+        "offset": 542676,
         "count": 157
       },
       "index": {
-        "offset": 544588,
+        "offset": 543932,
         "count": 321
       }
     },
@@ -206,19 +206,19 @@
       "rig": "shockUpper",
       "material": "r6_engine_detail",
       "position": {
-        "offset": 545232,
+        "offset": 544576,
         "count": 383
       },
       "normal": {
-        "offset": 549828,
+        "offset": 549172,
         "count": 383
       },
       "uv": {
-        "offset": 554424,
+        "offset": 553768,
         "count": 383
       },
       "index": {
-        "offset": 557488,
+        "offset": 556832,
         "count": 1005
       }
     },
@@ -227,19 +227,19 @@
       "rig": "fork",
       "material": "r6_metal",
       "position": {
-        "offset": 559500,
+        "offset": 558844,
         "count": 619
       },
       "normal": {
-        "offset": 566928,
+        "offset": 566272,
         "count": 619
       },
       "uv": {
-        "offset": 574356,
+        "offset": 573700,
         "count": 619
       },
       "index": {
-        "offset": 579308,
+        "offset": 578652,
         "count": 1473
       }
     },
@@ -248,19 +248,19 @@
       "rig": "body",
       "material": "r6_trim",
       "position": {
-        "offset": 582256,
+        "offset": 581600,
         "count": 1583
       },
       "normal": {
-        "offset": 601252,
+        "offset": 600596,
         "count": 1583
       },
       "uv": {
-        "offset": 620248,
+        "offset": 619592,
         "count": 1583
       },
       "index": {
-        "offset": 632912,
+        "offset": 632256,
         "count": 4341
       }
     },
@@ -269,19 +269,19 @@
       "rig": "swingarm",
       "material": "r6_trim",
       "position": {
-        "offset": 641596,
+        "offset": 640940,
         "count": 581
       },
       "normal": {
-        "offset": 648568,
+        "offset": 647912,
         "count": 581
       },
       "uv": {
-        "offset": 655540,
+        "offset": 654884,
         "count": 581
       },
       "index": {
-        "offset": 660188,
+        "offset": 659532,
         "count": 1896
       }
     },
@@ -290,19 +290,19 @@
       "rig": "shockUpper",
       "material": "r6_metal",
       "position": {
-        "offset": 663980,
+        "offset": 663324,
         "count": 297
       },
       "normal": {
-        "offset": 667544,
+        "offset": 666888,
         "count": 297
       },
       "uv": {
-        "offset": 671108,
+        "offset": 670452,
         "count": 297
       },
       "index": {
-        "offset": 673484,
+        "offset": 672828,
         "count": 1221
       }
     },
@@ -311,19 +311,19 @@
       "rig": "steering",
       "material": "r6_metal",
       "position": {
-        "offset": 675928,
+        "offset": 675272,
         "count": 296
       },
       "normal": {
-        "offset": 679480,
+        "offset": 678824,
         "count": 296
       },
       "uv": {
-        "offset": 683032,
+        "offset": 682376,
         "count": 296
       },
       "index": {
-        "offset": 685400,
+        "offset": 684744,
         "count": 939
       }
     },
@@ -332,19 +332,19 @@
       "rig": "shockLower",
       "material": "r6_engine_detail",
       "position": {
-        "offset": 687280,
+        "offset": 686624,
         "count": 6
       },
       "normal": {
-        "offset": 687352,
+        "offset": 686696,
         "count": 6
       },
       "uv": {
-        "offset": 687424,
+        "offset": 686768,
         "count": 6
       },
       "index": {
-        "offset": 687472,
+        "offset": 686816,
         "count": 6
       }
     },
@@ -353,19 +353,19 @@
       "rig": "steering",
       "material": "r6_trim",
       "position": {
-        "offset": 687484,
+        "offset": 686828,
         "count": 1431
       },
       "normal": {
-        "offset": 704656,
+        "offset": 704000,
         "count": 1431
       },
       "uv": {
-        "offset": 721828,
+        "offset": 721172,
         "count": 1431
       },
       "index": {
-        "offset": 733276,
+        "offset": 732620,
         "count": 3288
       }
     },
@@ -374,19 +374,19 @@
       "rig": "rearWheel",
       "material": "r6_rim",
       "position": {
-        "offset": 739852,
+        "offset": 739196,
         "count": 1006
       },
       "normal": {
-        "offset": 751924,
+        "offset": 751268,
         "count": 1006
       },
       "uv": {
-        "offset": 763996,
+        "offset": 763340,
         "count": 1006
       },
       "index": {
-        "offset": 772044,
+        "offset": 771388,
         "count": 3525
       }
     },
@@ -395,19 +395,19 @@
       "rig": "frontWheel",
       "material": "r6_rim",
       "position": {
-        "offset": 779096,
+        "offset": 778440,
         "count": 1364
       },
       "normal": {
-        "offset": 795464,
+        "offset": 794808,
         "count": 1364
       },
       "uv": {
-        "offset": 811832,
+        "offset": 811176,
         "count": 1364
       },
       "index": {
-        "offset": 822744,
+        "offset": 822088,
         "count": 4272
       }
     },
@@ -416,19 +416,19 @@
       "rig": "frontWheel",
       "material": "r6_brake_steel",
       "position": {
-        "offset": 831288,
+        "offset": 830632,
         "count": 5280
       },
       "normal": {
-        "offset": 894648,
+        "offset": 893992,
         "count": 5280
       },
       "uv": {
-        "offset": 958008,
+        "offset": 957352,
         "count": 5280
       },
       "index": {
-        "offset": 1000248,
+        "offset": 999592,
         "count": 11568
       }
     },
@@ -437,19 +437,19 @@
       "rig": "frontWheel",
       "material": "r6_brake_carrier",
       "position": {
-        "offset": 1023384,
+        "offset": 1022728,
         "count": 1488
       },
       "normal": {
-        "offset": 1041240,
+        "offset": 1040584,
         "count": 1488
       },
       "uv": {
-        "offset": 1059096,
+        "offset": 1058440,
         "count": 1488
       },
       "index": {
-        "offset": 1071000,
+        "offset": 1070344,
         "count": 3120
       }
     },
@@ -458,19 +458,19 @@
       "rig": "rearWheel",
       "material": "r6_brake_steel",
       "position": {
-        "offset": 1077240,
+        "offset": 1076584,
         "count": 2064
       },
       "normal": {
-        "offset": 1102008,
+        "offset": 1101352,
         "count": 2064
       },
       "uv": {
-        "offset": 1126776,
+        "offset": 1126120,
         "count": 2064
       },
       "index": {
-        "offset": 1143288,
+        "offset": 1142632,
         "count": 4488
       }
     },
@@ -479,19 +479,19 @@
       "rig": "rearWheel",
       "material": "r6_brake_carrier",
       "position": {
-        "offset": 1152264,
+        "offset": 1151608,
         "count": 744
       },
       "normal": {
-        "offset": 1161192,
+        "offset": 1160536,
         "count": 744
       },
       "uv": {
-        "offset": 1170120,
+        "offset": 1169464,
         "count": 744
       },
       "index": {
-        "offset": 1176072,
+        "offset": 1175416,
         "count": 1560
       }
     },
@@ -500,19 +500,19 @@
       "rig": "body",
       "material": "r6_headers",
       "position": {
-        "offset": 1179192,
+        "offset": 1178536,
         "count": 846
       },
       "normal": {
-        "offset": 1189344,
+        "offset": 1188688,
         "count": 846
       },
       "uv": {
-        "offset": 1199496,
+        "offset": 1198840,
         "count": 846
       },
       "index": {
-        "offset": 1206264,
+        "offset": 1205608,
         "count": 1950
       }
     },
@@ -521,19 +521,19 @@
       "rig": "body",
       "material": "r6_indicator",
       "position": {
-        "offset": 1210164,
+        "offset": 1209508,
         "count": 92
       },
       "normal": {
-        "offset": 1211268,
+        "offset": 1210612,
         "count": 92
       },
       "uv": {
-        "offset": 1212372,
+        "offset": 1211716,
         "count": 92
       },
       "index": {
-        "offset": 1213108,
+        "offset": 1212452,
         "count": 300
       }
     },
@@ -542,19 +542,19 @@
       "rig": "body",
       "material": "r6_exhaust",
       "position": {
-        "offset": 1213708,
+        "offset": 1213052,
         "count": 880
       },
       "normal": {
-        "offset": 1224268,
+        "offset": 1223612,
         "count": 880
       },
       "uv": {
-        "offset": 1234828,
+        "offset": 1234172,
         "count": 880
       },
       "index": {
-        "offset": 1241868,
+        "offset": 1241212,
         "count": 1947
       }
     },
@@ -563,19 +563,19 @@
       "rig": "rearWheel",
       "material": "r6_tyre",
       "position": {
-        "offset": 1245764,
+        "offset": 1245108,
         "count": 1047
       },
       "normal": {
-        "offset": 1258328,
+        "offset": 1257672,
         "count": 1047
       },
       "uv": {
-        "offset": 1270892,
+        "offset": 1270236,
         "count": 1047
       },
       "index": {
-        "offset": 1279268,
+        "offset": 1278612,
         "count": 4500
       }
     },
@@ -584,19 +584,19 @@
       "rig": "frontWheel",
       "material": "r6_tyre",
       "position": {
-        "offset": 1288268,
+        "offset": 1287612,
         "count": 1167
       },
       "normal": {
-        "offset": 1302272,
+        "offset": 1301616,
         "count": 1167
       },
       "uv": {
-        "offset": 1316276,
+        "offset": 1315620,
         "count": 1167
       },
       "index": {
-        "offset": 1325612,
+        "offset": 1324956,
         "count": 4500
       }
     },
@@ -605,19 +605,19 @@
       "rig": "rearWheel",
       "material": "r6_metal",
       "position": {
-        "offset": 1334612,
+        "offset": 1333956,
         "count": 52
       },
       "normal": {
-        "offset": 1335236,
+        "offset": 1334580,
         "count": 52
       },
       "uv": {
-        "offset": 1335860,
+        "offset": 1335204,
         "count": 52
       },
       "index": {
-        "offset": 1336276,
+        "offset": 1335620,
         "count": 144
       }
     },
@@ -626,19 +626,19 @@
       "rig": "body",
       "material": "r6_clear_glass",
       "position": {
-        "offset": 1336564,
+        "offset": 1335908,
         "count": 655
       },
       "normal": {
-        "offset": 1344424,
+        "offset": 1343768,
         "count": 655
       },
       "uv": {
-        "offset": 1352284,
+        "offset": 1351628,
         "count": 655
       },
       "index": {
-        "offset": 1357524,
+        "offset": 1356868,
         "count": 2247
       }
     },
@@ -647,19 +647,19 @@
       "rig": "body",
       "material": "r6_rear_lamp",
       "position": {
-        "offset": 1362020,
+        "offset": 1361364,
         "count": 176
       },
       "normal": {
-        "offset": 1364132,
+        "offset": 1363476,
         "count": 176
       },
       "uv": {
-        "offset": 1366244,
+        "offset": 1365588,
         "count": 176
       },
       "index": {
-        "offset": 1367652,
+        "offset": 1366996,
         "count": 600
       }
     },
@@ -668,19 +668,19 @@
       "rig": "body",
       "material": "r6_reflector",
       "position": {
-        "offset": 1368852,
+        "offset": 1368196,
         "count": 542
       },
       "normal": {
-        "offset": 1375356,
+        "offset": 1374700,
         "count": 542
       },
       "uv": {
-        "offset": 1381860,
+        "offset": 1381204,
         "count": 542
       },
       "index": {
-        "offset": 1386196,
+        "offset": 1385540,
         "count": 1950
       }
     },
@@ -689,20 +689,20 @@
       "rig": "body",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 1390096,
-        "count": 5458
+        "offset": 1389440,
+        "count": 5453
       },
       "normal": {
-        "offset": 1455592,
-        "count": 5458
+        "offset": 1454876,
+        "count": 5453
       },
       "uv": {
-        "offset": 1521088,
-        "count": 5458
+        "offset": 1520312,
+        "count": 5453
       },
       "index": {
-        "offset": 1564752,
-        "count": 22005
+        "offset": 1563936,
+        "count": 22002
       }
     },
     {
@@ -710,19 +710,19 @@
       "rig": "fork",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 1608764,
+        "offset": 1607940,
         "count": 470
       },
       "normal": {
-        "offset": 1614404,
+        "offset": 1613580,
         "count": 470
       },
       "uv": {
-        "offset": 1620044,
+        "offset": 1619220,
         "count": 470
       },
       "index": {
-        "offset": 1623804,
+        "offset": 1622980,
         "count": 1992
       }
     },
@@ -731,19 +731,19 @@
       "rig": "body",
       "material": "r6_seat",
       "position": {
-        "offset": 1627788,
+        "offset": 1626964,
         "count": 629
       },
       "normal": {
-        "offset": 1635336,
+        "offset": 1634512,
         "count": 629
       },
       "uv": {
-        "offset": 1642884,
+        "offset": 1642060,
         "count": 629
       },
       "index": {
-        "offset": 1647916,
+        "offset": 1647092,
         "count": 2700
       }
     },
@@ -752,19 +752,19 @@
       "rig": "body",
       "material": "r6_gauge",
       "position": {
-        "offset": 1653316,
+        "offset": 1652492,
         "count": 308
       },
       "normal": {
-        "offset": 1657012,
+        "offset": 1656188,
         "count": 308
       },
       "uv": {
-        "offset": 1660708,
+        "offset": 1659884,
         "count": 308
       },
       "index": {
-        "offset": 1663172,
+        "offset": 1662348,
         "count": 795
       }
     }
@@ -878,10 +878,10 @@
     }
   ],
   "statistics": {
-    "sourceTriangles": 200799,
-    "triangles": 42731,
-    "vertices": 44011,
-    "geometryBytes": 1664762,
+    "sourceTriangles": 200797,
+    "triangles": 42727,
+    "vertices": 43986,
+    "geometryBytes": 1663938,
     "meshes": 32
   }
 }

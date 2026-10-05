@@ -6,6 +6,14 @@ import { drilledRotor } from './motorcycle-brake-rotor.mjs';
 let positions;
 const rotors = [];
 const components = new Map();
+// The plate bracket is split into disconnected bolts, stalks and one two-face
+// backing strip. All are chassis-bone n43 parts, so removing that bone would
+// also delete legitimate bodywork. Identify the complete assembly explicitly.
+const plateHardware = new Set([5, 27, 32, 33, 206, 207, 208, 209, 312, 313, 404, 405, 486, 533, 534, 535, 536, 610, 616]);
+function smoothWeight(value, low, high) {
+  const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
+  return [t * t * (3 - 2 * t), t > 0 && t < 1 ? 6 * t * (1 - t) / (high - low) : 0];
+}
 const paint = { name: 'r6_plain_paint', color: '#e7e7df', metalness: .04, roughness: .42, paintable: true };
 const trim = { name: 'r6_trim', color: '#24272a', metalness: .1, roughness: .6 };
 const seat = { name: 'r6_seat', color: '#17191c', metalness: 0, roughness: .88 };
@@ -27,6 +35,32 @@ await buildMotorcycleAsset({
     positions = worldPositions;
     for (const mesh of meshes) if (['Object_1', 'Object_3', 'Object_5', 'Object_6', 'Object_14'].includes(mesh.name))
       components.set(mesh.name, connectedComponents(mesh, worldPositions.get(mesh.name), THREE));
+    // The molded mounting boss spans overlapping tail and side-panel skins.
+    // Bring their centres onto the same shallow inclined undertray, preserving
+    // both skins' matching joins, outer edges and the rear-light opening.
+    const tailPositions = worldPositions.get('Object_6'), tailNormals = worldNormals.get('Object_6');
+    let bossVertices = 0;
+    for (const vertex of [4, 6].flatMap(index => components.get('Object_6').components[index].vertices)) {
+      const offset = vertex * 3, [x, y, z] = tailPositions.subarray(offset, offset + 3);
+      const floor = .561 - .65 * x;
+      if (y >= floor) continue;
+      const [back, backSlope] = smoothWeight(x, -.69, -.65);
+      const [front, frontSlope] = smoothWeight(x, -.52, -.49);
+      const [edge, edgeSlope] = smoothWeight(Math.abs(z), .065, .125);
+      const blend = back * (1 - front) * (1 - edge);
+      if (blend <= 0) continue;
+      const dx = (backSlope * (1 - front) - back * frontSlope) * (1 - edge);
+      const dz = -back * (1 - front) * edgeSlope * Math.sign(z);
+      const amount = .95, height = floor - y;
+      tailPositions[offset + 1] = y + amount * height * blend;
+      // Exact inverse-transpose Jacobian of the smooth local displacement.
+      const ny = tailNormals[offset + 1] / (1 - amount * blend);
+      const normal = new THREE.Vector3(tailNormals[offset] - amount * (height * dx - .65 * blend) * ny, ny,
+        tailNormals[offset + 2] - amount * height * dz * ny).normalize();
+      tailNormals.set(normal.toArray(), offset);
+      bossVertices++;
+    }
+    console.log('R6 plate assembly:', plateHardware.size, 'mechanical components removed;', bossVertices, 'tail mounting-boss vertices made flush');
     // Keep the overall supplied shape while softening the optical corners and
     // shortening the screen lip into a restrained, unbadged game-bike variant.
     // The same continuous deformation affects fairing, recess and lens alike.
@@ -106,13 +140,13 @@ await buildMotorcycleAsset({
     const part = components.get(mesh.name)?.byVertex[vertex];
     if (!part) return true;
     if (mesh.name === 'Object_6' && [11, 12, 14, 15, 18, 23, 24, 25, 31, 32, 33].includes(part.index)) return false;
-    if (mesh.name === 'Object_1' && part.index === 27) return false; // remaining under-tail plate stalk
+    if (mesh.name === 'Object_1' && plateHardware.has(part.index)) return false;
     // These wholly enclosed small parts are behind the intact crankcase shell.
     if (mesh.name === 'Object_1' && part.box.min.x > -.05 && part.box.max.x < .34
       && part.box.min.y > .30 && part.box.max.y < .68 && part.box.min.z > -.08 && part.box.max.z < .08) return false;
     // The rear lamp sits above .97m in the source. Only the bolt-on plate
     // hanger, its indicator stalks and lenses occupy this lower rear region.
-    if (['Object_1', 'Object_3', 'Object_4', 'Object_14'].includes(mesh.name)
+    if (['Object_3', 'Object_14'].includes(mesh.name)
       && part.box.max.x < -.70 && part.box.max.y < .94) return false;
     return true;
   },
