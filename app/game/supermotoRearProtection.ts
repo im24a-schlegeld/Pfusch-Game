@@ -28,6 +28,8 @@ function undersideAt(geometry: THREE.BufferGeometry, x: number, z: number, requi
   return lowest;
 }
 
+export { undersideAt as supermotoRearFenderUndersideAt };
+
 function geometryBoundaryCount(geometry: THREE.BufferGeometry): number {
   const count = geometry.userData.sideBoundaryCount;
   if (!Number.isInteger(count) || count < 3) throw new Error('Missing Supermoto side-cover boundary');

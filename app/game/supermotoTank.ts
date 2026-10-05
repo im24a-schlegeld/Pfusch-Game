@@ -32,29 +32,39 @@ function section(stations: readonly Station[], z: number): number[] {
   });
 }
 
-// z, original inner edge x, outer x, upper y, lower y. The side band and
-// radiator fin retain their outline; only the former broad upper shelf is
-// trimmed back to a narrow rounded return beside the separate black tank.
+// z, inner edge x, outer x, upper y, lower y. A narrow horizontal blade
+// connects the number panel to the pointed front, with a short radiator
+// tongue under that point. The tank remains a separate exposed moulding.
 const WING: readonly Station[] = [
-  [-0.47, 0.108, 0.146, 0.93, 0.925],
-  [-0.435, 0.104, 0.158, 0.960, 0.823],
-  [-0.36, 0.101, 0.169, 0.982, 0.702],
-  [-0.315, 0.116, 0.168, 0.970, 0.640],
-  [-0.285, 0.125, 0.168, 0.960, 0.648],
-  [-0.255, 0.132, 0.166, 0.955, 0.671],
-  [-0.222, 0.136, 0.165, 0.956, 0.697],
-  [-0.19, 0.132, 0.163, 0.966, 0.737],
-  [-0.16, 0.123, 0.161, 0.974, 0.836],
-  [-0.14, 0.117, 0.159, 0.977, 0.900],
-  [-0.05, 0.092, 0.149, 0.966, 0.906],
-  [0.05, 0.089, 0.137, 0.957, 0.908],
-  [0.165, 0.087, 0.123, 0.947, 0.914],
+  [-0.505, 0.108, 0.143, 0.942, 0.938],
+  [-0.475, 0.112, 0.152, 0.963, 0.923],
+  [-0.430, 0.117, 0.162, 0.994, 0.910],
+  [-0.410, 0.123, 0.166, 1.008, 0.830],
+  [-0.380, 0.125, 0.169, 1.030, 0.752],
+  [-0.346, 0.128, 0.169, 1.018, 0.752],
+  [-0.324, 0.130, 0.168, 0.995, 0.898],
+  [-0.300, 0.132, 0.167, 0.985, 0.899],
+  [-0.265, 0.132, 0.165, 0.977, 0.900],
+  [-0.210, 0.125, 0.161, 0.973, 0.900],
+  [-0.110, 0.092, 0.150, 0.967, 0.900],
+  [0.015, 0.090, 0.142, 0.954, 0.905],
+  [0.070, 0.087, 0.140, 0.943, 0.900],
+  [0.165, 0.087, 0.129, 0.916, 0.890],
 ];
 
 /** Continuous radiator fin and rearward side band with a small rolled rim. */
 export function supermotoShroudGeometry(side: number) {
-  const rows = 72,
-    columns = 24,
+  // Keep every corner in the silhouette. Smooth longitudinal lofts soften
+  // the blade into a hose and round off the straight radiator-tongue end.
+  const sections = WING.flatMap((a, i) => {
+    const b = WING[i + 1];
+    if (!b) return [a];
+    const steps = Math.ceil((b[0] - a[0]) / 0.012);
+    return Array.from({ length: steps }, (_, j) => a.map((value, k) =>
+      MathUtils.lerp(value, b[k], j / steps)));
+  });
+  const rows = sections.length - 1,
+    columns = 12,
     stride = columns + 1;
   const face = (rows + 1) * stride,
     positions: number[] = [],
@@ -62,12 +72,7 @@ export function supermotoShroudGeometry(side: number) {
     indices: number[] = [];
   for (const depth of [0.002, -0.002])
     for (let row = 0; row <= rows; row++) {
-      const z = MathUtils.lerp(
-        WING[0][0],
-        WING[WING.length - 1][0],
-        row / rows,
-      );
-      const [, inner, outer, top, bottom] = section(WING, z);
+      const [z, inner, outer, top, bottom] = sections[row];
       for (let c = 0; c <= columns; c++) {
         const v = c / columns;
         let x: number, y: number;
@@ -75,10 +80,10 @@ export function supermotoShroudGeometry(side: number) {
           const a = ((v / 0.25) * Math.PI) / 2;
           const returnWidth = Math.min(0.0055, outer - inner);
           x = outer - returnWidth * (1 - Math.sin(a));
-          y = top + 0.0035 * Math.cos(a);
+          y = top + 0.0025 * Math.cos(a);
         } else {
           const t = (v - 0.25) / 0.75;
-          x = outer + Math.sin(t * Math.PI) ** 2 * 0.005;
+          x = outer + Math.max(0, 1 - Math.abs(t - 0.38) / 0.62) * 0.003;
           y = MathUtils.lerp(top, bottom, t);
         }
         positions.push(side * (x + depth), y, z);
@@ -121,27 +126,31 @@ export function supermotoShroudGeometry(side: number) {
   return geometry(positions, indices, uv);
 }
 
-// z, half width, upper y, lower y. The lower envelope and seat seam stay
-// fixed around the existing cylinder, frame, intake and rear shock.
+// z, half width, upper y, lower y. The reservoir's exposed side is a compact
+// trapezoid: its broad shoulder sits under the blade, its lower corners pull
+// in towards one another above the cylinder. The hidden rear mounting lobe
+// tucks beneath the deeper saddle rather than standing above its side seam.
 const TANK: readonly Station[] = [
   [-0.405, 0.035, 0.984, 0.947],
-  [-0.345, 0.084, 1.009, 0.879],
-  [-0.28, 0.139, 1.014, 0.831],
-  [-0.195, 0.143, 0.999, 0.804],
-  [-0.085, 0.144, 0.967, 0.798],
-  [0.025, 0.141, 0.946, 0.808],
-  [0.108, 0.123, 0.932, 0.834],
-  [0.172, 0.106, 0.912, 0.834],
-  [0.220, 0.082, 0.914, 0.821],
+  [-0.345, 0.084, 1.009, 0.911],
+  [-0.295, 0.121, 1.015, 0.899],
+  [-0.270, 0.139, 1.008, 0.815],
+  [-0.240, 0.150, 0.997, 0.802],
+  [-0.160, 0.151, 0.977, 0.801],
+  [-0.055, 0.143, 0.954, 0.818],
+  [0.025, 0.130, 0.934, 0.861],
+  [0.075, 0.118, 0.916, 0.883],
+  [0.150, 0.099, 0.882, 0.845],
+  [0.220, 0.072, 0.850, 0.821],
 ];
 
-// The raised filler neck ends before the unchanged saddle nose at z=-.220.
-// Its own profile makes the tank distinct from the thin painted side band.
+// The small front neck rises from an inclined shoulder ahead of the saddle.
+// A flat cap landing merges into that shoulder without a second tall hump.
 const TANK_ROOF: readonly Station[] = [
   [-0.365, section(TANK, -0.365)[2]],
-  [-0.345, 1.060],
-  [-0.330, 1.074],
-  [-0.268, 1.074],
+  [-0.345, 1.045],
+  [-0.330, 1.059],
+  [-0.268, 1.059],
   [-0.240, 1.018],
   [-0.220, section(TANK, -0.220)[2]],
 ];
@@ -155,7 +164,7 @@ function tankSection(z: number) {
 /** Lower cap face sits on the raised filler neck rather than inside it. */
 export const SUPERMOTO_FUEL_CAP_MOUNT = [0, tankSection(-0.299)[2] - 0.0015, -0.299] as const;
 
-/** Separate moulded tank with a raised neck and a squared hanging reservoir. */
+/** Separate moulded tank with an inclined shoulder and trapezoid reservoir. */
 export function supermotoFuelTankGeometry() {
   const rows = 64,
     sides = 40,
@@ -174,20 +183,19 @@ export function supermotoFuelTankGeometry() {
       // Flatten only the exposed lower side. Upper tank/seat shoulders
       // retain their fit, and the bottom never moves into the engine.
       let y = (baseTop + bottom) / 2 +
-        (Math.sign(cos) * Math.abs(cos) ** 0.86 * (baseTop - bottom)) / 2;
-      const squareLowerSide = MathUtils.smoothstep(z, -0.285, -0.195)
-        * (1 - MathUtils.smoothstep(z, -0.085, -0.050));
+        (Math.sign(cos) * Math.abs(cos) ** (cos < 0 ? 0.42 : 0.86) * (baseTop - bottom)) / 2;
+      const squareLowerSide = MathUtils.smoothstep(z, -0.295, -0.240)
+        * (1 - MathUtils.smoothstep(z, -0.055, 0.025));
       const x = Math.sign(sin) * Math.abs(sin) **
-        (cos < 0 ? 0.69 - 0.31 * squareLowerSide * MathUtils.smoothstep(y, 0.865, 0.883) : 0.69) * width;
+        (cos < 0 ? 0.69 - 0.31 * squareLowerSide : 0.69) * width;
       if (cos > 0) {
-        // The hump grows from the upper crown alone. Its narrow leading
-        // neck stays between the frame rails rather than lifting the whole
-        // lower cross-section against the unchanged chassis.
+        // The raised shoulder stays above the frame rails. It tapers towards
+        // the saddle nose while its lower reservoir retains engine clearance.
         const neck = MathUtils.smoothstep(z, -0.350, -0.330);
-        const rearShoulder = MathUtils.smoothstep(z, -0.330, -0.310);
+        const rearShoulder = MathUtils.smoothstep(z, -0.330, -0.290);
         const crown = 1 - MathUtils.smoothstep(Math.abs(x),
           MathUtils.lerp(0.014, 0.032, neck),
-          MathUtils.lerp(0.026, 0.040, neck) + 0.025 * rearShoulder);
+          MathUtils.lerp(0.026, 0.040, neck) + 0.045 * rearShoulder);
         y += (top - baseTop) * cos ** 0.86 * crown;
         // A moulded landing supports the whole filler cap, including its
         // perimeter. Its rounded edge blends into the tank, not the plastics.

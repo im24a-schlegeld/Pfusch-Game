@@ -4,12 +4,15 @@ import { BIKES } from '../app/domain/config';
 import { newPlayer } from '../app/domain/progression';
 import { makeDetailedTraffic } from '../app/game/trafficModels';
 import { makeBike } from '../app/game/vehicle';
+import { installImportedBikeFixtures } from './importedBikeFixture';
 import {
   RAMP_FRONT_CONTACT,
   TOW_RAMP,
   towDeckPosition,
   towRampPose,
 } from '../app/game/trafficDomain';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),

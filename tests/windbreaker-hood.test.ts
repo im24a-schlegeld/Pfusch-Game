@@ -5,6 +5,9 @@ import { initialConfiguration, previewLoadout } from '../app/domain/preview';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { makeBike } from '../app/game/vehicle';
+import { installImportedBikeFixtures } from './importedBikeFixture';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),

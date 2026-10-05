@@ -1,0 +1,757 @@
+{
+  "version": 1,
+  "name": "2022 Husqvarna FS 450",
+  "binary": "model.bin",
+  "axes": "+Y up; -Z forward; metres; axle midpoint Z=0; lowest point Y=0",
+  "sourceTransform": {
+    "rotateY": 3.141592653589793,
+    "sourcePitch": -0.0039801400612147035,
+    "translateY": 0.07114914887372564,
+    "sourceAxleMidpointZ": -0.013380572307334415
+  },
+  "anchors": {
+    "frontAxle": [
+      0.001275,
+      0.2789315,
+      -0.7118031
+    ],
+    "rearAxle": [
+      0.0089089,
+      0.31287,
+      0.7118031
+    ],
+    "frontRadius": 0.27893153578042984,
+    "rearRadius": 0.3128700330853462,
+    "pivot": [
+      -1e-7,
+      0.4516355,
+      0.1650893
+    ],
+    "shockTop": [
+      -1e-7,
+      0.7499731,
+      0.1459523
+    ],
+    "shockBottom": [
+      0,
+      0.3883907,
+      0.2526038
+    ],
+    "steeringPivot": [
+      -3e-7,
+      1.07161,
+      -0.2983639
+    ],
+    "steeringAxis": [
+      0,
+      0.91,
+      0.414
+    ],
+    "forkTop": [
+      -3e-7,
+      1.07161,
+      -0.2983639
+    ],
+    "forkBottom": [
+      0.001275,
+      0.2789315,
+      -0.7118031
+    ],
+    "grip": [
+      0.294675,
+      1.1410297,
+      -0.234105
+    ],
+    "peg": [
+      0.215,
+      0.3593668,
+      0.2105293
+    ],
+    "hip": [
+      0,
+      0.9544257,
+      0.1968976
+    ],
+    "exhaust": [
+      0.133,
+      0.8533807,
+      0.7104995
+    ],
+    "tail": [
+      0,
+      0.9832977,
+      0.9828611
+    ]
+  },
+  "parts": [
+    {
+      "name": "mat_rim277_001:rearWheel",
+      "rig": "rearWheel",
+      "material": "mat_rim277_001",
+      "position": {
+        "offset": 0,
+        "count": 3152
+      },
+      "normal": {
+        "offset": 37824,
+        "count": 3152
+      },
+      "uv": {
+        "offset": 75648,
+        "count": 3152
+      },
+      "index": {
+        "offset": 100864,
+        "count": 8544
+      }
+    },
+    {
+      "name": "mat_backtyre001_COLOR_0_001:rearWheel",
+      "rig": "rearWheel",
+      "material": "mat_backtyre001_COLOR_0_001",
+      "position": {
+        "offset": 117952,
+        "count": 1228
+      },
+      "normal": {
+        "offset": 132688,
+        "count": 1228
+      },
+      "uv": {
+        "offset": 147424,
+        "count": 1228
+      },
+      "index": {
+        "offset": 157248,
+        "count": 5400
+      }
+    },
+    {
+      "name": "fs450_brake_friction_steel:rearWheel",
+      "rig": "rearWheel",
+      "material": "fs450_brake_friction_steel",
+      "position": {
+        "offset": 168048,
+        "count": 168
+      },
+      "normal": {
+        "offset": 170064,
+        "count": 168
+      },
+      "uv": {
+        "offset": 172080,
+        "count": 168
+      },
+      "index": {
+        "offset": 173424,
+        "count": 432
+      }
+    },
+    {
+      "name": "fs450_brake_dark_carrier:rearWheel",
+      "rig": "rearWheel",
+      "material": "fs450_brake_dark_carrier",
+      "position": {
+        "offset": 174288,
+        "count": 228
+      },
+      "normal": {
+        "offset": 177024,
+        "count": 228
+      },
+      "uv": {
+        "offset": 179760,
+        "count": 228
+      },
+      "index": {
+        "offset": 181584,
+        "count": 432
+      }
+    },
+    {
+      "name": "mat_gear277_COLOR_0:rearWheel",
+      "rig": "rearWheel",
+      "material": "mat_gear277_COLOR_0",
+      "position": {
+        "offset": 182448,
+        "count": 86
+      },
+      "normal": {
+        "offset": 183480,
+        "count": 86
+      },
+      "uv": {
+        "offset": 184512,
+        "count": 86
+      },
+      "index": {
+        "offset": 185200,
+        "count": 204
+      }
+    },
+    {
+      "name": "mat_chain_1_001_COLOR_0:swingarm",
+      "rig": "swingarm",
+      "material": "mat_chain_1_001_COLOR_0",
+      "position": {
+        "offset": 185608,
+        "count": 498
+      },
+      "normal": {
+        "offset": 191584,
+        "count": 498
+      },
+      "uv": {
+        "offset": 197560,
+        "count": 498
+      },
+      "index": {
+        "offset": 201544,
+        "count": 1128
+      }
+    },
+    {
+      "name": "mat_chain_1_001_COLOR_0:body",
+      "rig": "body",
+      "material": "mat_chain_1_001_COLOR_0",
+      "position": {
+        "offset": 203800,
+        "count": 201
+      },
+      "normal": {
+        "offset": 206212,
+        "count": 201
+      },
+      "uv": {
+        "offset": 208624,
+        "count": 201
+      },
+      "index": {
+        "offset": 210232,
+        "count": 360
+      }
+    },
+    {
+      "name": "fs450_bodywork_paint:fork",
+      "rig": "fork",
+      "material": "fs450_bodywork_paint",
+      "position": {
+        "offset": 210952,
+        "count": 2064
+      },
+      "normal": {
+        "offset": 235720,
+        "count": 2064
+      },
+      "uv": {
+        "offset": 260488,
+        "count": 2064
+      },
+      "index": {
+        "offset": 277000,
+        "count": 7500
+      }
+    },
+    {
+      "name": "fs450_inner_trim:body",
+      "rig": "body",
+      "material": "fs450_inner_trim",
+      "position": {
+        "offset": 292000,
+        "count": 721
+      },
+      "normal": {
+        "offset": 300652,
+        "count": 721
+      },
+      "uv": {
+        "offset": 309304,
+        "count": 721
+      },
+      "index": {
+        "offset": 315072,
+        "count": 1824
+      }
+    },
+    {
+      "name": "fs450_bodywork_paint:body",
+      "rig": "body",
+      "material": "fs450_bodywork_paint",
+      "position": {
+        "offset": 318720,
+        "count": 4680
+      },
+      "normal": {
+        "offset": 374880,
+        "count": 4680
+      },
+      "uv": {
+        "offset": 431040,
+        "count": 4680
+      },
+      "index": {
+        "offset": 468480,
+        "count": 15648
+      }
+    },
+    {
+      "name": "fs450_bodywork_paint:steering",
+      "rig": "steering",
+      "material": "fs450_bodywork_paint",
+      "position": {
+        "offset": 499776,
+        "count": 1793
+      },
+      "normal": {
+        "offset": 521292,
+        "count": 1793
+      },
+      "uv": {
+        "offset": 542808,
+        "count": 1793
+      },
+      "index": {
+        "offset": 557152,
+        "count": 6846
+      }
+    },
+    {
+      "name": "fs450_inner_trim:steering",
+      "rig": "steering",
+      "material": "fs450_inner_trim",
+      "position": {
+        "offset": 570844,
+        "count": 447
+      },
+      "normal": {
+        "offset": 576208,
+        "count": 447
+      },
+      "uv": {
+        "offset": 581572,
+        "count": 447
+      },
+      "index": {
+        "offset": 585148,
+        "count": 1473
+      }
+    },
+    {
+      "name": "fs450_seat_rubber:body",
+      "rig": "body",
+      "material": "fs450_seat_rubber",
+      "position": {
+        "offset": 588096,
+        "count": 354
+      },
+      "normal": {
+        "offset": 592344,
+        "count": 354
+      },
+      "uv": {
+        "offset": 596592,
+        "count": 354
+      },
+      "index": {
+        "offset": 599424,
+        "count": 1800
+      }
+    },
+    {
+      "name": "mat_cockpit277_001_COLOR_0:steering",
+      "rig": "steering",
+      "material": "mat_cockpit277_001_COLOR_0",
+      "position": {
+        "offset": 603024,
+        "count": 3533
+      },
+      "normal": {
+        "offset": 645420,
+        "count": 3533
+      },
+      "uv": {
+        "offset": 687816,
+        "count": 3533
+      },
+      "index": {
+        "offset": 716080,
+        "count": 9462
+      }
+    },
+    {
+      "name": "mat_cockpit277_001_COLOR_0:body",
+      "rig": "body",
+      "material": "mat_cockpit277_001_COLOR_0",
+      "position": {
+        "offset": 735004,
+        "count": 54
+      },
+      "normal": {
+        "offset": 735652,
+        "count": 54
+      },
+      "uv": {
+        "offset": 736300,
+        "count": 54
+      },
+      "index": {
+        "offset": 736732,
+        "count": 174
+      }
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0:body",
+      "rig": "body",
+      "material": "mat_mechanics277_001_COLOR_0",
+      "position": {
+        "offset": 737080,
+        "count": 13625
+      },
+      "normal": {
+        "offset": 900580,
+        "count": 13625
+      },
+      "uv": {
+        "offset": 1064080,
+        "count": 13625
+      },
+      "index": {
+        "offset": 1173080,
+        "count": 30456
+      }
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0:steering",
+      "rig": "steering",
+      "material": "mat_mechanics277_001_COLOR_0",
+      "position": {
+        "offset": 1233992,
+        "count": 1104
+      },
+      "normal": {
+        "offset": 1247240,
+        "count": 1104
+      },
+      "uv": {
+        "offset": 1260488,
+        "count": 1104
+      },
+      "index": {
+        "offset": 1269320,
+        "count": 3558
+      }
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0:fork",
+      "rig": "fork",
+      "material": "mat_mechanics277_001_COLOR_0",
+      "position": {
+        "offset": 1276436,
+        "count": 1223
+      },
+      "normal": {
+        "offset": 1291112,
+        "count": 1223
+      },
+      "uv": {
+        "offset": 1305788,
+        "count": 1223
+      },
+      "index": {
+        "offset": 1315572,
+        "count": 2841
+      }
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0:shockUpper",
+      "rig": "shockUpper",
+      "material": "mat_mechanics277_001_COLOR_0",
+      "position": {
+        "offset": 1321256,
+        "count": 367
+      },
+      "normal": {
+        "offset": 1325660,
+        "count": 367
+      },
+      "uv": {
+        "offset": 1330064,
+        "count": 367
+      },
+      "index": {
+        "offset": 1333000,
+        "count": 825
+      }
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0:swingarm",
+      "rig": "swingarm",
+      "material": "mat_mechanics277_001_COLOR_0",
+      "position": {
+        "offset": 1334652,
+        "count": 1505
+      },
+      "normal": {
+        "offset": 1352712,
+        "count": 1505
+      },
+      "uv": {
+        "offset": 1370772,
+        "count": 1505
+      },
+      "index": {
+        "offset": 1382812,
+        "count": 3699
+      }
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0:shockLower",
+      "rig": "shockLower",
+      "material": "mat_mechanics277_001_COLOR_0",
+      "position": {
+        "offset": 1390212,
+        "count": 595
+      },
+      "normal": {
+        "offset": 1397352,
+        "count": 595
+      },
+      "uv": {
+        "offset": 1404492,
+        "count": 595
+      },
+      "index": {
+        "offset": 1409252,
+        "count": 2520
+      }
+    },
+    {
+      "name": "mat_exmanifold277:body",
+      "rig": "body",
+      "material": "mat_exmanifold277",
+      "position": {
+        "offset": 1414292,
+        "count": 979
+      },
+      "normal": {
+        "offset": 1426040,
+        "count": 979
+      },
+      "uv": {
+        "offset": 1437788,
+        "count": 979
+      },
+      "index": {
+        "offset": 1445620,
+        "count": 3600
+      }
+    },
+    {
+      "name": "mat_rim277_001:frontWheel",
+      "rig": "frontWheel",
+      "material": "mat_rim277_001",
+      "position": {
+        "offset": 1452820,
+        "count": 2834
+      },
+      "normal": {
+        "offset": 1486828,
+        "count": 2834
+      },
+      "uv": {
+        "offset": 1520836,
+        "count": 2834
+      },
+      "index": {
+        "offset": 1543508,
+        "count": 7353
+      }
+    },
+    {
+      "name": "mat_fronttyre001_COLOR_0:frontWheel",
+      "rig": "frontWheel",
+      "material": "mat_fronttyre001_COLOR_0",
+      "position": {
+        "offset": 1558216,
+        "count": 1256
+      },
+      "normal": {
+        "offset": 1573288,
+        "count": 1256
+      },
+      "uv": {
+        "offset": 1588360,
+        "count": 1256
+      },
+      "index": {
+        "offset": 1598408,
+        "count": 5400
+      }
+    },
+    {
+      "name": "fs450_brake_friction_steel:frontWheel",
+      "rig": "frontWheel",
+      "material": "fs450_brake_friction_steel",
+      "position": {
+        "offset": 1609208,
+        "count": 412
+      },
+      "normal": {
+        "offset": 1614152,
+        "count": 412
+      },
+      "uv": {
+        "offset": 1619096,
+        "count": 412
+      },
+      "index": {
+        "offset": 1622392,
+        "count": 1044
+      }
+    },
+    {
+      "name": "fs450_brake_dark_carrier:frontWheel",
+      "rig": "frontWheel",
+      "material": "fs450_brake_dark_carrier",
+      "position": {
+        "offset": 1624480,
+        "count": 641
+      },
+      "normal": {
+        "offset": 1632172,
+        "count": 641
+      },
+      "uv": {
+        "offset": 1639864,
+        "count": 641
+      },
+      "index": {
+        "offset": 1644992,
+        "count": 972
+      }
+    },
+    {
+      "name": "mat_muffler277:body",
+      "rig": "body",
+      "material": "mat_muffler277",
+      "position": {
+        "offset": 1646936,
+        "count": 831
+      },
+      "normal": {
+        "offset": 1656908,
+        "count": 831
+      },
+      "uv": {
+        "offset": 1666880,
+        "count": 831
+      },
+      "index": {
+        "offset": 1673528,
+        "count": 2697
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "mat_rim277_001",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_rim277.001_baseColor.jpg"
+    },
+    {
+      "name": "mat_backtyre001_COLOR_0_001",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_backtyre001_COLOR_0.001_baseColor.jpg"
+    },
+    {
+      "name": "fs450_brake_friction_steel",
+      "color": "#a4adb4",
+      "metalness": 0.85,
+      "roughness": 0.36
+    },
+    {
+      "name": "fs450_brake_dark_carrier",
+      "color": "#293139",
+      "metalness": 0.65,
+      "roughness": 0.45
+    },
+    {
+      "name": "mat_gear277_COLOR_0",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_gear277_COLOR_0_baseColor.jpg"
+    },
+    {
+      "name": "mat_chain_1_001_COLOR_0",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_chain_1_001_COLOR_0_baseColor.jpg"
+    },
+    {
+      "name": "fs450_bodywork_paint",
+      "color": "#e7e7df",
+      "metalness": 0.08,
+      "roughness": 0.36,
+      "paintable": true
+    },
+    {
+      "name": "fs450_inner_trim",
+      "color": "#25292c",
+      "metalness": 0.08,
+      "roughness": 0.7
+    },
+    {
+      "name": "fs450_seat_rubber",
+      "color": "#1d2024",
+      "metalness": 0,
+      "roughness": 0.92
+    },
+    {
+      "name": "mat_cockpit277_001_COLOR_0",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_cockpit277_001_COLOR_0_baseColor.jpg"
+    },
+    {
+      "name": "mat_mechanics277_001_COLOR_0",
+      "color": "#ffffff",
+      "metalness": 0.85,
+      "roughness": 0.5,
+      "map": "textures/mat_mechanics277_001_COLOR_0_baseColor.jpg"
+    },
+    {
+      "name": "mat_exmanifold277",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_exmanifold277_baseColor.jpg"
+    },
+    {
+      "name": "mat_fronttyre001_COLOR_0",
+      "color": "#ffffff",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5,
+      "map": "textures/mat_fronttyre001_COLOR_0_baseColor.jpg"
+    },
+    {
+      "name": "mat_muffler277",
+      "color": "#4d4d4d",
+      "metalness": 0.10000000149011612,
+      "roughness": 0.5
+    }
+  ],
+  "statistics": {
+    "sourceTriangles": 206943,
+    "triangles": 42064,
+    "vertices": 44579,
+    "geometryBytes": 1678922,
+    "meshes": 27
+  }
+}

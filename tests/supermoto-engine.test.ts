@@ -11,7 +11,7 @@ import {
   Vector3,
 } from 'three';
 import { addSupermotoEngine } from '../app/game/supermotoEngine';
-import { CHAIN_DRIVE } from '../app/game/driveGeometry';
+import { SUPERMOTO_CHAIN_DRIVE as CHAIN_DRIVE } from '../app/game/driveGeometry';
 
 describe('formed Supermoto single-cylinder engine', () => {
   const body = new Group();

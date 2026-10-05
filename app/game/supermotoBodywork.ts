@@ -11,9 +11,9 @@ type Point = [number, number, number];
 /** One upholstery seam for the visible side shoulder and concealed seat pan. */
 function seatJoinAt(z: number) {
   const saddle = supermotoSeatSection(z);
-  const influence = MathUtils.smoothstep(z, 0.185, 0.255)
+  const influence = MathUtils.smoothstep(z, 0.070, 0.200)
     * (1 - MathUtils.smoothstep(z, 0.675, 0.780));
-  const cosine = 0.22 + 0.53 * MathUtils.clamp(saddle.skirt / 0.020, 0, 1);
+  const cosine = 0.22 + 0.58 * MathUtils.clamp(saddle.skirt / 0.065, 0, 1);
   return { saddle, influence, x: supermotoSeatLowerWidth(saddle.width, cosine),
     y: saddle.centerY - (saddle.halfDepth + saddle.skirt) * cosine };
 }
@@ -71,7 +71,7 @@ export function supermotoSideCoverGeometry(side: number) {
       let x = v <= shoulderFraction
         ? MathUtils.lerp(a[0], shoulderX, Math.sin(roll * Math.PI / 2))
         : MathUtils.lerp(shoulderX, b[0], remaining);
-      x += Math.sin(v * Math.PI) * 0.007;
+      x += Math.sin(v * Math.PI) * 0.003;
       if (side > 0) {
         // Circumscribe the actual inclined oval shell, including a thermal
         // gap. The rolled shoulder joins the narrow upper saddle seam.
@@ -154,10 +154,11 @@ export function supermotoTailFenderGeometry() {
       const panX = Math.min(Math.abs(x), join.x);
       const pan = saddle.centerY - (saddle.halfDepth + saddle.skirt)
         * Math.pow(Math.max(0, 1 - (panX / saddle.width) ** 2), 1 / 8) - 0.003;
-      const across = MathUtils.lerp(1 - MathUtils.smoothstep(Math.abs(x) / saddle.width, 0.84, 1.12), 1, join.influence);
-      const longitudinal = MathUtils.smoothstep(z, 0.115, 0.18)
-        * (1 - MathUtils.smoothstep(z, 0.670, 0.710));
-      y = MathUtils.lerp(y, pan, across * longitudinal);
+      // The complete concealed front return belongs below the upholstery.
+      // Blending its leading edge back to the old high sheet made a visible
+      // scoop above the new V-shaped seam.
+      const longitudinal = 1 - MathUtils.smoothstep(z, 0.670, 0.710);
+      y = MathUtils.lerp(y, pan, longitudinal);
     }
     return [x, y, z - corner * 0.013];
   }, [0, -0.007, 0]);

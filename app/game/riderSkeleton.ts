@@ -19,6 +19,8 @@ export interface RiderTarget {
   torsoLean: number;
 }
 export interface RiderPose extends RiderTarget {
+  /** Optional independently steered wrist contacts; the same fixed IK lengths apply. */
+  contactGrips?: [Point, Point];
   shoulder: Point;
   head: Point;
   elbow: Point;

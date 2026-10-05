@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   Box3,
   Group,
@@ -15,8 +15,53 @@ import {
   supermotoSpokeEndpoints,
   supermotoTireGeometry,
 } from '../app/game/supermotoWheels';
+import { makeBike } from '../app/game/vehicle';
+import { newPlayer } from '../app/domain/progression';
+import { envelope, faces, gap, triangleGap } from './helpers/solidClearance';
+
+vi.mock('../app/game/garmentTexture', () => ({
+  garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
+  sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
+}));
 
 describe('Supermoto road wheel construction', () => {
+  it('brings both rotors and attached calipers close to the hubs while clearing every actual spoke through travel', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const calipers = bike.body.getObjectsByProperty('name', 'brake-caliper') as Mesh[];
+    const carriers = bike.body.getObjectsByProperty('name', 'brake-caliper-carrier') as Mesh[];
+    expect(calipers).toHaveLength(2); expect(carriers).toHaveLength(2);
+    for (const travel of [-0.20, 0, 0.20]) {
+      bike.animateSuspension(0, travel); bike.root.updateMatrixWorld(true);
+      bike.wheels.forEach((wheel, i) => {
+        const x = i ? 0.082 : -0.070;
+        const inverse = wheel.matrixWorld.clone().invert();
+        const disc = wheel.getObjectByName(i ? 'rear-brake-disc' : 'front-brake-disc') as Mesh;
+        expect(disc.position.x).toBeCloseTo(x, 8);
+        expect(envelope(calipers[i], inverse).getCenter(new Vector3()).x).toBeCloseTo(x, 7);
+        const hubMount = wheel.getObjectByName('supermoto-brake-hub-mount') as Mesh;
+        const mount = envelope(hubMount, inverse);
+        expect(i ? mount.max.x : mount.min.x).toBeCloseTo(x, 7);
+        const spokes = wheel.getObjectByName('cross-laced-spokes') as InstancedMesh;
+        const instance = new Matrix4();
+        for (let index = 0; index < spokes.count; index++) {
+          spokes.getMatrixAt(index, instance);
+          const spoke = new Mesh(spokes.geometry, spokes.material);
+          spoke.matrixWorld.copy(spokes.matrixWorld).multiply(instance);
+          const spokeBounds = envelope(spoke, inverse);
+          for (const part of [disc, calipers[i], carriers[i]]) {
+            if (gap(envelope(part, inverse), spokeBounds) > 0.003) continue;
+            for (const a of faces(part, inverse)) for (const b of faces(spoke, inverse)) {
+              if (gap(a.bounds, b.bounds) > 0.003) continue;
+              expect(triangleGap(a.triangle, b.triangle), `${part.name}/spoke ${index}, wheel ${i}, travel ${travel}`).toBeGreaterThan(0.003);
+            }
+          }
+        }
+      });
+    }
+    const sport = makeBike({ ...newPlayer(), bike: '701' }, []);
+    expect(sport.wheels[0].getObjectsByProperty('name', 'front-brake-disc').map(part => part.position.x)).toEqual([-0.085, 0.085]);
+    expect(sport.wheels[1].getObjectByName('rear-brake-disc')!.position.x).toBe(0.105);
+  });
   it('enlarges both wheel diameters by five percent while retaining independent widths', () => {
     const { front, rear } = SUPERMOTO_WHEELS;
     expect((front.beadRadius * 2) / 0.0254).toBeCloseTo(16.5 * 1.05, 9);

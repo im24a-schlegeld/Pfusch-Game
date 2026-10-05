@@ -9,7 +9,8 @@ import { ArrowUpRight, Coins, ChevronLeft } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import type { Player } from '../domain/types';
 import { levelProgress } from '../domain/progression';
-type SceneModule = typeof import('../game/SceneView');
+type SceneModule = Pick<typeof import('../game/SceneView'), 'default'> &
+  Partial<Pick<typeof import('../game/SceneView'), 'preloadBikeAsset'>>;
 let sceneModule: Promise<SceneModule> | undefined;
 function SceneLoadError() {
   return (
@@ -46,14 +47,17 @@ class SceneErrorBoundary extends Component<
   }
 }
 /** Preload code only; the renderer is still created by the mounted Scene. */
-export function preloadScene(): Promise<SceneModule> {
+export function preloadScene(bike?: Player['bike']): Promise<SceneModule> {
   sceneModule ??= import('../game/SceneView').catch((error: unknown) => {
     console.error('3D-Ansicht konnte nicht geladen werden.', error);
     return { default: SceneLoadError };
   });
-  return sceneModule;
+  return bike ? sceneModule.then(async (module) => {
+    if (module.preloadBikeAsset) await module.preloadBikeAsset(bike);
+    return module;
+  }) : sceneModule;
 }
-export const Scene = lazy(preloadScene);
+export const Scene = lazy(() => preloadScene());
 export const fmt = (n: number) => Math.floor(n).toLocaleString('en-CH');
 export const money = (n: number) => `CHF ${n.toFixed(2)}`;
 export function gameText(text: string) {

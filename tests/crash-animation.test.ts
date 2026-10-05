@@ -27,7 +27,10 @@ import {
   crashDuration,
 } from '../app/game/crashAnimation';
 import { makeBike } from '../app/game/vehicle';
+import { installImportedBikeFixtures } from './importedBikeFixture';
 import type { BikeModelId } from '../app/game/vehicleScale';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),

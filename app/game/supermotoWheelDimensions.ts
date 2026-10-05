@@ -16,7 +16,7 @@ export const SUPERMOTO_WHEELS = Object.freeze({
     spokeHubX: 0.043,
     spokeHubRadius: 0.047,
     spokeBedRadius: 0.2080275,
-    brakeMountX: -0.085,
+    brakeMountX: -0.070,
   }),
   rear: Object.freeze({
     outerRadius: 0.321195,
@@ -29,6 +29,6 @@ export const SUPERMOTO_WHEELS = Object.freeze({
     spokeHubX: 0.05,
     spokeHubRadius: 0.047,
     spokeBedRadius: 0.214695,
-    brakeMountX: 0.105,
+    brakeMountX: 0.082,
   }),
 });

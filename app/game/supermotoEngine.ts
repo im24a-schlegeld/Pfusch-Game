@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SUPERMOTO_CHAIN_DRIVE } from './driveGeometry';
 import { SUPERMOTO_EXHAUST_OUTLET, SUPERMOTO_EXHAUST_TANGENT } from './exhaustClearance';
 
 type Point = [number, number, number];
@@ -30,7 +31,7 @@ function casting(
     // casting inward locally rather than making the complete engine thinner.
     const relief =
       rearRelief && x < 0
-        ? 0.019 * THREE.MathUtils.smoothstep(z, -0.018, 0.075)
+        ? 0.034 * THREE.MathUtils.smoothstep(z, -0.018, 0.075)
         : 0;
     return [x + relief, y, z] as const;
   };
@@ -109,7 +110,7 @@ function casting(
   for (const { index, sign, relief } of capNormals) {
     const z = vertices[index * 3 + 2];
     const t = THREE.MathUtils.clamp((z + 0.018) / 0.093, 0, 1);
-    const slope = relief ? (0.019 * 6 * t * (1 - t)) / 0.093 : 0;
+    const slope = relief ? (0.034 * 6 * t * (1 - t)) / 0.093 : 0;
     // Cap normals follow its planar face or the defined gearcase relief.
     // Triangle area/valence must not imprint a radial star into a flat casting.
     const normal = new THREE.Vector3(sign, 0, -sign * slope).normalize();
@@ -447,8 +448,8 @@ export function addSupermotoEngine(body: THREE.Group): void {
     'engine-ignition-cover',
   );
   rod(
-    [-0.091, 0.49, 0.08],
-    [-0.113, 0.49, 0.08],
+    [SUPERMOTO_CHAIN_DRIVE.planeX + 0.022, 0.49, 0.08],
+    [SUPERMOTO_CHAIN_DRIVE.planeX, 0.49, 0.08],
     0.024,
     dark,
     'engine-output-shaft',

@@ -111,9 +111,9 @@ describe('Supermoto moulded rear overlap', () => {
       const j = (i + 1) % boundary;
       projectedArea += p.getY(i) * p.getZ(j) - p.getY(j) * p.getZ(i);
     }
-    // The prior 0.088 m² panel left the marked middle and shock shoulder open.
-    // Require substantial actual coverage, rather than only moving its tip.
-    expect(Math.abs(projectedArea) / 2).toBeGreaterThan(0.115);
+    // The deeper upholstery wedge now owns part of the former upper panel;
+    // the number plate retains the broad front/downward reference triangle.
+    expect(Math.abs(projectedArea) / 2).toBeGreaterThan(0.095);
     const material = new MeshBasicMaterial({ side: DoubleSide });
     try {
       for (const part of bike.body.getObjectsByProperty('name', 'supermoto-side-cover') as Mesh[]) {
@@ -159,7 +159,13 @@ describe('Supermoto moulded rear overlap', () => {
     expect(Math.max(...rear.map(p => Math.abs(p.x)))).toBeLessThan(0.071);
     expect(Math.max(...rear.map(p => p.z))).toBeCloseTo(SUPERMOTO_REAR_TIP_Z, 6);
     const tip = rear.filter(point => Math.abs(point.x) < 1e-6 && point.z > SUPERMOTO_REAR_TIP_Z - 0.001);
-    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.115, 6);
+    expect(Math.max(...tip.map(point => point.y))).toBeCloseTo(1.025, 6);
+    const bladeRoof = new Map<number, number>();
+    for (let i = 0; i < tp.count; i++) if (tp.getZ(i) >= 0.760 && Math.abs(tp.getX(i)) < 1e-6)
+      bladeRoof.set(tp.getZ(i), Math.max(bladeRoof.get(tp.getZ(i)) ?? -Infinity, tp.getY(i)));
+    const roofStations = [...bladeRoof].sort((a, b) => a[0] - b[0]);
+    const rearSlope = (roofStations.at(-1)![1] - roofStations[0][1]) / (roofStations.at(-1)![0] - roofStations[0][0]);
+    expect(rearSlope, 'long rear blade stays nearly horizontal').toBeLessThan(0.02);
   });
 
   it('keeps the inner thermal channel concealed behind each actual outer panel', () => {

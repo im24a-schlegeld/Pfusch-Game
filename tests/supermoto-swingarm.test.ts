@@ -11,7 +11,7 @@ import {
   Vector3,
 } from 'three';
 import { activeSuspensionPose } from '../app/game/activeSuspension';
-import { CHAIN_DRIVE } from '../app/game/driveGeometry';
+import { SUPERMOTO_CHAIN_DRIVE as CHAIN_DRIVE } from '../app/game/driveGeometry';
 import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 import { SUPERMOTO_WHEELS } from '../app/game/supermotoWheelDimensions';
 import { SUPERMOTO_SHOCK_LOWER_MOUNT } from '../app/game/supermotoShockMount';
@@ -86,6 +86,21 @@ function sideSilhouetteArea(points: Vector2[]) {
 }
 
 describe('faceted Supermoto swingarm', () => {
+  it('sweeps gradually outwards with no short lateral dogleg while retaining the full-height side profile', () => {
+    const start = SUPERMOTO_PIVOT_BEARING.flareStartZ;
+    const end = SUPERMOTO_PIVOT_BEARING.flareEndZ;
+    const step = 0.01;
+    expect(end - start).toBeGreaterThan(0.40);
+    let previous = supermotoSwingarmSection(start).centerX, previousSlope = 0;
+    for (let z = start + step; z < end + step / 2; z += step) {
+      const x = supermotoSwingarmSection(z).centerX;
+      const slope = (x - previous) / step;
+      expect(x).toBeGreaterThanOrEqual(previous);
+      expect(slope).toBeLessThan(0.43);
+      expect(Math.abs(slope - previousSlope)).toBeLessThan(0.041);
+      previous = x; previousSlope = slope;
+    }
+  });
   it('forms a broad U bridge joined to both arms, with a scalloped wheel opening and clearance throughout travel', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
     const arms = bike.body.getObjectsByProperty('name', 'box-section-swingarm') as Mesh[];
@@ -100,7 +115,7 @@ describe('faceted Supermoto swingarm', () => {
     const fromAbove = (x: number, z: number) => new Raycaster(new Vector3(x, 1, z), new Vector3(0, -1, 0)).intersectObject(bridge, false);
     expect(fromAbove(0, 0.25).length).toBeGreaterThan(0);
     expect(fromAbove(0, 0.285)).toHaveLength(0);
-    expect(fromAbove(0.10, 0.285).length).toBeGreaterThan(0);
+    expect(fromAbove(0.10, 0.410).length).toBeGreaterThan(0);
     for (const pitch of [0, 0.85]) for (const travel of [-0.20, 0, 0.20]) {
       bike.animateSuspension(pitch, travel, pitch > 0 ? 1 : 0);
       bike.root.updateMatrixWorld(true);
@@ -108,7 +123,7 @@ describe('faceted Supermoto swingarm', () => {
       const inverse = bike.body.matrixWorld.clone().invert();
       for (const arm of arms)
         expect(surfaceGap(bridge, arm, inverse, 0.001), 'bridge enters the arm castings').toBeLessThan(0.001);
-      expect(surfaceGap(bridge, tire, inverse, 0.05), 'arch clears enlarged rear tyre').toBeGreaterThan(0.05);
+      expect(surfaceGap(bridge, tire, inverse, 0.020), 'arch clears enlarged rear tyre').toBeGreaterThan(0.020);
       for (const part of cases)
         expect(surfaceGap(bridge, part, inverse, 0.003), `bridge/${part.name}`).toBeGreaterThan(0.003);
       for (const name of ['supermoto-shock-lower-pin', 'shock-lower-link'])
@@ -129,7 +144,11 @@ describe('faceted Supermoto swingarm', () => {
       expect(insideX(centerY) - insideX(centerY + 0.028)).toBeCloseTo(0.010, 6);
       // The solid web separates the two pockets instead of leaving a large open sheet.
       const webZ = 0.542, webY = axleLineY(webZ);
-      expect(insideX(webY, webZ)).toBeLessThan(insideX(y));
+      // Compare recess depth relative to each local beam centre; the long
+      // lateral sweep deliberately puts these stations at different X.
+      const webFace = insideX(webY, webZ) - supermotoSwingarmSection(webZ).centerX;
+      const pocketFace = insideX(y) - supermotoSwingarmSection(z).centerX;
+      expect(pocketFace - webFace).toBeGreaterThan(0.008);
       mesh.geometry.dispose();
     }
   });
@@ -155,7 +174,7 @@ describe('faceted Supermoto swingarm', () => {
       const probe = new Mesh(arm.geometry, new MeshStandardMaterial()); probe.updateMatrixWorld(true);
       const outer = new Raycaster(new Vector3(side, dimensions.pivotY + 0.022, dimensions.pivotZ), new Vector3(-side, 0, 0)).intersectObject(probe, false)[0].point.x * side;
       const inner = new Raycaster(new Vector3(-side, dimensions.pivotY + 0.022, dimensions.pivotZ), new Vector3(side, 0, 0)).intersectObject(probe, false)[0].point.x * side;
-      expect(inner).toBeCloseTo(0.067, 5); expect(outer).toBeCloseTo(0.095, 5);
+      expect(inner).toBeCloseTo(0.033, 5); expect(outer).toBeCloseTo(0.061, 5);
       const seatProbe = new Mesh(carrier.geometry, new MeshStandardMaterial()); seatProbe.updateMatrixWorld(true);
       expect(through(seatProbe, dimensions.pivotY, dimensions.pivotZ)).toHaveLength(0);
       const seat = new Raycaster(new Vector3(-side, dimensions.pivotY + 0.013, dimensions.pivotZ), new Vector3(side, 0, 0)).intersectObject(seatProbe, false)[0].point.x * side;
@@ -318,7 +337,7 @@ describe('faceted Supermoto swingarm', () => {
       for (const depth of depths.slice(0, 4)) expect(depth).toBeGreaterThan(0.085);
       expect(depths[0]).toBeGreaterThan(depths[3]);
       expect(depths[4]).toBeLessThan(0.065);
-      expect(supermotoSwingarmSection(0.212).centerX).toBeCloseTo(0.081, 8);
+      expect(supermotoSwingarmSection(0.212).centerX).toBeCloseTo(0.047, 8);
       expect(SUPERMOTO_SHOCK_LOWER_MOUNT.bridge[1]).toBeCloseTo(0.42109887432188065, 9);
       const z = 0.45;
       const y = dimensions.pivotY + (dimensions.axleY - dimensions.pivotY)
@@ -398,7 +417,9 @@ describe('faceted Supermoto swingarm', () => {
       }
       for (const arm of arms) {
         const bounds = envelope(arm, inverse), armFaces = faces(arm, inverse);
-        expect(surfaceGap(arm, tire, inverse, 0.05), `rear tyre, pitch ${pitch}, travel ${travel}`).toBeGreaterThan(0.05);
+        // The long progressive sweep follows the actual rounded carcass;
+        // retain 15 mm of working room instead of the former wide dogleg.
+        expect(surfaceGap(arm, tire, inverse, 0.015), `rear tyre, pitch ${pitch}, travel ${travel}`).toBeGreaterThan(0.015);
         for (const part of mechanism) {
           if (gap(bounds, envelope(part, inverse)) > 0.003) continue;
           let minimum = Infinity;
@@ -421,10 +442,10 @@ describe('faceted Supermoto swingarm', () => {
     const rightBounds = right.boundingBox!;
     expect(leftBounds.min.x).toBeCloseTo(-rightBounds.max.x, 7);
     expect(leftBounds.max.x).toBeCloseTo(-rightBounds.min.x, 7);
-    // Only the rear section runs alongside the tyre. The inboard roots are
-    // ahead of it and are checked against the real tread surface above.
+    // The parallel axle region has a simple lateral corridor. The gradual
+    // forward sweep is checked against real tread triangles above.
     const rearBounds = new Box3(), positions = right.getAttribute('position');
-    for (let i = 0; i < positions.count; i++) if (positions.getZ(i) > 0.45)
+    for (let i = 0; i < positions.count; i++) if (positions.getZ(i) > SUPERMOTO_PIVOT_BEARING.flareEndZ)
       rearBounds.expandByPoint(new Vector3().fromBufferAttribute(positions, i));
     expect(rearBounds.min.x - SUPERMOTO_WHEELS.rear.tireWidth / 2).toBeGreaterThan(0.05);
     expect(rearBounds.min.x + CHAIN_DRIVE.planeX - CHAIN_DRIVE.chainHalfWidth).toBeGreaterThan(0.006);

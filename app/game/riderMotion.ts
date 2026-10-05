@@ -74,11 +74,12 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
     point(vector(p).applyQuaternion(orientation).add(vector(hip)));
   // Rearward weight transfer stops where the fixed arms reach their grips.
   // Solve a contact-limited torso angle, never lengthen the rider's bones.
-  const crashWrist = (side: number): Point => [
-    side * base.wrist[0],
-    base.wrist[1] + 0.09 * crash,
-    base.wrist[2] + 0.14 * crash,
-  ];
+  const crashWrist = (side: number): Point => {
+    const contact = base.contactGrips?.[side < 0 ? 0 : 1];
+    return [contact?.[0] ?? side * base.wrist[0],
+      (contact?.[1] ?? base.wrist[1]) + 0.09 * crash,
+      (contact?.[2] ?? base.wrist[2]) + 0.14 * crash];
+  };
   const reachesGrips = () =>
     [-1, 1].every(
       (side) =>

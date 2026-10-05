@@ -33,17 +33,18 @@ export const SUPERMOTO_SWINGARM = Object.freeze({
 /** The rotating roots sit inside the fixed outer frame cheeks. Rear arm and
  * wheel spacing stay unchanged; only the front bearing neck tucks inward. */
 export const SUPERMOTO_PIVOT_BEARING = Object.freeze({
-  rootCenterX: 0.081,
+  rootCenterX: 0.047,
   rootHalfWidth: 0.014,
-  flareStartZ: 0.335,
-  flareEndZ: 0.445,
+  flareStartZ: 0.220,
+  flareEndZ: 0.640,
+  widthShoulderZ: 0.440,
   frameCheekX: 0.133,
   frameCheekHalfWidth: 0.0025,
   pinRadius: 0.0100,
   raceInnerRadius: 0.0104,
   raceOuterRadius: 0.0174,
-  raceInnerX: 0.0675,
-  raceOuterX: 0.0945,
+  raceInnerX: 0.0335,
+  raceOuterX: 0.0605,
   spacerOuterX: 0.1306,
 });
 
@@ -56,12 +57,17 @@ const originalWidthAt = (z: number) => THREE.MathUtils.lerp(
     dimensions.axleHalfWidth,
     fraction(z),
   );
-const rootBlend = (z: number) => THREE.MathUtils.clamp(
-  (z - SUPERMOTO_PIVOT_BEARING.flareStartZ)
-    / (SUPERMOTO_PIVOT_BEARING.flareEndZ - SUPERMOTO_PIVOT_BEARING.flareStartZ), 0, 1);
-const widthAt = (z: number) => z >= SUPERMOTO_PIVOT_BEARING.flareEndZ ? originalWidthAt(z)
+const rootBlend = (z: number) => THREE.MathUtils.smoothstep(
+  z, SUPERMOTO_PIVOT_BEARING.flareStartZ, SUPERMOTO_PIVOT_BEARING.flareEndZ);
+// Fine casting stations give the long lateral sweep continuous-looking
+// tangents; both endpoints become parallel without the former hard dogleg.
+const flareStations = Array.from({ length: 13 }, (_, i) => THREE.MathUtils.lerp(
+  SUPERMOTO_PIVOT_BEARING.flareStartZ, SUPERMOTO_PIVOT_BEARING.flareEndZ, i / 12));
+const widthAt = (z: number) => z >= SUPERMOTO_PIVOT_BEARING.widthShoulderZ ? originalWidthAt(z)
   : THREE.MathUtils.lerp(SUPERMOTO_PIVOT_BEARING.rootHalfWidth,
-    originalWidthAt(SUPERMOTO_PIVOT_BEARING.flareEndZ), rootBlend(z));
+    originalWidthAt(SUPERMOTO_PIVOT_BEARING.widthShoulderZ), THREE.MathUtils.clamp(
+      (z - SUPERMOTO_PIVOT_BEARING.flareStartZ)
+        / (SUPERMOTO_PIVOT_BEARING.widthShoulderZ - SUPERMOTO_PIVOT_BEARING.flareStartZ), 0, 1));
 const lateralCenterAt = (z: number) => THREE.MathUtils.lerp(
   SUPERMOTO_PIVOT_BEARING.rootCenterX, CHAIN_DRIVE.rightSwingarmX, rootBlend(z));
 const centerAt = (z: number) =>
@@ -201,7 +207,7 @@ export function supermotoSwingarmGeometry(side: number) {
   // a long side-face triangle would bridge across the constant-width root.
   const triangle = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, outward: THREE.Vector3) => {
     let polygons = [[a, b, c]];
-    for (const cut of [SUPERMOTO_PIVOT_BEARING.flareStartZ, SUPERMOTO_PIVOT_BEARING.flareEndZ]) {
+    for (const cut of [...flareStations, SUPERMOTO_PIVOT_BEARING.widthShoulderZ].sort((a, b) => a - b)) {
       const clipped: THREE.Vector3[][] = [];
       for (const polygon of polygons) {
         if (polygon.every(p => p.z <= cut) || polygon.every(p => p.z >= cut)) { clipped.push(polygon); continue; }
@@ -317,13 +323,15 @@ export function supermotoSwingarmGeometry(side: number) {
  * trailing edge opens toward the wheel and leaves the shock clevis separate. */
 export function supermotoSwingarmBridgeGeometry() {
   const plan = new THREE.Shape();
-  plan.moveTo(-0.091, 0.233);
-  plan.lineTo(0.091, 0.233);
-  plan.lineTo(supermotoSwingarmSection(0.385).centerX, 0.385);
-  plan.lineTo(0.079, 0.370);
-  plan.quadraticCurveTo(0.045, 0.267, 0, 0.267);
-  plan.quadraticCurveTo(-0.045, 0.267, -0.079, 0.370);
-  plan.lineTo(-supermotoSwingarmSection(0.385).centerX, 0.385);
+  const frontX = supermotoSwingarmSection(0.233).centerX + 0.007;
+  const wingX = supermotoSwingarmSection(0.430).centerX + 0.014;
+  plan.moveTo(-frontX, 0.233);
+  plan.lineTo(frontX, 0.233);
+  plan.lineTo(wingX, 0.430);
+  plan.lineTo(0.079, 0.415);
+  plan.quadraticCurveTo(0.055, 0.267, 0, 0.267);
+  plan.quadraticCurveTo(-0.055, 0.267, -0.079, 0.415);
+  plan.lineTo(-wingX, 0.430);
   plan.closePath();
   const geometry = new THREE.ExtrudeGeometry(plan, {
     depth: 0.030, bevelEnabled: true, bevelThickness: 0.001,

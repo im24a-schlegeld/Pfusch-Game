@@ -7,6 +7,7 @@ import { isSticker, MAX_STICKERS } from '../domain/stickers';
 import { imagePath } from '../domain/preview';
 import { digitalPrice } from '../domain/progression';
 import { makeBike } from '../game/vehicle';
+import { importedBikeReady, preloadImportedBike } from '../game/importedBikeAsset';
 import { rendererSessions } from '../game/rendererSession';
 import { applyBikeStickers, stickerSurfaces } from '../game/bikeStickers';
 import './stickerWorkshop.css';
@@ -22,6 +23,7 @@ export default function StickerWorkshop({ player, account, products, onClose, on
   const [rotation, setRotation] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
+  const [assetRevision, setAssetRevision] = useState(0);
   const [hint, setHint] = useState('Drehe das Fahrzeug zur gewünschten Fläche.');
   const state = useRef({ placements, tool, size, rotation, selected });
   state.current = { placements, tool, size, rotation, selected };
@@ -33,6 +35,17 @@ export default function StickerWorkshop({ player, account, products, onClose, on
   const bikeOwned = account.ownedItems.includes(`bike:${player.bike}`);
   const owned = stickerOwned && bikeOwned;
   const price = product ? digitalPrice(product) : 0;
+  useEffect(() => {
+    if (importedBikeReady(player.bike)) return;
+    let cancelled = false;
+    setReady(false);
+    preloadImportedBike(player.bike).then(() => {
+      if (!cancelled) setAssetRevision((revision) => revision + 1);
+    }).catch((reason: unknown) => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : 'Motorradmodell konnte nicht geladen werden.');
+    });
+    return () => { cancelled = true; };
+  }, [player.bike]);
   const close = useRef(onClose); close.current = onClose;
   useEffect(() => {
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') close.current(); };
@@ -41,7 +54,7 @@ export default function StickerWorkshop({ player, account, products, onClose, on
   }, []);
   useEffect(() => {
     const el = host.current;
-    if (!el || !product) return;
+    if (!el || !product || !importedBikeReady(player.bike)) return;
     let session: ReturnType<typeof rendererSessions.acquire>;
     try { session = rendererSessions.acquire(player.settings.quality !== 'low'); }
     catch { setError('3D-Werkstatt konnte nicht gestartet werden. Bitte neu öffnen.'); return; }
@@ -120,7 +133,7 @@ export default function StickerWorkshop({ player, account, products, onClose, on
       geometries.forEach((g) => g.dispose()); renderer.domElement.remove();
       session.release(() => materials.forEach((m) => m.dispose()));
     };
-  }, [player, products, product]);
+  }, [player, products, product, assetRevision]);
   function change(value: number, field: 'size' | 'rotation') {
     if (field === 'size') setSize(value); else setRotation(value);
     if (selected) setPlacements((previous) => previous.map((p) => p.id === selected ? { ...p, [field]: value } : p));

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SUPERMOTO_SHOCK_TOP, SUPERMOTO_SHOCK_BOTTOM } from './supermotoFit';
 import { SUPERMOTO_SHOCK_DETAILS, SUPERMOTO_SHOCK_MOUNT_ROOT } from './supermotoShock';
+import { supermotoSeatSection } from './supermotoSeat';
 
 type Point = readonly [number, number, number];
 const rings = [
@@ -57,10 +58,20 @@ export function supermotoAirboxGeometry() {
   const longitudinal = 80, segments = 48;
   for (let i = 0; i <= longitudinal; i++) {
     const p = profile.getPoint(i / longitudinal), c = centers.getPoint(i / longitudinal);
+    const saddle = supermotoSeatSection(p.x);
+    const roofY = saddle.centerY - saddle.halfDepth - saddle.skirt - 0.006;
+    // Fit the complete rear section, including its lateral equator. Clamping
+    // only the upper half left two old side peaks above the flatter tail.
+    const rearDrop = Math.max(0, c.y + p.z - roofY) * THREE.MathUtils.smoothstep(p.x, 0.48, 0.58);
     for (let j = 0; j <= segments; j++) {
       const angle = j / segments * Math.PI * 2 - Math.PI / 2;
       const x = Math.sin(angle) * p.y, height = Math.cos(angle) * p.z;
-      let y = c.y + height;
+      let y = c.y + height - rearDrop;
+      if (height >= 0) {
+        // The flatter tail and deeper seat wedge define the housing roof.
+        // Keep the shaped damper/brace clearance underside untouched.
+        y = Math.min(y, roofY);
+      }
       if (height < 0) for (const sample of tunnel) {
         const square = sample.radius ** 2 - (x - sample.center.x) ** 2 - (p.x - sample.center.z) ** 2;
         if (square > 0) y = Math.max(y, sample.center.y + Math.sqrt(square));

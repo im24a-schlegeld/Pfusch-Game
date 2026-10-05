@@ -5,6 +5,9 @@ import { newPlayer } from '../app/domain/progression';
 import { Engine, STEP } from '../app/game/engine';
 import { TRAFFIC_SHAPES, trafficFrontReach } from '../app/game/trafficDomain';
 import { makeBike } from '../app/game/vehicle';
+import { installImportedBikeFixtures } from './importedBikeFixture';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),

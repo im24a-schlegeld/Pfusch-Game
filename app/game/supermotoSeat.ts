@@ -1,19 +1,19 @@
 import { BufferGeometry, CatmullRomCurve3, Float32BufferAttribute, MathUtils, Vector3 } from 'three';
 import { SUPERMOTO_SEAT } from './supermotoFit';
 
-/** Extra upholstery below the unchanged riding surface: a tapered wedge in
+/** Extra upholstery below the authored riding surface: a tapered wedge in
  * side view, thin at the nose and rear tip with a deeper middle skirt. */
 export function supermotoSeatSkirtDepth(z: number) {
-  const knots = [[-0.220, 0], [-0.100, 0.004], [0.220, 0.022],
-    [0.380, 0.017], [0.550, 0.004], [0.708, 0]];
+  const knots = [[-0.220, 0], [-0.100, 0.012], [0.100, 0.052],
+    [0.230, 0.070], [0.380, 0.048], [0.550, 0.016], [0.708, 0]];
   const index = knots.findIndex(point => point[0] >= z);
   const i = Math.max(0, Math.min(knots.length - 2, index < 0 ? knots.length - 2 : index - 1));
   const a = knots[i], b = knots[i + 1];
   return MathUtils.lerp(a[1], b[1], MathUtils.clamp((z - a[0]) / (b[0] - a[0]), 0, 1));
 }
 
-/** Match the original saddle loft's twenty longitudinal samples exactly.
- * The whole upper half therefore retains its previous contact geometry. */
+/** Sample the authored saddle with the existing twenty-section loft layout.
+ * The lower wedge is independent of the upper riding/contact profile. */
 function saddleSections() {
   const profile = new CatmullRomCurve3(SUPERMOTO_SEAT.map(r => new Vector3(r[0], r[1], r[2])), false, 'catmullrom', 0.25);
   const centers = new CatmullRomCurve3(SUPERMOTO_SEAT.map(r => new Vector3(r[0], r[3], 0)), false, 'catmullrom', 0.25);

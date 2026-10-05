@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { addSupermotoRearProtection } from './supermotoRearProtection';
+import { makeImportedBike } from './importedBike';
+import { isImportedBike } from './importedBikeAsset';
+import { addSupermotoRearProtection, supermotoRearFenderUndersideAt } from './supermotoRearProtection';
 import { supermotoAirboxGeometry } from './supermotoAirbox';
 import type { Player, Product } from '../domain/types';
 import {
@@ -38,6 +40,7 @@ import {
   makeDrive,
   makeBeltDrive,
   CHAIN_DRIVE,
+  SUPERMOTO_CHAIN_DRIVE,
 } from './driveGeometry';
 import { activeSuspensionPose, createRearSuspension } from './activeSuspension';
 import { makeSportBodywork } from './sportBodywork';
@@ -569,6 +572,12 @@ function makeHelmet(
   return helmet;
 }
 export function makeBike(player: Player, products: Product[]) {
+  const imported = isImportedBike(player.bike) ? player.bike : undefined;
+  if (imported) return makeImportedBike(player, products, (parent, pose, appearance, catalog) => {
+    const rider = makeRider(parent, pose, appearance, catalog);
+    darkenWardrobe(rider.group);
+    return rider;
+  });
   if (player.bike === 'scooter') {
     const scooter = makeScooter(player, products, makeRider);
     finishRequestedModelParts(scooter.body, player.bike, player.paint);
@@ -1160,8 +1169,8 @@ export function makeBike(player: Player, products: Product[]) {
       // The black airbox door continues behind the number panel and tank;
       // its lower return closes the middle without occupying the hot pipe.
       sidePanel(body, s, [
-        [0.119, 0.921, 0.075],
-        [0.117, 0.924, 0.218],
+        [0.119, 0.903, 0.075],
+        [0.117, 0.884, 0.218],
         [0.115, 0.875, 0.370],
         [0.114, 0.811, 0.388],
         [0.116, 0.797, 0.314],
@@ -1174,10 +1183,10 @@ export function makeBike(player: Player, products: Product[]) {
       // A continuous painted shoulder joins the front and rear skins, while
       // the fitted black access door forms the recessed area beneath it.
       sidePanel(body, s, [
-        [0.129, 0.947, 0.025],
-        [0.127, 0.947, 0.165],
-        [0.125, 0.899, 0.184],
-        [0.127, 0.893, 0.064],
+        [0.105, 0.935, 0.025],
+        [0.103, 0.905, 0.160],
+        [0.103, 0.897, 0.164],
+        [0.105, 0.912, 0.040],
       ], paint, 0.004).name = 'supermoto-middle-side-cover';
       // Deep inner cheeks visually package the upper spring. They sit outside
       // its swept envelope; the lower coil and actual linkage stay visible.
@@ -1198,7 +1207,7 @@ export function makeBike(player: Player, products: Product[]) {
       // Both plastics have bosses reaching actual frame/airbox material.
       for (const [x, y, z] of [
         [0.176, 0.895, -0.279],
-        [0.126, 0.921, 0.190],
+        [0.126, 0.875, 0.190],
         [0.117, 0.936, 0.593],
       ]) {
         // End the boss at the current moulded surface, so reshaping a wing
@@ -1285,19 +1294,20 @@ export function makeBike(player: Player, products: Product[]) {
     mesh(body, supermotoAirboxGeometry(), dark).name = 'supermoto-airbox';
     // Narrow rear mudguard continues beneath the saddle and covers the wheel
     // through the subframe, tapering beyond the seat rather than ending square.
-    mesh(body, supermotoTailFenderGeometry(), paint).name = 'supermoto-tail-fender';
+    const tailFender = mesh(body, supermotoTailFenderGeometry(), paint);
+    tailFender.name = 'supermoto-tail-fender';
     // Dark inner liner fitted to the side covers, with a splash flap at the shock.
     addSupermotoRearProtection(body, matteBlack, rubber);
     // The lamp nestles in the dark underside. No projecting registration carrier.
     const tailLampHousing = loft(body, [
-      [0.777, 0.051, 0.018, 1.038],
-      [0.839, 0.049, 0.015, 1.048],
-      [0.861, 0.042, 0.011, 1.063],
+      [0.777, 0.051, 0.018, supermotoRearFenderUndersideAt(tailFender.geometry, 0, 0.777) - 0.019],
+      [0.839, 0.049, 0.015, supermotoRearFenderUndersideAt(tailFender.geometry, 0, 0.839) - 0.016],
+      [0.861, 0.042, 0.011, supermotoRearFenderUndersideAt(tailFender.geometry, 0, 0.861) - 0.012],
     ], matteBlack, 'z', 16);
     tailLampHousing.name = 'supermoto-tail-light-housing';
     const tailLens = mesh(body, new THREE.SphereGeometry(1, 20, 10),
       new THREE.MeshStandardMaterial({ color: '#9c1018', emissive: '#b90c12', emissiveIntensity: 0.45, roughness: 0.25 }));
-    tailLens.position.set(0, 1.063, 0.862);
+    tailLens.position.set(0, supermotoRearFenderUndersideAt(tailFender.geometry, 0, 0.862) - 0.012, 0.862);
     tailLens.scale.set(0.039, 0.010, 0.005);
     tailLens.name = 'supermoto-tail-light-lens';
     // The visible spindle uses the same axis as the moving arm's bearing.
@@ -1841,7 +1851,7 @@ export function makeBike(player: Player, products: Product[]) {
     makeSportFender(frontAssembly, radius, front, paint);
   }
   if (!moped) {
-    makeDrive(body, wheels[1], 0.08, 0.49, engine);
+    makeDrive(body, wheels[1], 0.08, 0.49, engine, sport ? CHAIN_DRIVE : SUPERMOTO_CHAIN_DRIVE);
     rod(
       body,
       [CHAIN_DRIVE.leftSwingarmX - 0.035, rearRadius, rear],
@@ -3276,6 +3286,8 @@ function makeRider(
         contact.position.set(0, 0, 0);
         contact.quaternion.identity();
       }
+      if (pose.contactGrips)
+        transformExtremity(extremities[i].glove, limb.arm, rest.limbs[i].arm);
     });
   };
   const animateAccessories = (input: CarriedCapMotionInput, dt: number) =>

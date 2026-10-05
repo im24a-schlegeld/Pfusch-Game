@@ -13,6 +13,13 @@ export const CHAIN_DRIVE = Object.freeze({
   hubFaceX: -0.06,
 });
 
+/** The narrower Supermoto hub carries its sprocket beside the spoke flange.
+ * Both sprockets and every chain instance share this one inboard plane. */
+export const SUPERMOTO_CHAIN_DRIVE = Object.freeze({
+  ...CHAIN_DRIVE,
+  planeX: -0.098,
+});
+
 /** Ciao-style engine belt, separate from the pedal mechanism. Units are metres. */
 export const MOPED_BELT = Object.freeze({
   planeX: -0.064,
@@ -146,10 +153,11 @@ export function makeDrive(
   frontZ: number,
   frontY: number,
   material: THREE.MeshStandardMaterial,
+  drive: { planeX: number; frontRadius: number; rearRadius: number; hubFaceX: number } = CHAIN_DRIVE,
 ) {
-  const x = CHAIN_DRIVE.planeX,
-    small = CHAIN_DRIVE.frontRadius,
-    large = CHAIN_DRIVE.rearRadius;
+  const x = drive.planeX,
+    small = drive.frontRadius,
+    large = drive.rearRadius;
   const front = sprocket(small, 14, material);
   front.position.set(x, frontY, frontZ);
   parent.add(front);
@@ -158,11 +166,11 @@ export function makeDrive(
   rearWheel.add(rear);
   // Connect only the sprocket plane to the existing hub's left face.
   const carrier = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.055, 0.055, CHAIN_DRIVE.hubFaceX - x, 24),
+    new THREE.CylinderGeometry(0.055, 0.055, drive.hubFaceX - x, 24),
     material,
   );
   carrier.rotation.z = Math.PI / 2;
-  carrier.position.x = (x + CHAIN_DRIVE.hubFaceX) / 2;
+  carrier.position.x = (x + drive.hubFaceX) / 2;
   carrier.name = 'rear-sprocket-carrier';
   rearWheel.add(carrier);
   for (let i = 0; i < 5; i++) {

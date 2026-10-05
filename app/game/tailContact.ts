@@ -1,5 +1,4 @@
-import { SUPERMOTO_CHASSIS, SUPERMOTO_TAIL_FENDER } from './supermotoFit';
-import { supermotoSettledOffset } from './supermotoRideHeight';
+import { IMPORTED_BIKE_TAIL } from './importedBikeDimensions';
 
 export interface TailContact {
   readonly point: readonly [number, number, number];
@@ -32,7 +31,6 @@ function contact(
 // its tip with the renderer so sparks and loop-out follow actual contact.
 export const MOPED_REAR_FENDER_ANGLE = 1.68;
 const mopedGuardRadius = 0.305 + 0.038 + 0.008 + 0.005;
-const supermotoTailTip = SUPERMOTO_TAIL_FENDER[SUPERMOTO_TAIL_FENDER.length - 1];
 /** Raw chassis coordinates, before the shared vehicle/world scale. */
 export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   // Earliest rendered rear vertices, including the Ciao's steel mudguard and
@@ -47,14 +45,13 @@ export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
     0.305,
     'metal',
   ),
-  scooter: contact([0.065, 0.304, 0.9705], 0.64, 0.231, 'plastic'),
+  scooter: contact(IMPORTED_BIKE_TAIL.scooter.tail, IMPORTED_BIKE_TAIL.scooter.rearAxle, IMPORTED_BIKE_TAIL.scooter.rearRadius, 'plastic'),
   '450': contact(
-    [0, supermotoTailTip[3] + supermotoTailTip[2], supermotoTailTip[0]],
-    SUPERMOTO_CHASSIS.rearAxle,
-    SUPERMOTO_CHASSIS.rearRadius,
+    IMPORTED_BIKE_TAIL['450'].tail,
+    IMPORTED_BIKE_TAIL['450'].rearAxle,
+    IMPORTED_BIKE_TAIL['450'].rearRadius,
     'plastic',
-    supermotoSettledOffset(SUPERMOTO_CHASSIS.rearRadius, SUPERMOTO_CHASSIS.rearAxle),
   ),
-  '701': contact([0, 1.05, 0.9], 0.685, 0.3204, 'metal'),
+  '701': contact(IMPORTED_BIKE_TAIL['701'].tail, IMPORTED_BIKE_TAIL['701'].rearAxle, IMPORTED_BIKE_TAIL['701'].rearRadius, 'plastic'),
 };
 export const TAIL_RECOVERY_ANGLE = 0.12;

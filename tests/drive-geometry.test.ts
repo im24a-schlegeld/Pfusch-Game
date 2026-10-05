@@ -12,6 +12,7 @@ import {
 } from 'three';
 import {
   CHAIN_DRIVE,
+  SUPERMOTO_CHAIN_DRIVE,
   MOPED_BELT,
   chainRoute,
   makeBeltDrive,
@@ -80,7 +81,8 @@ it.each([
       metal,
     );
     wheel.add(tire);
-    makeDrive(body, wheel, 0.08, 0.49, metal);
+    const drive = model === 'supermoto' ? SUPERMOTO_CHAIN_DRIVE : CHAIN_DRIVE;
+    makeDrive(body, wheel, 0.08, 0.49, metal, drive);
     const tireBounds = vertexBounds(tire);
     expect(tireBounds.min.y).toBeCloseTo(0, 6);
     expect(tireBounds.max.x - tireBounds.min.x).toBeCloseTo(tireWidth, 2);
@@ -96,14 +98,13 @@ it.each([
       const bounds = vertexBounds(body.getObjectByName(name) as Mesh);
       expect(bounds.min.x - beamInnerX).toBeGreaterThan(0.007);
       expect(tireBounds.min.x - bounds.max.x).toBeGreaterThan(0.005);
-      // The narrower 150 mm Supermoto tire leaves about 31 mm in the same
-      // chain passage; the chain still stays inside its unchanged left beam.
+      // The model-specific sprocket planes retain real sidewall clearance.
       expect(tireBounds.min.x - bounds.max.x).toBeLessThan(0.035);
       expect(bounds.min.x).toBeGreaterThanOrEqual(
-        CHAIN_DRIVE.planeX - CHAIN_DRIVE.chainHalfWidth - 1e-8,
+        drive.planeX - drive.chainHalfWidth - 1e-8,
       );
       expect(bounds.max.x).toBeLessThanOrEqual(
-        CHAIN_DRIVE.planeX + CHAIN_DRIVE.chainHalfWidth + 1e-8,
+        drive.planeX + drive.chainHalfWidth + 1e-8,
       );
       // Both sides of the axle are reached, so a missing lower/outer wrap cannot pass.
       expect(bounds.min.y).toBeLessThan(rearY - 0.115);
@@ -122,8 +123,8 @@ it.each([
     const carrier = vertexBounds(
       wheel.getObjectByName('rear-sprocket-carrier') as Mesh,
     );
-    expect(carrier.min.x).toBeCloseTo(CHAIN_DRIVE.planeX, 7);
-    expect(carrier.max.x).toBeCloseTo(CHAIN_DRIVE.hubFaceX, 7);
+    expect(carrier.min.x).toBeCloseTo(drive.planeX, 7);
+    expect(carrier.max.x).toBeCloseTo(drive.hubFaceX, 7);
   },
 );
 

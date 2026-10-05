@@ -12,21 +12,22 @@ vi.mock('../app/game/garmentTexture', () => ({
 }));
 
 describe('reference seat wedge and rounded rear shoulder', () => {
-  it('retains the fixed riding surface while tapering a deeper lower skirt toward both ends', () => {
+  it('retains the central riding surface with a pronounced triangular lower skirt and flatter rear seat', () => {
     const geometry = supermotoSeatGeometry(), material = new MeshBasicMaterial({ side: DoubleSide });
     const seat = new Mesh(geometry, material); seat.updateMatrixWorld(true);
     try {
-      for (const [z, top] of [[-0.145, 1.010], [0.040, 0.997], [0.380, 0.993], [0.625, 1.038]]) {
+      for (const [z, top] of [[-0.145, 1.010], [0.040, 0.997], [0.380, 0.993], [0.625, 1.010]]) {
         const hits = new Raycaster(new Vector3(0, 2, z), new Vector3(0, -1, 0)).intersectObject(seat, false);
         expect(hits.length).toBeGreaterThan(1);
-        expect(hits[0].point.y, `unchanged seat contact at z=${z}`).toBeCloseTo(top, 6);
+        expect(hits[0].point.y, `reference seat upper surface at z=${z}`).toBeCloseTo(top, 6);
       }
       const bottom = (z: number) => new Raycaster(new Vector3(0, 0, z), new Vector3(0, 1, 0))
         .intersectObject(seat, false)[0].point.y;
-      expect(bottom(0.380)).toBeCloseTo(0.934, 6);
-      expect(bottom(0.220)).toBeLessThan(0.932);
-      expect(bottom(-0.145)).toBeGreaterThan(0.969);
-      expect(bottom(0.625)).toBeGreaterThan(1.006);
+      expect(bottom(0.380)).toBeCloseTo(0.903, 6);
+      expect(bottom(0.220)).toBeLessThan(0.890);
+      expect(bottom(-0.145)).toBeGreaterThan(0.963);
+      expect(bottom(0.625)).toBeGreaterThan(0.976);
+      expect(bottom(0.625) - bottom(0.220), 'rearward side of the V-shaped upholstery').toBeGreaterThan(0.085);
       expect(geometry.boundingBox!.max.x).toBeLessThan(0.102);
       expect(geometry.getAttribute('uv').count).toBe(geometry.getAttribute('position').count);
     } finally { material.dispose(); geometry.dispose(); }
@@ -44,11 +45,11 @@ describe('reference seat wedge and rounded rear shoulder', () => {
       expect(angle(0)).toBeLessThan(Math.PI / 4);
       expect(angle(7)).toBeGreaterThan(Math.PI / 3);
       expect(row[0].x).toBeLessThan(0.100);
-      expect(row[0].y).toBeGreaterThan(0.936);
-      expect(row[0].y).toBeLessThan(0.945);
+      expect(row[0].y).toBeGreaterThan(0.912);
+      expect(row[0].y).toBeLessThan(0.925);
       // The fuller lower bolster surrounds the unchanged rail; the remaining
       // exposed plastic still has a broad, visibly rounded shoulder.
-      expect(row[8].x - row[0].x).toBeGreaterThan(0.045);
+      expect(row[8].x - row[0].x).toBeGreaterThan(0.038);
       geometry.dispose();
     }
   });
@@ -98,6 +99,12 @@ describe('reference seat wedge and rounded rear shoulder', () => {
           new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
         expect(ray.intersectObjects(probes, false)[0]?.object.name,
           `no upturned pan tab at the front blend ${side},${z}`).toBe('supermoto-seat');
+      }
+      for (const side of [-1, 1]) for (const z of [0.115, 0.14, 0.16]) {
+        const ray = new Raycaster(bike.body.localToWorld(new Vector3(side * 0.6, 0.938, z)),
+          new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld));
+        expect(ray.intersectObjects(probes, false)[0]?.object.name,
+          `front seat pan remains below the visible V edge ${side},${z}`).toBe('supermoto-seat');
       }
     } finally { material.dispose(); }
   });

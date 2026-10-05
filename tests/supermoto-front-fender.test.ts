@@ -43,7 +43,7 @@ describe('moulded Supermoto front fender and raked mask', () => {
     }
   });
 
-  it('forms the longer higher EXC blade with side steps and channels as one closed thin surface', () => {
+  it('forms the long curved reference blade and deep rear return as one closed thin surface', () => {
     const geometry = supermotoFrontFenderGeometry();
     const finish = new MeshBasicMaterial({ side: DoubleSide });
     const fender = new Mesh(geometry, finish);
@@ -54,24 +54,25 @@ describe('moulded Supermoto front fender and raked mask', () => {
       return hits[0].point.y;
     };
     try {
-      const noseDrop = topAt(0, -0.768) - topAt(0, -0.96494);
-      expect(noseDrop).toBeGreaterThan(0.03);
-      expect(noseDrop).toBeLessThan(0.06);
+      const noseDrop = topAt(0, -0.800) - topAt(0, -1.090);
+      expect(noseDrop).toBeGreaterThan(0.11);
+      expect(noseDrop).toBeLessThan(0.14);
       // Both sides of the nose have material: this is a rounded broad blade,
-      // not a zero-width spear. The side-step interrupts the outer outline.
-      expect(topAt(0.0301, -0.96494)).toBeGreaterThan(0.87);
-      expect(topAt(-0.0301, -0.96494)).toBeCloseTo(topAt(0.0301, -0.96494), 7);
-      const wide = new Raycaster(new Vector3(0.086, 1.5, -0.780), new Vector3(0, -1, 0));
-      const inset = new Raycaster(new Vector3(0.086, 1.5, -0.750), new Vector3(0, -1, 0));
+      // not a zero-width spear. The shoulders taper smoothly into the tip.
+      expect(topAt(0.015, -1.090)).toBeGreaterThan(0.805);
+      expect(topAt(-0.015, -1.090)).toBeCloseTo(topAt(0.015, -1.090), 7);
+      const wide = new Raycaster(new Vector3(0.094, 1.5, -0.860), new Vector3(0, -1, 0));
+      const inset = new Raycaster(new Vector3(0.035, 1.5, -1.090), new Vector3(0, -1, 0));
       expect(wide.intersectObject(fender).length).toBeGreaterThan(0);
       expect(inset.intersectObject(fender)).toHaveLength(0);
-      const ridge = topAt(0, -0.634), channel = topAt(0.047, -0.634);
+      const ridge = topAt(0, -0.700), channel = topAt(0.047, -0.700);
       expect(ridge - channel).toBeGreaterThan(0.018);
-      expect(topAt(0.062, -0.634) - channel).toBeGreaterThan(0.003);
+      expect(topAt(0.065, -0.700) - channel).toBeGreaterThan(0.003);
       expect(topAt(0, -0.550)).toBeCloseTo(0.908, 5);
-      expect(topAt(0, -0.768)).toBeGreaterThan(0.923);
+      expect(topAt(0, -0.800)).toBeGreaterThan(0.933);
+      expect(topAt(0, -0.424)).toBeLessThan(0.685);
       geometry.computeBoundingBox();
-      expect(geometry.boundingBox!.min.z).toBeLessThan(-0.99);
+      expect(geometry.boundingBox!.min.z).toBeLessThan(-1.09);
       expect(geometry.boundingBox!.max.x).toBeGreaterThan(0.095);
       const positions = geometry.getAttribute('position'), index = geometry.getIndex()!;
       expect(positions.count).toBeLessThan(2200);
@@ -139,7 +140,7 @@ describe('moulded Supermoto front fender and raked mask', () => {
         fender.matrixWorld.copy(source.matrixWorld);
         const direction = new Vector3(0, -1, 0).transformDirection(bike.body.matrixWorld);
         let checked = 0;
-        for (const x of [0, 0.025]) for (const z of [-0.97, -0.87, -0.77, -0.67, -0.57, -0.48]) {
+        for (const x of [0, 0.025]) for (const z of [-1.09, -0.97, -0.87, -0.77, -0.67, -0.57, -0.48, -0.435, -0.424]) {
           const origin = bike.body.localToWorld(new Vector3(x, 1.5, z));
           const ray = new Raycaster(origin, direction);
           const sheet = ray.intersectObject(fender, false);

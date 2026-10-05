@@ -1,7 +1,10 @@
 import { expect, it, vi } from 'vitest';
 import { Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
 import { makeBike } from '../app/game/vehicle';
+import { installImportedBikeFixtures } from './importedBikeFixture';
 import { newPlayer } from '../app/domain/progression';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),

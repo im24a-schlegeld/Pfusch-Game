@@ -56,6 +56,7 @@ export function stickerSurfaces(
         ? object.material
         : [object.material];
       if (
+        object.userData.bikePaintSurface ||
         materials.some(
           (m) =>
             m instanceof THREE.MeshStandardMaterial && m.color.equals(color),

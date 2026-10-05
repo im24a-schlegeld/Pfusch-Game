@@ -23,6 +23,9 @@ import { makeSignCollectibleView } from './signCollectibleView';
 import { TAIL_CONTACT } from './tailContact';
 import { applyBikeStickers, clearBikeStickers } from './bikeStickers';
 import { createPoliceCrashEffect } from './policeCrashEffect';
+import { importedBikeReady, preloadImportedBike } from './importedBikeAsset';
+
+export const preloadBikeAsset = preloadImportedBike;
 
 // Match makeBike's body selection, including its default Supermoto geometry.
 const headlightModel = (id: string) =>
@@ -77,6 +80,7 @@ export default function SceneView({
   const crashCallback = useRef(onCrashComplete);
   const [error, setError] = useState('');
   const [renderReady, setRenderReady] = useState(false);
+  const [assetRevision, setAssetRevision] = useState(0);
   const appearance = useRef({ player, products, key: '' });
   appearance.current = {
     player,
@@ -101,9 +105,22 @@ export default function SceneView({
   readyCallback.current = onReady;
   crashCallback.current = onCrashComplete;
   useEffect(() => {
+    if (importedBikeReady(player.bike)) return;
+    let cancelled = false;
+    setRenderReady(false);
+    setError('');
+    preloadImportedBike(player.bike).then(() => {
+      if (!cancelled) setAssetRevision((revision) => revision + 1);
+    }).catch((reason: unknown) => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : 'Motorradmodell konnte nicht geladen werden.');
+    });
+    return () => { cancelled = true; };
+  }, [player.bike]);
+  useEffect(() => {
     setRenderReady(false);
     setError('');
     const { player, products } = appearance.current;
+    if (!importedBikeReady(player.bike)) return;
     const el = host.current;
     if (!el) return;
     let session: ReturnType<typeof rendererSessions.acquire>;
@@ -227,13 +244,13 @@ export default function SceneView({
       if (!shadowFloor) return;
       shadowFloor.position.y = -0.015;
       sunlight.shadow.normalBias = 0.015;
-      if (model !== '450') return;
+      if (model === '125') return;
       // Fit the receiving plane to the actual tires, independently of the
       // mechanical geometry. A large shadow bias made the preview float.
       bike.root.updateMatrixWorld(true);
       let contactY = Infinity;
       for (const wheel of bike.wheels) {
-        const tire = wheel.getObjectByName('tire');
+        const tire = wheel.getObjectByName('tire') ?? wheel;
         if (tire)
           // The settled swingarm rotates the rear wheel. A rotated bounding
           // box extends below a round tyre; use its actual vertices here.
@@ -336,6 +353,9 @@ export default function SceneView({
       clock += dt;
       let crashComplete = false;
       const nextAppearance = appearance.current;
+      // Keep the current scene intact while a newly selected bike loads.
+      // No old-model fallback and no simulation time advances behind loading.
+      if (!importedBikeReady(nextAppearance.player.bike)) return;
       if (
         nextAppearance.key !== vehicleKey ||
         nextAppearance.products !== vehicleProducts
@@ -848,7 +868,7 @@ export default function SceneView({
       // Scene geometry, particles, traffic and shadow maps are released now.
       session.release(() => bikeMaterials.forEach((m) => m.dispose()));
     };
-  }, [mode, engine, quality]);
+  }, [mode, engine, quality, assetRevision, player.bike]);
   return (
     <div
       className={`scene scene-${mode}`}

@@ -19,7 +19,7 @@ vi.mock('../app/game/garmentTexture', () => ({
   accessoryMaterial: () => new MeshStandardMaterial(),
 }));
 
-describe('exposed Supermoto tank and rounded shrouds', () => {
+describe('exposed Supermoto tank and reference-shaped shrouds', () => {
   let bike: ReturnType<typeof makeBike>;
   beforeAll(() => {
     bike = makeBike({ ...newPlayer(), bike: '450', paint: '#879052' }, []);
@@ -34,8 +34,8 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
     for (const side of [-1, 1]) {
       let exposed = 0,
         probes = 0;
-      for (const y of [0.85, 0.865, 0.88, 0.895])
-        for (const z of [-0.12, -0.08, -0.04, 0, 0.04]) {
+      for (const y of [0.845, 0.86, 0.875, 0.890])
+        for (const z of [-0.22, -0.18, -0.14, -0.10, -0.06]) {
           const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
           const direction = new Vector3(-side, 0, 0).transformDirection(
             bike.body.matrixWorld,
@@ -84,7 +84,7 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
     }
   });
 
-  it('raises the separate tank neck ahead of the unchanged seat and squares its visible lower reservoir', () => {
+  it('supports the cap on the lower front neck above a compact trapezoid reservoir', () => {
     const tank = bike.body.getObjectByName('supermoto-fuel-tank') as Mesh;
     const roof = (z: number, x = 0) => {
       const origin = bike.body.localToWorld(new Vector3(x, 1.3, z));
@@ -92,7 +92,8 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
       const hit = new Raycaster(origin, direction).intersectObject(tank, false)[0];
       return bike.body.worldToLocal(hit.point.clone()).y;
     };
-    expect(roof(-0.299)).toBeGreaterThan(1.07);
+    expect(roof(-0.299)).toBeGreaterThan(1.05);
+    expect(roof(-0.299)).toBeLessThan(1.065);
     for (let i = 0; i < 16; i++) {
       const angle = i / 16 * Math.PI * 2;
       const support = roof(-0.299 + Math.cos(angle) * 0.027, Math.sin(angle) * 0.027);
@@ -100,7 +101,8 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
       expect(support - SUPERMOTO_FUEL_CAP_MOUNT[1]).toBeLessThan(0.002);
     }
     expect(roof(-0.220)).toBeLessThan(1.011);
-    expect(roof(-0.085)).toBeCloseTo(0.967, 3);
+    expect(roof(-0.085)).toBeGreaterThan(0.948);
+    expect(roof(-0.085)).toBeLessThan(0.97);
     const position = tank.geometry.getAttribute('position');
     let floor = Infinity;
     for (let i = 0; i < position.count; i++) floor = Math.min(floor, position.getY(i));
@@ -134,17 +136,20 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
     expect(checked).toBeGreaterThan(0);
   });
 
-  it('covers the EXC lower radiator fin and wider upper band while retaining a thin closed shell', () => {
+  it('uses a short front tongue and straight side blade instead of the old deep triangular fin', () => {
     for (const side of [-1, 1]) {
       const shroud = (bike.body.getObjectsByProperty('name', 'radiator-shroud') as Mesh[])
         .find(part => part.geometry.getAttribute('position').getX(0) * side > 0)!;
-      for (const [y, z] of [[0.660, -0.315], [0.710, -0.360], [0.850, -0.430],
-        [0.725, -0.222], [0.775, -0.190], [0.955, 0.025]]) {
+      for (const [y, z] of [[0.773, -0.365], [0.850, -0.390], [0.940, -0.460],
+        [0.920, -0.222], [0.925, -0.110], [0.930, 0.025]]) {
         const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
         const direction = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
         const hit = new Raycaster(origin, direction).intersectObject(shroud, false)[0];
         expect(hit, `EXC plastic coverage at ${side}/${y}/${z}`).toBeDefined();
       }
+      const origin = bike.body.localToWorld(new Vector3(side * 0.8, 0.68, -0.315));
+      const direction = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
+      expect(new Raycaster(origin, direction).intersectObject(shroud, false)).toHaveLength(0);
       const geometry = shroud.geometry, index = geometry.getIndex()!;
       const edges = new Map<string, number>();
       for (let i = 0; i < index.count; i += 3) for (let k = 0; k < 3; k++) {
@@ -207,7 +212,7 @@ describe('exposed Supermoto tank and rounded shrouds', () => {
       expect(visible, `Black upper tank opening on side ${side}`).toBeGreaterThanOrEqual(5);
       let sideVisible = 0;
       const sideHits: string[] = [];
-      for (const y of [0.975, 0.985]) for (const z of [-0.29, -0.265, -0.24]) {
+      for (const y of [0.990, 1.005]) for (const z of [-0.29, -0.265, -0.24]) {
         const origin = bike.body.localToWorld(new Vector3(side * 0.8, y, z));
         const sideDirection = new Vector3(-side, 0, 0).transformDirection(bike.body.matrixWorld);
         const hit = new Raycaster(origin, sideDirection).intersectObject(bike.body, true)

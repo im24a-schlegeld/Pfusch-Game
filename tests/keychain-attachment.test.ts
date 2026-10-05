@@ -3,8 +3,11 @@ import { Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { newPlayer } from '../app/domain/progression';
 import type { Product } from '../app/domain/types';
 import { makeBike } from '../app/game/vehicle';
+import { installImportedBikeFixtures } from './importedBikeFixture';
 import catalog from '../public/catalog/products.json';
 import artwork from '../public/catalog/keychain-artwork.json';
+
+installImportedBikeFixtures();
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(),

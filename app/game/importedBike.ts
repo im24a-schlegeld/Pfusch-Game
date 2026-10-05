@@ -1,0 +1,234 @@
+import * as THREE from 'three';
+import type { Player, Product } from '../domain/types';
+import { BIKE_MODEL_SCALES } from './vehicleScale';
+import { resolveRiderPose, type RiderPose, type Point } from './riderSkeleton';
+import type { RiderMotion } from './riderMotion';
+import type { RagdollPose } from './ragdoll';
+import type { CarriedCapMotionInput } from './carriedCapMotion';
+import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
+import { getImportedBikeAsset, type ImportedBikeId, type ImportedBikeMaterial } from './importedBikeAsset';
+import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
+
+interface ImportedRiderController {
+  group: THREE.Group;
+  animate(input: RiderMotion, dt: number): void;
+  animateAccessories(input: CarriedCapMotionInput, dt: number): void;
+  captureRagdollPose(): RagdollPose;
+  applyRagdollPose(pose: RagdollPose): void;
+}
+type RiderFactory = (parent: THREE.Object3D, pose: RiderPose, player: Player, products: Product[]) => ImportedRiderController;
+const xAxis = new THREE.Vector3(1, 0, 0);
+const nominalLean: Record<ImportedBikeId, number> = { '450': 0.42, '701': 0.74, scooter: 0.25 };
+
+/** Source meshes retain their shape; only one uniform vehicle-size conversion is applied. */
+export function makeImportedBike(player: Player, products: Product[], makeRider: RiderFactory) {
+  const id = player.bike as ImportedBikeId;
+  const { manifest, binary, textures } = getImportedBikeAsset(id);
+  const source = manifest.anchors;
+  const size = IMPORTED_BIKE_WHEELBASE[id] / Math.abs(source.rearAxle[2] - source.frontAxle[2]);
+  const modelScale = BIKE_MODEL_SCALES[id];
+  const point = (value: Point) => new THREE.Vector3(...value).multiplyScalar(size);
+  const frontCenter = point(source.frontAxle), rearCenter = point(source.rearAxle);
+  const frontRadius = source.frontRadius * size, rearRadius = source.rearRadius * size;
+  const pivot = point(source.pivot);
+  const root = new THREE.Group();
+  root.scale.setScalar(1.45);
+  const body = new THREE.Group();
+  body.scale.setScalar(modelScale);
+  body.name = 'imported-motorcycle';
+  body.userData.importedBike = id;
+  root.add(body);
+  const steering = new THREE.Group();
+  steering.name = 'imported-steering';
+  steering.matrixAutoUpdate = false;
+  const frontAssembly = new THREE.Group(), rearAssembly = new THREE.Group(), shock = new THREE.Group();
+  frontAssembly.name = 'front-suspension-axle';
+  rearAssembly.name = 'rear-suspension-axle';
+  shock.name = 'active-rear-shock';
+  body.add(steering, rearAssembly, shock);
+  steering.add(frontAssembly);
+  const frontWheel = new THREE.Group(), rearWheel = new THREE.Group();
+  frontWheel.name = 'front-wheel'; rearWheel.name = 'rear-wheel';
+  frontWheel.position.copy(frontCenter); rearWheel.position.copy(rearCenter);
+  frontWheel.userData.rollingRadius = frontRadius * modelScale * root.scale.x;
+  rearWheel.userData.rollingRadius = rearRadius * modelScale * root.scale.x;
+  frontAssembly.add(frontWheel); rearAssembly.add(rearWheel);
+  const wheels = [frontWheel, rearWheel];
+  const materials = manifest.materials.map((definition: ImportedBikeMaterial) => {
+    const color = Array.isArray(definition.color)
+      ? new THREE.Color().fromArray(definition.color) : new THREE.Color(definition.color);
+    const paintable = definition.paintable ?? /livery|paint|fairing|bodywork/i.test(definition.name);
+    const rimMaterial = definition.rim ?? /rim/i.test(definition.name);
+    if (paintable) color.set(player.paint);
+    if (rimMaterial) color.set(player.rims);
+    const material = new THREE.MeshStandardMaterial({
+      name: definition.name, color,
+      metalness: definition.metalness, roughness: definition.roughness,
+      map: !paintable && !rimMaterial && definition.map ? textures.get(definition.map) : undefined,
+      normalMap: definition.normalMap ? textures.get(definition.normalMap) : undefined,
+      alphaMap: definition.alphaMap ? textures.get(definition.alphaMap) : undefined,
+      opacity: definition.opacity ?? 1,
+      transparent: (definition.opacity ?? 1) < 1,
+      side: definition.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+    });
+    return material;
+  });
+  const materialByName = new Map(manifest.materials.map((definition, index) => [definition.name, materials[index]]));
+  for (const part of manifest.parts) {
+    const geometry = new THREE.BufferGeometry();
+    // Copy once: cached CPU buffers are immutable and scene disposal stays local.
+    geometry.setAttribute('position', new THREE.BufferAttribute(
+      new Float32Array(binary, part.position.offset, part.position.count * 3).slice(), 3));
+    if (part.normal) geometry.setAttribute('normal', new THREE.BufferAttribute(
+      new Float32Array(binary, part.normal.offset, part.normal.count * 3).slice(), 3));
+    if (part.uv) geometry.setAttribute('uv', new THREE.BufferAttribute(
+      new Float32Array(binary, part.uv.offset, part.uv.count * 2).slice(), 2));
+    geometry.setIndex(new THREE.BufferAttribute(
+      new Uint16Array(binary, part.index.offset, part.index.count).slice(), 1));
+    geometry.scale(size, size, size);
+    let parent: THREE.Group = body;
+    if (part.rig === 'frontWheel') { parent = frontWheel; geometry.translate(-frontCenter.x, -frontCenter.y, -frontCenter.z); }
+    else if (part.rig === 'rearWheel') { parent = rearWheel; geometry.translate(-rearCenter.x, -rearCenter.y, -rearCenter.z); }
+    else if (part.rig === 'fork') parent = frontAssembly;
+    else if (part.rig === 'steering') parent = steering;
+    else if (part.rig === 'swingarm') parent = rearAssembly;
+    else if (part.rig === 'shockUpper' || part.rig === 'shockLower') parent = shock;
+    if (!part.normal) geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    const material = typeof part.material === 'number' ? materials[part.material] : materialByName.get(part.material);
+    if (!material) throw new Error(`Unbekanntes Motorradmaterial: ${part.material}`);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = /tyre|tire/i.test(part.name) ? 'tire' : part.name;
+    mesh.userData.importedRig = part.rig;
+    mesh.userData.importedPart = part.name;
+    const definition = typeof part.material === 'number' ? manifest.materials[part.material] : manifest.materials.find((candidate) => candidate.name === part.material);
+    mesh.userData.bikePaintSurface = part.paintable ?? definition?.paintable ?? /livery|paint|fairing|bodywork/i.test(material.name);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    parent.add(mesh);
+  }
+  const exhaust = new THREE.Object3D();
+  exhaust.name = 'open-silencer-outlet'; exhaust.position.copy(point(source.exhaust)); body.add(exhaust);
+  body.userData.tailContact = point(source.tail).toArray();
+  const headlightAnchor = new THREE.Object3D();
+  headlightAnchor.name = 'imported-headlight-anchor';
+  headlightAnchor.position.copy(point(source.headlight ?? source.steeringPivot ?? source.grip));
+  if (!source.headlight) { headlightAnchor.position.y -= 0.15; headlightAnchor.position.z -= 0.07; }
+  steering.add(headlightAnchor);
+  body.userData.headlightAnchors = [headlightAnchor];
+  const hip = point(source.hip).multiplyScalar(modelScale).toArray() as Point;
+  // An imported seat anchor is the upholstery surface, not the human hip joint.
+  // The immutable trouser shell extends 92 mm below that joint. Measure the
+  // actual saddle under the pelvis and put that shell on top of it.
+  const seatMeshes: THREE.Mesh[] = [];
+  body.traverse((object) => {
+    if (object instanceof THREE.Mesh && /seat|saddle/i.test(object.userData.importedPart ?? object.name)) seatMeshes.push(object);
+  });
+  let seatHeight = hip[1] / modelScale;
+  if (seatMeshes.length) {
+    body.updateWorldMatrix(true, true);
+    const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
+    const localHit = new THREE.Vector3();
+    let measured = -Infinity;
+    for (const x of [-0.04, 0, 0.04]) for (const dz of [-0.04, 0.01]) {
+      origin.set(x, seatHeight + 0.5, hip[2] / modelScale + dz);
+      body.localToWorld(origin);
+      ray.set(origin, down);
+      const hit = ray.intersectObjects(seatMeshes, false)[0];
+      if (hit) measured = Math.max(measured, body.worldToLocal(localHit.copy(hit.point)).y);
+    }
+    if (Number.isFinite(measured)) seatHeight = measured;
+  }
+  hip[1] = seatHeight * modelScale + 0.095;
+  body.userData.riderSeatContact = { surfaceY: seatHeight, pelvisY: hip[1] / modelScale };
+  const grip = point(source.grip).multiplyScalar(modelScale).toArray() as Point;
+  const peg = point(source.peg).multiplyScalar(modelScale).toArray() as Point;
+  let pose: RiderPose | undefined;
+  for (let step = 0; step <= 24 && !pose; step++) {
+    for (const direction of step === 0 ? [1] : [1, -1]) {
+      try {
+        pose = resolveRiderPose({ hip, grip, peg, torsoLean: nominalLean[id] + direction * step * 0.025 });
+        break;
+      } catch (error) { if (!(error instanceof RangeError)) throw error; }
+    }
+  }
+  if (!pose) throw new Error('Die Kontaktpunkte des importierten Motorrads liegen außerhalb der festen Fahreranatomie.');
+  const rider = makeRider(body, pose, player, products);
+  rider.group.scale.setScalar(1 / modelScale);
+  const key = addIgnitionKey(body, player, products, point(source.grip).toArray() as Point);
+  const steeringPivot = point(source.steeringPivot ?? source.frontAxle);
+  const steeringAxis = new THREE.Vector3(...(source.steeringAxis ?? [0, 0.93, 0.37] as Point)).normalize();
+  const steerStart = new THREE.Matrix4().makeTranslation(steeringPivot.x, steeringPivot.y, steeringPivot.z);
+  const steerEnd = new THREE.Matrix4().makeTranslation(-steeringPivot.x, -steeringPivot.y, -steeringPivot.z);
+  const steerTurn = new THREE.Matrix4();
+  const authoredWrists = [-1, 1].map((side) => new THREE.Vector3(side * pose.wrist[0], pose.wrist[1], pose.wrist[2]).divideScalar(modelScale));
+  const gripPoint = new THREE.Vector3();
+  const contactGrips: [Point, Point] = [[...pose.wrist], [...pose.wrist]];
+  contactGrips[0][0] *= -1;
+  pose.contactGrips = contactGrips;
+  let steerAngle = 0;
+  const shockTop = point(source.shockTop), shockBottom = point(source.shockBottom);
+  const shockAxis = shockBottom.clone().sub(shockTop).normalize();
+  const shockLength = shockTop.distanceTo(shockBottom);
+  const basis = new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), shockAxis));
+  const inverseBasis = basis.clone().invert();
+  const shockStart = new THREE.Matrix4().makeTranslation(shockTop.x, shockTop.y, shockTop.z);
+  const shockEnd = new THREE.Matrix4().makeTranslation(-shockTop.x, -shockTop.y, -shockTop.z);
+  const arm = rearCenter.clone().sub(pivot), armLength = Math.hypot(arm.y, arm.z);
+  const rearPosition = new THREE.Vector3(), movedRear = new THREE.Vector3();
+  const chassisPosition = new THREE.Vector3(), axlePosition = new THREE.Vector3();
+  const movedShock = new THREE.Vector3(), shockDirection = new THREE.Vector3();
+  const shockRotation = new THREE.Quaternion(), rotationMatrix = new THREE.Matrix4(), stretch = new THREE.Matrix4();
+  shock.matrixAutoUpdate = false;
+  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0) => {
+    const frontTravel = THREE.MathUtils.clamp(travel / modelScale - wheelieLoad * 0.009, -0.025, id === '450' ? 0.125 : 0.085);
+    const rearTravel = THREE.MathUtils.clamp(travel / modelScale * 0.7 + wheelieLoad * 0.012, -0.025, 0.065);
+    const movedY = THREE.MathUtils.clamp(arm.y + rearTravel, -armLength + 0.000001, armLength - 0.000001);
+    const rearAngle = Math.atan2(Math.sqrt(armLength ** 2 - movedY ** 2), movedY) - Math.atan2(arm.z, arm.y);
+    rearPosition.copy(pivot).sub(movedRear.copy(pivot).applyAxisAngle(xAxis, rearAngle));
+    rearAssembly.rotation.x = rearAngle;
+    rearAssembly.position.copy(rearPosition);
+    rearAssembly.updateMatrix();
+    movedRear.copy(rearCenter).applyMatrix4(rearAssembly.matrix);
+    const chassisAngle = -(frontTravel - rearTravel) / (rearCenter.z - frontCenter.z);
+    chassisPosition.copy(rearCenter).sub(movedRear.applyAxisAngle(xAxis, chassisAngle));
+    axlePosition.copy(chassisPosition).negate().applyAxisAngle(xAxis, -chassisAngle);
+    body.rotation.x = pitch + chassisAngle;
+    body.position.copy(chassisPosition).applyAxisAngle(xAxis, pitch);
+    body.position.y += rearCenter.y * (1 - Math.cos(pitch)) + rearCenter.z * Math.sin(pitch);
+    body.position.multiplyScalar(modelScale);
+    frontAssembly.rotation.x = -chassisAngle;
+    frontAssembly.position.copy(axlePosition);
+    if (shockLength > 0.0001) {
+      movedShock.copy(shockBottom).applyMatrix4(rearAssembly.matrix);
+      shockDirection.subVectors(movedShock, shockTop);
+      const ratio = shockDirection.length() / shockLength;
+      shockRotation.setFromUnitVectors(shockAxis, shockDirection.normalize());
+      shock.matrix.copy(shockStart).multiply(rotationMatrix.makeRotationFromQuaternion(shockRotation))
+        .multiply(basis).multiply(stretch.makeScale(1, ratio, 1)).multiply(inverseBasis).multiply(shockEnd);
+      shock.matrixWorldNeedsUpdate = true;
+    }
+  };
+  animateSuspension(0, 0);
+  return {
+    root, body, wheels, rider: rider.group,
+    animateRider: (input: RiderMotion, dt: number) => {
+      steerAngle += (input.steer * -0.065 - steerAngle) * (1 - Math.exp(-dt * 12));
+      steering.matrix.copy(steerStart).multiply(steerTurn.makeRotationAxis(steeringAxis, steerAngle)).multiply(steerEnd);
+      steering.matrixWorldNeedsUpdate = true;
+      authoredWrists.forEach((wrist, index) => {
+        gripPoint.copy(wrist).applyMatrix4(steering.matrix).multiplyScalar(modelScale);
+        gripPoint.toArray(contactGrips[index]);
+      });
+      rider.animate(input, dt);
+    },
+    captureRagdollPose: rider.captureRagdollPose,
+    applyRagdollPose: rider.applyRagdollPose,
+    animateCrashPose: (progress: number, side: number, dt: number) => rider.animate({ wheelie: 0, steer: 0, landing: 0, crash: progress, crashSide: side }, dt),
+    animateAccessories: (input: CarriedCapMotionInput, dt: number) => {
+      rider.animateAccessories(input, dt); updateCrossbodyMotion(rider.group, input, dt); key?.update(input, dt);
+    },
+    animateSuspension,
+    wheelRadius: rearRadius * modelScale,
+    rearAxle: rearCenter.z * modelScale,
+  };
+}

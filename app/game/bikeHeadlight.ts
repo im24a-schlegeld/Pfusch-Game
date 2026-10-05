@@ -51,6 +51,14 @@ export function createBikeHeadlightRig(model: BikeModelId): BikeHeadlightRig {
       // This includes root movement/lean, display scale and rear-axle suspension.
       body.updateWorldMatrix(true, false);
       for (let i = 0; i < count; i++) {
+        const anchors = body.userData.headlightAnchors as Object3D[] | undefined;
+        const anchor = anchors?.[i] ?? anchors?.[0];
+        if (anchor) {
+          anchor.updateWorldMatrix(true, false);
+          lights[i].position.setFromMatrixPosition(anchor.matrixWorld);
+          lights[i].target.position.set(0, -AIM_DROP, -AIM_DISTANCE).applyMatrix4(anchor.matrixWorld);
+          continue;
+        }
         lights[i].position.copy(sources[i]).applyMatrix4(body.matrixWorld);
         lights[i].target.position.copy(aims[i]).applyMatrix4(body.matrixWorld);
       }

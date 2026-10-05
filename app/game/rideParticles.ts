@@ -193,6 +193,7 @@ export function particleAnchors(body: THREE.Object3D, model: string) {
   const tail = new THREE.Vector3(
     ...(TAIL_CONTACT[model] ?? TAIL_CONTACT['450']).point,
   );
+  if (Array.isArray(body.userData.tailContact)) tail.fromArray(body.userData.tailContact);
   return {
     copy(exhaust: THREE.Vector3, contact: THREE.Vector3) {
       anchor.updateWorldMatrix(true, false);
