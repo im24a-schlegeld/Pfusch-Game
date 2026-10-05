@@ -627,19 +627,40 @@
       "material": "r6_clear_glass",
       "position": {
         "offset": 1335908,
-        "count": 655
+        "count": 286
       },
       "normal": {
-        "offset": 1343768,
-        "count": 655
+        "offset": 1339340,
+        "count": 286
       },
       "uv": {
-        "offset": 1351628,
-        "count": 655
+        "offset": 1342772,
+        "count": 286
       },
       "index": {
-        "offset": 1356868,
-        "count": 2247
+        "offset": 1345060,
+        "count": 750
+      }
+    },
+    {
+      "name": "r6_windscreen_glass:body",
+      "rig": "body",
+      "material": "r6_windscreen_glass",
+      "position": {
+        "offset": 1346560,
+        "count": 366
+      },
+      "normal": {
+        "offset": 1350952,
+        "count": 366
+      },
+      "uv": {
+        "offset": 1355344,
+        "count": 366
+      },
+      "index": {
+        "offset": 1358272,
+        "count": 1500
       }
     },
     {
@@ -647,19 +668,19 @@
       "rig": "body",
       "material": "r6_rear_lamp",
       "position": {
-        "offset": 1361364,
+        "offset": 1361272,
         "count": 176
       },
       "normal": {
-        "offset": 1363476,
+        "offset": 1363384,
         "count": 176
       },
       "uv": {
-        "offset": 1365588,
+        "offset": 1365496,
         "count": 176
       },
       "index": {
-        "offset": 1366996,
+        "offset": 1366904,
         "count": 600
       }
     },
@@ -668,19 +689,19 @@
       "rig": "body",
       "material": "r6_reflector",
       "position": {
-        "offset": 1368196,
+        "offset": 1368104,
         "count": 542
       },
       "normal": {
-        "offset": 1374700,
+        "offset": 1374608,
         "count": 542
       },
       "uv": {
-        "offset": 1381204,
+        "offset": 1381112,
         "count": 542
       },
       "index": {
-        "offset": 1385540,
+        "offset": 1385448,
         "count": 1950
       }
     },
@@ -689,19 +710,19 @@
       "rig": "body",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 1389440,
+        "offset": 1389348,
         "count": 5453
       },
       "normal": {
-        "offset": 1454876,
+        "offset": 1454784,
         "count": 5453
       },
       "uv": {
-        "offset": 1520312,
+        "offset": 1520220,
         "count": 5453
       },
       "index": {
-        "offset": 1563936,
+        "offset": 1563844,
         "count": 22002
       }
     },
@@ -710,19 +731,19 @@
       "rig": "fork",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 1607940,
+        "offset": 1607848,
         "count": 470
       },
       "normal": {
-        "offset": 1613580,
+        "offset": 1613488,
         "count": 470
       },
       "uv": {
-        "offset": 1619220,
+        "offset": 1619128,
         "count": 470
       },
       "index": {
-        "offset": 1622980,
+        "offset": 1622888,
         "count": 1992
       }
     },
@@ -731,19 +752,19 @@
       "rig": "body",
       "material": "r6_seat",
       "position": {
-        "offset": 1626964,
+        "offset": 1626872,
         "count": 629
       },
       "normal": {
-        "offset": 1634512,
+        "offset": 1634420,
         "count": 629
       },
       "uv": {
-        "offset": 1642060,
+        "offset": 1641968,
         "count": 629
       },
       "index": {
-        "offset": 1647092,
+        "offset": 1647000,
         "count": 2700
       }
     },
@@ -752,19 +773,19 @@
       "rig": "body",
       "material": "r6_gauge",
       "position": {
-        "offset": 1652492,
+        "offset": 1652400,
         "count": 308
       },
       "normal": {
-        "offset": 1656188,
+        "offset": 1656096,
         "count": 308
       },
       "uv": {
-        "offset": 1659884,
+        "offset": 1659792,
         "count": 308
       },
       "index": {
-        "offset": 1662348,
+        "offset": 1662256,
         "count": 795
       }
     }
@@ -846,6 +867,13 @@
       "opacity": 0.22
     },
     {
+      "name": "r6_windscreen_glass",
+      "color": "#293139",
+      "metalness": 0,
+      "roughness": 0.16,
+      "opacity": 0.58
+    },
+    {
       "name": "r6_rear_lamp",
       "color": "#9d1617",
       "metalness": 0.05,
@@ -879,9 +907,9 @@
   ],
   "statistics": {
     "sourceTriangles": 200797,
-    "triangles": 42727,
-    "vertices": 43986,
-    "geometryBytes": 1663938,
-    "meshes": 32
+    "triangles": 42728,
+    "vertices": 43983,
+    "geometryBytes": 1663846,
+    "meshes": 33
   }
 }

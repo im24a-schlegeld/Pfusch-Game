@@ -24,6 +24,7 @@ const engine = { name: 'r6_engine_detail', color: '#626669', metalness: .48, rou
 const metal = { name: 'r6_metal', color: '#aeb3b6', metalness: .72, roughness: .42 };
 const rubber = { name: 'r6_tyre', color: '#121314', metalness: 0, roughness: 1 };
 const glass = { name: 'r6_clear_glass', color: '#b3c2c9', metalness: 0, roughness: .14, transparent: true, opacity: .22 };
+const windscreen = { name: 'r6_windscreen_glass', color: '#293139', metalness: 0, roughness: .16, opacity: .58 };
 const rearLamp = { name: 'r6_rear_lamp', color: '#9d1617', metalness: .05, roughness: .28 };
 const reflector = { name: 'r6_reflector', color: '#c7d2d9', metalness: .8, roughness: .24 };
 const indicator = { name: 'r6_indicator', color: '#da8b22', metalness: .05, roughness: .3 };
@@ -187,7 +188,10 @@ await buildMotorcycleAsset({
       return metal;
     }
     if (['Object_17', 'Object_18'].includes(mesh.name)) return rubber;
-    if (mesh.name === 'Object_3') return components.get(mesh.name).byVertex[vertex].index === 2 ? rearLamp : glass;
+    if (mesh.name === 'Object_3') {
+      const part = components.get(mesh.name).byVertex[vertex].index;
+      return part === 0 ? windscreen : part === 2 ? rearLamp : glass;
+    }
     if (mesh.name === 'Object_14') return indicator;
     if (mesh.name === 'Object_5') return components.get(mesh.name).byVertex[vertex].center.x < 0 ? rearLamp : reflector;
     if (mesh.name === 'Object_9') return { name: 'r6_gauge', color: '#19262c', metalness: .05, roughness: .25 };
@@ -208,7 +212,7 @@ await buildMotorcycleAsset({
   materialBudgets: {
     r6_plain_paint: 8000, r6_trim: 3200, r6_seat: 900,
     r6_engine_detail: 10000, r6_metal: 3800, r6_rim: 2600, r6_exhaust: 650,
-    r6_tyre: 3000, r6_clear_glass: 750, r6_reflector: 650, r6_rear_lamp: 200,
+    r6_tyre: 3000, r6_windscreen_glass: 500, r6_clear_glass: 250, r6_reflector: 650, r6_rear_lamp: 200,
     r6_indicator: 100, r6_brake_caliper: 1000, r6_headers: 650,
   },
 });
