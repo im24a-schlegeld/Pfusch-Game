@@ -1096,9 +1096,9 @@
     },
     {
       "name": "fs450_frame_satin_charcoal",
-      "color": "#303538",
-      "metalness": 0.25,
-      "roughness": 0.52
+      "color": "#101113",
+      "metalness": 0.12,
+      "roughness": 0.65
     },
     {
       "name": "fs450_fork_steel",
