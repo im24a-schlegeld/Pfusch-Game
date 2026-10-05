@@ -46,7 +46,7 @@ describe('motorcycle scale with one adult skeleton', () => {
   );
 
   it('seats the scooter rider at full adult scale with feet on the floorboard', () => {
-    expect(BIKE_MODEL_SCALES.scooter).toBe(1.08);
+    expect(BIKE_MODEL_SCALES.scooter).toBe(1.24);
     expect(RIDER_TARGETS.scooter).toEqual({
       hip: [0, 0.87, 0.25],
       grip: [0.31, 1.12, -0.4],

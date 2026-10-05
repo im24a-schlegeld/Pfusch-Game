@@ -3,6 +3,7 @@ import { buildMotorcycleAsset, readSourceAtlas } from './build-motorcycle-asset.
 import { connectedComponents } from './motorcycle-components.mjs';
 import { drilledRotor } from './motorcycle-brake-rotor.mjs';
 import { importHeadlightMask } from './motorcycle-headlight-mask.mjs';
+import { recomputeWeldedNormals } from './motorcycle-tire-normals.mjs';
 import path from 'node:path';
 
 let liveryComponents;
@@ -17,7 +18,7 @@ const friction = { name: 'fs450_brake_friction_steel', color: '#bfc4c8', metalne
 const carrier = { name: 'fs450_brake_dark_carrier', color: '#293139', metalness: .65, roughness: .45 };
 const engine = { name: 'fs450_engine_detail', color: '#858b8e', metalness: .5, roughness: .48 };
 const engineCase = { ...engine, name: 'fs450_engine_case' };
-const tire = { name: 'fs450_tire_matte_rubber', color: '#111111', metalness: 0, roughness: 1 };
+const tire = { name: 'fs450_tire_matte_rubber', color: '#090909', metalness: 0, roughness: 1 };
 const caliper = { name: 'fs450_brake_caliper', color: '#535e66', metalness: .7, roughness: .4 };
 const forkSteel = { name: 'fs450_fork_steel', color: '#bfc4c7', metalness: .62, roughness: .32 };
 const frame = { name: 'fs450_frame_satin_charcoal', color: '#101113', metalness: .12, roughness: .65 };
@@ -26,6 +27,11 @@ const darkHardware = { name: 'fs450_dark_hardware', color: '#26292b', metalness:
 const cockpitDark = { ...darkHardware, name: 'fs450_cockpit_dark' };
 const cockpitMetal = { ...hardware, name: 'fs450_cockpit_metal' };
 const muffler = { name: 'fs450_muffler_unbranded', color: '#858a8d', metalness: .5, roughness: .4 };
+
+function smoothWeight(value, low, high) {
+  const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
+  return [t * t * (3 - 2 * t), t > 0 && t < 1 ? 6 * t * (1 - t) / (high - low) : 0];
+}
 
 async function classifyComponents(context, meshName, components, atlasPattern) {
   const { data, info } = await readSourceAtlas(context, atlasPattern);
@@ -57,6 +63,24 @@ await buildMotorcycleAsset({
   async analyze(context) {
 const { meshes, meshBox, worldPositions, worldNormals, THREE } = context;
 liveryComponents = connectedComponents(meshes.find(mesh => mesh.name === 'Object_12'), worldPositions.get('Object_12'), THREE);
+// Ease the stock shroud's long leading corner and pointed lower end. The paired
+// outer panels and their inset edges move together; seat/contact geometry stays.
+const plastics = worldPositions.get('Object_12'), plasticNormals = worldNormals.get('Object_12');
+for (const vertex of [4, 5, 15, 16].flatMap(index => liveryComponents.components[index].vertices)) {
+  const offset = vertex * 3, y = plastics[offset + 1], z = plastics[offset + 2];
+  const [lower, lowerSlope] = smoothWeight(.60 - y, 0, .09);
+  const [front, frontSlope] = smoothWeight(z, .30, .435);
+  plastics[offset + 1] = y + .013 * lower;
+  plastics[offset + 2] = z - .014 * front;
+  const normal = new THREE.Vector3(plasticNormals[offset],
+    plasticNormals[offset + 1] / (1 - .013 * lowerSlope),
+    plasticNormals[offset + 2] / (1 - .014 * frontSlope)).normalize();
+  plasticNormals.set(normal.toArray(), offset);
+}
+// Rebuild the smooth tire normal field from its welded circular surface. The
+// source's inconsistent skin normals caused alternating bright/dark patches.
+for (const name of ['Object_2', 'Object_3'])
+  worldNormals.set(name, recomputeWeldedNormals(worldPositions.get(name)));
 for (const name of ['Object_8', 'Object_9'])
   mechanicalComponents.set(name, connectedComponents(meshes.find(mesh => mesh.name === name), worldPositions.get(name), THREE));
 cockpitComponents = connectedComponents(meshes.find(mesh => mesh.name === 'Object_13'), worldPositions.get('Object_13'), THREE);

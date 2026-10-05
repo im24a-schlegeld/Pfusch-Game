@@ -15,18 +15,27 @@ export function importHeadlightMask(path, destination, paintMaterial) {
     point.fromArray(values).sub(center);
     return [point.dot(right), point.dot(up), point.dot(front)];
   };
-  const mount = new THREE.Vector3(0, .86, .47);
+  const mount = new THREE.Vector3(0, .895, .47);
   const slope = .26, c = Math.cos(slope), s = Math.sin(slope), scale = .90;
-  // A slightly narrower lower lamp/recess gives the unbranded assembly its
-  // own contour. Shell, glass and reflector deform together without gaps.
-  const widthAt = y => 1 - .035 * Math.max(0, Math.min(1, (.14 - y) / .25));
-  const transform = ([x, y, z]) => [x * widthAt(y) * scale + mount.x,
-    (y * c + z * s) * scale + mount.y, (-y * s + z * c) * scale + mount.z];
+  // Broader shoulders and a shallower lower bowl give the game lamp its own
+  // contour. Shell, glass and reflector share the deformation and raised mount.
+  const profile = y => {
+    const t = Math.max(0, Math.min(1, (-.015 - y) / .08));
+    const blend = t * t * (3 - 2 * t);
+    const derivative = t > 0 && t < 1 ? -6 * t * (1 - t) / .08 : 0;
+    return { width: 1.03 + .08 * blend, widthSlope: .08 * derivative,
+      height: y + .014 * blend, heightSlope: 1 + .014 * derivative };
+  };
+  const transform = ([x, y, z]) => {
+    const { width, height } = profile(y);
+    return [x * width * scale + mount.x,
+      (height * c + z * s) * scale + mount.y, (-height * s + z * c) * scale + mount.z];
+  };
   const transformNormal = (values, location) => {
     point.fromArray(values);
     const normalX = point.dot(right), normalY = point.dot(up), z = point.dot(front);
-    const f = widthAt(location[1]), derivative = location[1] > -.11 && location[1] < .14 ? .14 : 0;
-    const x = normalX / f, y = normalY - location[0] * derivative * normalX / f;
+    const { width, widthSlope, heightSlope } = profile(location[1]);
+    const x = normalX / width, y = (normalY - location[0] * widthSlope * x) / heightSlope;
     return [x, y * c + z * s, -y * s + z * c];
   };
   const lensMaterial = { name: 'fs450_headlight_glass', color: '#c7d7df', metalness: .05, roughness: .12, opacity: .42, transparent: true, doubleSided: true };

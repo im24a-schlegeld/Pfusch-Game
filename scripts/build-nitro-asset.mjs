@@ -17,6 +17,42 @@ const materials = {
   tailLamp: { name: 'nitro_tail_light', color: '#991c16', metalness: .05, roughness: .3 },
 };
 
+const ease = (value, low, high) => {
+  const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
+  return t * t * (3 - 2 * t);
+};
+// A broader lower nose and a lower, blunter tail separate the game shell from
+// the BCD front V and high pointed tail. The footboard and rider contacts stay.
+function shapeShell([x, y, z]) {
+  const nose = ease(z, .54, .71) * ease(y, .025, .10) * (1 - ease(y, .30, .44));
+  const tail = (1 - ease(z, -.98, -.72)) * ease(y, .18, .34);
+  return [x * (1 + .085 * nose + .06 * tail), y + .014 * nose - .022 * tail, z - .018 * nose + .025 * tail];
+}
+
+function reshapeSurface(positions, normals, components, THREE) {
+  const jacobian = new THREE.Matrix3(), normal = new THREE.Vector3();
+  const epsilon = 1e-5;
+  for (let vertex = 0; vertex < positions.length / 3; vertex++) {
+    // Apply the same continuous field to the shell, vents, lamp and undertray
+    // so their borders remain joined. Suspension and the real seat are fixed.
+    const part = components.byVertex[vertex];
+    if (part.rig !== 'body') continue;
+    const offset = vertex * 3, original = Array.from(positions.subarray(offset, offset + 3));
+    const transformed = shapeShell(original);
+    if (transformed.every((value, axis) => value === original[axis])) continue;
+    const columns = [0, 1, 2].map(axis => {
+      const before = [...original], after = [...original];
+      before[axis] -= epsilon; after[axis] += epsilon;
+      const a = shapeShell(before), b = shapeShell(after);
+      return b.map((value, component) => (value - a[component]) / (2 * epsilon));
+    });
+    jacobian.set(columns[0][0], columns[1][0], columns[2][0],
+      columns[0][1], columns[1][1], columns[2][1], columns[0][2], columns[1][2], columns[2][2]);
+    normal.fromArray(normals, offset).applyMatrix3(jacobian.invert().transpose()).normalize().toArray(normals, offset);
+    positions.set(transformed, offset);
+  }
+}
+
 function classify(id, part) {
   const i = part.index, c = part.center;
   let rig = 'body', material = 'metal';
@@ -68,6 +104,8 @@ await buildMotorcycleAsset({
         }
       }
     }
+    for (const mesh of meshes)
+      reshapeSurface(worldPositions.get(mesh.name), worldNormals.get(mesh.name), pieces.get(mesh.name), THREE);
     const tyre = pieces.get('Object_38').components;
     const front = tyre[0].center, rear = tyre[1].center;
     // Replace the source's solid disc faces with a single drilled steel ring
@@ -125,7 +163,7 @@ await buildMotorcycleAsset({
       steeringPivot: round([0, .438, .268]), steeringAxis: axis, forkTop: round([0, .300, .43]), forkBottom: frontAxle,
       grip: round([-.253, .603, .143]), peg: round([-.180, -.18, .045]),
       hip: round([0, .353222483, -.16]), exhaust: round([-.220, -.06, -.958]), tail: round([0, .482, -.970]),
-      headlight: round([.000829, .102782, .680312]),
+      headlight: round(shapeShell([.000829, .102782, .680312])),
     } };
   },
   includeTriangle(mesh, vertex) {

@@ -62,11 +62,12 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     const tireMaterial = /tyre|tire/i.test(definition.name);
     if (paintable) color.set(player.paint);
     if (rimMaterial) color.set(player.rims);
-    if (tireMaterial) color.set('#16181a');
+    if (tireMaterial) color.set(id === '450' ? '#090909' : '#16181a');
     const material = new THREE.MeshStandardMaterial({
       name: definition.name, color,
       metalness: tireMaterial ? 0 : definition.metalness,
       roughness: tireMaterial ? 1 : definition.roughness,
+      envMapIntensity: tireMaterial && id === '450' ? 0 : 1,
       map: !paintable && !rimMaterial && !tireMaterial && definition.map ? textures.get(definition.map) : undefined,
       normalMap: definition.normalMap ? textures.get(definition.normalMap) : undefined,
       alphaMap: definition.alphaMap ? textures.get(definition.alphaMap) : undefined,

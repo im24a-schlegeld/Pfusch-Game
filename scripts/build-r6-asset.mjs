@@ -10,9 +10,27 @@ const components = new Map();
 // backing strip. All are chassis-bone n43 parts, so removing that bone would
 // also delete legitimate bodywork. Identify the complete assembly explicitly.
 const plateHardware = new Set([5, 27, 32, 33, 206, 207, 208, 209, 312, 313, 404, 405, 486, 533, 534, 535, 536, 610, 616]);
+// Both front assemblies: shell, bulb, seal, socket and rubber stalk. Rear
+// hardware is already included in plateHardware; Object_14 contains all lenses.
+const indicatorHardware = new Set([34, 35, 314, 315, 406, 407, 531, 532, 537, 538]);
 function smoothWeight(value, low, high) {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
   return [t * t * (3 - 2 * t), t > 0 && t < 1 ? 6 * t * (1 - t) / (high - low) : 0];
+}
+function variantShape([x, y, z]) {
+  const front = smoothWeight(x, .70, .755)[0]
+    * smoothWeight(y, .66, .715)[0] * (1 - smoothWeight(y, .895, .965)[0]);
+  const outside = smoothWeight(Math.abs(z), .075, .24)[0];
+  const middle = 1 - smoothWeight(Math.abs(z), .07, .205)[0];
+  const nose = smoothWeight(x, .80, .915)[0] * middle * front;
+  // Flatter lamp eyes and a wider, less pointed central intake. The common
+  // continuous field keeps the fairing, recess, reflector and lens joined.
+  const tail = (1 - smoothWeight(x, -.84, -.745)[0]) * smoothWeight(y, .90, .96)[0];
+  return [
+    x - .025 * nose + .018 * tail,
+    y - .040 * outside * front + .012 * nose - .008 * tail,
+    z * (1 + .18 * middle * front - .035 * outside * front + .22 * tail),
+  ];
 }
 const paint = { name: 'r6_plain_paint', color: '#e7e7df', metalness: .04, roughness: .42, paintable: true };
 const trim = { name: 'r6_trim', color: '#24272a', metalness: .1, roughness: .6 };
@@ -27,14 +45,13 @@ const glass = { name: 'r6_clear_glass', color: '#b3c2c9', metalness: 0, roughnes
 const windscreen = { name: 'r6_windscreen_glass', color: '#293139', metalness: 0, roughness: .16, opacity: .58 };
 const rearLamp = { name: 'r6_rear_lamp', color: '#9d1617', metalness: .05, roughness: .28 };
 const reflector = { name: 'r6_reflector', color: '#c7d2d9', metalness: .8, roughness: .24 };
-const indicator = { name: 'r6_indicator', color: '#da8b22', metalness: .05, roughness: .3 };
 await buildMotorcycleAsset({
   source: process.argv[2], id: 'r6', name: 'Sport Bike',
   // Object 4 and 8 duplicate the transparent surfaces already in Object 3.
-  includeMesh: mesh => !['Object_0', 'Object_4', 'Object_8', 'Object_15'].includes(mesh.name),
+  includeMesh: mesh => !['Object_0', 'Object_4', 'Object_8', 'Object_14', 'Object_15'].includes(mesh.name),
   analyze({ meshes, meshBox, worldPositions, worldNormals, THREE }) {
     positions = worldPositions;
-    for (const mesh of meshes) if (['Object_1', 'Object_3', 'Object_5', 'Object_6', 'Object_14'].includes(mesh.name))
+    for (const mesh of meshes) if (['Object_1', 'Object_3', 'Object_5', 'Object_6'].includes(mesh.name))
       components.set(mesh.name, connectedComponents(mesh, worldPositions.get(mesh.name), THREE));
     // The molded mounting boss spans overlapping tail and side-panel skins.
     // Bring their centres onto the same shallow inclined undertray, preserving
@@ -62,21 +79,34 @@ await buildMotorcycleAsset({
       bossVertices++;
     }
     console.log('R6 plate assembly:', plateHardware.size, 'mechanical components removed;', bossVertices, 'tail mounting-boss vertices made flush');
-    // Keep the overall supplied shape while softening the optical corners and
-    // shortening the screen lip into a restrained, unbadged game-bike variant.
-    // The same continuous deformation affects fairing, recess and lens alike.
+    // Change the distinctive front and tail contours while preserving the
+    // seat, chassis and every rider contact. Update smooth normals with the
+    // inverse-transpose Jacobian, avoiding false shading after deformation.
+    const epsilon = 1e-5, jacobian = new THREE.Matrix3(), variantNormal = new THREE.Vector3();
     for (const mesh of meshes) {
-      const p = worldPositions.get(mesh.name);
+      const p = worldPositions.get(mesh.name), n = worldNormals.get(mesh.name);
       for (let i = 0; i < p.length; i += 3) {
-        const [x, y, z] = p.subarray(i, i + 3);
-        if (x > .75 && x < .93 && y > .70 && y < .90 && Math.abs(z) > .14) {
-          const border = Math.min((x - .75) / .05, (.93 - x) / .03, (y - .70) / .025, (.90 - y) / .025, 1);
-          p[i + 1] += .012 * Math.min(1, (Math.abs(z) - .14) / .10) * Math.max(0, border);
-        }
-        if (mesh.name === 'Object_3' && components.get(mesh.name).byVertex[i / 3].index === 0 && y > 1.035) {
-          const top = (y - 1.035) / .077;
-          p[i] += .025 * top; p[i + 1] -= .012 * top;
-        }
+        const point = Array.from(p.subarray(i, i + 3));
+        const screen = mesh.name === 'Object_3' && components.get(mesh.name).byVertex[i / 3].index === 0;
+        const deform = value => {
+          const out = variantShape(value);
+          if (screen) {
+            const top = smoothWeight(value[1], 1.035, 1.112)[0];
+            out[0] += .025 * top; out[1] -= .012 * top;
+          }
+          return out;
+        };
+        const transformed = deform(point);
+        if (transformed.every((value, axis) => value === point[axis])) continue;
+        const columns = point.map((_, axis) => {
+          const above = [...point], below = [...point];
+          above[axis] += epsilon; below[axis] -= epsilon;
+          const high = deform(above), low = deform(below);
+          return high.map((value, row) => (value - low[row]) / (2 * epsilon));
+        });
+        jacobian.set(...[0, 1, 2].flatMap(row => columns.map(column => column[row]))).invert().transpose();
+        variantNormal.fromArray(n, i).applyMatrix3(jacobian).normalize().toArray(n, i);
+        p.set(transformed, i);
       }
     }
     const rearBox = meshBox('Object_17'), frontBox = meshBox('Object_18');
@@ -134,7 +164,7 @@ await buildMotorcycleAsset({
       grip: round([.44834, .910, .285]), peg: round([-.16, .35, .20]),
       hip: round([-.235, .895038845, 0]), exhaust: round([-.635, .466, .256]),
       tail: [0, tailSurface[1], tailSurface[2]],
-      headlights: [round([.7773092045, .8006546617, .1455130474]), round([.7773092046, .8006546736, -.1455131152])],
+      headlights: [round(variantShape([.7773092045, .8006546617, .1455130474])), round(variantShape([.7773092046, .8006546736, -.1455131152]))],
     } };
   },
   includeTriangle(mesh, vertex) {
@@ -142,12 +172,13 @@ await buildMotorcycleAsset({
     if (!part) return true;
     if (mesh.name === 'Object_6' && [11, 12, 14, 15, 18, 23, 24, 25, 31, 32, 33].includes(part.index)) return false;
     if (mesh.name === 'Object_1' && plateHardware.has(part.index)) return false;
+    if (mesh.name === 'Object_1' && indicatorHardware.has(part.index)) return false;
     // These wholly enclosed small parts are behind the intact crankcase shell.
     if (mesh.name === 'Object_1' && part.box.min.x > -.05 && part.box.max.x < .34
       && part.box.min.y > .30 && part.box.max.y < .68 && part.box.min.z > -.08 && part.box.max.z < .08) return false;
     // The rear lamp sits above .97m in the source. Only the bolt-on plate
     // hanger, its indicator stalks and lenses occupy this lower rear region.
-    if (['Object_3', 'Object_14'].includes(mesh.name)
+    if (mesh.name === 'Object_3'
       && part.box.max.x < -.70 && part.box.max.y < .94) return false;
     return true;
   },
@@ -192,7 +223,6 @@ await buildMotorcycleAsset({
       const part = components.get(mesh.name).byVertex[vertex].index;
       return part === 0 ? windscreen : part === 2 ? rearLamp : glass;
     }
-    if (mesh.name === 'Object_14') return indicator;
     if (mesh.name === 'Object_5') return components.get(mesh.name).byVertex[vertex].center.x < 0 ? rearLamp : reflector;
     if (mesh.name === 'Object_9') return { name: 'r6_gauge', color: '#19262c', metalness: .05, roughness: .25 };
     if (mesh.name === 'Object_10') return trim;
@@ -213,6 +243,6 @@ await buildMotorcycleAsset({
     r6_plain_paint: 8000, r6_trim: 3200, r6_seat: 900,
     r6_engine_detail: 10000, r6_metal: 3800, r6_rim: 2600, r6_exhaust: 650,
     r6_tyre: 3000, r6_windscreen_glass: 500, r6_clear_glass: 250, r6_reflector: 650, r6_rear_lamp: 200,
-    r6_indicator: 100, r6_brake_caliper: 1000, r6_headers: 650,
+    r6_brake_caliper: 1000, r6_headers: 650,
   },
 });

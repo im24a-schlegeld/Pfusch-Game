@@ -78,14 +78,14 @@
       0.7104995
     ],
     "tail": [
-      0.01845724880695343,
-      0.9751700758934021,
-      0.9818650484085083
+      -0.008910111151635647,
+      0.9749211072921753,
+      0.9825869202613831
     ],
     "headlight": [
       0,
-      0.9259686,
-      -0.4616229
+      0.9609683,
+      -0.4614836
     ]
   },
   "parts": [
@@ -116,19 +116,19 @@
       "material": "fs450_tire_matte_rubber",
       "position": {
         "offset": 79632,
-        "count": 784
+        "count": 703
       },
       "normal": {
-        "offset": 89040,
-        "count": 784
+        "offset": 88068,
+        "count": 703
       },
       "uv": {
-        "offset": 98448,
-        "count": 784
+        "offset": 96504,
+        "count": 703
       },
       "index": {
-        "offset": 104720,
-        "count": 3300
+        "offset": 102128,
+        "count": 3297
       }
     },
     {
@@ -136,19 +136,19 @@
       "rig": "rearWheel",
       "material": "fs450_brake_friction_steel",
       "position": {
-        "offset": 111320,
+        "offset": 108724,
         "count": 2064
       },
       "normal": {
-        "offset": 136088,
+        "offset": 133492,
         "count": 2064
       },
       "uv": {
-        "offset": 160856,
+        "offset": 158260,
         "count": 2064
       },
       "index": {
-        "offset": 177368,
+        "offset": 174772,
         "count": 4488
       }
     },
@@ -157,19 +157,19 @@
       "rig": "rearWheel",
       "material": "fs450_brake_dark_carrier",
       "position": {
-        "offset": 186344,
+        "offset": 183748,
         "count": 744
       },
       "normal": {
-        "offset": 195272,
+        "offset": 192676,
         "count": 744
       },
       "uv": {
-        "offset": 204200,
+        "offset": 201604,
         "count": 744
       },
       "index": {
-        "offset": 210152,
+        "offset": 207556,
         "count": 1560
       }
     },
@@ -178,19 +178,19 @@
       "rig": "rearWheel",
       "material": "mat_gear277_COLOR_0",
       "position": {
-        "offset": 213272,
+        "offset": 210676,
         "count": 86
       },
       "normal": {
-        "offset": 214304,
+        "offset": 211708,
         "count": 86
       },
       "uv": {
-        "offset": 215336,
+        "offset": 212740,
         "count": 86
       },
       "index": {
-        "offset": 216024,
+        "offset": 213428,
         "count": 204
       }
     },
@@ -199,19 +199,19 @@
       "rig": "swingarm",
       "material": "mat_chain_1_001_COLOR_0",
       "position": {
-        "offset": 216432,
+        "offset": 213836,
         "count": 498
       },
       "normal": {
-        "offset": 222408,
+        "offset": 219812,
         "count": 498
       },
       "uv": {
-        "offset": 228384,
+        "offset": 225788,
         "count": 498
       },
       "index": {
-        "offset": 232368,
+        "offset": 229772,
         "count": 1128
       }
     },
@@ -220,19 +220,19 @@
       "rig": "body",
       "material": "mat_chain_1_001_COLOR_0",
       "position": {
-        "offset": 234624,
+        "offset": 232028,
         "count": 201
       },
       "normal": {
-        "offset": 237036,
+        "offset": 234440,
         "count": 201
       },
       "uv": {
-        "offset": 239448,
+        "offset": 236852,
         "count": 201
       },
       "index": {
-        "offset": 241056,
+        "offset": 238460,
         "count": 360
       }
     },
@@ -241,19 +241,19 @@
       "rig": "fork",
       "material": "fs450_bodywork_paint",
       "position": {
-        "offset": 241776,
+        "offset": 239180,
         "count": 1693
       },
       "normal": {
-        "offset": 262092,
+        "offset": 259496,
         "count": 1693
       },
       "uv": {
-        "offset": 282408,
+        "offset": 279812,
         "count": 1693
       },
       "index": {
-        "offset": 295952,
+        "offset": 293356,
         "count": 5958
       }
     },
@@ -262,19 +262,19 @@
       "rig": "body",
       "material": "fs450_inner_trim",
       "position": {
-        "offset": 307868,
+        "offset": 305272,
         "count": 1058
       },
       "normal": {
-        "offset": 320564,
+        "offset": 317968,
         "count": 1058
       },
       "uv": {
-        "offset": 333260,
+        "offset": 330664,
         "count": 1058
       },
       "index": {
-        "offset": 341724,
+        "offset": 339128,
         "count": 2700
       }
     },
@@ -283,19 +283,19 @@
       "rig": "body",
       "material": "fs450_bodywork_paint",
       "position": {
-        "offset": 347124,
-        "count": 3878
+        "offset": 344528,
+        "count": 3900
       },
       "normal": {
-        "offset": 393660,
-        "count": 3878
+        "offset": 391328,
+        "count": 3900
       },
       "uv": {
-        "offset": 440196,
-        "count": 3878
+        "offset": 438128,
+        "count": 3900
       },
       "index": {
-        "offset": 471220,
+        "offset": 469328,
         "count": 12426
       }
     },
@@ -304,19 +304,19 @@
       "rig": "steering",
       "material": "fs450_bodywork_paint",
       "position": {
-        "offset": 496072,
-        "count": 1219
+        "offset": 494180,
+        "count": 1217
       },
       "normal": {
-        "offset": 510700,
-        "count": 1219
+        "offset": 508784,
+        "count": 1217
       },
       "uv": {
-        "offset": 525328,
-        "count": 1219
+        "offset": 523388,
+        "count": 1217
       },
       "index": {
-        "offset": 535080,
+        "offset": 533124,
         "count": 4113
       }
     },
@@ -325,19 +325,19 @@
       "rig": "body",
       "material": "fs450_seat_rubber",
       "position": {
-        "offset": 543308,
+        "offset": 541352,
         "count": 299
       },
       "normal": {
-        "offset": 546896,
+        "offset": 544940,
         "count": 299
       },
       "uv": {
-        "offset": 550484,
+        "offset": 548528,
         "count": 299
       },
       "index": {
-        "offset": 552876,
+        "offset": 550920,
         "count": 1500
       }
     },
@@ -346,19 +346,19 @@
       "rig": "steering",
       "material": "fs450_cockpit_metal",
       "position": {
-        "offset": 555876,
+        "offset": 553920,
         "count": 989
       },
       "normal": {
-        "offset": 567744,
+        "offset": 565788,
         "count": 989
       },
       "uv": {
-        "offset": 579612,
+        "offset": 577656,
         "count": 989
       },
       "index": {
-        "offset": 587524,
+        "offset": 585568,
         "count": 2427
       }
     },
@@ -367,19 +367,19 @@
       "rig": "steering",
       "material": "fs450_cockpit_dark",
       "position": {
-        "offset": 592380,
+        "offset": 590424,
         "count": 1076
       },
       "normal": {
-        "offset": 605292,
+        "offset": 603336,
         "count": 1076
       },
       "uv": {
-        "offset": 618204,
+        "offset": 616248,
         "count": 1076
       },
       "index": {
-        "offset": 626812,
+        "offset": 624856,
         "count": 2985
       }
     },
@@ -388,19 +388,19 @@
       "rig": "body",
       "material": "fs450_cockpit_metal",
       "position": {
-        "offset": 632784,
+        "offset": 630828,
         "count": 54
       },
       "normal": {
-        "offset": 633432,
+        "offset": 631476,
         "count": 54
       },
       "uv": {
-        "offset": 634080,
+        "offset": 632124,
         "count": 54
       },
       "index": {
-        "offset": 634512,
+        "offset": 632556,
         "count": 174
       }
     },
@@ -409,19 +409,19 @@
       "rig": "body",
       "material": "fs450_engine_detail",
       "position": {
-        "offset": 634860,
+        "offset": 632904,
         "count": 4179
       },
       "normal": {
-        "offset": 685008,
+        "offset": 683052,
         "count": 4179
       },
       "uv": {
-        "offset": 735156,
+        "offset": 733200,
         "count": 4179
       },
       "index": {
-        "offset": 768588,
+        "offset": 766632,
         "count": 9258
       }
     },
@@ -430,19 +430,19 @@
       "rig": "body",
       "material": "fs450_engine_case",
       "position": {
-        "offset": 787104,
+        "offset": 785148,
         "count": 9577
       },
       "normal": {
-        "offset": 902028,
+        "offset": 900072,
         "count": 9577
       },
       "uv": {
-        "offset": 1016952,
+        "offset": 1014996,
         "count": 9577
       },
       "index": {
-        "offset": 1093568,
+        "offset": 1091612,
         "count": 25269
       }
     },
@@ -451,19 +451,19 @@
       "rig": "steering",
       "material": "fs450_hardware_metal",
       "position": {
-        "offset": 1144108,
+        "offset": 1142152,
         "count": 236
       },
       "normal": {
-        "offset": 1146940,
+        "offset": 1144984,
         "count": 236
       },
       "uv": {
-        "offset": 1149772,
+        "offset": 1147816,
         "count": 236
       },
       "index": {
-        "offset": 1151660,
+        "offset": 1149704,
         "count": 501
       }
     },
@@ -472,19 +472,19 @@
       "rig": "steering",
       "material": "fs450_dark_hardware",
       "position": {
-        "offset": 1152664,
+        "offset": 1150708,
         "count": 83
       },
       "normal": {
-        "offset": 1153660,
+        "offset": 1151704,
         "count": 83
       },
       "uv": {
-        "offset": 1154656,
+        "offset": 1152700,
         "count": 83
       },
       "index": {
-        "offset": 1155320,
+        "offset": 1153364,
         "count": 174
       }
     },
@@ -493,19 +493,19 @@
       "rig": "fork",
       "material": "fs450_hardware_metal",
       "position": {
-        "offset": 1155668,
+        "offset": 1153712,
         "count": 566
       },
       "normal": {
-        "offset": 1162460,
+        "offset": 1160504,
         "count": 566
       },
       "uv": {
-        "offset": 1169252,
+        "offset": 1167296,
         "count": 566
       },
       "index": {
-        "offset": 1173780,
+        "offset": 1171824,
         "count": 1275
       }
     },
@@ -514,19 +514,19 @@
       "rig": "body",
       "material": "fs450_hardware_metal",
       "position": {
-        "offset": 1176332,
+        "offset": 1174376,
         "count": 850
       },
       "normal": {
-        "offset": 1186532,
+        "offset": 1184576,
         "count": 850
       },
       "uv": {
-        "offset": 1196732,
+        "offset": 1194776,
         "count": 850
       },
       "index": {
-        "offset": 1203532,
+        "offset": 1201576,
         "count": 1668
       }
     },
@@ -535,19 +535,19 @@
       "rig": "fork",
       "material": "fs450_brake_caliper",
       "position": {
-        "offset": 1206868,
+        "offset": 1204912,
         "count": 631
       },
       "normal": {
-        "offset": 1214440,
+        "offset": 1212484,
         "count": 631
       },
       "uv": {
-        "offset": 1222012,
+        "offset": 1220056,
         "count": 631
       },
       "index": {
-        "offset": 1227060,
+        "offset": 1225104,
         "count": 1497
       }
     },
@@ -556,19 +556,19 @@
       "rig": "shockUpper",
       "material": "fs450_engine_detail",
       "position": {
-        "offset": 1230056,
+        "offset": 1228100,
         "count": 260
       },
       "normal": {
-        "offset": 1233176,
+        "offset": 1231220,
         "count": 260
       },
       "uv": {
-        "offset": 1236296,
+        "offset": 1234340,
         "count": 260
       },
       "index": {
-        "offset": 1238376,
+        "offset": 1236420,
         "count": 603
       }
     },
@@ -577,19 +577,19 @@
       "rig": "swingarm",
       "material": "fs450_hardware_metal",
       "position": {
-        "offset": 1239584,
+        "offset": 1237628,
         "count": 668
       },
       "normal": {
-        "offset": 1247600,
+        "offset": 1245644,
         "count": 668
       },
       "uv": {
-        "offset": 1255616,
+        "offset": 1253660,
         "count": 668
       },
       "index": {
-        "offset": 1260960,
+        "offset": 1259004,
         "count": 1752
       }
     },
@@ -598,19 +598,19 @@
       "rig": "body",
       "material": "fs450_frame_satin_charcoal",
       "position": {
-        "offset": 1264464,
+        "offset": 1262508,
         "count": 1578
       },
       "normal": {
-        "offset": 1283400,
+        "offset": 1281444,
         "count": 1578
       },
       "uv": {
-        "offset": 1302336,
+        "offset": 1300380,
         "count": 1578
       },
       "index": {
-        "offset": 1314960,
+        "offset": 1313004,
         "count": 4194
       }
     },
@@ -619,19 +619,19 @@
       "rig": "body",
       "material": "fs450_dark_hardware",
       "position": {
-        "offset": 1323348,
+        "offset": 1321392,
         "count": 1557
       },
       "normal": {
-        "offset": 1342032,
+        "offset": 1340076,
         "count": 1557
       },
       "uv": {
-        "offset": 1360716,
+        "offset": 1358760,
         "count": 1557
       },
       "index": {
-        "offset": 1373172,
+        "offset": 1371216,
         "count": 3000
       }
     },
@@ -640,19 +640,19 @@
       "rig": "swingarm",
       "material": "fs450_dark_hardware",
       "position": {
-        "offset": 1379172,
+        "offset": 1377216,
         "count": 128
       },
       "normal": {
-        "offset": 1380708,
+        "offset": 1378752,
         "count": 128
       },
       "uv": {
-        "offset": 1382244,
+        "offset": 1380288,
         "count": 128
       },
       "index": {
-        "offset": 1383268,
+        "offset": 1381312,
         "count": 303
       }
     },
@@ -661,19 +661,19 @@
       "rig": "fork",
       "material": "fs450_dark_hardware",
       "position": {
-        "offset": 1383876,
+        "offset": 1381920,
         "count": 77
       },
       "normal": {
-        "offset": 1384800,
+        "offset": 1382844,
         "count": 77
       },
       "uv": {
-        "offset": 1385724,
+        "offset": 1383768,
         "count": 77
       },
       "index": {
-        "offset": 1386340,
+        "offset": 1384384,
         "count": 144
       }
     },
@@ -682,19 +682,19 @@
       "rig": "shockLower",
       "material": "fs450_engine_detail",
       "position": {
-        "offset": 1386628,
+        "offset": 1384672,
         "count": 13
       },
       "normal": {
-        "offset": 1386784,
+        "offset": 1384828,
         "count": 13
       },
       "uv": {
-        "offset": 1386940,
+        "offset": 1384984,
         "count": 13
       },
       "index": {
-        "offset": 1387044,
+        "offset": 1385088,
         "count": 36
       }
     },
@@ -703,19 +703,19 @@
       "rig": "shockLower",
       "material": "fs450_hardware_metal",
       "position": {
-        "offset": 1387116,
+        "offset": 1385160,
         "count": 465
       },
       "normal": {
-        "offset": 1392696,
+        "offset": 1390740,
         "count": 465
       },
       "uv": {
-        "offset": 1398276,
+        "offset": 1396320,
         "count": 465
       },
       "index": {
-        "offset": 1401996,
+        "offset": 1400040,
         "count": 1848
       }
     },
@@ -724,19 +724,19 @@
       "rig": "shockUpper",
       "material": "fs450_hardware_metal",
       "position": {
-        "offset": 1405692,
+        "offset": 1403736,
         "count": 72
       },
       "normal": {
-        "offset": 1406556,
+        "offset": 1404600,
         "count": 72
       },
       "uv": {
-        "offset": 1407420,
+        "offset": 1405464,
         "count": 72
       },
       "index": {
-        "offset": 1407996,
+        "offset": 1406040,
         "count": 147
       }
     },
@@ -745,19 +745,19 @@
       "rig": "swingarm",
       "material": "fs450_engine_detail",
       "position": {
-        "offset": 1408292,
+        "offset": 1406336,
         "count": 121
       },
       "normal": {
-        "offset": 1409744,
+        "offset": 1407788,
         "count": 121
       },
       "uv": {
-        "offset": 1411196,
+        "offset": 1409240,
         "count": 121
       },
       "index": {
-        "offset": 1412164,
+        "offset": 1410208,
         "count": 534
       }
     },
@@ -766,19 +766,19 @@
       "rig": "steering",
       "material": "fs450_fork_steel",
       "position": {
-        "offset": 1413232,
+        "offset": 1411276,
         "count": 793
       },
       "normal": {
-        "offset": 1422748,
+        "offset": 1420792,
         "count": 793
       },
       "uv": {
-        "offset": 1432264,
+        "offset": 1430308,
         "count": 793
       },
       "index": {
-        "offset": 1438608,
+        "offset": 1436652,
         "count": 3723
       }
     },
@@ -787,19 +787,19 @@
       "rig": "fork",
       "material": "fs450_fork_steel",
       "position": {
-        "offset": 1446056,
+        "offset": 1444100,
         "count": 91
       },
       "normal": {
-        "offset": 1447148,
+        "offset": 1445192,
         "count": 91
       },
       "uv": {
-        "offset": 1448240,
+        "offset": 1446284,
         "count": 91
       },
       "index": {
-        "offset": 1448968,
+        "offset": 1447012,
         "count": 399
       }
     },
@@ -808,19 +808,19 @@
       "rig": "body",
       "material": "fs450_fork_steel",
       "position": {
-        "offset": 1449768,
+        "offset": 1447812,
         "count": 294
       },
       "normal": {
-        "offset": 1453296,
+        "offset": 1451340,
         "count": 294
       },
       "uv": {
-        "offset": 1456824,
+        "offset": 1454868,
         "count": 294
       },
       "index": {
-        "offset": 1459176,
+        "offset": 1457220,
         "count": 1272
       }
     },
@@ -829,19 +829,19 @@
       "rig": "body",
       "material": "mat_exmanifold277",
       "position": {
-        "offset": 1461720,
+        "offset": 1459764,
         "count": 979
       },
       "normal": {
-        "offset": 1473468,
+        "offset": 1471512,
         "count": 979
       },
       "uv": {
-        "offset": 1485216,
+        "offset": 1483260,
         "count": 979
       },
       "index": {
-        "offset": 1493048,
+        "offset": 1491092,
         "count": 3600
       }
     },
@@ -850,19 +850,19 @@
       "rig": "frontWheel",
       "material": "mat_rim277_001",
       "position": {
-        "offset": 1500248,
+        "offset": 1498292,
         "count": 1926
       },
       "normal": {
-        "offset": 1523360,
+        "offset": 1521404,
         "count": 1926
       },
       "uv": {
-        "offset": 1546472,
+        "offset": 1544516,
         "count": 1926
       },
       "index": {
-        "offset": 1561880,
+        "offset": 1559924,
         "count": 4857
       }
     },
@@ -871,19 +871,19 @@
       "rig": "frontWheel",
       "material": "fs450_tire_matte_rubber",
       "position": {
-        "offset": 1571596,
-        "count": 832
+        "offset": 1569640,
+        "count": 759
       },
       "normal": {
-        "offset": 1581580,
-        "count": 832
+        "offset": 1578748,
+        "count": 759
       },
       "uv": {
-        "offset": 1591564,
-        "count": 832
+        "offset": 1587856,
+        "count": 759
       },
       "index": {
-        "offset": 1598220,
+        "offset": 1593928,
         "count": 3300
       }
     },
@@ -892,19 +892,19 @@
       "rig": "frontWheel",
       "material": "fs450_brake_friction_steel",
       "position": {
-        "offset": 1604820,
+        "offset": 1600528,
         "count": 2640
       },
       "normal": {
-        "offset": 1636500,
+        "offset": 1632208,
         "count": 2640
       },
       "uv": {
-        "offset": 1668180,
+        "offset": 1663888,
         "count": 2640
       },
       "index": {
-        "offset": 1689300,
+        "offset": 1685008,
         "count": 5784
       }
     },
@@ -913,19 +913,19 @@
       "rig": "frontWheel",
       "material": "fs450_brake_dark_carrier",
       "position": {
-        "offset": 1700868,
+        "offset": 1696576,
         "count": 744
       },
       "normal": {
-        "offset": 1709796,
+        "offset": 1705504,
         "count": 744
       },
       "uv": {
-        "offset": 1718724,
+        "offset": 1714432,
         "count": 744
       },
       "index": {
-        "offset": 1724676,
+        "offset": 1720384,
         "count": 1560
       }
     },
@@ -934,19 +934,19 @@
       "rig": "body",
       "material": "fs450_muffler_unbranded",
       "position": {
-        "offset": 1727796,
+        "offset": 1723504,
         "count": 831
       },
       "normal": {
-        "offset": 1737768,
+        "offset": 1733476,
         "count": 831
       },
       "uv": {
-        "offset": 1747740,
+        "offset": 1743448,
         "count": 831
       },
       "index": {
-        "offset": 1754388,
+        "offset": 1750096,
         "count": 2697
       }
     },
@@ -955,19 +955,19 @@
       "rig": "steering",
       "material": "fs450_headlight_glass",
       "position": {
-        "offset": 1759784,
+        "offset": 1755492,
         "count": 108
       },
       "normal": {
-        "offset": 1761080,
+        "offset": 1756788,
         "count": 108
       },
       "uv": {
-        "offset": 1762376,
+        "offset": 1758084,
         "count": 108
       },
       "index": {
-        "offset": 1763240,
+        "offset": 1758948,
         "count": 396
       }
     },
@@ -976,19 +976,19 @@
       "rig": "steering",
       "material": "fs450_headlight_reflector",
       "position": {
-        "offset": 1764032,
+        "offset": 1759740,
         "count": 254
       },
       "normal": {
-        "offset": 1767080,
+        "offset": 1762788,
         "count": 254
       },
       "uv": {
-        "offset": 1770128,
+        "offset": 1765836,
         "count": 254
       },
       "index": {
-        "offset": 1772160,
+        "offset": 1767868,
         "count": 780
       }
     }
@@ -1003,7 +1003,7 @@
     },
     {
       "name": "fs450_tire_matte_rubber",
-      "color": "#111111",
+      "color": "#090909",
       "metalness": 0,
       "roughness": 1
     },
@@ -1137,9 +1137,9 @@
   ],
   "statistics": {
     "sourceTriangles": 205629,
-    "triangles": 43178,
-    "vertices": 47332,
-    "geometryBytes": 1773720,
+    "triangles": 43177,
+    "vertices": 47198,
+    "geometryBytes": 1769428,
     "meshes": 43
   }
 }

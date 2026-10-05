@@ -73,6 +73,24 @@ it('the Supermoto keeps its visible engine case, a recessed lamp assembly and pl
   expect(tires[0].roughness).toBe(1);
 });
 
+it('the Supermoto slick tires have continuous radial shading around their axles', () => {
+  const { manifest, binary } = loadModel('fs450');
+  for (const part of manifest.parts.filter(part => /tire/i.test(String(part.material)))) {
+    const points = positions(binary, part);
+    const normals = new Float32Array(binary, part.normal!.offset, part.normal!.count * 3);
+    const axle = part.rig === 'frontWheel' ? manifest.anchors.frontAxle : manifest.anchors.rearAxle;
+    let maximumTangent = 0;
+    for (let i = 0; i < points.length; i += 3) {
+      const y = points[i + 1] - axle[1], z = points[i + 2] - axle[2];
+      // A smooth circular slick has no appreciable circumferential normal.
+      // Incorrect USD normals caused alternating pale patches as it rotated.
+      maximumTangent = Math.max(maximumTangent,
+        Math.abs((normals[i + 2] * y - normals[i + 1] * z) / Math.hypot(y, z)));
+    }
+    expect(maximumTangent, part.name).toBeLessThan(.04);
+  }
+});
+
 for (const id of models) describe(`Imported motorcycle asset: ${id}`, () => {
   it('ships a bounded static asset with local textures and valid material/rig assignments', () => {
     const { directory, manifest, binary } = loadModel(id);

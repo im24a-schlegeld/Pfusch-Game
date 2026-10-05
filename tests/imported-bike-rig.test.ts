@@ -118,10 +118,11 @@ describe.each(['450', '701', 'scooter'] as const)('Imported %s animation contrac
     }
     for (const wheel of model.wheels) {
       const material = (wheel.getObjectByName('tire') as Mesh).material as MeshStandardMaterial;
-      expect(material.color.getHex()).toBe(0x16181a);
+      expect(material.color.getHex()).toBe(id === '450' ? 0x090909 : 0x16181a);
       expect(material.metalness).toBe(0);
       expect(material.roughness).toBe(1);
       expect(material.map).toBeNull();
+      if (id === '450') expect(material.envMapIntensity).toBe(0);
     }
   });
 });
