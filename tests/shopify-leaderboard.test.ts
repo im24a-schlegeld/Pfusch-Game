@@ -46,11 +46,11 @@ describe('real saved rider leaderboard', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
   it('publishes only opaque aliases; no customer IDs or private profile fields', async () => {
-    const board = empty(); board.all.rows = [{ alias: playerAlias(config, '123'), score: 400 }, { alias: playerAlias(config, '456'), score: 300 }];
+    const board = empty(); board.all.rows = [{ alias: await playerAlias(config, '123'), score: 400 }, { alias: await playerAlias(config, '456'), score: 300 }];
     const result = await handleRankingRequest('GET', signed(), config, vi.fn().mockResolvedValue(loaded(board)), now);
     expect(result.body).toMatchObject({ entries: [{ name: 'DU', score: 400, you: true }, { score: 300, you: false }] });
     const raw = JSON.stringify(result.body);
-    expect(raw).not.toContain('customer'); expect(raw).not.toContain(playerAlias(config, '456'));
+    expect(raw).not.toContain('customer'); expect(raw).not.toContain(await playerAlias(config, '456'));
   });
   it('retries concurrent saves with a fresh digest without losing another rider', async () => {
     const other = empty(); other.all.rows = [{ alias: 'b'.repeat(16), score: 88 }];

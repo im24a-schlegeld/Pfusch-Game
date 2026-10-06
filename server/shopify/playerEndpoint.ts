@@ -1,4 +1,4 @@
-import { ApiError, authenticateProxy, createCsrf, verifyCsrf, type ShopifyConfig } from './auth.js';
+import { ApiError, assertCustomerIdentity, authenticateProxy, createCsrf, verifyCsrf, type CustomerAuthenticator, type ShopifyConfig } from './auth.js';
 import { loadCustomerPlayer, saveCustomerPlayer, type ShopifyFetch } from './playerStore.js';
 import { isRecord, sanitizeDigitalPlayer } from './playerValidation.js';
 import type { Player } from '../../app/domain/types.js';
@@ -15,6 +15,7 @@ export interface PlayerEndpointDependencies {
   request: ShopifyFetch;
   now?: () => number;
   afterSave?: (customerId: string, player: Player) => Promise<void>;
+  authenticate?: CustomerAuthenticator;
 }
 export interface JsonResult { status: number; body: Record<string, unknown> }
 
@@ -24,7 +25,7 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
     const config = dependencies.config;
     if (!config) throw new ApiError(503, 'not_configured');
     const now = (dependencies.now ?? Date.now)();
-    const identity = authenticateProxy(input.url, config, now);
+    const identity = assertCustomerIdentity(await (dependencies.authenticate ?? authenticateProxy)(input.url, config, now), config);
     let result, storage: StorageAccess;
     if (input.method === 'GET') {
       const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request);
@@ -38,7 +39,7 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       if (!isRecord(body) || Object.keys(body).length !== 3 ||
         Object.keys(body).some(key => !['player', 'compareDigest', 'csrfToken'].includes(key)))
         throw new ApiError(400, 'invalid_request');
-      verifyCsrf(body.csrfToken, identity, config.secret, now);
+      await verifyCsrf(body.csrfToken, identity, config.secret, now);
       if (body.compareDigest !== null && (typeof body.compareDigest !== 'string' || !/^[a-f0-9]{64}$/i.test(body.compareDigest)))
         throw new ApiError(400, 'invalid_compare_digest');
       const incoming = sanitizeDigitalPlayer(body.player, identity.customerId);
@@ -57,7 +58,7 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       try { await dependencies.afterSave?.(identity.customerId, result.player); } catch { /* Save is already durable. */ }
     }
     return { status: 200, body: { customer: { id: identity.customerId }, ...result, storage,
-      csrfToken: createCsrf(identity, config.secret, now) } };
+      csrfToken: await createCsrf(identity, config.secret, now) } };
   } catch (error) {
     return error instanceof ApiError ? { status: error.status, body: { error: error.code } }
       : { status: 503, body: { error: 'service_unavailable' } };

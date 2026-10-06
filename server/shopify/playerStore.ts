@@ -3,6 +3,7 @@ import { ApiError, type ShopifyConfig } from './auth.js';
 import { isRecord, MAX_BODY_BYTES, sanitizeDigitalPlayer } from './playerValidation.js';
 import { readMarketingState, type MarketingState } from './storagePolicy.js';
 import { shopifyAdminToken } from './adminToken.js';
+import { byteLength } from './crypto.js';
 
 // Pinned stable version, reviewed against the official reference on 2026-10-05.
 export const SHOPIFY_API_VERSION = '2026-10';
@@ -24,7 +25,7 @@ export async function shopifyGraphql(config: ShopifyConfig, query: string, varia
     });
     if (!response.ok) throw new ApiError(503, 'shopify_unavailable');
     const raw = await response.text();
-    if (Buffer.byteLength(raw) > MAX_BODY_BYTES * 4) throw new ApiError(502, 'invalid_shopify_response');
+    if (byteLength(raw) > MAX_BODY_BYTES * 4) throw new ApiError(502, 'invalid_shopify_response');
     const result: unknown = JSON.parse(raw);
     if (!isRecord(result) || (Array.isArray(result.errors) && result.errors.length) || !isRecord(result.data))
       throw new ApiError(503, 'shopify_unavailable');
@@ -48,7 +49,7 @@ export async function loadCustomerPlayer(config: ShopifyConfig, customerId: stri
   const marketingState = readMarketingState(data.customer.emailMarketingConsent);
   const field = data.customer.metafield;
   if (field === null) return { player: null, compareDigest: null, marketingState };
-  if (!isRecord(field) || typeof field.value !== 'string' || !digest(field.compareDigest) || Buffer.byteLength(field.value) > MAX_BODY_BYTES)
+  if (!isRecord(field) || typeof field.value !== 'string' || !digest(field.compareDigest) || byteLength(field.value) > MAX_BODY_BYTES)
     throw new ApiError(502, 'invalid_saved_player');
   try {
     return { player: sanitizeDigitalPlayer(JSON.parse(field.value), customerId), compareDigest: field.compareDigest, marketingState };

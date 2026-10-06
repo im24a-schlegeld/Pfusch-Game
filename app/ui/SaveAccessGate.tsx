@@ -10,13 +10,14 @@ interface Props {
   checking: boolean;
   message?: string;
   onNewsletter?: () => void;
+  onLogin?: () => void;
   onCheck(): void;
   onStart(): void;
   back(): void;
 }
 
 /** Visiting the shop never grants access; only the repository's fresh check can. */
-export default function SaveAccessGate({ open, access, checking, message, onNewsletter, onCheck, onStart, back }: Props) {
+export default function SaveAccessGate({ open, access, checking, message, onNewsletter, onLogin, onCheck, onStart, back }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   const unavailable = access.reason === 'unavailable';
   const unsubscribed = access.reason === 'unsubscribed';
@@ -39,6 +40,7 @@ export default function SaveAccessGate({ open, access, checking, message, onNews
       {!access.allowed && !unavailable && !onNewsletter && <p>Die Newsletter-Verbindung ist nur im Spiel innerhalb des PFUSCH-Shops verfügbar. In diesem Fenster kann kein Abo bestätigt werden.</p>}
       {message && <output className="save-access-message">{message}</output>}
       <div className="save-access-actions">
+        {!access.allowed && onLogin && <button className="button" onClick={onLogin}>MIT PFUSCH-KONTO ANMELDEN <ExternalLink size={18} aria-hidden="true" /></button>}
         {access.allowed ? <button className="button primary" onClick={onStart} disabled={checking}>FAHRT STARTEN <ArrowRight size={18} aria-hidden="true" /></button>
           : !unavailable && onNewsletter ? <button className="button primary" onClick={onNewsletter}>ZUM NEWSLETTER <ExternalLink size={18} aria-hidden="true" /></button> : null}
         {!access.allowed && <button className="button" onClick={onCheck} disabled={checking}><RefreshCw size={18} aria-hidden="true" />{checking ? 'STATUS WIRD GEPRÜFT …' : 'STATUS PRÜFEN'}</button>}

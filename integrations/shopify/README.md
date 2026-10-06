@@ -1,5 +1,7 @@
 # Wheelie Escape in Shopify
 
+> **Aktuelle Vorgabe vom 06.10.2026:** Vercel war ausschließlich eine Vorschau. Das Spiel soll vollständig bei Shopify laufen; die folgenden früheren Vercel-Release-Anweisungen sind überholt. Die Migration ist noch nicht umgesetzt. Maßgeblicher aktueller Stand und nächste Schritte: [Shopify-only hosting handoff](../../docs/SHOPIFY-HOSTING-NEXT.md). Das Shop-Theme bleibt unveröffentlicht.
+
 Die lokale Integration umfasst eine Online-Store-2.0-Spielansicht, einen Startseitenblock, eine begrenzte Nachrichtenbrücke zum Spiel und serverseitige Kunden-Spielstände. Im Shopify-Shop `gkhnzi-gc.myshopify.com` besteht die **unveröffentlichte Theme-Kopie „Wheelie Escape – Entwurf“**, ID **189577920841**. Das aktive Theme bleibt unverändert. **Die Aktualisierung der bestehenden Vercel-Spieladresse wurde ausdrücklich genehmigt; ausschließlich das Shopify-Theme soll unveröffentlicht bleiben.** Der Spiel-Release wird vorbereitet; eine erfolgreiche Bereitstellung ist erst nach Abschluss gesondert zu bestätigen.
 
 Bestätigter Stand der Shop-Einrichtung:

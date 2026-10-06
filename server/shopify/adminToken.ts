@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { ApiError, type ShopifyConfig } from './auth.js';
+import { byteLength, sha256 } from './crypto.js';
 
 interface CachedToken { key: string; token?: string; expiresAt: number; pending?: Promise<string> }
 const REFRESH_EARLY_MS = 60_000;
@@ -14,7 +14,7 @@ export function createShopifyAdminTokenProvider(now: () => number = Date.now) {
       if (config.adminToken) return config.adminToken;
       throw new ApiError(503, 'not_configured');
     }
-    const key = createHash('sha256').update(JSON.stringify([config.shop, config.clientId, config.secret])).digest('hex');
+    const key = await sha256(JSON.stringify([config.shop, config.clientId, config.secret]));
     if (cached?.key !== key) cached = { key, expiresAt: 0 };
     const entry = cached;
     if (entry.token && now() < entry.expiresAt - REFRESH_EARLY_MS) return entry.token;
@@ -31,7 +31,7 @@ export function createShopifyAdminTokenProvider(now: () => number = Date.now) {
         });
         if (!response.ok) throw new Error('exchange_failed');
         const raw = await response.text();
-        if (Buffer.byteLength(raw) > 16_384) throw new Error('invalid_token_response');
+        if (byteLength(raw) > 16_384) throw new Error('invalid_token_response');
         const result: unknown = JSON.parse(raw);
         if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('invalid_token_response');
         const { access_token: token, expires_in: lifetime, scope } = result as Record<string, unknown>;

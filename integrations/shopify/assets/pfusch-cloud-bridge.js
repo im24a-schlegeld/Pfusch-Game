@@ -105,6 +105,15 @@
         this.openNewsletter();
         return;
       }
+      if (isRecord(message) && message.type === 'pfusch:open-login' && message.version === 1
+        && Object.keys(message).every(key => ['type', 'version'].includes(key))) {
+        // Keep the exact draft route. The OAuth server validates the return URL
+        // and identifies the customer itself; this message carries no identity.
+        const login = new URL('/auth/login', this.gameOrigin);
+        login.searchParams.set('return_to', location.href);
+        window.location.assign(login.href);
+        return;
+      }
       if (!isRecord(message) || message.type !== 'pfusch:cloud-request' || message.version !== 1
         || typeof message.requestId !== 'string' || !/^[a-zA-Z0-9-]{16,64}$/.test(message.requestId)
         || !['GET', 'POST'].includes(message.method)

@@ -354,6 +354,7 @@ export default function GameApp() {
         <Leaderboard player={player} services={services} back={back} />
       )}
       <SaveAccessGate open={accessOpen} access={access} checking={checkingAccess}
+        onLogin={services.auth.login}
         message={accessError || saveStatus?.message} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
           setAccessOpen(false);

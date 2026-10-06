@@ -20,11 +20,14 @@ import catalog from '../../public/catalog/products.json';
 import { ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
 import { ShopifyCloudRepository } from './shopifyCloud';
 import { ShopifyLeaderboardService } from './shopifyLeaderboard';
+import { readOxygenRuntime, startOxygenLogin } from './oxygenRuntime';
+import { OxygenTransport } from './oxygenTransport';
 import { trialAccess, type PlayerAccess } from './playerAccess';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
   getUser(): Promise<{ id: string; kind: 'guest' | 'customer' }>;
+  login?(): void;
 }
 export interface PlayerRepository {
   load(): Promise<Player>;
@@ -343,13 +346,14 @@ export function createServices(): Services {
     setItem: (k, v) => window.localStorage.setItem(k, v),
   };
   const local = new LocalPlayerRepository(storage);
+  const oxygen = readOxygenRuntime(document);
   const parentOrigin = shopifyParentOrigin(window.parent !== window, document.referrer);
-  const transport = parentOrigin ? new ShopifyParentTransport(window, parentOrigin) : null;
+  const transport = oxygen ? new OxygenTransport(window.fetch.bind(window)) : parentOrigin ? new ShopifyParentTransport(window, parentOrigin) : null;
   const cloud = transport
     ? new ShopifyCloudRepository(transport, storage, local, decodePlayer)
     : null;
   return {
-    auth: cloud ?? new GuestAuthService(),
+    auth: oxygen && cloud ? { getUser: () => cloud.getUser(), login: () => startOxygenLogin(window, parentOrigin) } : cloud ?? new GuestAuthService(),
     players: cloud ?? local,
     products: new LocalProductProvider(),
     rewards: new MockRewardService(),

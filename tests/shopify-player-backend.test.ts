@@ -29,7 +29,8 @@ function input(method = 'GET', body: unknown = undefined, url = signed()): Playe
   return { method, url, contentType: 'application/json', readBody: vi.fn(async () => body) };
 }
 function post(player = newPlayer(), compareDigest: string | null = null) {
-  return input('POST', { player, compareDigest, csrfToken: createCsrf({ shop: config.shop, customerId: '12345' }, config.secret, now) });
+  return { ...input('POST'), readBody: vi.fn(async () => ({ player, compareDigest,
+    csrfToken: await createCsrf({ shop: config.shop, customerId: '12345' }, config.secret, now) })) };
 }
 function dependencies(request = vi.fn<typeof fetch>(async () => getResponse())) {
   return { config, now: () => now, request };
@@ -42,14 +43,14 @@ function shopify(saved: unknown = null, state = 'NOT_SUBSCRIBED') {
 }
 
 describe('Shopify App Proxy authentication', () => {
-  it('matches the official canonicalization fixture including repeated values', () => {
+  it('matches the official canonicalization fixture including repeated values', async () => {
     // The documentation now displays {shop}, but its published HMAC is for
     // the original literal shop-name.myshopify.com in the Shopify fixture.
     const source = 'extra=1&extra=2&shop=shop-name.myshopify.com&logged_in_customer_id=1&path_prefix=%2Fapps%2Fawesome_reviews&timestamp=1317327555&signature=4c68c8624d737112c91818c11017d24d334b524cb5c2b8ba08daa056f7395ddb';
-    expect(authenticateProxy(`/?${source}`, { ...config, shop: 'shop-name.myshopify.com', secret: 'hush' }, 1317327555000).customerId).toBe('1');
+    expect((await authenticateProxy(`/?${source}`, { ...config, shop: 'shop-name.myshopify.com', secret: 'hush' }, 1317327555000)).customerId).toBe('1');
   });
-  it('accepts freshly signed requests and a single configured shop', () => {
-    expect(authenticateProxy(signed('12345', now, [['extra', 'one'], ['extra', 'two']]), config, now).customerId).toBe('12345');
+  it('accepts freshly signed requests and a single configured shop', async () => {
+    expect((await authenticateProxy(signed('12345', now, [['extra', 'one'], ['extra', 'two']]), config, now)).customerId).toBe('12345');
     expect(readShopifyConfig({ SHOPIFY_SHOP_DOMAIN: config.shop, SHOPIFY_API_SECRET: config.secret,
       SHOPIFY_ADMIN_ACCESS_TOKEN: config.adminToken })).toEqual(config);
     expect(readShopifyConfig({ SHOPIFY_SHOP_DOMAIN: 'attacker.example/admin', SHOPIFY_API_SECRET: 'x', SHOPIFY_ADMIN_ACCESS_TOKEN: 'y' })).toBeNull();
@@ -64,11 +65,11 @@ describe('Shopify App Proxy authentication', () => {
     ['duplicate timestamp', () => signed('12345', now, [['timestamp', String(now / 1000)]])],
     ['duplicate signature', () => `${signed()}&signature=${'f'.repeat(64)}`],
     ['wrong shop', () => signed().replace(config.shop, 'another.myshopify.com')],
-  ])('rejects %s before reading player data', (_name, makeUrl) => {
-    expect(() => authenticateProxy(makeUrl(), config, now)).toThrow('unauthorized');
+  ])('rejects %s before reading player data', async (_name, makeUrl) => {
+    await expect(authenticateProxy(makeUrl(), config, now)).rejects.toThrow('unauthorized');
   });
-  it('rejects a correctly signed shop not on the configured allowlist', () => {
-    expect(() => authenticateProxy(signed(), { ...config, shop: 'other.myshopify.com' }, now)).toThrow('unauthorized');
+  it('rejects a correctly signed shop not on the configured allowlist', async () => {
+    await expect(authenticateProxy(signed(), { ...config, shop: 'other.myshopify.com' }, now)).rejects.toThrow('unauthorized');
   });
 });
 
@@ -130,8 +131,8 @@ describe('Customer-scoped cloud save', () => {
   it.each(['missing', 'wrong-customer', 'expired', 'tampered'])('rejects %s CSRF without a mutation', async kind => {
     const payload = await post().readBody() as Record<string, unknown>;
     if (kind === 'missing') payload.csrfToken = '';
-    if (kind === 'wrong-customer') payload.csrfToken = createCsrf({ shop: config.shop, customerId: '99999' }, config.secret, now);
-    if (kind === 'expired') payload.csrfToken = createCsrf({ shop: config.shop, customerId: '12345' }, config.secret, now - 901000);
+    if (kind === 'wrong-customer') payload.csrfToken = await createCsrf({ shop: config.shop, customerId: '99999' }, config.secret, now);
+    if (kind === 'expired') payload.csrfToken = await createCsrf({ shop: config.shop, customerId: '12345' }, config.secret, now - 901000);
     if (kind === 'tampered') payload.csrfToken = `${String(payload.csrfToken).slice(0, -4)}ffff`;
     const deps = dependencies();
     expect((await handlePlayerRequest(input('POST', payload), deps)).status).toBe(403);

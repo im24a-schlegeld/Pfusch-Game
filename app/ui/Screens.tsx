@@ -405,6 +405,7 @@ export function SettingsScreen({
         </p>
         {access && access.reason !== 'subscribed' && <p>{Math.min(access.completedRuns, access.freeRuns)} von {access.freeRuns} freien Fahrten abgeschlossen. Danach ist ein aktives PFUSCH-Newsletter-Abo für weitere Fahrten und neue Spielstände nötig.</p>}
         {onAccess && <button className="button mb-3" onClick={onAccess}><Mail size={18} aria-hidden="true" /> NEWSLETTER-STATUS</button>}
+        {services.auth.login && <button className="button mb-3" onClick={services.auth.login}>MIT PFUSCH-KONTO ANMELDEN</button>}
         <button className="button" onClick={exportSave}>
           <Download size={18} /> SPIELSTAND EXPORTIEREN
         </button>

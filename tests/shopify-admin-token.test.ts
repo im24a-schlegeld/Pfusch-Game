@@ -51,7 +51,7 @@ describe('Dev Dashboard server authentication', () => {
     const request = vi.fn<typeof fetch>(() => new Promise<Response>(done => { resolve = done; }));
     const getToken = createShopifyAdminTokenProvider();
     const first = getToken(config, request), second = getToken(config, request);
-    expect(request).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(1));
     resolve(tokenResponse());
     await expect(Promise.all([first, second])).resolves.toEqual(['test-access-token', 'test-access-token']);
   });

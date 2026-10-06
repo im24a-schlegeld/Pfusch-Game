@@ -1,6 +1,6 @@
-import { createHmac } from 'node:crypto';
 import type { Player } from '../../app/domain/types.js';
-import { ApiError, authenticateProxy, type ShopifyConfig } from './auth.js';
+import { ApiError, assertCustomerIdentity, authenticateProxy, type CustomerAuthenticator, type ShopifyConfig } from './auth.js';
+import { hmacSha256 } from './crypto.js';
 import { shopifyGraphql, PLAYER_NAMESPACE, type ShopifyFetch } from './playerStore.js';
 import { isRecord } from './playerValidation.js';
 
@@ -12,8 +12,8 @@ const periods: Period[] = ['day', 'week', 'all'];
 const KEY = 'leaderboard_v1';
 const LIMIT = 50;
 const validScore = (score: unknown): score is number => typeof score === 'number' && Number.isSafeInteger(score) && score > 0 && score <= 1e12;
-export function playerAlias(config: ShopifyConfig, customerId: string) {
-  return createHmac('sha256', config.secret).update(`pfusch-ranking-v1:${config.shop}:${customerId}`).digest('hex').slice(0, 16);
+export async function playerAlias(config: ShopifyConfig, customerId: string) {
+  return (await hmacSha256(`pfusch-ranking-v1:${config.shop}:${customerId}`, config.secret)).slice(0, 16);
 }
 export function rankingWindows(now: number): Record<Period, string> {
   const day = new Date(now).toISOString().slice(0, 10);
@@ -79,7 +79,7 @@ export async function updateRanking(config: ShopifyConfig, customerId: string, p
   for (let attempt = 0; attempt < 3; attempt++) {
     const attemptNow = now ?? Date.now();
     const saved = await loadBoard(config, request, attemptNow);
-    const board = mergeRanking(saved.board, playerAlias(config, customerId), player, attemptNow);
+    const board = mergeRanking(saved.board, await playerAlias(config, customerId), player, attemptNow);
     if (JSON.stringify(saved.board) === JSON.stringify(board)) return;
     const result = await shopifyGraphql(config, `mutation SaveGameRanking($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) { userErrors { code } }
@@ -94,16 +94,17 @@ export async function updateRanking(config: ShopifyConfig, customerId: string, p
   }
   throw new ApiError(409, 'ranking_busy');
 }
-export async function handleRankingRequest(method: string, url: string, config: ShopifyConfig | null, request: ShopifyFetch, now = Date.now()) {
+export async function handleRankingRequest(method: string, url: string, config: ShopifyConfig | null, request: ShopifyFetch, now = Date.now(),
+  authenticate: CustomerAuthenticator = authenticateProxy) {
   try {
     if (method !== 'GET') throw new ApiError(405, 'method_not_allowed');
     if (!config) throw new ApiError(503, 'not_configured');
-    const identity = authenticateProxy(url, config, now);
+    const identity = assertCustomerIdentity(await authenticate(url, config, now), config);
     const query = new URL(url, 'https://backend.invalid').searchParams;
     const period = query.get('period');
     if (query.getAll('period').length !== 1 || !periods.includes(period as Period)) throw new ApiError(400, 'invalid_period');
     const { board } = await loadBoard(config, request, now);
-    const you = playerAlias(config, identity.customerId);
+    const you = await playerAlias(config, identity.customerId);
     return { status: 200, body: { source: 'shopify', entries: board[period as Period].rows.map(row => ({
       name: row.alias === you ? 'DU' : `RIDER ${row.alias.slice(0, 6).toUpperCase()}`, score: row.score, you: row.alias === you,
     })), message: 'Top 50 · gespeicherte Fahrten aus dem Shop' } };

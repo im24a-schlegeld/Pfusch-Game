@@ -11,7 +11,7 @@ interface Bridge {
 function harness(customerState: string | null = null) {
   let Registered: new () => Bridge;
   const frameWindow = { postMessage: vi.fn() };
-  const titleFocus = vi.fn(), frameFocus = vi.fn(), fetch = vi.fn();
+  const titleFocus = vi.fn(), frameFocus = vi.fn(), fetch = vi.fn(), navigate = vi.fn();
   const listeners = new Map<string, (event?: unknown) => void>();
   const mainClass = { add: vi.fn(), remove: vi.fn() };
   const pageClass = { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() };
@@ -48,18 +48,18 @@ function harness(customerState: string | null = null) {
       disconnect = disconnect;
     },
     customElements: { get: () => undefined, define: (_name: string, constructor: new () => Bridge) => { Registered = constructor; } },
-    location: { origin: 'https://pfusch-clothing.ch' },
+    location: { origin: 'https://pfusch-clothing.ch', href: 'https://pfusch-clothing.ch/?preview_theme_id=189577920841&view=wheelie-escape' },
     document: {
       activeElement: frame,
       documentElement: { classList: pageClass },
       querySelectorAll: () => [header],
       querySelector: () => null,
     },
-    window: { addEventListener: vi.fn(), removeEventListener: vi.fn(), visualViewport: viewport, innerHeight: 844 },
+    window: { addEventListener: vi.fn(), removeEventListener: vi.fn(), visualViewport: viewport, innerHeight: 844, location: { assign: navigate } },
   });
   const bridge = new Registered!();
   bridge.connectedCallback();
-  return { bridge, frameWindow, titleFocus, frameFocus, fetch, dialog, listeners, pageClass, mainClass, gameClass, setProperty, observe, disconnect,
+  return { bridge, frameWindow, titleFocus, frameFocus, fetch, dialog, listeners, pageClass, mainClass, gameClass, setProperty, observe, disconnect, navigate,
     resize: (nextTop: number, nextHeight: number, offsetTop = 0) => {
       top = nextTop; viewport.height = nextHeight; viewport.offsetTop = offsetTop; resizeCallback();
     } };
@@ -67,6 +67,18 @@ function harness(customerState: string | null = null) {
 
 const openMessage = { type: 'pfusch:open-newsletter', version: 1 };
 describe('newsletter navigation from the embedded game', () => {
+  it('starts server OAuth at the configured game origin and keeps the exact draft return route', async () => {
+    const context = harness();
+    const message = { type: 'pfusch:open-login', version: 1 };
+    await context.bridge.handle({ origin: 'https://evil.example', source: context.frameWindow, data: message });
+    await context.bridge.handle({ origin: 'https://pfusch-game.vercel.app', source: context.frameWindow, data: { ...message, customerId: '123' } });
+    expect(context.navigate).not.toHaveBeenCalled();
+    await context.bridge.handle({ origin: 'https://pfusch-game.vercel.app', source: context.frameWindow, data: message });
+    const login = new URL(context.navigate.mock.calls[0][0]);
+    expect(login.origin + login.pathname).toBe('https://pfusch-game.vercel.app/auth/login');
+    expect(login.searchParams.get('return_to')).toBe('https://pfusch-clothing.ch/?preview_theme_id=189577920841&view=wheelie-escape');
+    expect(context.fetch).not.toHaveBeenCalled();
+  });
   it('keeps the newsletter closed on load and opens the modal without subscribing or leaving the draft', async () => {
     const context = harness();
     expect(context.dialog.showModal).not.toHaveBeenCalled();
