@@ -76,7 +76,19 @@ async function objectResponse(response: Response) {
   return value;
 }
 async function discovery(config: OxygenAuthConfig, fetcher: typeof fetch, kind: 'openid-configuration' | 'customer-account-api') {
-  return objectResponse(await fetcher(`${config.storefront}/.well-known/${kind}`, { redirect: 'error', headers: { Accept: 'application/json' } }));
+  // A shop's vanity domain can redirect or omit the Customer Account
+  // discovery document. Shopify's canonical myshopify domain is the stable
+  // fallback while the configured storefront remains the preferred origin.
+  const origins = [...new Set([config.storefront, `https://${config.shop}`])];
+  let failure: unknown;
+  for (const origin of origins) {
+    try {
+      return await objectResponse(await fetcher(`${origin}/.well-known/${kind}`, { redirect: 'error', headers: { Accept: 'application/json' } }));
+    } catch (error) {
+      failure = error;
+    }
+  }
+  throw failure instanceof ApiError ? failure : new ApiError(503, 'discovery_unavailable');
 }
 export async function startLogin(request: Request, config: OxygenAuthConfig, fetcher: typeof fetch, now = Date.now()) {
   const parameters = new URL(request.url).searchParams;
