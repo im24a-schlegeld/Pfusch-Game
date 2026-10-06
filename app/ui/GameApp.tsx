@@ -377,7 +377,7 @@ export default function GameApp() {
       )}
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
         onLogin={services.auth.login}
-        message={accessError || saveStatus?.message} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
+        message={accessError} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
           setAccessOpen(false);
           window.parent.postMessage({ type: 'pfusch:open-newsletter', version: 1 }, newsletterOrigin);
