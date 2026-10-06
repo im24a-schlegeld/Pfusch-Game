@@ -1,7 +1,8 @@
 import {
   Component,
+  lazy,
+  Suspense,
   useEffect,
-  type ComponentProps,
   type ErrorInfo,
   type ReactNode,
 } from 'react';
@@ -10,7 +11,9 @@ import { Progress } from '@/components/ui/progress';
 import type { Player } from '../domain/types';
 import { levelProgress } from '../domain/progression';
 import LoadingScreen, { PreviewLoading } from './LoadingScreen';
-import SceneView, { preloadBikeAsset } from '../game/SceneView';
+type SceneModule = Pick<typeof import('../game/SceneView'), 'default'> &
+  Partial<Pick<typeof import('../game/SceneView'), 'preloadBikeAsset'>>;
+let sceneModule: Promise<SceneModule> | undefined;
 function SceneLoadError({ onLoadError }: { onLoadError?: (message: string) => void }) {
   useEffect(() => { onLoadError?.('3D-Ansicht konnte nicht geladen werden.'); }, [onLoadError]);
   return (
@@ -46,14 +49,18 @@ class SceneErrorBoundary extends Component<
     return this.state.failed ? <SceneLoadError onLoadError={this.props.onLoadError} /> : this.props.children;
   }
 }
-/** Keep the renderer in the main client bundle so hosts cannot lose a dynamic Scene chunk. */
-export function preloadScene(bike?: Player['bike']) {
-  return (bike ? preloadBikeAsset(bike) : Promise.resolve()).then(() => ({
-    default: SceneView,
-    preloadBikeAsset,
-  }));
+/** Preload code only; the renderer is still created by the mounted Scene. */
+export function preloadScene(bike?: Player['bike']): Promise<SceneModule> {
+  sceneModule ??= import('../game/SceneView').catch((error: unknown) => {
+    console.error('3D-Ansicht konnte nicht geladen werden.', error);
+    return { default: SceneLoadError };
+  });
+  return bike ? sceneModule.then(async (module) => {
+    if (module.preloadBikeAsset) await module.preloadBikeAsset(bike);
+    return module;
+  }) : sceneModule;
 }
-export const Scene = SceneView;
+export const Scene = lazy(() => preloadScene());
 export const fmt = (n: number) => Math.floor(n).toLocaleString('en-CH');
 export const money = (n: number) => `CHF ${n.toFixed(2)}`;
 export function gameText(text: string) {
@@ -86,10 +93,12 @@ export function gameText(text: string) {
 export function SceneLoading({ mode }: { mode: 'menu' | 'garage' | 'ride' }) {
   return mode === 'ride' ? <LoadingScreen label="STRECKE WIRD GELADEN" fullScreen /> : <PreviewLoading />;
 }
-export function Preview(props: ComponentProps<typeof Scene>) {
+export function Preview(props: React.ComponentProps<typeof Scene>) {
   return (
     <SceneErrorBoundary onLoadError={props.onLoadError}>
-      <Scene {...props} />
+      <Suspense fallback={<SceneLoading mode={props.mode} />}>
+        <Scene {...props} />
+      </Suspense>
     </SceneErrorBoundary>
   );
 }
