@@ -1,10 +1,10 @@
 import {
   Component,
-  lazy,
-  Suspense,
   useEffect,
+  useState,
   type ErrorInfo,
   type ReactNode,
+  type ComponentProps,
 } from 'react';
 import { ArrowUpRight, Coins, ChevronLeft } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -14,11 +14,12 @@ import LoadingScreen, { PreviewLoading } from './LoadingScreen';
 type SceneModule = Pick<typeof import('../game/SceneView'), 'default'> &
   Partial<Pick<typeof import('../game/SceneView'), 'preloadBikeAsset'>>;
 let sceneModule: Promise<SceneModule> | undefined;
-function SceneLoadError({ onLoadError }: { onLoadError?: (message: string) => void }) {
-  useEffect(() => { onLoadError?.('3D-Ansicht konnte nicht geladen werden.'); }, [onLoadError]);
+function SceneLoadError({ onLoadError, detail }: { onLoadError?: (message: string) => void; detail?: string }) {
+  const message = detail || '3D-Ansicht konnte nicht geladen werden.';
+  useEffect(() => { onLoadError?.(message); }, [message, onLoadError]);
   return (
     <div className="scene-loading" role="alert">
-      <span>3D-Ansicht konnte nicht geladen werden.</span>
+      <span>{message}</span>
       <button className="button" onClick={() => window.location.reload()}>
         NEU LADEN
       </button>
@@ -52,15 +53,34 @@ class SceneErrorBoundary extends Component<
 /** Preload code only; the renderer is still created by the mounted Scene. */
 export function preloadScene(bike?: Player['bike']): Promise<SceneModule> {
   sceneModule ??= import('../game/SceneView').catch((error: unknown) => {
-    console.error('3D-Ansicht konnte nicht geladen werden.', error);
-    return { default: SceneLoadError };
+    sceneModule = undefined;
+    throw error;
   });
   return bike ? sceneModule.then(async (module) => {
     if (module.preloadBikeAsset) await module.preloadBikeAsset(bike);
     return module;
   }) : sceneModule;
 }
-export const Scene = lazy(() => preloadScene());
+type SceneProps = ComponentProps<SceneModule['default']>;
+function SceneHost(props: SceneProps) {
+  const [loaded, setLoaded] = useState<SceneModule['default'] | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    void preloadScene().then((module) => {
+      if (active) setLoaded(() => module.default);
+    }).catch((reason: unknown) => {
+      console.error('3D-Ansicht konnte nicht geladen werden.', reason);
+      if (active) setError(reason instanceof Error ? reason.message : '3D-Ansicht konnte nicht geladen werden.');
+    });
+    return () => { active = false; };
+  }, []);
+  if (error) return <SceneLoadError onLoadError={props.onLoadError} detail={error} />;
+  if (!loaded) return <SceneLoading mode={props.mode} />;
+  const LoadedScene = loaded;
+  return <LoadedScene {...props} />;
+}
+export const Scene = SceneHost;
 export const fmt = (n: number) => Math.floor(n).toLocaleString('en-CH');
 export const money = (n: number) => `CHF ${n.toFixed(2)}`;
 export function gameText(text: string) {
@@ -93,12 +113,10 @@ export function gameText(text: string) {
 export function SceneLoading({ mode }: { mode: 'menu' | 'garage' | 'ride' }) {
   return mode === 'ride' ? <LoadingScreen label="STRECKE WIRD GELADEN" fullScreen /> : <PreviewLoading />;
 }
-export function Preview(props: React.ComponentProps<typeof Scene>) {
+export function Preview(props: ComponentProps<typeof Scene>) {
   return (
     <SceneErrorBoundary onLoadError={props.onLoadError}>
-      <Suspense fallback={<SceneLoading mode={props.mode} />}>
-        <Scene {...props} />
-      </Suspense>
+      <Scene {...props} />
     </SceneErrorBoundary>
   );
 }
