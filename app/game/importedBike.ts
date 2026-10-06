@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Player, Product } from '../domain/types';
 import { BIKE_MODEL_SCALES } from './vehicleScale';
-import { resolveRiderPose, type RiderPose, type Point } from './riderSkeleton';
+import { BIKE_CONTACTS, resolveRiderPose, type RiderPose, type Point } from './riderSkeleton';
 import type { RiderMotion } from './riderMotion';
 import type { RagdollPose } from './ragdoll';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
@@ -124,6 +124,12 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     return anchor;
   });
   const hip = point(source.hip).multiplyScalar(modelScale).toArray() as Point;
+  // The scooter uses this imported path at runtime. Keep its actual seat
+  // height and handlebar/peg anchors, but move the pelvis onto the rear half
+  // of the saddle and use the same natural forward lean as the shared rider
+  // contact definition. The skeleton and all limb lengths remain unchanged.
+  const scooterRiderContact = id === 'scooter' ? BIKE_CONTACTS.scooter : undefined;
+  if (scooterRiderContact) hip[2] = scooterRiderContact.hip[2];
   // An imported seat anchor is the upholstery surface, not the human hip joint.
   // The immutable trouser shell extends 92 mm below that joint. Measure the
   // actual saddle under the pelvis and put that shell on top of it.
@@ -151,10 +157,11 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   const grip = point(source.grip).multiplyScalar(modelScale).toArray() as Point;
   const peg = point(source.peg).multiplyScalar(modelScale).toArray() as Point;
   let pose: RiderPose | undefined;
+  const riderLean = scooterRiderContact?.torsoLean ?? nominalLean[id];
   for (let step = 0; step <= 24 && !pose; step++) {
     for (const direction of step === 0 ? [1] : [1, -1]) {
       try {
-        pose = resolveRiderPose({ hip, grip, peg, torsoLean: nominalLean[id] + direction * step * 0.025 });
+        pose = resolveRiderPose({ hip, grip, peg, torsoLean: riderLean + direction * step * 0.025 });
         break;
       } catch (error) { if (!(error instanceof RangeError)) throw error; }
     }

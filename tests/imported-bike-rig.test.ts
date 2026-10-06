@@ -94,6 +94,12 @@ describe.each(['450', '701', 'scooter'] as const)('Imported %s animation contrac
     expect(model.pose.contactGrips?.[0][2]).not.toBe(model.pose.contactGrips?.[1][2]);
   });
 
+  it('puts the imported scooter rider on the rear half of the saddle', () => {
+    if (id !== 'scooter') return;
+    expect(bike().pose.hip[2]).toBeCloseTo(0.36, 6);
+    expect(bike().pose.torsoLean).toBeCloseTo(0.34, 6);
+  });
+
   it('owns independent geometries and materials for appearance rebuilds', () => {
     const first = bike(), second = bike();
     const firstTire = first.wheels[0].getObjectByName('tire') as Mesh;
