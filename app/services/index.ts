@@ -17,7 +17,7 @@ import { isHelmet, isHelmetColor, isVisorColor } from '../domain/helmet';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../domain/stickers';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
 import catalog from '../../public/catalog/products.json';
-import { ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
+import { SHOPIFY_BRIDGE_VERSION, ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
 import { ShopifyCloudRepository } from './shopifyCloud';
 import { ShopifyLeaderboardService } from './shopifyLeaderboard';
 import { readOxygenRuntime, startOxygenLogin } from './oxygenRuntime';
@@ -352,8 +352,15 @@ export function createServices(): Services {
   const cloud = transport
     ? new ShopifyCloudRepository(transport, storage, local, decodePlayer)
     : null;
+  const shopifyLogin = parentOrigin
+    ? () => window.parent.postMessage({ type: 'pfusch:open-login', version: SHOPIFY_BRIDGE_VERSION }, parentOrigin)
+    : undefined;
   return {
-    auth: oxygen && cloud ? { getUser: () => cloud.getUser(), login: () => startOxygenLogin(window, parentOrigin) } : cloud ?? new GuestAuthService(),
+    auth: oxygen && cloud
+      ? { getUser: () => cloud.getUser(), login: () => startOxygenLogin(window, parentOrigin) }
+      : cloud
+        ? { getUser: () => cloud.getUser(), ...(shopifyLogin ? { login: shopifyLogin } : {}) }
+        : new GuestAuthService(),
     players: cloud ?? local,
     products: new LocalProductProvider(),
     rewards: new MockRewardService(),

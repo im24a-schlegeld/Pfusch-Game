@@ -107,10 +107,10 @@
       }
       if (isRecord(message) && message.type === 'pfusch:open-login' && message.version === 1
         && Object.keys(message).every(key => ['type', 'version'].includes(key))) {
-        // Keep the exact draft route. The OAuth server validates the return URL
-        // and identifies the customer itself; this message carries no identity.
-        const login = new URL('/auth/login', this.gameOrigin);
-        login.searchParams.set('return_to', location.href);
+        // Use Shopify's customer login so the parent page receives the
+        // authenticated customer cookie before the iframe reloads.
+        const login = new URL('/account/login', location.origin);
+        login.searchParams.set('return_url', `${location.pathname}${location.search}${location.hash}`);
         window.location.assign(login.href);
         return;
       }

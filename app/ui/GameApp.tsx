@@ -42,6 +42,8 @@ type Screen =
 export default function GameApp() {
   const embedded = window.parent !== window;
   const parentOrigin = shopifyParentOrigin(embedded, document.referrer);
+  const oxygenRuntime = !!document.getElementById('pfusch-runtime-config');
+  const vercelPreview = !embedded && !oxygenRuntime && window.location.hostname.endsWith('.vercel.app');
   const development = (import.meta as ImportMeta & { env: { DEV: boolean } }).env.DEV;
   const viewportOrigin = rideViewportParentOrigin(embedded, document.referrer, development ? window.location.origin : undefined);
   const [services] = useState<Services>(() => createServices());
@@ -166,6 +168,21 @@ export default function GameApp() {
     setStartingRide(startRide);
     setAccessError('');
     try {
+      if (vercelPreview) {
+        if (!startRide) return;
+        setAccessOpen(false);
+        if (!current.current.settings.tutorialSeen) {
+          setTutorial(true);
+          return;
+        }
+        activeRun.current += 1;
+        pendingResult.current = null;
+        setResult(null);
+        setRunKey(activeRun.current);
+        setScreen('ride');
+        services.analytics.track('run_started');
+        return;
+      }
       const access = await services.players.refreshAccess?.()
         ?? services.players.getAccess?.() ?? unavailableAccess(current.current.runsPlayed);
       if (request !== accessRequest.current) return;
@@ -353,7 +370,7 @@ export default function GameApp() {
       {screen === 'leaderboard' && (
         <Leaderboard player={player} services={services} back={back} />
       )}
-      <SaveAccessGate open={accessOpen} access={access} checking={checkingAccess}
+      <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
         onLogin={services.auth.login}
         message={accessError || saveStatus?.message} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
