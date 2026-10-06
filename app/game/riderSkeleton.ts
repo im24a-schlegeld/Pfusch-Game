@@ -122,14 +122,13 @@ export const BIKE_CONTACTS: Readonly<Record<BikeModelId, RiderTarget>> =
       torsoLean: 0.16,
     },
     scooter: {
-      // Keep the fixed rider skeleton unchanged while moving the scooter's
-      // contact target toward the rear half of the seat.
-      // A modest rearward move keeps the fixed adult arms within their
-      // authored reach while placing the rider on the rear half of the seat.
-      hip: [0, 0.87, 0.32],
+      // Keep the fixed rider skeleton unchanged while placing the pelvis on
+      // the rear half of the seat. The torso leans naturally toward the bars
+      // so the fixed adult arms still reach their authored contact target.
+      hip: [0, 0.87, 0.36],
       grip: [0.31, 1.12, -0.4],
       peg: [0.2, 0.3, -0.13],
-      torsoLean: 0.25,
+      torsoLean: 0.34,
     },
     '450': {
       hip: [0, 1.0, 0.18],

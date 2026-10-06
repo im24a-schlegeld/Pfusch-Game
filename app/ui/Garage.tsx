@@ -72,6 +72,11 @@ export default function Garage({
   const appearance = draft ?? player;
   const bike = BIKES.find((b) => b.id === appearance.bike) ?? BIKES[0];
   const owned = (id: string) => player.ownedItems.includes(id);
+  // Shopify saves are debounced so ordinary HUD edits stay cheap. Purchases
+  // and explicit equipment changes must survive an immediate page reload, so
+  // flush the repository right after the state update when that adapter
+  // supports it. Local storage remains synchronous and needs no extra work.
+  const flushSave = () => { void services.players.flush?.(); };
   const rememberProduct = (id: string) =>
     setRecentProductIds((ids) => [id, ...ids.filter((value) => value !== id)].slice(0, 3));
   function unlockProduct(p: Product, config: ProductConfiguration) {
@@ -83,6 +88,7 @@ export default function Garage({
     }
     if (supportsHood(p)) {
       update(unlocked);
+      flushSave();
       setDraft(previewLoadout(unlocked, p, config));
       notify(
         `${p.title} freigeschaltet. Mit Ausrüsten wird deine Auswahl gespeichert.`,
@@ -93,6 +99,7 @@ export default function Garage({
       const equipped = equipConfiguration(unlocked, p, config);
       if (equipped) {
         update(equipped);
+        flushSave();
         setDraft(null);
         setSelected(null);
         setConfiguration(null);
@@ -102,6 +109,7 @@ export default function Garage({
       }
     }
     update(unlocked);
+    flushSave();
     setDraft(null);
     setSelected(null);
     setConfiguration(null);
@@ -115,6 +123,7 @@ export default function Garage({
       return;
     }
     update(next);
+    flushSave();
     setDraft(null);
     services.analytics.track('product_equipped', { id: p.id });
     notify(`${p.title} ausgerüstet und gespeichert.`);
@@ -126,6 +135,7 @@ export default function Garage({
     const equipped = { ...player.equipped };
     delete equipped[slot];
     update({ ...player, equipped });
+    flushSave();
     if (selected?.id === p.id) {
       setDraft(null);
       setSelected(null);
@@ -146,6 +156,7 @@ export default function Garage({
     }
     if (next === player) return;
     update(next);
+    flushSave();
     // Buying changes ownership only. Keep the free try-on setup until Equip.
     setDraft((current) => current ? { ...current, coins: next.coins, ownedItems: next.ownedItems } : null);
     notify(`${name} gekauft. Mit Ausrüsten wird deine Auswahl gespeichert.`);
@@ -154,6 +165,7 @@ export default function Garage({
     if (Object.entries(values).some(([kind, value]) => !owned(`${kind}:${value}`))) return;
     if (values.bike && player.level < (BIKES.find((entry) => entry.id === values.bike)?.level ?? Infinity)) return;
     update({ ...player, ...values });
+    flushSave();
     setDraft(null);
     notify('Ausgerüstet und gespeichert.');
   }
@@ -572,11 +584,12 @@ export default function Garage({
       const next = unlock(player, product.id, digitalPrice(product));
       if (!next) { notify('Du brauchst mehr Coins.'); return; }
       update(next);
+      flushSave();
       notify('Sticker gekauft. Deine Platzierung bleibt in der Vorschau.');
     }} onSave={(drafts) => {
       const next = saveStickerTargets(player, drafts, products);
       if (!next) { notify('Sticker und gegebenenfalls das Fahrzeug zuerst freischalten.'); return; }
-      update(next); setStickerBike(null); setDraft(null); notify('Sticker platziert und gespeichert.');
+      update(next); flushSave(); setStickerBike(null); setDraft(null); notify('Sticker platziert und gespeichert.');
     }}/>
   </Suspense>;
   return (
