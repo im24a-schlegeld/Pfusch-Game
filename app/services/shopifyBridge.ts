@@ -2,6 +2,7 @@ export const SHOPIFY_PARENT_ORIGINS = new Set([
   'https://pfusch-clothing.ch',
   'https://www.pfusch-clothing.ch',
 ]);
+export const SHOPIFY_STOREFRONT_ORIGIN = 'https://pfusch-clothing.ch';
 export const SHOPIFY_BRIDGE_VERSION = 1;
 export const SHOPIFY_PAYLOAD_LIMIT = 131072;
 

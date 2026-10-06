@@ -13,7 +13,7 @@ import type { Player, Product, RunReward, RunStats } from '../domain/types';
 import { refreshDaily } from '../domain/progression';
 import { createServices, type Services } from '../services';
 import { unavailableAccess } from '../services/playerAccess';
-import { shopifyParentOrigin } from '../services/shopifyBridge';
+import { shopifyParentOrigin, SHOPIFY_STOREFRONT_ORIGIN } from '../services/shopifyBridge';
 import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/shopifyViewport';
 import { GameAudio } from '../game/audio';
 import { Coin } from './shared';
@@ -300,6 +300,7 @@ export default function GameApp() {
       </>
     );
   const back = () => navigate('garage');
+  const goToShop = () => window.location.assign(`${SHOPIFY_STOREFRONT_ORIGIN}/`);
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
   const newsletterOrigin = parentOrigin;
   const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET'
@@ -308,7 +309,7 @@ export default function GameApp() {
     <>
     <div className={`app-shell${embedded ? ' app-shell-embedded' : ''}`} data-screen={screen} inert={loadingLabel ? true : undefined}>
       {!embedded && screen !== 'results' && <header className="topbar">
-        <button className="brand" aria-label="Wheelie Escape Garage" onClick={back}>
+        <button className="brand" aria-label="PFUSCH-Shop öffnen" onClick={goToShop}>
           <img className="brand-logo" src="/branding/pfusch-logo.webp" alt="Pfusch" />
           <span className="brand-sub">WHEELIE ESCAPE</span>
         </button>
