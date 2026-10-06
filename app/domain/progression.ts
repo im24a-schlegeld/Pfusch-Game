@@ -2,6 +2,16 @@ import { DAILY_CHALLENGES, LEVELS } from './config.js';
 import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet.js';
 import { equipmentSlot } from './preview.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
+export const LEADERBOARD_NAME_MAX_LENGTH = 24;
+export function normalizeLeaderboardName(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const name = value.trim().replace(/\s+/g, ' ');
+  if (!name || name.length > LEADERBOARD_NAME_MAX_LENGTH || [...name].some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127;
+  })) return '';
+  return name;
+}
 export const dayKey = (date = new Date()) => date.toISOString().slice(0, 10);
 export const levelForXp = (xp: number) =>
   Math.max(1, LEVELS.filter((n) => xp >= n).length);
@@ -47,6 +57,7 @@ export function newPlayer(): Player {
     challenges: { date: dayKey(), values: {}, claimed: [] },
     redeemedRewards: [],
     processedRuns: [],
+    leaderboardName: '',
     settings: {
       muted: true,
       reducedMotion: false,

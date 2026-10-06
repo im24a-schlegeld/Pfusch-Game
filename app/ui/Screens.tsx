@@ -31,7 +31,7 @@ import {
   REWARDS,
 } from '../domain/config';
 import { Coin, ScreenHeading, XpBar, fmt } from './shared';
-import { refreshDaily } from '../domain/progression';
+import { normalizeLeaderboardName, refreshDaily } from '../domain/progression';
 interface Base {
   player: Player;
   back: () => void;
@@ -255,13 +255,16 @@ export function Rewards({
 export function Leaderboard({
   player,
   services,
+  update,
   back,
-}: Base & { services: Services }) {
+}: Base & { services: Services; update: (player: Player) => void }) {
   const [period, setPeriod] = useState<'Today' | 'This week' | 'All time'>(
     'Today',
   );
   const [result, setResult] = useState<{ snapshot: LeaderboardSnapshot | null; loading: boolean; error: boolean }>({ snapshot: null, loading: true, error: false });
   const [revision, setRevision] = useState(0);
+  const [draftName, setDraftName] = useState(player.leaderboardName);
+  useEffect(() => setDraftName(player.leaderboardName), [player.leaderboardName]);
   useEffect(() => {
     let current = true;
     setResult({ snapshot: null, loading: true, error: false });
@@ -279,6 +282,8 @@ export function Leaderboard({
   }, [services.leaderboard, player, period, revision]);
   const entries = result.snapshot?.entries ?? [];
   const online = result.snapshot?.source === 'shopify';
+  const normalizedName = normalizeLeaderboardName(draftName);
+  const invalidName = Boolean(draftName.trim()) && !normalizedName;
   return (
     <main className="standard-page narrow">
       <ScreenHeading
@@ -299,6 +304,28 @@ export function Leaderboard({
           ))}
         </TabsList>
       </Tabs>
+      <section className="settings-section leaderboard-name-form" aria-labelledby="leaderboard-name-title">
+        <h2 id="leaderboard-name-title">DEIN RANGLISTENNAME</h2>
+        <p>Gib dir einen Namen für deine Bestwerte. Leer bleibt die neutrale Anzeige „DU“.</p>
+        <label htmlFor="leaderboard-name">Anzeigename</label>
+        <input
+          id="leaderboard-name"
+          type="text"
+          value={draftName}
+          maxLength={24}
+          autoComplete="nickname"
+          placeholder="z. B. Dario"
+          onChange={(event) => setDraftName(event.target.value)}
+        />
+        {invalidName && <p role="alert">Nutze maximal 24 Zeichen ohne Steuerzeichen.</p>}
+        <button
+          className="button small"
+          disabled={invalidName || normalizedName === player.leaderboardName}
+          onClick={() => update({ ...player, leaderboardName: normalizedName })}
+        >
+          NAMEN SPEICHERN
+        </button>
+      </section>
       {result.loading && <output className="ranking-state"><span className="spinner" /> BESTWERTE WERDEN GELADEN</output>}
       {result.error && <div className="ranking-state"><p>Die Rangliste ist gerade nicht erreichbar.</p><button className="button small" onClick={() => setRevision((value) => value + 1)}>ERNEUT LADEN</button></div>}
       {!result.loading && !result.error && entries.length === 0 && <div className="ranking-state"><Trophy size={32} aria-hidden="true" /><h2>DEINE ERSTE MARKE FEHLT NOCH.</h2><p>Beende eine Fahrt, um hier deinen Punktestand zu sehen.</p><button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button></div>}

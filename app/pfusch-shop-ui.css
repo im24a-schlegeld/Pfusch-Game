@@ -2350,7 +2350,6 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
 /* Four destinations, with visible symbols instead of text-only tabs. */
 .bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 .app-shell.app-shell-embedded { grid-template-rows: 0 minmax(0, 1fr) auto !important; }
-.app-shell.app-shell-embedded:has(> .account-save-status) { grid-template-rows: 0 auto minmax(0, 1fr) auto !important; }
 .app-shell-embedded > .bottom-nav { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
 .app-shell-embedded .preview-top { flex-wrap: wrap; gap: 6px; }
 .garage-balance { display: flex; align-items: center; gap: 10px; margin-left: auto; }

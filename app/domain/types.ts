@@ -139,6 +139,8 @@ export interface Player {
   challenges: ChallengeProgress;
   redeemedRewards: string[];
   processedRuns: string[];
+  /** Optional public leaderboard label; empty uses the neutral rider label. */
+  leaderboardName: string;
   settings: Settings;
   history: { score: number; date: string }[];
 }

@@ -1,4 +1,4 @@
-# Server-only Vercel environment variables. Dummy values; replace in deployment settings.
+# Server-only Shopify Oxygen environment variables. Dummy values; replace in Oxygen settings.
 # Never prefix these with VITE_ or place secrets in theme/browser code.
 SHOPIFY_SHOP_DOMAIN=your-store.myshopify.com
 # New Dev Dashboard app, installed on a store in the same Shopify organization.

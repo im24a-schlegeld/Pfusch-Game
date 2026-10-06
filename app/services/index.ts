@@ -9,6 +9,7 @@ import type {
 import {
   finishRun,
   levelForXp,
+  normalizeLeaderboardName,
   newPlayer,
   refreshDaily,
 } from '../domain/progression';
@@ -170,6 +171,11 @@ export function decodePlayer(raw: string): Player {
   if (isRecord(v.variants))
     for (const [id, value] of Object.entries(v.variants))
       if (typeof value === 'string') p.variants[id] = value;
+  if (v.leaderboardName !== undefined) {
+    const name = normalizeLeaderboardName(v.leaderboardName);
+    if (typeof v.leaderboardName === 'string' && (!v.leaderboardName.trim() || name))
+      p.leaderboardName = name;
+  }
   // Additive v1 migration: earlier saves have no customization map or hood flag.
   // Missing/invalid hood flags stay off; recover each optional field independently.
   if (isRecord(v.customizations))
@@ -322,7 +328,7 @@ export class LocalLeaderboardService implements LeaderboardService {
       .map((r) => r.score);
     const top = period === 'All time' ? p.highScore : Math.max(0, ...scores);
     if (period === 'All time' ? !p.runsPlayed && top === 0 : scores.length === 0) return [];
-    return [{ name: 'DU', score: top, you: true }];
+    return [{ name: p.leaderboardName || 'DU', score: top, you: true }];
   }
 }
 export class LocalAnalyticsService implements AnalyticsService {

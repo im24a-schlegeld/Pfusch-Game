@@ -1,6 +1,6 @@
 # Wheelie Escape
 
-A supermoto arcade game for PFUSCH Clothing. React 19, strict TypeScript, Three.js, Vite. The current local implementation permits five guest rides without credentials; continuing then requires a Shopify customer account with a confirmed newsletter subscription. The Shopify draft theme has a verified mobile menu entry and game route. Updating the existing Vercel game deployment is explicitly authorized; the Shopify theme must remain unpublished. The game update is prepared for release, while real customer account integration still requires configuration and live verification.
+A supermoto arcade game for PFUSCH Clothing. React 19, strict TypeScript, Three.js, Vite. The current local implementation permits five guest rides without credentials; continuing then requires a Shopify customer account with a confirmed newsletter subscription. The Shopify draft theme has a verified mobile menu entry and game route. Shopify Oxygen is the intended runtime; the Shopify theme remains unpublished until the draft is verified.
 
 ## Run
 

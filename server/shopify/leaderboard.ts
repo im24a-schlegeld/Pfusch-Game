@@ -1,11 +1,12 @@
 import type { Player } from '../../app/domain/types.js';
+import { normalizeLeaderboardName } from '../../app/domain/progression.js';
 import { ApiError, assertCustomerIdentity, authenticateProxy, type CustomerAuthenticator, type ShopifyConfig } from './auth.js';
 import { hmacSha256 } from './crypto.js';
 import { shopifyGraphql, PLAYER_NAMESPACE, type ShopifyFetch } from './playerStore.js';
 import { isRecord } from './playerValidation.js';
 
 type Period = 'day' | 'week' | 'all';
-interface Row { alias: string; score: number }
+interface Row { alias: string; score: number; name?: string }
 interface Window { key: string; rows: Row[] }
 export interface Board { version: 1; day: Window; week: Window; all: Window }
 const periods: Period[] = ['day', 'week', 'all'];
@@ -41,7 +42,10 @@ function decodeBoard(raw: unknown, now: number): Board {
       if (!isRecord(row) || typeof row.alias !== 'string' || !/^[a-f0-9]{16}$/.test(row.alias) || seen.has(row.alias) || !validScore(row.score))
         throw new ApiError(502, 'invalid_ranking');
       seen.add(row.alias);
-      return { alias: row.alias, score: row.score };
+      const name = row.name === undefined ? '' : normalizeLeaderboardName(row.name);
+      if (row.name !== undefined && typeof row.name !== 'string') throw new ApiError(502, 'invalid_ranking');
+      if (row.name !== undefined && row.name !== '' && !name) throw new ApiError(502, 'invalid_ranking');
+      return { alias: row.alias, score: row.score, ...(name ? { name } : {}) };
     }).sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias));
   }
   return board;
@@ -56,7 +60,8 @@ export function mergeRanking(board: Board, alias: string, player: Player, now: n
     if (!validScore(score)) continue;
     const rows = next[period].rows;
     const previous = rows.find(row => row.alias === alias);
-    next[period].rows = [...rows.filter(row => row.alias !== alias), { alias, score: Math.max(score, previous?.score ?? 0) }]
+    const name = normalizeLeaderboardName(player.leaderboardName) || previous?.name;
+    next[period].rows = [...rows.filter(row => row.alias !== alias), { alias, score: Math.max(score, previous?.score ?? 0), ...(name ? { name } : {}) }]
       .sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias)).slice(0, LIMIT);
   }
   return next;
@@ -106,7 +111,7 @@ export async function handleRankingRequest(method: string, url: string, config: 
     const { board } = await loadBoard(config, request, now);
     const you = await playerAlias(config, identity.customerId);
     return { status: 200, body: { source: 'shopify', entries: board[period as Period].rows.map(row => ({
-      name: row.alias === you ? 'DU' : `RIDER ${row.alias.slice(0, 6).toUpperCase()}`, score: row.score, you: row.alias === you,
+      name: row.name || (row.alias === you ? 'DU' : `RIDER ${row.alias.slice(0, 6).toUpperCase()}`), score: row.score, you: row.alias === you,
     })), message: 'Top 50 · gespeicherte Fahrten aus dem Shop' } };
   } catch (error) {
     return { status: error instanceof ApiError ? error.status : 503, body: { error: error instanceof ApiError ? error.code : 'ranking_unavailable' } };

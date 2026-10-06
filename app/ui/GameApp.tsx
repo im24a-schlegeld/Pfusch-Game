@@ -49,8 +49,6 @@ export default function GameApp() {
   const [services] = useState<Services>(() => createServices());
   const [audio] = useState(() => new GameAudio());
   const subscribeSave = useCallback((listener: () => void) => services.players.subscribeSync?.(listener) ?? (() => {}), [services]);
-  const getSaveStatus = useCallback(() => services.players.syncStatus, [services]);
-  const saveStatus = useSyncExternalStore(subscribeSave, getSaveStatus, getSaveStatus);
   const getAccessStatus = useCallback(() => services.players.getAccess?.(), [services]);
   const accessStatus = useSyncExternalStore(subscribeSave, getAccessStatus, getAccessStatus);
   const [player, setPlayer] = useState<Player | null>(null);
@@ -304,7 +302,6 @@ export default function GameApp() {
   const back = () => navigate('garage');
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
   const newsletterOrigin = parentOrigin;
-  const showSaveStatus = saveStatus && (!embedded || ['offline', 'conflict', 'unavailable'].includes(saveStatus.state));
   const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET'
     : screen === 'garage' && garageLoading ? 'GARAGE WIRD GELADEN' : null;
   return (
@@ -343,11 +340,6 @@ export default function GameApp() {
           </button>
         </div>
       </header>}
-      {checkingAccess ? <output className="account-save-status" aria-live="polite">Zugang wird geprüft …</output>
-        : showSaveStatus && <output className={`account-save-status account-save-${saveStatus.state}`} aria-live="polite">{saveStatus.message}</output>}
-      {!saveStatus && services.players.warning && (
-        <output className="save-warning">{services.players.warning}</output>
-      )}
       {screen === 'garage' && (
         <Garage
           player={player}
@@ -381,7 +373,7 @@ export default function GameApp() {
         />
       )}
       {screen === 'leaderboard' && (
-        <Leaderboard player={player} services={services} back={back} />
+        <Leaderboard player={player} services={services} update={update} back={back} />
       )}
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
         onLogin={services.auth.login}

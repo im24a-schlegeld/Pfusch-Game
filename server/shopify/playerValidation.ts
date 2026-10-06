@@ -1,5 +1,5 @@
 import type { Player, Slot, StickerPlacement } from '../../app/domain/types.js';
-import { levelForXp, newPlayer } from '../../app/domain/progression.js';
+import { levelForXp, newPlayer, normalizeLeaderboardName } from '../../app/domain/progression.js';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
 import { REWARDS } from '../../app/domain/config.js';
 import { ApiError } from './auth.js';
@@ -42,6 +42,11 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   const input = record(value, 32), player = newPlayer();
   if (input.version !== 1 || Object.keys(input).some(key => !Object.prototype.hasOwnProperty.call(player, key))) invalid();
   player.id = `shopify:${customerId}`;
+  if (input.leaderboardName !== undefined) {
+    const name = normalizeLeaderboardName(input.leaderboardName);
+    if (typeof input.leaderboardName !== 'string' || (input.leaderboardName.trim() && !name)) invalid();
+    player.leaderboardName = name;
+  }
   for (const field of ['xp', 'coins', 'highScore', 'totalDistance', 'runsPlayed', 'totalNearMisses', 'totalWheelieMeters'] as const)
     player[field] = numeric(input[field]);
   if (!Number.isInteger(player.runsPlayed)) invalid();

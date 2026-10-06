@@ -59,7 +59,15 @@ describe('Shopify account saves', () => {
     const { repo } = repository([new Error('offline')], driver);
     expect((await repo.load()).coins).toBe(newPlayer().coins);
     expect(await repo.getUser()).toEqual({ id: 'guest-local', kind: 'guest' });
-    expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    expect(repo.getAccess()).toMatchObject({ allowed: true, reason: 'trial', completedRuns: 0 });
+    expect(repo.syncStatus.state).toBe('guest');
+  });
+
+  it('keeps the local five-ride trial when Oxygen returns an unavailable response', async () => {
+    const { repo } = repository([{ status: 503, data: { error: 'not_configured' } }]);
+    await repo.load();
+    expect(repo.getAccess()).toMatchObject({ allowed: true, reason: 'trial', completedRuns: 0 });
+    expect(repo.syncStatus.message).toContain('Fünf Gratisfahrten');
   });
 
   it('debounces and serializes saves with the digest returned by the preceding write', async () => {

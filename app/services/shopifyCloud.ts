@@ -82,6 +82,18 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.setAccess(access);
     this.status('unavailable', message);
   }
+  /** Keep the five-ride guest trial usable while Oxygen is being configured.
+   * No account save is claimed here; a later successful login/bootstrap can
+   * switch this repository to the server-backed session. */
+  private async useLocalGuest(): Promise<Player> {
+    const local = await this.guest.load();
+    this.guestMode = true;
+    const access = this.guest.getAccess?.() ?? trialAccess(local.runsPlayed);
+    this.setAccess(access);
+    this.status(access.allowed ? 'guest' : 'unavailable', access.allowed
+      ? 'Gastspielstand auf diesem Gerät. Fünf Gratisfahrten ohne Anmeldung.' : accessMessage(access));
+    return local;
+  }
   private store(key: string, value: string): boolean {
     try { this.storage.setItem(key, value); return true; }
     catch { this.backupWritable = false; return false; }
@@ -112,20 +124,17 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private async bootstrap(): Promise<Player> {
     let response: CloudResponse;
     try { response = await this.transport.request('GET'); }
-    catch {
-      const local = await this.guest.load();
-      this.deny(unavailableAccess(local.runsPlayed), 'Shop-Freigabe nicht erreichbar. Vor weiteren Fahrten den Status erneut prüfen.');
-      return local;
-    }
+    catch { return this.useLocalGuest(); }
     if (response.status !== 200) {
-      const local = await this.guest.load();
       if (response.status === 401) {
+        const local = await this.guest.load();
         this.guestMode = true;
         this.setAccess(this.guest.getAccess?.() ?? trialAccess(local.runsPlayed));
         this.status(this.access.allowed ? 'guest' : 'unavailable', this.access.allowed
           ? 'Gastspielstand auf diesem Gerät. Fünf Gratisfahrten ohne Newsletter.' : accessMessage(this.access));
-      } else this.deny(unavailableAccess(local.runsPlayed), 'Shop-Freigabe derzeit nicht verfügbar. Status erneut prüfen.');
-      return local;
+        return local;
+      }
+      return this.useLocalGuest();
     }
     try { this.session = snapshot(response.data, this.decode); }
     catch {
@@ -293,6 +302,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         return this.access;
       }
       if (response.status !== 200) {
+        if (!this.session) return this.useLocalGuest().then(() => this.access);
         this.deny(unavailableAccess(this.localCompletedRuns), response.status === 401
           ? 'Shop-Anmeldung geändert. Bitte neu laden.' : 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
         return this.access;
@@ -319,6 +329,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       else this.status('synced', 'Newsletter-Freigabe im Shop bestätigt.');
       return this.access;
     } catch {
+      if (!this.session) return this.useLocalGuest().then(() => this.access);
       this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
       return this.access;
     }

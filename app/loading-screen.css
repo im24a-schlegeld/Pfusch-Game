@@ -10,8 +10,6 @@
 .ride-loading-line{display:flex;align-items:center;gap:10px;font:700 9px/1.5 Arial,sans-serif;letter-spacing:.12em}
 .ride-loading-track{display:block;margin-top:14px;height:3px;background:#ffffff25;overflow:hidden}
 .ride-loading-track i{display:block;height:100%;width:35%;background:#c1a0ff;animation:ride-loading-slide 1.35s ease-in-out infinite alternate}
-.account-save-status{display:block;padding:6px 18px;color:#b7b2c2;font-size:10px;line-height:1.4;background:#242229}
-.account-save-offline,.account-save-conflict,.account-save-unavailable{color:#ffdcab}
 @keyframes ride-loading-slide{from{transform:translateX(-35%)}to{transform:translateX(220%)}}
 @media(max-width:600px){.ride-loading-art{object-fit:cover;object-position:46% center}.ride-loading-brand img{width:82px}.ride-loading-caption{bottom:24px}.ride-loading-full .ride-loading-art{object-fit:cover;object-position:center}}
 @media(max-height:420px){.ride-loading-brand{top:14px}.ride-loading-kicker{display:none}.ride-loading-caption{bottom:15px}.ride-loading-brand img{width:74px}}

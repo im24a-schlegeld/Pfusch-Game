@@ -1353,12 +1353,6 @@ p {
   width: max-content;
   box-shadow: 0 8px 30px #0006;
 }
-.save-warning {
-  background: #58472a;
-  color: #fff1d2;
-  padding: 12px 25px;
-  font-size: 13px;
-}
 .results-page {
   display: grid;
   grid-template-columns: 1.1fr 1fr;

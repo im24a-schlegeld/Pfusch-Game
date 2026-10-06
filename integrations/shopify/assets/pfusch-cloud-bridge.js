@@ -107,10 +107,11 @@
       }
       if (isRecord(message) && message.type === 'pfusch:open-login' && message.version === 1
         && Object.keys(message).every(key => ['type', 'version'].includes(key))) {
-        // Use Shopify's customer login so the parent page receives the
-        // authenticated customer cookie before the iframe reloads.
-        const login = new URL('/account/login', location.origin);
-        login.searchParams.set('return_url', `${location.pathname}${location.search}${location.hash}`);
+        // Start the same Customer Account OAuth flow that the game server
+        // uses. A parent-page /account/login only creates the Online Store
+        // cookie; it cannot authenticate the cross-origin Oxygen API iframe.
+        const login = new URL('/auth/login', this.gameOrigin);
+        login.searchParams.set('return_to', location.href);
         window.location.assign(login.href);
         return;
       }
