@@ -144,6 +144,10 @@ export function decodePlayer(raw: string): Player {
       }
     }
   // Additive v1 migration: obsolete vehicle registration customization is discarded.
+  // Replace the retired neon signal finish in existing local and cloud saves.
+  if (p.paint === '#d9f365') p.paint = '#7461a5';
+  if (p.rims === '#d9f365') p.rims = '#7461a5';
+  p.ownedItems = p.ownedItems.map((id) => id === 'rims:#d9f365' ? 'rims:#7461a5' : id);
   p.ownedItems = p.ownedItems.filter((id) => !id.startsWith('decal:'));
   p.redeemedRewards = p.redeemedRewards.filter((id) => id !== 'crew-decal');
   if (isRecord(v.equipped))

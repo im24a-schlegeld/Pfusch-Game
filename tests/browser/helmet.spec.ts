@@ -88,19 +88,19 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
       });
     }
   }
-  await page.getByRole('button', { name: 'Signal helmet color' }).click();
+  await page.getByRole('button', { name: 'Amethyst helmet color' }).click();
   await page.getByRole('button', { name: 'EQUIP HELMET', exact: true }).click();
   const equipped = await saved();
   expect(equipped).toEqual({
     ...before,
     helmet: 'motocross',
-    helmetColor: '#b8ce47',
+    helmetColor: '#7461a5',
   });
   await expect(model).toHaveAttribute('data-bike', '125');
   await page.reload();
   await page.getByRole('button', { name: 'OPEN GARAGE' }).click();
   await expect(model).toHaveAttribute('data-helmet', 'motocross');
-  await expect(model).toHaveAttribute('data-helmet-color', '#b8ce47');
+  await expect(model).toHaveAttribute('data-helmet-color', '#7461a5');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Preview Full-face helmet' }).click();
   await page.getByRole('button', { name: 'Burnt orange helmet color' }).click();

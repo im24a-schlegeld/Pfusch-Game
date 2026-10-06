@@ -9,6 +9,7 @@ import { RideGestures } from './rideGestures';
 import { updateGestureIndicator, type GestureBounds } from './rideGestureIndicator';
 import RidePause from './RidePause';
 import RideHud from './RideHud';
+import RideTutorialOverlay from './RideTutorialOverlay';
 import './ride-guidance.css';
 interface Props {
   player: Player;
@@ -42,7 +43,9 @@ export default function Ride({
   );
   const [tick, setTick] = useState(0),
     [ready, setReady] = useState(false),
-    [countdown, setCountdown] = useState(3);
+    [countdown, setCountdown] = useState(3),
+    [guideOpen, setGuideOpen] = useState(false);
+  const guideEligible = player.highScore <= 1000;
   const settled = useRef<RunStats | null>(null),
     revealed = useRef(false),
     lastEvent = useRef(0),
@@ -77,6 +80,14 @@ export default function Ride({
     gestures.cancel();
     updateGestureIndicator(gestureIndicator.current, null);
   }, [gestures]);
+  const dismissGuide = useCallback(() => {
+    if (!guideOpen) return;
+    setGuideOpen(false);
+    clearGestures();
+    engine.resume();
+    audio.unlock();
+    setTick((n) => n + 1);
+  }, [audio, clearGestures, engine, guideOpen]);
   useEffect(() => {
     if (!ready) return;
     let remaining = 3;
@@ -86,10 +97,16 @@ export default function Ride({
       if (remaining === 0) {
         clearInterval(timer);
         engine.start();
+        if (guideEligible) {
+          engine.pause();
+          audio.update(0, false, false);
+          setGuideOpen(true);
+          setTick((n) => n + 1);
+        }
       }
     }, 650);
     return () => clearInterval(timer);
-  }, [engine, ready]);
+  }, [audio, engine, guideEligible, ready]);
   useEffect(() => {
     const showGesture = () => updateGestureIndicator(gestureIndicator.current,
       touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
@@ -182,6 +199,10 @@ export default function Ride({
       )
         e.preventDefault();
       if (e.repeat) return;
+      if (guideOpen) {
+        dismissGuide();
+        return;
+      }
       if (k === 'escape' || k === 'p') {
         clearGestures();
         if (engine.phase === 'playing' || engine.resumeRemaining > 0)
@@ -218,7 +239,7 @@ export default function Ride({
       document.removeEventListener('visibilitychange', blur);
       audio.update(0, false, false);
     };
-  }, [engine, audio, clearGestures]);
+  }, [audio, clearGestures, dismissGuide, engine, guideOpen]);
   function settle(e: Engine) {
     if (e.phase !== 'crashed' || settled.current) return;
     const run = e.stats();
@@ -318,6 +339,7 @@ export default function Ride({
         }}
         onCrashComplete={revealResults}
       />
+      <RideTutorialOverlay open={guideOpen} onSwipe={dismissGuide} />
       <div
         className="gesture-zone"
         aria-label="Steuerung: seitlich wischen für Spurwechsel; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
@@ -397,7 +419,7 @@ export default function Ride({
         </div>
       )}
       <Dialog
-        open={engine.phase === 'paused' && !resuming}
+        open={engine.phase === 'paused' && !resuming && !guideOpen}
         disablePointerDismissal
         onOpenChange={(open) => {
           if (!open) resume();

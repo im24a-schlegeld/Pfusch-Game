@@ -48,7 +48,7 @@ export const BIKES: Bike[] = [
     handling: 13.8,
     stability: 1.18,
     maxSpeed: MAX_RIDE_SPEED,
-    color: '#d9f365',
+    color: '#7461a5',
   },
 ];
 export const LEVELS = [0, 200, 550, 1050, 1750, 2650, 3750, 5100, 6750, 8750];
@@ -121,7 +121,6 @@ export const WEEKLY_CHALLENGES: ChallengeDefinition[] = [
 export const PAINTS = pricedAppearanceColors([
   { name: 'Hell', value: '#e7e7df', price: 0 },
   { name: 'Asphalt', value: '#323638', price: 80 },
-  { name: 'Signal', value: '#d9f365', price: 120 },
   { name: 'Orange', value: '#dc632e', price: 120 },
   { name: 'Kobalt', value: '#627dac', price: 120 },
   { name: 'Rennrot', value: '#b83232', price: 120 },
@@ -133,14 +132,11 @@ export const PAINTS = pricedAppearanceColors([
 const rimPalette = pricedAppearanceColors([
   { name: 'Silber', value: '#a6acb0', price: 0 },
   { name: 'Schwarz', value: '#24282b', price: 60 },
-  { name: 'Signal', value: '#d9f365', price: 100 },
+  { name: 'Violett', value: '#7461a5', price: 100 },
   { name: 'Bronze', value: '#967847', price: 100 },
   { name: 'Kobalt', value: '#627dac', price: 100 },
 ], 100);
-// Keep the long-standing level reward selectable even when palette deduping
-// removes a nearby legacy signal shade from the ordinary shop colors.
-export const RIMS = rimPalette.some((color) => color.value === '#d9f365')
-  ? rimPalette : [...rimPalette, { name: 'Signal', value: '#d9f365', price: 100 }];
+export const RIMS = rimPalette;
 export const REWARDS = [
   {
     id: 'starter-coins',
@@ -169,9 +165,9 @@ export const REWARDS = [
   {
     id: 'exclusive-rims',
     title: 'NACHT-FELGEN',
-    description: 'Signal-Felgen für deine Fahrten.',
+    description: 'Violette Felgen für deine Fahrten.',
     kind: 'cosmetic',
-    itemId: 'rims:#d9f365',
+    itemId: 'rims:#7461a5',
     level: 5,
   },
   {

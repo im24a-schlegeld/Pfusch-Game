@@ -123,8 +123,8 @@ export const BIKE_CONTACTS: Readonly<Record<BikeModelId, RiderTarget>> =
     },
     scooter: {
       // Keep the fixed rider skeleton unchanged while moving the scooter's
-      // contact target slightly toward the rear of the seat.
-      hip: [0, 0.87, 0.30],
+      // contact target toward the rear half of the seat.
+      hip: [0, 0.87, 0.36],
       grip: [0.31, 1.12, -0.4],
       peg: [0.2, 0.3, -0.13],
       torsoLean: 0.25,
