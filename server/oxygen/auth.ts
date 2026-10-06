@@ -13,7 +13,7 @@ export function readOxygenAuth(env: Record<string, string | undefined>): OxygenA
   try {
     const origin = new URL(env.OXYGEN_APP_ORIGIN ?? ''), storefront = new URL(env.SHOPIFY_STOREFRONT_ORIGIN ?? 'https://pfusch-clothing.ch');
     const shop = env.SHOPIFY_SHOP_DOMAIN ?? '', customerAccountOrigin = new URL(env.CUSTOMER_ACCOUNT_ORIGIN ?? storefront.href);
-    const clientId = env.CUSTOMER_ACCOUNT_CLIENT_ID ?? '', sessionSecret = env.OXYGEN_SESSION_SECRET ?? '';
+    const clientId = env.CUSTOMER_ACCOUNT_CLIENT_ID ?? env.PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID ?? '', sessionSecret = env.OXYGEN_SESSION_SECRET ?? '';
     const trustedAccountHost = (host: string) => host === shop || host.endsWith('.shopify.com') || host === 'pfusch-clothing.ch' || host.endsWith('.pfusch-clothing.ch');
     if (origin.protocol !== 'https:' || origin.href !== origin.origin + '/' || origin.username || origin.password
       || !SHOP_ORIGINS.includes(storefront.origin) || storefront.href !== storefront.origin + '/'
