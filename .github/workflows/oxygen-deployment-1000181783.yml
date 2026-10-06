@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-           - name: Build and publish to Oxygen
+      - name: Build and publish to Oxygen
         id: deploy
         uses: shopify/oxygenctl-action@v4
         with:

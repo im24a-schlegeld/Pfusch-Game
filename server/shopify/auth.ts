@@ -12,8 +12,10 @@ export function assertCustomerIdentity(identity: CustomerIdentity, config: Shopi
     throw new ApiError(401, 'unauthorized');
   return identity;
 }
-type ShopifyEnvironment = Partial<Record<
-  'SHOPIFY_SHOP_DOMAIN' | 'SHOPIFY_CLIENT_ID' | 'SHOPIFY_CLIENT_SECRET' | 'SHOPIFY_API_SECRET' | 'SHOPIFY_ADMIN_ACCESS_TOKEN', string>>;
+// Accept both a plain adapter object and Node's `process.env`. Node's
+// `ProcessEnv` is an index-signature map, so a weak object type with only
+// optional named keys rejects it under strict TypeScript builds.
+type ShopifyEnvironment = Record<string, string | undefined>;
 export function readShopifyConfig(env: ShopifyEnvironment): ShopifyConfig | null {
   const shop = env.SHOPIFY_SHOP_DOMAIN?.trim().toLowerCase();
   if (!shop || !/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop)) return null;
