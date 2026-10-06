@@ -1,18 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   Check,
+  CircleCheck,
+  Coins,
+  Disc3,
   Download,
-  Flag,
   Gift,
+  Globe2,
   Lock,
+  Mail,
+  Medal,
+  Palette,
+  Repeat2,
+  Route,
+  Sparkles,
+  Target,
   Trophy,
+  Zap,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Player } from '../domain/types';
-import type { Services } from '../services';
+import type { LeaderboardSnapshot, Services } from '../services';
 import {
   DAILY_CHALLENGES,
   LEVELS,
@@ -20,6 +31,7 @@ import {
   REWARDS,
 } from '../domain/config';
 import { Coin, ScreenHeading, XpBar, fmt } from './shared';
+import { refreshDaily } from '../domain/progression';
 interface Base {
   player: Player;
   back: () => void;
@@ -29,6 +41,9 @@ export function Challenges({
   back,
   start,
 }: Base & { start: () => void }) {
+  const daily = refreshDaily(player).challenges;
+  const completed = DAILY_CHALLENGES.filter((challenge) => daily.claimed.includes(challenge.id)).length;
+  const remaining = DAILY_CHALLENGES.filter((challenge) => !daily.claimed.includes(challenge.id));
   return (
     <main className="standard-page">
       <ScreenHeading
@@ -37,15 +52,22 @@ export function Challenges({
         back={back}
       />
       <div className="page-intro">
-        <p>
+        <div className="page-feature"><Target aria-hidden="true" /><p>
           Kurze Aufgaben. Direkte Belohnungen. Fortschritt zählt über alle Fahrten.
-        </p>
+        </p></div>
         <span className="tag">NEU AB 00:00 UTC</span>
+      </div>
+      <div className="progress-overview" aria-label="Tagesübersicht">
+        <div><CircleCheck aria-hidden="true" /><b>{completed} / {DAILY_CHALLENGES.length}</b><span>ERLEDIGT</span></div>
+        <div><Coins aria-hidden="true" /><b>+{remaining.reduce((sum, entry) => sum + entry.coins, 0)}</b><span>COINS OFFEN</span></div>
+        <div><Sparkles aria-hidden="true" /><b>+{remaining.reduce((sum, entry) => sum + entry.xp, 0)}</b><span>XP OFFEN</span></div>
       </div>
       <div className="challenge-grid">
         {DAILY_CHALLENGES.map((c, i) => {
-          const value = player.challenges.values[c.id] ?? 0;
-          const complete = player.challenges.claimed.includes(c.id);
+          const value = Math.max(0, Math.min(c.target, daily.values[c.id] ?? 0));
+          const complete = daily.claimed.includes(c.id);
+          const Icon = c.stat === 'runs' ? Repeat2 : c.stat === 'distance' ? Route : c.stat === 'nearMisses' ? Zap : Target;
+          const unit = c.stat === 'runs' ? 'Fahrten' : c.stat === 'distance' || c.stat === 'wheelie' ? 'm' : c.stat === 'nearMisses' ? 'knappe Manöver' : c.stat === 'score' ? 'Punkte' : 'Sprünge';
           return (
             <article
               key={c.id}
@@ -53,20 +75,21 @@ export function Challenges({
             >
               <div className="challenge-top">
                 <span>0{i + 1} / TÄGLICH</span>
-                {complete ? <Check /> : <Flag />}
+                <span className="mission-symbol">{complete ? <CircleCheck aria-hidden="true" /> : <Icon aria-hidden="true" />}</span>
               </div>
               <h2>{c.title}</h2>
               <p>{c.description}</p>
               <div className="challenge-count">
-                <b>{fmt(Math.min(c.target, value))}</b>
-                <span>/ {fmt(c.target)}</span>
+                <b>{fmt(value)}</b>
+                <span>/ {fmt(c.target)} {unit}</span>
               </div>
               <Progress
                 value={(value / c.target) * 100}
                 aria-label={`${c.title} Fortschritt`}
               />
+              <p className="mission-remaining">{complete ? 'Geschafft — Belohnung gutgeschrieben.' : `Noch ${fmt(c.target - value)} ${unit}.`}</p>
               <div className="challenge-reward">
-                <span>+{c.xp} XP</span>
+                <span><Sparkles size={15} aria-hidden="true" /> +{c.xp} XP</span>
                 <Coin value={c.coins} />
                 {complete && <b>ERHALTEN</b>}
               </div>
@@ -77,7 +100,7 @@ export function Challenges({
       <div className="challenge-footer">
         <p>Belohnungen werden nach einer Fahrt automatisch gutgeschrieben.</p>
         <button className="button primary" onClick={start}>
-          LOSFAHREN <ArrowRight />
+          FAHRT STARTEN <ArrowRight />
         </button>
       </div>
     </main>
@@ -168,6 +191,8 @@ export function Rewards({
   update: (p: Player) => void;
   notify: (s: string) => void;
 }) {
+  const rewards = REWARDS.filter((reward) => reward.kind !== 'future');
+  const ready = rewards.filter((reward) => reward.level <= player.level && !player.redeemedRewards.includes(reward.id));
   return (
     <main className="standard-page">
       <ScreenHeading
@@ -176,38 +201,33 @@ export function Rewards({
         back={back}
       />
       <div className="page-intro">
-        <p>Digitale Extras für deinen Fortschritt.</p>
-        <span className="tag">
-          {player.tickets} PFUSCH TICKETS · SPÄTER NUTZBAR
-        </span>
+        <div className="page-feature"><Gift aria-hidden="true" /><p>Coins und neue Looks. Erspiele die Level und hol dir deine Extras.</p></div>
+        <span className="tag">{ready.length} BEREIT ZUM ABHOLEN</span>
       </div>
       <div className="reward-grid">
-        {REWARDS.map((r) => {
+        {rewards.map((r) => {
           const claimed = player.redeemedRewards.includes(r.id);
-          const future = r.kind === 'future';
+          const available = player.level >= r.level;
+          const Icon = r.kind === 'coins' ? Coins : r.id === 'exclusive-rims' ? Disc3 : Palette;
+          const neededXp = Math.max(0, (LEVELS[r.level - 1] ?? 0) - player.xp);
           return (
             <article
               key={r.id}
-              className={`reward-card ${future ? 'future' : ''}`}
+              className={`reward-card ${claimed ? 'claimed' : available ? 'available' : 'locked'}`}
             >
               <div className="reward-art">
-                {r.kind === 'coins' ? (
-                  <span className="reward-coin">P</span>
-                ) : r.kind === 'cosmetic' ? (
-                  <span className="rim-art" />
-                ) : (
-                  <Gift size={52} strokeWidth={1} />
-                )}
+                <Icon className="reward-symbol" size={60} strokeWidth={1.5} aria-hidden="true" />
                 <span className="tag">
-                  {future ? 'VORSCHAU' : 'DIGITALE BELOHNUNG'}
+                  LEVEL {r.level}
                 </span>
               </div>
               <div>
                 <h2>{r.title}</h2>
                 <p>{r.description}</p>
+                <span className="reward-unlock"><Medal size={15} aria-hidden="true" />{claimed ? 'In deiner Garage' : available ? 'Level erreicht · einmalig abholen' : `Level ${r.level} · noch ${fmt(neededXp)} XP`}</span>
                 <button
                   className={`button ${claimed ? 'equipped' : ''}`}
-                  disabled={claimed || future || player.level < r.level}
+                  disabled={claimed || !available}
                   onClick={() => {
                     const p = services.rewards.redeem(player, r.id);
                     if (p) {
@@ -216,13 +236,9 @@ export function Rewards({
                     }
                   }}
                 >
-                  {future
-                    ? 'KOMMT SPÄTER'
-                    : claimed
-                      ? 'ERHALTEN'
-                      : player.level < r.level
-                        ? `AB LEVEL ${r.level}`
-                        : 'BELOHNUNG HOLEN'}
+                  {claimed ? <><CircleCheck size={16} aria-hidden="true" /> ERHALTEN</>
+                    : !available ? <><Lock size={15} aria-hidden="true" /> AB LEVEL {r.level}</>
+                      : <><Gift size={16} aria-hidden="true" /> ABHOLEN</>}
                 </button>
               </div>
             </article>
@@ -230,8 +246,9 @@ export function Rewards({
         })}
       </div>
       <p className="catalog-note">
-        Shop-Vorteile sind in dieser Version nur Vorschau. Es werden keine Gutscheine, Rabatte oder Frühzugang-Vorteile ausgegeben.
+        Alle Belohnungen sind digitale Spielgegenstände. Neue Looks kannst du in der Garage ansehen und ausrüsten.
       </p>
+      <button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button>
     </main>
   );
 }
@@ -243,17 +260,35 @@ export function Leaderboard({
   const [period, setPeriod] = useState<'Today' | 'This week' | 'All time'>(
     'Today',
   );
-  const entries = services.leaderboard.list(player, period);
+  const [result, setResult] = useState<{ snapshot: LeaderboardSnapshot | null; loading: boolean; error: boolean }>({ snapshot: null, loading: true, error: false });
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    let current = true;
+    setResult({ snapshot: null, loading: true, error: false });
+    const fetch = services.leaderboard.fetch;
+    if (!fetch) {
+      setResult({ snapshot: { entries: services.leaderboard.list(player, period), source: 'local', message: 'Deine gespeicherten Fahrten auf diesem Gerät.' }, loading: false, error: false });
+      return;
+    }
+    void fetch.call(services.leaderboard, player, period).then((snapshot) => {
+      if (current) setResult({ snapshot, loading: false, error: false });
+    }).catch(() => {
+      if (current) setResult({ snapshot: null, loading: false, error: true });
+    });
+    return () => { current = false; };
+  }, [services.leaderboard, player, period, revision]);
+  const entries = result.snapshot?.entries ?? [];
+  const online = result.snapshot?.source === 'shopify';
   return (
     <main className="standard-page narrow">
       <ScreenHeading
-        kicker="LOKALE RANGLISTE"
+        kicker="DEINE FAHRTEN. DEINE PUNKTE."
         title="RANGLISTE."
         back={back}
       />
       <div className="page-intro">
-        <p>Deine lokale Bestleistung neben den Demo-Fahrern.</p>
-        <span className="tag">LOKAL / DEMO</span>
+        <div className="page-feature"><Trophy aria-hidden="true" /><p>{online ? 'Die besten gespeicherten Fahrten der Community.' : 'Deine echten Bestleistungen im gewählten Zeitraum.'}</p></div>
+        <span className="tag">{online ? <Globe2 size={13} aria-hidden="true" /> : <Route size={13} aria-hidden="true" />}{online ? 'COMMUNITY' : 'DEINE BESTWERTE'}</span>
       </div>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
         <TabsList className="ranking-tabs" variant="line">
@@ -264,9 +299,13 @@ export function Leaderboard({
           ))}
         </TabsList>
       </Tabs>
+      {result.loading && <output className="ranking-state"><span className="spinner" /> BESTWERTE WERDEN GELADEN</output>}
+      {result.error && <div className="ranking-state"><p>Die Rangliste ist gerade nicht erreichbar.</p><button className="button small" onClick={() => setRevision((value) => value + 1)}>ERNEUT LADEN</button></div>}
+      {!result.loading && !result.error && entries.length === 0 && <div className="ranking-state"><Trophy size={32} aria-hidden="true" /><h2>DEINE ERSTE MARKE FEHLT NOCH.</h2><p>Beende eine Fahrt, um hier deinen Punktestand zu sehen.</p><button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button></div>}
+      {entries.length > 0 && <>
       <div className="ranking-list">
         <div className="ranking-head">
-          <span>RANG / FAHRER</span>
+          <span>{online ? 'RANG / FAHRER' : 'FAHRER / BESTLEISTUNG'}</span>
           <span>PUNKTE</span>
         </div>
         {entries.map((e, i) => (
@@ -276,15 +315,14 @@ export function Leaderboard({
             </span>
             <span className="racer">
               {e.name}
-              <small>{e.you ? 'DEIN BESTER WERT AUF DIESEM GERÄT' : 'DEMO-FAHRER'}</small>
+              <small>{e.you ? 'DEINE BESTLEISTUNG' : 'COMMUNITY-FAHRER'}</small>
             </span>
             <strong>{fmt(e.score)}</strong>
           </div>
         ))}
       </div>
-      <p className="catalog-note">
-        Punktestände werden nicht hochgeladen. Heute und diese Woche basieren nur auf den lokal gespeicherten Fahrten.
-      </p>
+      </>}
+      {result.snapshot && <p className="catalog-note">{result.snapshot.message}</p>}
     </main>
   );
 }
@@ -293,7 +331,11 @@ export function SettingsScreen({
   services,
   update,
   back,
-}: Base & { services: Services; update: (p: Player) => void }) {
+  onTutorial,
+  onAccess,
+}: Base & { services: Services; update: (p: Player) => void; onTutorial?: () => void; onAccess?: () => void }) {
+  const syncStatus = services.players.syncStatus;
+  const access = services.players.getAccess?.();
   const change = (
     key: 'muted' | 'reducedMotion' | 'quality',
     value: boolean | 'auto' | 'low',
@@ -351,15 +393,29 @@ export function SettingsScreen({
       </div>
       <section className="settings-section">
         <h2>DEIN FORTSCHRITT</h2>
+        {syncStatus && <output className="mb-3 block">{syncStatus.message}</output>}
         <p>
-          Der Fortschritt wird automatisch in diesem Browser gespeichert. Kein Login. Beim Löschen der Browserdaten geht der Spielstand verloren.
+          {access && !access.allowed
+            ? 'Neue Fahrten und das Speichern sind pausiert, bis dein Zugang bestätigt ist. Bereits gespeicherter Fortschritt bleibt erhalten.'
+            : syncStatus && player.id.startsWith('shopify:')
+            ? 'Dein Spielstand gehört zu deinem Shop-Konto. Der Speicherstatus zeigt, ob der aktuelle Fortschritt bereits im Konto gesichert ist.'
+            : syncStatus
+              ? 'Ohne verbundenes Shop-Konto bleibt dein Gastspielstand auf diesem Gerät. Beim Löschen der Browserdaten kann er verloren gehen.'
+              : 'Dein Fortschritt wird automatisch auf diesem Gerät gespeichert. Beim Löschen der Browserdaten kann der Spielstand verloren gehen.'}
         </p>
+        {access && access.reason !== 'subscribed' && <p>{Math.min(access.completedRuns, access.freeRuns)} von {access.freeRuns} freien Fahrten abgeschlossen. Danach ist ein aktives PFUSCH-Newsletter-Abo für weitere Fahrten und neue Spielstände nötig.</p>}
+        {onAccess && <button className="button mb-3" onClick={onAccess}><Mail size={18} aria-hidden="true" /> NEWSLETTER-STATUS</button>}
         <button className="button" onClick={exportSave}>
           <Download size={18} /> SPIELSTAND EXPORTIEREN
         </button>
       </section>
       <section className="settings-section">
-        <h2>STEUERUNG</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2>STEUERUNG</h2>
+          {onTutorial && <button className="button small" onClick={onTutorial}>
+            <Repeat2 size={18} aria-hidden="true" /> STEUERUNG ANSEHEN
+          </button>}
+        </div>
         <div className="control-guide">
           <span>
             WISCHEN ← → / A D <b>Ausweichen</b>
@@ -379,7 +435,7 @@ export function SettingsScreen({
         </p>
       </section>
       <footer className="settings-section">
-        <span className="eyebrow">PFUSCH · V1.0</span>
+        <span className="eyebrow">WHEELIE ESCAPE · PFUSCH · V1.0</span>
         <p>Echte Strassen sind keine Rennstrecke. Risiko bleibt im Spiel.</p>
         <a
           className="product-link"

@@ -4,6 +4,7 @@ import type {
   Product,
   RunReward,
   RunStats,
+  StickerPlacement,
 } from '../domain/types';
 import {
   finishRun,
@@ -13,9 +14,14 @@ import {
 } from '../domain/progression';
 import { BIKES, REWARDS } from '../domain/config';
 import { isHelmet, isHelmetColor, isVisorColor } from '../domain/helmet';
-import { MAX_STICKERS, validSticker } from '../domain/stickers';
+import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../domain/stickers';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
 import catalog from '../../public/catalog/products.json';
+import { ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
+import { ShopifyCloudRepository } from './shopifyCloud';
+import { ShopifyLeaderboardService } from './shopifyLeaderboard';
+import { trialAccess, type PlayerAccess } from './playerAccess';
+export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
   getUser(): Promise<{ id: string; kind: 'guest' | 'customer' }>;
@@ -25,6 +31,15 @@ export interface PlayerRepository {
   save(player: Player): void;
   export(player: Player): string;
   readonly warning: string;
+  readonly syncStatus?: PlayerSyncStatus;
+  subscribeSync?(listener: () => void): () => void;
+  flush?(): Promise<void>;
+  getAccess?(): PlayerAccess;
+  refreshAccess?(): Promise<PlayerAccess>;
+}
+export interface PlayerSyncStatus {
+  state: 'local' | 'loading' | 'synced' | 'saving' | 'offline' | 'conflict' | 'guest' | 'unavailable';
+  message: string;
 }
 export interface ProductProvider {
   list(): Promise<Product[]>;
@@ -41,6 +56,12 @@ export interface LeaderboardService {
     player: Player,
     period: 'Today' | 'This week' | 'All time',
   ): LeaderboardEntry[];
+  fetch?(player: Player, period: 'Today' | 'This week' | 'All time'): Promise<LeaderboardSnapshot>;
+}
+export interface LeaderboardSnapshot {
+  entries: LeaderboardEntry[];
+  source: 'shopify' | 'local';
+  message: string;
 }
 export interface AnalyticsService {
   track(event: AnalyticsEvent, data?: Record<string, string | number>): void;
@@ -106,12 +127,13 @@ export function decodePlayer(raw: string): Player {
   if (isHelmetColor(v.helmetColor)) p.helmetColor = v.helmetColor;
   // Additive v1 migration: previous saves have neither visor tint nor placements.
   if (isVisorColor(v.helmetVisor)) p.helmetVisor = v.helmetVisor;
+  // Additive v1 migration: absent helmet target lists stay empty; bike paths are unchanged.
   if (isRecord(v.stickers))
-    for (const bike of BIKES) {
-      const placements = v.stickers[bike.id];
+    for (const target of STICKER_TARGETS) {
+      const placements = v.stickers[target];
       if (Array.isArray(placements)) {
         const ids = new Set<string>();
-        p.stickers[bike.id] = placements.filter(validSticker).filter((placement) => {
+        p.stickers[target] = placements.filter((placement): placement is StickerPlacement => validStickerForTarget(target, placement)).filter((placement) => {
           if (ids.has(placement.id) || !catalog.some((product) => product.id === placement.productId && product.handle === 'chrome-sticker')) return false;
           ids.add(placement.id);
           return p.ownedItems.includes(placement.productId) || p.irlItems.includes(placement.productId);
@@ -194,13 +216,32 @@ export function decodePlayer(raw: string): Player {
 export class LocalPlayerRepository implements PlayerRepository {
   warning = '';
   private writable = true;
+  private access = trialAccess(0);
+  private listeners = new Set<() => void>();
   constructor(private storage: StorageDriver) {}
+  getAccess = (): PlayerAccess => this.access;
+  subscribeSync = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  };
+  private countRuns(player: Player) {
+    const runs = Math.max(this.access.completedRuns, Math.floor(player.runsPlayed));
+    if (runs === this.access.completedRuns) return;
+    this.access = trialAccess(runs);
+    for (const listener of this.listeners) listener();
+  }
+  async refreshAccess() {
+    await this.load();
+    return this.access;
+  }
   async load() {
     try {
       const raw = this.storage.getItem(key);
       if (!raw) return newPlayer();
       try {
-        return decodePlayer(raw);
+        const player = decodePlayer(raw);
+        this.countRuns(player);
+        return player;
       } catch {
         this.storage.setItem(`${key}:recovery`, raw);
         this.warning =
@@ -215,6 +256,9 @@ export class LocalPlayerRepository implements PlayerRepository {
     }
   }
   save(p: Player) {
+    const allowed = this.access.allowed && p.runsPlayed <= 5;
+    this.countRuns(p);
+    if (!allowed) return;
     if (!this.writable) return;
     try {
       this.storage.setItem(key, JSON.stringify(p));
@@ -248,9 +292,9 @@ export class MockRewardService implements RewardService {
     )
       return null;
     const next = { ...p, redeemedRewards: [...p.redeemedRewards, id] };
-    if (r.kind === 'coins') next.coins += 100;
+    if (r.kind === 'coins') next.coins += r.coins;
     if (r.kind === 'cosmetic')
-      next.ownedItems = [...p.ownedItems, 'rims:#d9f365'];
+      next.ownedItems = p.ownedItems.includes(r.itemId) ? p.ownedItems : [...p.ownedItems, r.itemId];
     return next;
   }
 }
@@ -266,18 +310,12 @@ export class LocalLeaderboardService implements LeaderboardService {
           period === 'All time' ||
           (period === 'Today'
             ? r.date === today
-            : r.date >= monday.toISOString().slice(0, 10)),
+              : r.date >= monday.toISOString().slice(0, 10) && r.date <= today),
       )
       .map((r) => r.score);
     const top = period === 'All time' ? p.highScore : Math.max(0, ...scores);
-    const factor = period === 'Today' ? 1 : period === 'This week' ? 1.8 : 3;
-    return [
-      { name: 'NIGHTSHIFT', score: Math.floor(8200 * factor), you: false },
-      { name: 'SUMO.ELI', score: Math.floor(5800 * factor), you: false },
-      { name: 'ZIPTIE.KID', score: Math.floor(3500 * factor), you: false },
-      { name: 'LATE.APEX', score: Math.floor(1800 * factor), you: false },
-      { name: 'YOU', score: top, you: true },
-    ].sort((a, b) => b.score - a.score);
+    if (period === 'All time' ? !p.runsPlayed && top === 0 : scores.length === 0) return [];
+    return [{ name: 'DU', score: top, you: true }];
   }
 }
 export class LocalAnalyticsService implements AnalyticsService {
@@ -304,12 +342,18 @@ export function createServices(): Services {
     getItem: (k) => window.localStorage.getItem(k),
     setItem: (k, v) => window.localStorage.setItem(k, v),
   };
+  const local = new LocalPlayerRepository(storage);
+  const parentOrigin = shopifyParentOrigin(window.parent !== window, document.referrer);
+  const transport = parentOrigin ? new ShopifyParentTransport(window, parentOrigin) : null;
+  const cloud = transport
+    ? new ShopifyCloudRepository(transport, storage, local, decodePlayer)
+    : null;
   return {
-    auth: new GuestAuthService(),
-    players: new LocalPlayerRepository(storage),
+    auth: cloud ?? new GuestAuthService(),
+    players: cloud ?? local,
     products: new LocalProductProvider(),
     rewards: new MockRewardService(),
-    leaderboard: new LocalLeaderboardService(),
+    leaderboard: transport ? new ShopifyLeaderboardService(transport, new LocalLeaderboardService()) : new LocalLeaderboardService(),
     analytics: new LocalAnalyticsService(),
   };
 }

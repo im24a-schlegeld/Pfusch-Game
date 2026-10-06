@@ -1,0 +1,10 @@
+# Server-only Vercel environment variables. Dummy values; replace in deployment settings.
+# Never prefix these with VITE_ or place secrets in theme/browser code.
+SHOPIFY_SHOP_DOMAIN=your-store.myshopify.com
+# New Dev Dashboard app, installed on a store in the same Shopify organization.
+# The server exchanges these for a 24-hour token and renews it automatically.
+SHOPIFY_CLIENT_ID=replace-with-your-installed-app-client-id
+SHOPIFY_CLIENT_SECRET=replace-with-your-installed-app-client-secret
+# Legacy admin-created custom app alternative: omit BOTH CLIENT variables above.
+# SHOPIFY_API_SECRET=replace-with-your-installed-app-api-secret
+# SHOPIFY_ADMIN_ACCESS_TOKEN=replace-with-your-installed-app-admin-access-token

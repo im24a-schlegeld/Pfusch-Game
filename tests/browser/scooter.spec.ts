@@ -32,33 +32,32 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
       () => JSON.parse(localStorage.getItem('pfusch:player:v1')!) as Player,
     );
   await page.goto('/');
-  await page.getByRole('button', { name: 'OPEN GARAGE', exact: true }).click();
-  await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
+  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
   const before = await saved();
   expect(before).toMatchObject({ bike: '125', xp: 200, level: 2, coins: 250 });
   expect(before.ownedItems).not.toContain('bike:scooter');
   const model = page.getByTestId('garage-model');
   const preview = page.getByRole('button', {
-    name: 'Preview Roller',
+    name: 'Ansehen Roller',
     exact: true,
   });
   const equip = page.getByRole('button', {
-    name: 'EQUIP BIKE SETUP',
+    name: 'Ausrüsten Roller',
     exact: true,
   });
   await preview.click();
   await expect(model).toHaveAttribute('data-bike', 'scooter');
-  await expect(equip).toBeDisabled();
+  await expect(equip).toHaveCount(0);
   expect(await saved()).toEqual(before);
   await page
-    .getByRole('button', { name: 'RESET PREVIEW', exact: true })
+    .getByRole('button', { name: 'ZUM AKTUELLEN SETUP', exact: true })
     .click();
   await expect(model).toHaveAttribute('data-bike', '125');
   expect(await saved()).toEqual(before);
 
   await preview.click();
-  const unlock = page.getByRole('button', { name: /UNLOCK ROLLER/ });
-  await expect(unlock).toContainText('250');
+  const unlock = page.getByRole('button', { name: 'Kaufen Roller', exact: true });
+  await expect(page.locator('.bike-card').filter({ has: preview })).toContainText('250 COINS');
   await expect(unlock).toBeEnabled();
   await unlock.click();
   const purchased = {
@@ -70,9 +69,8 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
   await expect(equip).toBeEnabled();
   // A reload also discards the preview after purchase: ownership is not Equip.
   await page.reload();
-  await page.getByRole('button', { name: 'OPEN GARAGE', exact: true }).click();
   await expect(model).toHaveAttribute('data-bike', '125');
-  await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
+  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
   await preview.click();
   expect(await saved()).toEqual(purchased);
   await expect(unlock).toHaveCount(0);
@@ -80,7 +78,6 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
   const equipped = { ...purchased, bike: 'scooter' };
   await expect.poll(saved).toEqual(equipped);
   await page.reload();
-  await page.getByRole('button', { name: 'OPEN GARAGE', exact: true }).click();
   await expect(model).toHaveAttribute('data-bike', 'scooter');
   expect(await saved()).toEqual(equipped);
   // Read-only Three.js observation proves the new ride builds the scooter,
@@ -89,7 +86,7 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
     window.scooterScenes = [];
   });
   await page
-    .getByRole('button', { name: 'RIDE EQUIPPED SETUP', exact: true })
+    .getByRole('button', { name: 'FAHRT STARTEN', exact: true })
     .click();
   const ride = page.getByTestId('ride-screen');
   await expect(ride).toHaveAttribute('data-phase', 'playing');
@@ -98,8 +95,7 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
       page.evaluate(() =>
         window.scooterScenes.some(
           (scene) =>
-            !!scene.getObjectByName('scooter-chassis') &&
-            !!scene.getObjectByName('scooter-floorboard'),
+            scene.getObjectByName('imported-motorcycle')?.userData.importedBike === 'scooter',
         ),
       ),
     )

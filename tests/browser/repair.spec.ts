@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { PAINTS } from '../../app/domain/config';
+import { visiblePalette } from '../../app/domain/paletteView';
 
 test('Escape pauses and resumes without double handling', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'LET’S RIDE', exact: true }).click();
-  await page.getByRole('button', { name: 'GOT IT. LET’S RIDE' }).click();
+  await page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }).click();
+  await page.getByTestId('first-ride-start').click();
   const ride = page.getByTestId('ride-screen');
   await expect(ride).toHaveAttribute('data-phase', 'playing');
   await page.keyboard.press('Escape');
@@ -45,41 +47,42 @@ test('production assets, console, narrow screens and saved customization', async
       ),
     ).toBe(true);
     await expect(
-      page.getByRole('button', { name: 'LET’S RIDE', exact: true }),
+      page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }),
     ).toBeVisible();
   }
   await page
     .getByRole('navigation')
-    .getByRole('button', { name: 'REWARDS', exact: true })
+    .getByRole('button', { name: 'BELOHNUNGEN', exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'COLLECT REWARD', exact: true })
+    .getByRole('button', { name: 'ABHOLEN', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'COLLECTED', exact: true }),
+    page.getByRole('button', { name: 'ERHALTEN', exact: true }),
   ).toBeVisible();
   await page
     .getByRole('navigation')
     .getByRole('button', { name: 'GARAGE', exact: true })
     .click();
-  await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Asphalt paint', exact: true })
-    .click();
+  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
+  await page.locator('summary').filter({ hasText: 'Lackfarbe' }).click();
+  const color = visiblePalette(PAINTS).find((entry) => entry.price > 0)!;
+  const preview = page.getByRole('button', { name: `${color.name} paint`, exact: true });
+  await preview.click();
   await expect(
-    page.getByRole('button', { name: 'Asphalt paint', exact: true }),
+    preview,
   ).toHaveAttribute('aria-pressed', 'true');
   await page
-    .getByRole('button', { name: 'UNLOCK PAINT · 80 COINS', exact: true })
+    .getByRole('button', { name: `Kaufen Lackfarbe ${color.name}`, exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'EQUIP BIKE SETUP', exact: true })
+    .getByRole('button', { name: `Ausrüsten Lackfarbe ${color.name}`, exact: true })
     .click();
   await page.reload();
-  await page.getByRole('button', { name: 'OPEN GARAGE' }).click();
-  await page.getByRole('tab', { name: 'BIKE', exact: true }).click();
+  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
+  await page.locator('summary').filter({ hasText: 'Lackfarbe' }).click();
   await expect(
-    page.getByRole('button', { name: 'Asphalt paint', exact: true }),
+    preview,
   ).toHaveAttribute('aria-pressed', 'true');
   expect(errors).toEqual([]);
   expect(failedRequests).toEqual([]);

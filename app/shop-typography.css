@@ -1,0 +1,42 @@
+/* Match the storefront's observed typefaces without changing screen layouts. */
+@font-face {
+  font-family: 'PFUSCH Quantico';
+  src: url('https://pfusch-clothing.ch/cdn/fonts/quantico/quantico_i4.9999813cd9117a070aa986273b20e58909fa5556.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PFUSCH Quantico';
+  src: url('https://pfusch-clothing.ch/cdn/fonts/quantico/quantico_i7.28ba18d73de33dcde7f45ee73fdbb0db45a2fb1a.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PFUSCH Germania One';
+  src: url('https://pfusch-clothing.ch/cdn/fonts/germania_one/germaniaone_n4.e1e85c20bd47d01bf28222f79473f4acd1cac2b9.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+body,
+:is(#root, [role='dialog'], [role='alertdialog']),
+:is(#root, [role='dialog'], [role='alertdialog']) * {
+  font-family: 'PFUSCH Quantico', 'Quantico', Arial, sans-serif !important;
+  font-style: italic !important;
+}
+:is(#root, [role='dialog'], [role='alertdialog']) :is(h1, h2, h3, .wordmark),
+:is(#root, [role='dialog'], [role='alertdialog']) :is(h1, h2, h3, .wordmark) * {
+  font-family: 'PFUSCH Germania One', Georgia, serif !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+#root :is(.result-head-v38 h1, .result-score, .score-display strong, .personal-best strong) {
+  font-family: 'PFUSCH Quantico', 'Quantico', Arial, sans-serif !important;
+  font-weight: 700 !important;
+  font-style: italic !important;
+}
+#root {
+  font-variant-numeric: tabular-nums;
+}

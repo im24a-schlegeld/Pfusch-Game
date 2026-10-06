@@ -33,6 +33,7 @@
 @media(max-height:390px){.game-dialog.ride-pause-v38{padding:12px 20px!important;gap:7px!important;}.ride-pause-v38 .pause-head-v38 h2{font-size:26px!important;}.pause-head-v38 .pause-sound-v38{height:44px;width:44px;}.pause-guide-v38>div{padding:6px 0;}.ride-pause-v38 .button{min-height:44px!important;padding:10px!important;}.ride-pause-v38 .pause-description-v38{font-size:12px!important;}.result-panel-v38{gap:8px 22px;}.result-metrics-v38>div{padding:7px 6px;}.result-metrics-v38 dd{font-size:22px;}.result-footer-v38>p{margin-bottom:8px;}}
 
 /* A score is one number, never split across lines. */
+.game-dialog.ride-pause-v38[data-slot='dialog-content']{overflow-y:auto!important;overscroll-behavior:contain;}
 .result-head-v38 h1{white-space:nowrap!important;overflow-wrap:normal!important;}
 .result-head-v38 h1[data-long="true"]{font-size:clamp(28px,6.5vw,64px)!important;}
 @media(max-height:600px) and (min-width:560px){.result-head-v38 h1[data-long="true"]{font-size:clamp(28px,5.8vw,52px)!important;}}

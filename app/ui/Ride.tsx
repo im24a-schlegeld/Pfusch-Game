@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import type { Player, Product, RunStats } from '../domain/types';
 import { BIKES } from '../domain/config';
@@ -6,14 +6,17 @@ import { Engine } from '../game/engine';
 import { GameAudio } from '../game/audio';
 import { Preview, gameText } from './shared';
 import { RideGestures } from './rideGestures';
+import { updateGestureIndicator, type GestureBounds } from './rideGestureIndicator';
 import RidePause from './RidePause';
 import RideHud from './RideHud';
+import './ride-guidance.css';
 interface Props {
   player: Player;
   products: Product[];
   audio: GameAudio;
   onFinish: (r: RunStats) => void;
   onResultsReady: (runId: string) => void;
+  onExit: () => void;
   onMute: () => void;
 }
 export default function Ride({
@@ -22,6 +25,7 @@ export default function Ride({
   audio,
   onFinish,
   onResultsReady,
+  onExit,
   onMute,
 }: Props) {
   const engine = useMemo(
@@ -44,6 +48,9 @@ export default function Ride({
   finish.current = onFinish;
   const resultsReady = useRef(onResultsReady);
   resultsReady.current = onResultsReady;
+  const gestureIndicator = useRef<SVGSVGElement>(null);
+  const gestureBounds = useRef<GestureBounds | undefined>(undefined);
+  const touchFeedback = useRef(false);
   const gestures = useMemo(
     () =>
       new RideGestures({
@@ -62,6 +69,10 @@ export default function Ride({
       }),
     [engine, audio],
   );
+  const clearGestures = useCallback(() => {
+    gestures.cancel();
+    updateGestureIndicator(gestureIndicator.current, null);
+  }, [gestures]);
   useEffect(() => {
     if (!ready) return;
     let remaining = 3;
@@ -76,6 +87,8 @@ export default function Ride({
     return () => clearInterval(timer);
   }, [engine, ready]);
   useEffect(() => {
+    const showGesture = () => updateGestureIndicator(gestureIndicator.current,
+      touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
     const down = (event: PointerEvent) => {
       if (engine.resumeRemaining > 0) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -91,18 +104,30 @@ export default function Ride({
         event.preventDefault();
         surface.setPointerCapture(event.pointerId);
       }
+      if (!gestures.feedback()) {
+        touchFeedback.current = event.pointerType === 'touch' || event.pointerType === 'pen';
+        gestureBounds.current = gestureIndicator.current?.getBoundingClientRect();
+      }
       gestures.down(
         event.pointerId,
         event.clientX,
         event.clientY,
         event.timeStamp,
       );
+      showGesture();
     };
-    const move = (event: PointerEvent) =>
+    const move = (event: PointerEvent) => {
       gestures.move(event.pointerId, event.clientX, event.clientY);
-    const up = (event: PointerEvent) =>
+      showGesture();
+    };
+    const up = (event: PointerEvent) => {
       gestures.up(event.pointerId, event.timeStamp);
-    const cancel = (event: PointerEvent) => gestures.cancel(event.pointerId);
+      showGesture();
+    };
+    const cancel = (event: PointerEvent) => {
+      gestures.cancel(event.pointerId);
+      showGesture();
+    };
     const click = (event: MouseEvent) => {
       if (performance.now() < suppressClicksUntil.current) {
         event.preventDefault();
@@ -118,19 +143,21 @@ export default function Ride({
     window.addEventListener('pointercancel', cancel, true);
     window.addEventListener('lostpointercapture', cancel, true);
     window.addEventListener('click', click, true);
+    window.addEventListener('resize', clearGestures);
     return () => {
-      gestures.cancel();
+      clearGestures();
       window.removeEventListener('pointerdown', down, true);
       window.removeEventListener('pointermove', move, true);
       window.removeEventListener('pointerup', up, true);
       window.removeEventListener('pointercancel', cancel, true);
       window.removeEventListener('lostpointercapture', cancel, true);
       window.removeEventListener('click', click, true);
+      window.removeEventListener('resize', clearGestures);
     };
-  }, [engine, gestures]);
+  }, [engine, gestures, clearGestures]);
   useEffect(() => {
-    if (engine.phase !== 'playing') gestures.cancel();
-  }, [engine.phase, gestures]);
+    if (engine.phase !== 'playing') clearGestures();
+  }, [engine.phase, clearGestures]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
@@ -152,7 +179,7 @@ export default function Ride({
         e.preventDefault();
       if (e.repeat) return;
       if (k === 'escape' || k === 'p') {
-        gestures.cancel();
+        clearGestures();
         if (engine.phase === 'playing' || engine.resumeRemaining > 0)
           engine.pause();
         else engine.resume();
@@ -170,7 +197,7 @@ export default function Ride({
       if (k === 'arrowdown' || k === 's') engine.hold(false);
     };
     const blur = () => {
-      gestures.cancel();
+      clearGestures();
       engine.pause();
       engine.clearInput();
       audio.update(0, false, false);
@@ -187,7 +214,7 @@ export default function Ride({
       document.removeEventListener('visibilitychange', blur);
       audio.update(0, false, false);
     };
-  }, [engine, audio, gestures]);
+  }, [engine, audio, clearGestures]);
   function settle(e: Engine) {
     if (e.phase !== 'crashed' || settled.current) return;
     const run = e.stats();
@@ -221,16 +248,24 @@ export default function Ride({
     }
   }
   function pause() {
-    gestures.cancel();
+    clearGestures();
     engine.pause();
     audio.update(0, false, false);
     setTick((n) => n + 1);
   }
   function resume() {
-    gestures.cancel();
+    clearGestures();
     engine.resume();
     audio.unlock();
     setTick((n) => n + 1);
+  }
+  function exitToGarage() {
+    if (engine.phase !== 'paused') return;
+    clearGestures();
+    engine.endRide();
+    settle(engine);
+    revealed.current = true;
+    onExit();
   }
   const resuming = engine.phase === 'paused' && engine.resumeRemaining > 0;
   const eventVisible =
@@ -275,6 +310,20 @@ export default function Ride({
         aria-label="Steuerung: seitlich wischen für Spurwechsel; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
         onContextMenu={(e) => e.preventDefault()}
       />
+      <svg ref={gestureIndicator} className="ride-gesture-indicator" data-testid="ride-gesture-indicator" data-active="false" aria-hidden="true">
+        <line data-part="range" className="ride-gesture-range" />
+        <line data-part="vector-shadow" className="ride-gesture-shadow" />
+        <line data-part="vector" className="ride-gesture-vector" />
+        <circle data-part="origin" className="ride-gesture-origin" r="7" />
+        <g data-part="finger">
+          <circle className="ride-gesture-finger" r="18" />
+          <circle data-part="strength" className="ride-gesture-strength" r="18" pathLength="100" strokeDasharray="100" strokeDashoffset="100" />
+        </g>
+        <g data-part="label" className="ride-gesture-label">
+          <rect x="-73" y="-13" width="146" height="26" rx="13" />
+          <text data-part="label-text" x="0" y="1" />
+        </g>
+      </svg>
       <RideHud engine={engine} best={player.highScore} pause={pause} />
       {engine.phase === 'playing' && (
         <div className="ride-feedback" aria-label="Punktegewinne">
@@ -309,9 +358,9 @@ export default function Ride({
             ))}
         </div>
       )}
-      {countdown > 0 && (
+      {ready && countdown > 0 && (
         <div className="countdown">
-          <strong>{ready ? countdown : '…'}</strong>
+          <strong>{countdown}</strong>
         </div>
       )}
       {resuming && (
@@ -330,7 +379,7 @@ export default function Ride({
             S / ↓ ANHEBEN · W / ↑ KORRIGIEREN
           </span>
           <span className="touch-control-tip">
-            ← / → WISCHEN = SPURWECHSEL · ZWEI FINGER = PAUSE
+            ↓ ZIEHEN = ANHEBEN · ↑ = SENKEN · ← / → = AUSWEICHEN
           </span>
         </div>
       )}
@@ -345,6 +394,7 @@ export default function Ride({
           muted={player.settings.muted}
           onMute={onMute}
           resume={resume}
+          garage={exitToGarage}
           end={() => {
             engine.endRide();
             setTick((n) => n + 1);

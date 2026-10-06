@@ -1,0 +1,418 @@
+{
+  "sections": {
+    "custom_liquid_jMr9xr": {
+      "type": "custom-liquid",
+      "name": "intro",
+      "settings": {
+        "custom_liquid": "<style>\n  .intro-overlay {\n    position: fixed;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background: #323232;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    z-index: 9999;\n    margin: 0;\n    padding: 0;\n    border: none;\n    animation: overlayFadeOut 2.6s ease-out forwards;\n    pointer-events: none;\n  }\n  \n  .intro-logo {\n    width: 280px;\n    height: auto;\n    margin: 0;\n    padding: 0;\n    border: none;\n    animation: logoStretchPhases 2.6s ease-out forwards;\n  }\n  \n  @media (min-width: 768px) {\n    .intro-logo {\n      width: 400px;\n    }\n  }\n  \n  @keyframes logoStretchPhases {\n    0% {\n      transform: scaleX(0.85);\n    }\n    76.92% {\n      transform: scaleX(1.0);\n    }\n    100% {\n      transform: scaleX(1.08);\n    }\n  }\n  \n  @keyframes overlayFadeOut {\n    0% {\n      opacity: 1;\n    }\n    76.92% {\n      opacity: 1;\n    }\n    100% {\n      opacity: 0;\n      visibility: hidden;\n    }\n  }\n</style>\n\n<div class=\"intro-overlay\">\n  <img src=\"https://sidekick.shopify.ai/rails/active_storage/blobs/redirect/eyJfcmFpbHMiOnsiZGF0YSI6MjEyMTQyOTUwOSwicHVyIjoiYmxvYl9pZCJ9fQ==--01125ae5ff2469d8f3272b36f537c8fa76ead821/Officially...White.png\" alt=\"Pfusch Logo\" class=\"intro-logo\" />\n</div>",
+        "color_scheme": "",
+        "padding_top": 0,
+        "padding_bottom": 0
+      }
+    },
+    "slideshow_Ciamzh": {
+      "type": "slideshow",
+      "blocks": {
+        "slide_3Pngqr": {
+          "type": "slide",
+          "settings": {
+            "image": "shopify://shop_images/TmSxraa_Bild.2JPG.jpg",
+            "image_overlay_opacity": 10,
+            "heading": "",
+            "heading_size": "h1",
+            "subheading": "<a href=\"https://www.instagram.com/tm_sxraa/\" target=\"_blank\" title=\"https://www.instagram.com/tm_sxraa/\">@tm_sxraa</a>",
+            "button_label": "Du willst auch so ein Custom Product?",
+            "link": "shopify://products/custom-product",
+            "button_style_secondary": true,
+            "show_text_box": false,
+            "box_align": "bottom-center",
+            "text_alignment": "center",
+            "text_alignment_mobile": "center",
+            "color_scheme": "scheme-4"
+          }
+        },
+        "slide_dRfp3y": {
+          "type": "slide",
+          "settings": {
+            "image": "shopify://shop_images/IMG_7137.jpg",
+            "image_overlay_opacity": 40,
+            "heading": "",
+            "heading_size": "h1",
+            "subheading": "<a href=\"https://www.instagram.com/rero_rider/\" target=\"_blank\" title=\"https://www.instagram.com/rero_rider/\">@rero_rider</a>",
+            "button_label": "Du willst auch so ein Custom Product?",
+            "link": "shopify://products/custom-product",
+            "button_style_secondary": true,
+            "show_text_box": false,
+            "box_align": "bottom-center",
+            "text_alignment": "center",
+            "text_alignment_mobile": "center",
+            "color_scheme": "scheme-4"
+          }
+        },
+        "slide_Txan7J": {
+          "type": "slide",
+          "settings": {
+            "image": "shopify://shop_images/rr480_bc710e75-d1c9-4e54-8bfa-df46955debcc.jpg",
+            "image_overlay_opacity": 50,
+            "heading": "",
+            "heading_size": "h1",
+            "subheading": "<a href=\"https://www.instagram.com/untamed_rr480/\" target=\"_blank\" title=\"https://www.instagram.com/untamed_rr480/\">@untamed_rr480</a>",
+            "button_label": "Du willst auch so ein Custom Product?",
+            "link": "shopify://products/custom-product",
+            "button_style_secondary": true,
+            "show_text_box": false,
+            "box_align": "bottom-center",
+            "text_alignment": "center",
+            "text_alignment_mobile": "center",
+            "color_scheme": "scheme-4"
+          }
+        },
+        "slide_D6Rhhf": {
+          "type": "slide",
+          "settings": {
+            "image": "shopify://shop_images/huskyjeff.jpg",
+            "image_overlay_opacity": 30,
+            "heading": "",
+            "heading_size": "h1",
+            "subheading": "<a href=\"https://www.instagram.com/husky.jeff/\" title=\"https://www.instagram.com/husky.jeff/\">@husky.jeff</a>",
+            "button_label": "Du willst auch so ein Custom Product?",
+            "link": "shopify://products/custom-product",
+            "button_style_secondary": true,
+            "show_text_box": false,
+            "box_align": "bottom-center",
+            "text_alignment": "center",
+            "text_alignment_mobile": "center",
+            "color_scheme": "scheme-4"
+          }
+        },
+        "slide_teMffT": {
+          "type": "slide",
+          "settings": {
+            "image": "shopify://shop_images/RAW04166.jpg",
+            "image_overlay_opacity": 40,
+            "heading": "",
+            "heading_size": "h1",
+            "subheading": "<a href=\"https://www.instagram.com/dertom_xmf/\" target=\"_blank\" title=\"https://www.instagram.com/dertom_xmf/\">@dertom_xmf</a>",
+            "button_label": "Du willst auch so ein Custom Product?",
+            "link": "shopify://products/custom-product",
+            "button_style_secondary": true,
+            "show_text_box": false,
+            "box_align": "bottom-center",
+            "text_alignment": "center",
+            "text_alignment_mobile": "center",
+            "color_scheme": "scheme-4"
+          }
+        }
+      },
+      "block_order": [
+        "slide_3Pngqr",
+        "slide_dRfp3y",
+        "slide_Txan7J",
+        "slide_D6Rhhf",
+        "slide_teMffT"
+      ],
+      "disabled": true,
+      "name": "Custom Product",
+      "settings": {
+        "layout": "full_bleed",
+        "slide_height": "large",
+        "slider_visual": "counter",
+        "auto_rotate": true,
+        "change_slides_speed": 5,
+        "image_behavior": "none",
+        "show_text_below": false,
+        "accessibility_info": "Slideshow zu deiner Marke"
+      }
+    },
+    "tpt_image_comparison_one_mR9dDb": {
+      "type": "wheelie-escape-hero",
+      "name": "Wheelie Escape",
+      "settings": {}
+    },
+    "blocksy_multiple_image_text_section_eDK4qM": {
+      "type": "blocksy-multiple-image-text-section",
+      "blocks": {
+        "image_block_one_MVazmX": {
+          "type": "image_block_one",
+          "settings": {
+            "image_one": "shopify://shop_images/20251127_181423_1.jpg",
+            "img1_col_start": 1,
+            "img1_col_end": 8,
+            "img1_row_start": 3,
+            "img1_row_end": 13
+          }
+        },
+        "image_block_two_7QcRBB": {
+          "type": "image_block_two",
+          "settings": {
+            "image_two": "shopify://shop_images/20251127_181522_a12b566b-3656-4020-9e72-9dc2a5f9f184.jpg",
+            "img2_col_start": 6,
+            "img2_col_end": 13,
+            "img2_row_start": 1,
+            "img2_row_end": 10
+          }
+        }
+      },
+      "block_order": [
+        "image_block_one_MVazmX",
+        "image_block_two_7QcRBB"
+      ],
+      "disabled": true,
+      "custom_css": [
+        ".blocksy-multiple-imagei-link {display: inline-block; width: auto; max-width: fit-content; padding: 12px 26px; background-color: #323232; color: #ffffff; font-weight: 600; text-decoration: none; border-radius: 6px; transition: background-color 0.25s ease-out, transform 0.15s ease-out;}",
+        ".blocksy-multiple-imagei-link:hover {background-color: #4a4a4a; transform: translateY(-2px);}",
+        ".blocksy-multiple-imagei-link:active {background-color: #1e1e1e; transform: translateY(0);}"
+      ],
+      "name": "Blocksy (F) • Multiple Image With Text ",
+      "settings": {
+        "section_max_width": 2000,
+        "section_bg": "#ffffff",
+        "image_radius": 22,
+        "multiple-image-row-height": 40,
+        "multiple-image-gap": 28,
+        "multiple-image-subheading": "",
+        "multiple-images-subheading_size": 12,
+        "multiple-image-subheading_color": "#7a7571",
+        "multiple-image-heading": "New Racing Zipper",
+        "multiple-image-heading_size": 55,
+        "multiple-image-heading_color": "#323232",
+        "multiple-image-description": "<p>Racing Zipper mit selber wählbarer Nummer.</p><p>Sponsoren von <a href=\"https://www.instagram.com/rev.sticks/\" target=\"_blank\">Revsticks</a> und <a href=\"https://www.instagram.com/lp.carbon/\" target=\"_blank\">LP Carbon</a>.</p><p>Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich.</p>",
+        "multiple-image-desc_size": 20,
+        "multiple-image-desc_color": "#323232",
+        "link_text": "Jetzt Zahl  wählen",
+        "link_url": "shopify://products/racing-zipper",
+        "multiple-image-btn-color": "#ffffff",
+        "multiple-image-btn-hover-color": "#7a7571",
+        "multiple_image-padding_top": 0,
+        "multiple_image-padding_left": 40,
+        "multiple_image-padding_right": 40,
+        "multiple_image-padding_bottom": 0,
+        "multiple_image-margin_top": 40,
+        "multiple_image-margin_bottom": 40
+      }
+    },
+    "custom_liquid_68R78L": {
+      "type": "custom-liquid",
+      "disabled": true,
+      "name": "t:sections.custom-liquid.presets.name",
+      "settings": {
+        "custom_liquid": "<style>\n  :root {\n    --pattern-height: 6vh;\n  }\n\n  @media (max-width: 768px) {\n    :root {\n      --pattern-height: 3vh;\n    }\n  }\n</style>\n\n<div\n  style=\"\n    --rows: .3;\n    --height: var(--pattern-height);\n    --square-size: calc((var(--height) / var(--rows)) * .3);\n    background: repeating-conic-gradient(\n      from 0deg,\n      #ffffff 0deg 90deg,\n      #323232 90deg 180deg\n    );\n    background-size: var(--square-size) var(--square-size);\n    width: 100%;\n    height: var(--height);\n    display: block;\n  \">\n</div>",
+        "color_scheme": "",
+        "padding_top": 0,
+        "padding_bottom": 0
+      }
+    },
+    "collection_list_jkYDY8": {
+      "type": "collection-list",
+      "blocks": {
+        "featured_collection_rJcArb": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "t-shirts"
+          }
+        },
+        "featured_collection_idqddn": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "hoodies"
+          }
+        },
+        "featured_collection_3i9Eke": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "windbreaker"
+          }
+        },
+        "featured_collection_cEzP9w": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "accessoires"
+          }
+        }
+      },
+      "block_order": [
+        "featured_collection_rJcArb",
+        "featured_collection_idqddn",
+        "featured_collection_3i9Eke",
+        "featured_collection_cEzP9w"
+      ],
+      "custom_css": [
+        "@media screen and (min-width: 1024px) {h3 {font-size: 2em; }}"
+      ],
+      "settings": {
+        "title": "Kategorien",
+        "heading_size": "h1",
+        "image_ratio": "square",
+        "columns_desktop": 4,
+        "color_scheme": "scheme-2",
+        "show_view_all": true,
+        "columns_mobile": "1",
+        "swipe_on_mobile": false,
+        "padding_top": 20,
+        "padding_bottom": 16
+      }
+    },
+    "custom_liquid_GnNbgy": {
+      "type": "custom-liquid",
+      "disabled": true,
+      "custom_css": [],
+      "name": "Übergang",
+      "settings": {
+        "custom_liquid": "<div\n  style=\"\n    background: linear-gradient(180deg, #ffffff 0%, #323232 100%);\n    min-height: 10vh;\n    width: 100vw;\n    margin-leAft: calc(50% - 50vw); /* volle Breite aus Container 'brechen' */\n  \">\n</div>",
+        "color_scheme": "",
+        "padding_top": 0,
+        "padding_bottom": 0
+      }
+    },
+    "tpt_video_grid_1_m7FE8L": {
+      "type": "tpt-video-grid-1",
+      "blocks": {
+        "video_TtPGTV": {
+          "type": "video",
+          "settings": {
+            "video_main": "shopify://files/videos/PfuschAd(ordering).mp4",
+            "heading": "Ordering",
+            "sub_heading": ""
+          }
+        },
+        "video_RLnHR8": {
+          "type": "video",
+          "settings": {
+            "video_main": "shopify://files/videos/YouCut_20251202_185653627.mp4",
+            "heading": "Choose your character",
+            "sub_heading": ""
+          }
+        },
+        "video_QckaC4": {
+          "type": "video",
+          "settings": {
+            "video_main": "shopify://files/videos/PfuschAd.mp4",
+            "heading": "Click it!",
+            "sub_heading": ""
+          }
+        },
+        "video_WbijJq": {
+          "type": "video",
+          "settings": {
+            "video_main": "shopify://files/videos/Pfusch Ad 1.mp4",
+            "heading": "Drop Back",
+            "sub_heading": ""
+          }
+        }
+      },
+      "block_order": [
+        "video_TtPGTV",
+        "video_RLnHR8",
+        "video_QckaC4",
+        "video_WbijJq"
+      ],
+      "custom_css": [
+        ".tpt-footer-1_menu-list {justify-content: center !important; width: 100% !important;}"
+      ],
+      "name": "Tpt - Video Grid #1",
+      "settings": {
+        "heading": "Reels",
+        "heading_size": "h2",
+        "sub_heading": "",
+        "description": "",
+        "alignment": "center",
+        "top_button_label": "",
+        "top_button_link": "",
+        "show_play_pause": true,
+        "show_one_video": true,
+        "nav": false,
+        "dots": false,
+        "scroll_bar": true,
+        "auto_play": false,
+        "text-video-color": "#ffffff",
+        "video_ratio": 176,
+        "desktop_column": 4,
+        "tablet_column": 4,
+        "mobile_column": 1,
+        "bottom_button_label": "",
+        "bottom_button_link": "",
+        "section_full_width": true,
+        "section_max_width": 1600,
+        "content_full_width": false,
+        "content_max_width": 1440,
+        "padding_desktop": 0,
+        "padding_tablet_mobile": 0,
+        "margin_desktop": 60,
+        "margin_tablet_mobile": 40,
+        "background_color": "#ffffff",
+        "background_gradient_color": "",
+        "foreground_color": "#000000",
+        "title_color": "#000000",
+        "button_background_color": "#000000",
+        "button_text_color": "#ffffff",
+        "input_button_radius": 0,
+        "section_lazyload": false
+      }
+    },
+    "custom_liquid_yqXyta": {
+      "type": "custom-liquid",
+      "name": "t:sections.custom-liquid.presets.name",
+      "settings": {
+        "custom_liquid": "",
+        "color_scheme": "",
+        "padding_top": 40,
+        "padding_bottom": 24
+      }
+    },
+    "rich_text_cz3iFy": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_LcihLk": {
+          "type": "heading",
+          "settings": {
+            "heading": "Über Pfusch",
+            "heading_size": "h1"
+          }
+        },
+        "text_dmfa7y": {
+          "type": "text",
+          "settings": {
+            "text": ""
+          }
+        },
+        "button_hTNygW": {
+          "type": "button",
+          "settings": {
+            "button_label": "Finde jetzt mehr über Pfusch-Clothing heraus",
+            "button_link": "shopify://pages/uber-uns",
+            "button_style_secondary": true,
+            "button_label_2": "",
+            "button_link_2": "shopify://pages/uber-uns",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_LcihLk",
+        "text_dmfa7y",
+        "button_hTNygW"
+      ],
+      "name": "t:sections.rich-text.presets.name",
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "scheme-1",
+        "full_width": true,
+        "padding_top": 0,
+        "padding_bottom": 28
+      }
+    }
+  },
+  "order": [
+    "custom_liquid_jMr9xr",
+    "slideshow_Ciamzh",
+    "tpt_image_comparison_one_mR9dDb",
+    "blocksy_multiple_image_text_section_eDK4qM",
+    "custom_liquid_68R78L",
+    "collection_list_jkYDY8",
+    "custom_liquid_GnNbgy",
+    "tpt_video_grid_1_m7FE8L",
+    "custom_liquid_yqXyta",
+    "rich_text_cz3iFy"
+  ]
+}

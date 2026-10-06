@@ -3,3 +3,8 @@
 .app-shell>.sticker-workshop{grid-row:2;min-height:0;height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;display:block}.app-shell>.sticker-workshop .sticker-stage{margin-top:16px}.app-shell>.sticker-workshop .sticker-tools{margin-top:16px}.app-shell>.sticker-loading{grid-row:2;min-height:0;height:100%;overflow:auto}
 
 .sticker-workshop{width:100%;max-width:1400px;margin:0 auto;font-family:Arial,Helvetica,sans-serif}.sticker-tools button:not(.button):hover:not(:disabled){background:#3b3b3b;border-color:#707070}.sticker-tools button[aria-pressed=true]:hover:not(:disabled){background:#fff}.sticker-tools button:disabled{opacity:.38}.sticker-footer>a{color:var(--foreground)}.sticker-footer small{color:var(--muted-foreground)}
+
+.sticker-targets { display: flex; gap: 8px; min-width: 0; margin: 16px 0 0; padding: 0; border: 0; }
+.sticker-targets button { min-height: 44px; padding: 10px 24px; border: 1px solid #606060; background: transparent; color: #eeeeeb; font: 700 11px/1.2 Arial, sans-serif; letter-spacing: .05em; }
+.sticker-targets button[aria-pressed='true'] { background: #eeeeeb; border-color: #eeeeeb; color: #242424; }
+@media (max-width: 540px) { .sticker-targets button { flex: 1; } }

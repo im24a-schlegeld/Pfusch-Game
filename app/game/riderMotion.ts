@@ -17,6 +17,9 @@ export interface RiderMotion {
   balance?: number;
   load?: number;
   road?: number;
+  /** Rendered motorcycle attitude in radians, used only for the rider's gaze. */
+  bikePitch?: number;
+  bikeRoll?: number;
   /** Crash-only pose releases hands and boots from bike contact points. */
   crash?: number;
   crashSide?: number;
@@ -32,6 +35,47 @@ const bounded = (value: number | undefined, min = 0) =>
   typeof value === 'number' && Number.isFinite(value)
     ? Math.max(min, Math.min(1, value))
     : 0;
+
+const radians = (value: number | undefined, min: number, max: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
+
+/** Keep the gaze near the road horizon as the motorcycle rises. The neck
+ * counters most of the chassis rotation, with limited natural head movement;
+ * no joint position, skeleton dimension or control contact is changed. */
+export function riderHeadPose(motion: RiderMotion) {
+  const pitch = radians(motion.bikePitch, -0.2, 1.3);
+  const roll = radians(motion.bikeRoll, -0.3, 0.3);
+  const steer = bounded(motion.steer, -1);
+  return {
+    pitch: -0.07 - pitch * 0.9 + bounded(motion.balance, -1) * 0.01,
+    yaw: -steer * 0.035,
+    roll: -roll * 0.88 + steer * 0.008,
+  };
+}
+
+export const WHEELIE_LANE_DURATION = 0.55;
+export interface WheelieLaneInput {
+  age: number;
+  direction: number;
+  wheelie: number;
+  airborne: boolean;
+  onTowTruck: boolean;
+  reducedMotion: boolean;
+}
+
+/** A small lean into the lane, then a shorter counter-settle. The squared
+ * sine reaches both ends without a snap; it never changes physics or lanes. */
+export function wheelieLanePose(input: WheelieLaneInput) {
+  if (input.reducedMotion || input.airborne || input.onTowTruck ||
+    !Number.isFinite(input.age) || input.age <= 0 || input.age >= WHEELIE_LANE_DURATION)
+    return { roll: 0, yaw: 0, steer: 0 };
+  const direction = bounded(input.direction, -1), lift = bounded(input.wheelie);
+  const t = input.age / WHEELIE_LANE_DURATION;
+  const pulse = t < 0.72 ? Math.sin(Math.PI * t / 0.72) ** 2
+    : -0.22 * Math.sin(Math.PI * (t - 0.72) / 0.28) ** 2;
+  const weight = direction * lift * pulse;
+  return { roll: -weight * 0.052, yaw: -weight * 0.032, steer: weight * 0.16 };
+}
 
 /** All motion changes contact-relative pose, never anatomy. Each side has its own IK solve. */
 export function riderMotionPose(base: RiderPose, motion: RiderMotion) {

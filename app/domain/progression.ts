@@ -1,6 +1,6 @@
-import { DAILY_CHALLENGES, LEVELS } from './config';
-import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet';
-import { equipmentSlot } from './preview';
+import { DAILY_CHALLENGES, LEVELS } from './config.js';
+import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet.js';
+import { equipmentSlot } from './preview.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const dayKey = (date = new Date()) => date.toISOString().slice(0, 10);
 export const levelForXp = (xp: number) =>

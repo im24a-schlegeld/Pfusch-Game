@@ -1,8 +1,6 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  ArrowRight,
-  ArrowUpRight,
   Flag,
   Gift,
   Settings as SettingsIcon,
@@ -10,20 +8,15 @@ import {
   Volume2,
   VolumeX,
   Wrench,
-  Zap,
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import type { Player, Product, RunReward, RunStats } from '../domain/types';
-import { BIKES, DAILY_CHALLENGES } from '../domain/config';
 import { refreshDaily } from '../domain/progression';
 import { createServices, type Services } from '../services';
+import { unavailableAccess } from '../services/playerAccess';
+import { shopifyParentOrigin } from '../services/shopifyBridge';
+import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/shopifyViewport';
 import { GameAudio } from '../game/audio';
-import { Coin, Preview, XpBar, fmt, gameText } from './shared';
+import { Coin } from './shared';
 import Ride from './Ride';
 import Garage from './Garage';
 import {
@@ -34,8 +27,10 @@ import {
   SettingsScreen,
 } from './Screens';
 import RideResult from './RideResult';
+import LoadingScreen from './LoadingScreen';
+import FirstRideTutorial from './FirstRideTutorial';
+import SaveAccessGate from './SaveAccessGate';
 type Screen =
-  | 'menu'
   | 'ride'
   | 'results'
   | 'garage'
@@ -45,15 +40,32 @@ type Screen =
   | 'leaderboard'
   | 'settings';
 export default function GameApp() {
+  const embedded = window.parent !== window;
+  const parentOrigin = shopifyParentOrigin(embedded, document.referrer);
+  const development = (import.meta as ImportMeta & { env: { DEV: boolean } }).env.DEV;
+  const viewportOrigin = rideViewportParentOrigin(embedded, document.referrer, development ? window.location.origin : undefined);
   const [services] = useState<Services>(() => createServices());
   const [audio] = useState(() => new GameAudio());
+  const subscribeSave = useCallback((listener: () => void) => services.players.subscribeSync?.(listener) ?? (() => {}), [services]);
+  const getSaveStatus = useCallback(() => services.players.syncStatus, [services]);
+  const saveStatus = useSyncExternalStore(subscribeSave, getSaveStatus, getSaveStatus);
+  const getAccessStatus = useCallback(() => services.players.getAccess?.(), [services]);
+  const accessStatus = useSyncExternalStore(subscribeSave, getAccessStatus, getAccessStatus);
   const [player, setPlayer] = useState<Player | null>(null);
   const current = useRef<Player | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [screen, setScreen] = useState<Screen>('menu');
+  const [screen, setScreen] = useState<Screen>('garage');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [tutorial, setTutorial] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(false);
+  const [startingRide, setStartingRide] = useState(false);
+  const [garageLoading, setGarageLoading] = useState(true);
+  const garageSettled = useCallback(() => setGarageLoading(false), []);
+  const [accessError, setAccessError] = useState('');
+  const accessRequest = useRef(0);
+  const accessPending = useRef(false);
   const [result, setResult] = useState<{
     run: RunStats;
     reward: RunReward;
@@ -63,6 +75,8 @@ export default function GameApp() {
   const pendingResult = useRef<{ run: RunStats; reward: RunReward } | null>(
     null,
   );
+  const rideViewport = !error && !!player && (screen === 'ride' || screen === 'results');
+  useEffect(() => syncShopifyRideViewport(window, viewportOrigin, rideViewport), [viewportOrigin, rideViewport]);
   useEffect(() => {
     let alive = true;
     void Promise.all([services.auth.getUser(), services.players.load()])
@@ -115,9 +129,27 @@ export default function GameApp() {
     };
   }, [update]);
   useEffect(() => {
+    const recheck = () => {
+      if (current.current && document.visibilityState === 'visible')
+        void services.players.refreshAccess?.().catch(() => {});
+    };
+    window.addEventListener('focus', recheck);
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      window.removeEventListener('focus', recheck);
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [services]);
+  useEffect(() => {
     audio.muted = player?.settings.muted ?? true;
   }, [audio, player?.settings.muted]);
   const navigate = (next: Screen) => {
+    accessRequest.current += 1;
+    accessPending.current = false;
+    setCheckingAccess(false);
+    setStartingRide(false);
+    setGarageLoading(next === 'garage' && screen !== 'garage');
+    setAccessOpen(false);
     audio.unlock();
     audio.cue();
     setScreen(next);
@@ -125,20 +157,48 @@ export default function GameApp() {
     if (next === 'rewards') services.analytics.track('reward_viewed');
     window.scrollTo(0, 0);
   };
-  function start() {
+  async function checkAccess(startRide: boolean) {
     audio.unlock();
-    if (!current.current) return;
-    if (!current.current.settings.tutorialSeen) {
-      setTutorial(true);
-      return;
+    if (!current.current || accessPending.current) return;
+    const request = ++accessRequest.current;
+    accessPending.current = true;
+    setCheckingAccess(true);
+    setStartingRide(startRide);
+    setAccessError('');
+    try {
+      const access = await services.players.refreshAccess?.()
+        ?? services.players.getAccess?.() ?? unavailableAccess(current.current.runsPlayed);
+      if (request !== accessRequest.current) return;
+      if (!access.allowed) {
+        setTutorial(false);
+        setAccessOpen(true);
+        return;
+      }
+      if (!startRide) return;
+      setAccessOpen(false);
+      if (!current.current.settings.tutorialSeen) {
+        setTutorial(true);
+        return;
+      }
+      activeRun.current += 1;
+      pendingResult.current = null;
+      setResult(null);
+      setRunKey(activeRun.current);
+      setScreen('ride');
+      services.analytics.track('run_started');
+    } catch {
+      if (request !== accessRequest.current) return;
+      setAccessError('Dein Zugang konnte nicht geprüft werden. Bitte prüfe die Verbindung und versuche es erneut.');
+      setAccessOpen(true);
+    } finally {
+      if (request === accessRequest.current) {
+        accessPending.current = false;
+        setCheckingAccess(false);
+        setStartingRide(false);
+      }
     }
-    activeRun.current += 1;
-    pendingResult.current = null;
-    setResult(null);
-    setRunKey(activeRun.current);
-    setScreen('ride');
-    services.analytics.track('run_started');
   }
+  const start = () => { void checkAccess(true); };
   function finish(run: RunStats, generation: number) {
     if (
       !current.current ||
@@ -197,14 +257,7 @@ export default function GameApp() {
         </button>
       </main>
     );
-  if (!player)
-    return (
-      <main className="startup">
-        <strong className="wordmark">PFUSCH.</strong>
-        <span className="spinner" />
-        <p className="eyebrow">GARAGE WIRD GELADEN</p>
-      </main>
-    );
+  if (!player) return <LoadingScreen label="GARAGE WIRD GELADEN" fullScreen />;
   if (screen === 'ride')
     return (
       <Ride
@@ -214,20 +267,26 @@ export default function GameApp() {
         audio={audio}
         onFinish={(run) => finish(run, runKey)}
         onResultsReady={(runId) => revealResults(runId, runKey)}
+        onExit={() => navigate('garage')}
         onMute={mute}
       />
     );
-  const equippedBike = BIKES.find((b) => b.id === player.bike) ?? BIKES[0];
-  const back = () => navigate('menu');
+  const back = () => navigate('garage');
+  const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
+  const newsletterOrigin = parentOrigin;
+  const showSaveStatus = saveStatus && (!embedded || ['offline', 'conflict', 'unavailable'].includes(saveStatus.state));
+  const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET'
+    : screen === 'garage' && garageLoading ? 'GARAGE WIRD GELADEN' : null;
   return (
-    <div className="app-shell" data-screen={screen}>
-      <header className="topbar">
-        <button className="brand" aria-label="PFUSCH Hauptmenü" onClick={back}>
+    <>
+    <div className={`app-shell${embedded ? ' app-shell-embedded' : ''}`} data-screen={screen} inert={loadingLabel ? true : undefined}>
+      {!embedded && screen !== 'results' && <header className="topbar">
+        <button className="brand" aria-label="Wheelie Escape Garage" onClick={back}>
           <img className="brand-logo" src="/branding/pfusch-logo.webp" alt="Pfusch" />
-          <span className="brand-sub">STREET RUN</span>
+          <span className="brand-sub">WHEELIE ESCAPE</span>
         </button>
         <span className="top-status">
-          <i /> PFUSCH STREET RUN
+          <i /> WHEELIE ESCAPE
         </span>
         <div className="top-right">
           <Coin value={player.coins} />
@@ -253,80 +312,11 @@ export default function GameApp() {
             <SettingsIcon size={19} />
           </button>
         </div>
-      </header>
-      {services.players.warning && (
+      </header>}
+      {checkingAccess ? <output className="account-save-status" aria-live="polite">Zugang wird geprüft …</output>
+        : showSaveStatus && <output className={`account-save-status account-save-${saveStatus.state}`} aria-live="polite">{saveStatus.message}</output>}
+      {!saveStatus && services.players.warning && (
         <output className="save-warning">{services.players.warning}</output>
-      )}
-      {screen === 'menu' && (
-        <main className="main-menu">
-          <div
-            className="menu-stage"
-            role="button"
-            tabIndex={0}
-            aria-label="Motorrad in der Garage öffnen"
-            onClick={() => navigate('garage')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                navigate('garage');
-              }
-            }}
-          >
-            <Preview player={player} products={products} mode="menu" />
-          </div>
-          <div className="menu-title">
-            <p className="eyebrow">
-              <span className="signal-dot" /> PFUSCH CLOTHING
-            </p>
-            
-            <button className="button primary play-button" onClick={start}>
-              <span>LOSFAHREN</span>
-              <ArrowUpRight size={29} />
-            </button>
-            <button className="garage-link" onClick={() => navigate('garage')}>
-              <Wrench size={18} /> GARAGE <ArrowRight size={17} />
-            </button>
-            <p className="input-caption">WISCHEN ODER TASTATUR</p>
-          </div>
-          <div className="bike-caption">
-            <span className="eyebrow">DEIN SETUP</span>
-            <strong>{equippedBike.name}</strong>
-            <span>
-              {equippedBike.name.toUpperCase()} /{' '}
-              {player.paint === '#e7e7df' ? 'STANDARD' : 'INDIVIDUELL'}
-            </span>
-          </div>
-          <div className="menu-bottom">
-            <div className="personal-best">
-              <Trophy size={20} />
-              <div>
-                <span className="eyebrow">BESTLEISTUNG</span>
-                <strong>{fmt(player.highScore).padStart(6, '0')}</strong>
-              </div>
-              <span className="best-divider" />
-              <div>
-                <span className="eyebrow">GESAMTDISTANZ</span>
-                <strong>
-                  {(player.totalDistance / 1000).toFixed(1)} <small>KM</small>
-                </strong>
-              </div>
-            </div>
-            <button
-              className="daily-teaser"
-              onClick={() => navigate('challenges')}
-            >
-              <Flag size={21} />
-              <div>
-                <span className="eyebrow">HEUTIGE CHALLENGES</span>
-                <b>
-                  {player.challenges.claimed.length} / {DAILY_CHALLENGES.length}{' '}
-                  ERLEDIGT
-                </b>
-              </div>
-              <ArrowUpRight />
-            </button>
-          </div>
-        </main>
       )}
       {screen === 'garage' && (
         <Garage
@@ -337,11 +327,15 @@ export default function GameApp() {
           notify={setNotice}
           back={back}
           start={start}
+          embedded={embedded}
+          onProgress={() => navigate('progress')}
+          onReady={garageSettled}
+          onLoadError={garageSettled}
         />
       )}
       {screen === 'results' && result && (
         <RideResult player={player} run={result.run} reward={result.reward}
-          start={start} garage={() => navigate('garage')} />
+          start={start} startLocked={!access.allowed} garage={() => navigate('garage')} />
       )}
       {screen === 'challenges' && (
         <Challenges player={player} back={back} start={start} />
@@ -359,19 +353,23 @@ export default function GameApp() {
       {screen === 'leaderboard' && (
         <Leaderboard player={player} services={services} back={back} />
       )}
+      <SaveAccessGate open={accessOpen} access={access} checking={checkingAccess}
+        message={accessError || saveStatus?.message} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
+        onNewsletter={newsletterOrigin ? () => {
+          setAccessOpen(false);
+          window.parent.postMessage({ type: 'pfusch:open-newsletter', version: 1 }, newsletterOrigin);
+        } : undefined} />
       {screen === 'settings' && (
         <SettingsScreen
           player={player}
           services={services}
           update={update}
           back={back}
+          onTutorial={() => setTutorial(true)}
+          onAccess={() => setAccessOpen(true)}
         />
       )}
-      <nav className="bottom-nav" aria-label="Spielnavigation">
-        <button className={screen === 'menu' ? 'active' : ''} onClick={back}>
-          <Zap size={18} />
-          <span>FAHREN</span>
-        </button>
+      {screen !== 'results' && <nav className="bottom-nav" aria-label="Spielnavigation">
         <button
           className={screen === 'garage' ? 'active' : ''}
           onClick={() => navigate('garage')}
@@ -391,7 +389,7 @@ export default function GameApp() {
           onClick={() => navigate('rewards')}
         >
           <Gift size={18} />
-          <span>PREISE</span>
+          <span>BELOHNUNGEN</span>
         </button>
         <button
           className={screen === 'leaderboard' ? 'active' : ''}
@@ -400,44 +398,25 @@ export default function GameApp() {
           <Trophy size={18} />
           <span>RANG</span>
         </button>
-      </nav>
-      <Dialog open={tutorial} onOpenChange={setTutorial}>
-        <DialogContent className="game-dialog">
-          <p className="eyebrow">DEINE ERSTE RUNDE</p>
-          <DialogTitle>FINDE DEINE LINIE.</DialogTitle>
-          <DialogDescription>
-            Gas läuft automatisch. Du steuerst den Rest.
-          </DialogDescription>
-          <div className="control-guide">
-            <span>
-              WISCHEN ← → <b>Verkehr ausweichen</b>
-            </span>
-            <span>
-              NACH OBEN WISCHEN <b>Gewicht vor / korrigieren</b>
-            </span>
-            <span>
-              NACH UNTEN WISCHEN <b>Gas / Gewicht zurück</b>
-            </span>
-          </div>
-          <p className="muted">
-            Auf Touch: nach unten ziehen zum Anheben, nach oben zum Korrigieren und seitlich zum Ausweichen. Loslassen = neutral. Zwei Finger pausieren. Tastatur: A/D oder Pfeile zum Ausweichen, S/↓ zum Anheben, W/↑ zum Korrigieren. Wheelies und Stunts geben die meisten Punkte. Sammle P F U S C H für einen Set-Bonus.
-          </p>
-          <button
-            className="button primary"
-            onClick={() => {
-              update({
-                ...player,
-                settings: { ...player.settings, tutorialSeen: true },
-              });
-              setTutorial(false);
-              start();
-            }}
-          >
-            VERSTANDEN. LOSFAHREN <ArrowRight />
-          </button>
-        </DialogContent>
-      </Dialog>
+        {embedded && <button
+          className={screen === 'settings' ? 'active' : ''}
+          aria-label="Einstellungen"
+          onClick={() => navigate('settings')}
+        >
+          <SettingsIcon size={18} />
+          <span>OPTIONEN</span>
+        </button>}
+      </nav>}
+      <FirstRideTutorial open={tutorial} onOpenChange={setTutorial}
+        reducedMotion={player.settings.reducedMotion}
+        onStart={() => {
+          update({ ...player, settings: { ...player.settings, tutorialSeen: true } });
+          setTutorial(false);
+          start();
+        }} />
       {notice && <output className="toast">{notice}</output>}
     </div>
+    {loadingLabel && <LoadingScreen label={loadingLabel} fullScreen />}
+    </>
   );
 }

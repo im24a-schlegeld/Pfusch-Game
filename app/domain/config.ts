@@ -1,5 +1,5 @@
 import type { Bike, ChallengeDefinition } from './types';
-import { pricedAppearanceColors } from './appearanceColors';
+import { pricedAppearanceColors } from './appearanceColors.js';
 export const MAX_RIDE_SPEED = 140 / 3.6;
 export const BIKES: Bike[] = [
   {
@@ -130,27 +130,65 @@ export const PAINTS = pricedAppearanceColors([
   { name: 'Sand', value: '#b6a083', price: 120 },
   { name: 'Violett', value: '#7461a5', price: 120 },
 ], 120);
-export const RIMS = pricedAppearanceColors([
+const rimPalette = pricedAppearanceColors([
   { name: 'Silber', value: '#a6acb0', price: 0 },
   { name: 'Schwarz', value: '#24282b', price: 60 },
   { name: 'Signal', value: '#d9f365', price: 100 },
   { name: 'Bronze', value: '#967847', price: 100 },
   { name: 'Kobalt', value: '#627dac', price: 100 },
 ], 100);
+// Keep the long-standing level reward selectable even when palette deduping
+// removes a nearby legacy signal shade from the ordinary shop colors.
+export const RIMS = rimPalette.some((color) => color.value === '#d9f365')
+  ? rimPalette : [...rimPalette, { name: 'Signal', value: '#d9f365', price: 100 }];
 export const REWARDS = [
   {
     id: 'starter-coins',
     title: 'STARTBONUS',
     description: '100 PFUSCH Coins. Einmalig.',
     kind: 'coins',
+    coins: 100,
     level: 1,
+  },
+  {
+    id: 'city-coins',
+    title: 'STADT-BONUS',
+    description: '150 Coins für dein nächstes Garage-Upgrade.',
+    kind: 'coins',
+    coins: 150,
+    level: 2,
+  },
+  {
+    id: 'street-coins',
+    title: 'STRASSEN-BONUS',
+    description: '200 Coins. Ein Schritt näher an deinem nächsten Bike.',
+    kind: 'coins',
+    coins: 200,
+    level: 3,
   },
   {
     id: 'exclusive-rims',
     title: 'NACHT-FELGEN',
     description: 'Signal-Felgen für deine Fahrten.',
     kind: 'cosmetic',
+    itemId: 'rims:#d9f365',
     level: 5,
+  },
+  {
+    id: 'sport-coins',
+    title: 'SPORT-BONUS',
+    description: '300 Coins für neue Fahrzeuge und Farben.',
+    kind: 'coins',
+    coins: 300,
+    level: 6,
+  },
+  {
+    id: 'amethyst-paint',
+    title: 'AMETHYST-LACK',
+    description: 'Violetter Lack für alle deine Motorräder.',
+    kind: 'cosmetic',
+    itemId: 'paint:#7461a5',
+    level: 8,
   },
   {
     id: 'early-drop',

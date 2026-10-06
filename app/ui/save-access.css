@@ -1,0 +1,38 @@
+.app-shell:has(> .account-save-status) { grid-template-rows: auto auto minmax(0, 1fr) auto !important; }
+.app-shell > .account-save-status { grid-row: 2; grid-column: 1; min-width: 0; }
+.app-shell:has(> .account-save-status) > main { grid-row: 3 !important; }
+.app-shell:has(> .account-save-status) > .bottom-nav { grid-row: 4 !important; }
+.save-access-dialog.game-dialog[data-slot='dialog-content'] {
+  z-index: 151 !important;
+  width: min(500px, calc(100vw - 28px)) !important;
+  max-width: calc(100vw - 28px) !important;
+  max-height: calc(100dvh - 28px) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  gap: 0 !important;
+  padding: clamp(18px, 4vw, 28px) !important;
+}
+body:has(.save-access-dialog) [data-slot='dialog-overlay'] { z-index: 150 !important; }
+.save-access-dialog [data-slot='dialog-title'] { outline: none; }
+.save-access-dialog [data-slot='dialog-description'] { font-size: 13px !important; line-height: 1.6 !important; }
+.save-access-panel {
+  padding: clamp(18px, 4vw, 32px);
+  border: 1px solid #62625d;
+  background: #292929;
+}
+.save-access-symbol { display: inline-flex; justify-self: start; padding: 12px; border: 1px solid #62625d; margin-bottom: 20px; }
+.save-access-symbol svg { width: 28px; height: 28px; }
+.save-access-counter { display: block; color: #bababa; font-size: 10px; letter-spacing: .1em; margin-bottom: 10px; }
+.save-access-panel h2 { font-size: clamp(24px, 5vw, 34px); line-height: 1; margin: 0 0 16px; }
+.save-access-panel p { font-size: 13px; line-height: 1.6; color: #cececa; }
+.save-access-steps { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 16px; }
+.save-access-steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
+.save-access-steps li > span { color: #f1f1ed; font-size: 13px; font-weight: 700; padding-top: 3px; }
+.save-access-steps p { margin: 0; }
+.save-access-message { display: block; padding: 12px 0; font-size: 13px; line-height: 1.5; }
+.save-access-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.save-access-actions .button { min-height: 48px !important; flex: 1 1 190px; font-size: 11px !important; padding: 12px !important; }
+.save-access-panel .save-access-footnote { display: flex; align-items: flex-start; gap: 8px; margin-top: 20px; font-size: 11px; }
+.save-access-footnote svg { flex: 0 0 15px; margin-top: 2px; }
+.save-access-back { min-height: 44px; margin-top: 8px; padding: 8px 0; font-size: 11px; color: #eeeeeb; background: none; text-decoration: underline; text-underline-offset: 4px; }
+.result-access-notice { font-size: 12px; line-height: 1.5; color: #cfcfca; padding: 12px 0; }

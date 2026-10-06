@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="de" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#101112" />
-    <meta name="description" content="The PFUSCH Clothing motorcycle game. Ride the streets, build your combo and make the garage yours." />
-    <title>PFUSCH Street Run</title>
+    <meta name="description" content="Wheelie Escape von PFUSCH. Fahre Wheelies, weiche dem Verkehr aus und baue deine Garage auf." />
+    <title>Wheelie Escape</title>
     <link rel="icon" href="/favicon.svg" />
+    <link rel="preload" as="image" href="/branding/loading-wheelie.webp" media="(min-aspect-ratio: 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/branding/loading-wheelie-portrait.webp" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
     <style>
       /* Keep a useful recovery surface visible if the app bundle or WebGL boot
          fails before React can render its own loading/error screen. React
@@ -16,11 +18,11 @@
         inset: 0;
         z-index: 2147483647;
         display: grid;
-        place-content: center;
+        align-content: end;
         justify-items: center;
         gap: 18px;
         padding: 24px;
-        background: #323232;
+        background: linear-gradient(0deg,#15111fea,transparent 50%),url('/branding/loading-wheelie.webp') center / contain no-repeat #24212e;
         color: #f4f4f2;
         font: 600 12px/1.4 Arial, Helvetica, sans-serif;
         letter-spacing: .1em;
@@ -31,6 +33,7 @@
         letter-spacing: -.06em;
       }
       #boot-fallback span { color: #bdbdb9; }
+      #boot-fallback .boot-logo { width: 112px; position: absolute; top: 28px; left: 28px; }
       #boot-fallback .boot-spinner {
         width: 24px;
         height: 24px;
@@ -49,13 +52,16 @@
         letter-spacing: .08em;
         cursor: pointer;
       }
+      @media(max-aspect-ratio:3/4){#boot-fallback{background:linear-gradient(0deg,#15111fea,transparent 50%),url('/branding/loading-wheelie-portrait.webp') center / cover no-repeat #24212e}}
       @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media(prefers-reduced-motion:reduce){#boot-fallback .boot-spinner{animation:none}}
     </style>
   </head>
   <body>
     <div id="root">
       <main id="boot-fallback" aria-live="polite">
-        <strong>PFUSCH.</strong>
+        <img class="boot-logo" src="/branding/pfusch-logo.webp" alt="PFUSCH" />
+        <strong>WHEELIE ESCAPE</strong>
         <span>GARAGE WIRD GELADEN</span>
         <i class="boot-spinner" aria-hidden="true"></i>
         <button type="button" onclick="window.location.reload()">NEU LADEN</button>

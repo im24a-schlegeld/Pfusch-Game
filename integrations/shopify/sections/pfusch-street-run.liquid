@@ -1,0 +1,183 @@
+{% liquid
+  assign game_url = section.settings.game_url | default: 'https://pfusch-game.vercel.app/'
+  assign game_title = section.settings.heading | default: 'Wheelie Escape'
+  assign game_return = request.path
+  if template.suffix == 'wheelie-escape'
+    assign game_return = routes.root_url | append: '?view=wheelie-escape'
+  endif
+%}
+
+<pfusch-game-bridge class="pfusch-game" id="PfuschGame-{{ section.id }}" data-customer-state="{% if customer %}customer{% else %}guest{% endif %}">
+  <iframe
+    class="pfusch-game__frame"
+    src="{{ game_url | escape }}"
+    title="{{ game_title | escape }} – Motorradspiel"
+    allow="autoplay; fullscreen"
+    allowfullscreen
+    loading="eager"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+  <dialog class="pfusch-game__newsletter" id="WheelieEscapeNewsletter" aria-labelledby="WheelieEscapeNewsletterTitle" aria-describedby="WheelieEscapeNewsletterDescription">
+    <button class="pfusch-game__close" type="button" data-newsletter-close aria-label="Newsletter-Fenster schließen"><span aria-hidden="true">×</span></button>
+    <p class="pfusch-game__eyebrow">WHEELIE ESCAPE</p>
+    <h2 id="WheelieEscapeNewsletterTitle" tabindex="-1">Bereit für die nächste Fahrt?</h2>
+    <p id="WheelieEscapeNewsletterDescription">Fünf Fahrten sind frei. Danach brauchst du ein PFUSCH-Konto mit bestätigtem Newsletter-Abo, um weiterzufahren und deinen Fortschritt zu speichern. Meldest du dich ab, werden weitere Fahrten und Speichervorgänge gesperrt. Dein bisheriger Spielstand bleibt bestehen.</p>
+    {% if customer %}
+      {% form 'customer', id: 'WheelieEscapeNewsletterForm' %}
+        <input type="hidden" name="contact[tags]" value="newsletter,wheelie-escape">
+        <input type="hidden" name="return_to" value="{{ game_return | escape }}#WheelieEscapeNewsletter">
+        {% if form.errors %}<div role="alert">{{ form.errors | default_errors }}</div>{% endif %}
+        {% if form.posted_successfully? %}
+          <p role="status">Anfrage gesendet. Bestätige gegebenenfalls die E-Mail und wähle danach im Spiel „Status prüfen“. Erst der bestätigte Shopify-Status schaltet das Spiel frei.</p>
+        {% endif %}
+        <label for="WheelieEscapeNewsletterEmail">E-Mail deines PFUSCH-Kontos</label>
+        <input id="WheelieEscapeNewsletterEmail" type="email" name="contact[email]" autocomplete="email" value="{{ customer.email | escape }}" readonly required>
+        <label class="pfusch-game__consent" for="WheelieEscapeNewsletterConsent">
+          <input id="WheelieEscapeNewsletterConsent" type="checkbox" required>
+          <span>Ich möchte den PFUSCH-Newsletter mit Neuigkeiten und Angeboten per E-Mail erhalten. Ich kann mich jederzeit über den Link in jeder E-Mail abmelden. <a href="{{ shop.privacy_policy.url }}">Datenschutzerklärung</a></span>
+        </label>
+        <button class="pfusch-game__subscribe" type="submit">NEWSLETTER ABONNIEREN</button>
+      {% endform %}
+    {% else %}
+      <p>Melde dich zuerst mit deinem PFUSCH-Konto an. Verwende für das Newsletter-Abo dieselbe E-Mail-Adresse.</p>
+      <a href="{{ routes.account_login_url }}" class="pfusch-game__login">BEI PFUSCH ANMELDEN</a>
+    {% endif %}
+  </dialog>
+</pfusch-game-bridge>
+<script src="{{ 'pfusch-cloud-bridge.js' | asset_url }}" defer></script>
+
+{% style %}
+  html.pfusch-game-page,
+  html.pfusch-game-page body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  html.pfusch-game-page body { display: block; }
+  html.pfusch-game-page.pfusch-game-ride .shopify-section-group-header-group,
+  html.pfusch-game-page.pfusch-game-ride body > header { display: none !important; }
+  html.pfusch-game-page .shopify-section-group-footer-group,
+  html.pfusch-game-page shopify-chat,
+  html.pfusch-game-page footer.footer,
+  html.pfusch-game-page .pfusch-game-main > :not(.pfusch-street-run-section) { display: none !important; }
+  html.pfusch-game-page .pfusch-game-main,
+  html.pfusch-game-page .pfusch-street-run-section {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #PfuschGame-{{ section.id }} {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: var(--pfusch-game-height, calc(100dvh - 115px));
+    margin: 0;
+    color: #f8f7fa;
+    font: inherit;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__frame {
+    display: block;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: #171719;
+  }
+  #PfuschGame-{{ section.id }}.pfusch-game--riding {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    width: 100%;
+    height: var(--pfusch-game-height, 100dvh);
+    background: #171719;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter {
+    width: min(520px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    box-sizing: border-box;
+    overflow: auto;
+    overscroll-behavior: contain;
+    margin: auto;
+    padding: 32px;
+    border: 1px solid #57505f;
+    border-radius: 18px;
+    color: #f8f7fa;
+    background: #19171d;
+    box-shadow: 0 24px 80px #0008;
+    font: inherit;
+    line-height: 1.55;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter::backdrop {
+    background: #08060cbf;
+    backdrop-filter: blur(5px);
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__eyebrow {
+    margin: 0 38px 14px 0;
+    color: #c7a4f5;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter h2 {
+    margin: 0 0 16px;
+    color: inherit;
+    font: inherit;
+    font-size: clamp(24px, 5vw, 32px);
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter p { color: #d4cedd; }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter form { display: grid; gap: 14px; }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter input[type="email"] {
+    width: 100%; padding: 12px; color: #f8f7fa; background: #29252f;
+    border: 1px solid #665b74; border-radius: 6px; box-sizing: border-box; font: inherit;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__consent { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; }
+  #PfuschGame-{{ section.id }} .pfusch-game__consent input { width: 22px; height: 22px; flex-shrink: 0; margin: 2px 0; accent-color: #9862de; }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter a { color: inherit; text-underline-offset: 3px; }
+  #PfuschGame-{{ section.id }} .pfusch-game__subscribe,
+  #PfuschGame-{{ section.id }} .pfusch-game__login {
+    display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 18px;
+    border: 0; border-radius: 7px; background: #fff; color: #151218 !important; font: inherit;
+    font-size: 13px; font-weight: 800; text-decoration: none; cursor: pointer;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__close {
+    position: absolute; top: 8px; right: 8px; display: grid; place-items: center;
+    width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+    color: #fff; background: transparent; font: inherit; font-size: 30px; cursor: pointer;
+  }
+  #PfuschGame-{{ section.id }} .pfusch-game__close:hover { background: #ffffff12; }
+  #PfuschGame-{{ section.id }} .pfusch-game__newsletter :focus-visible { outline: 3px solid #b890ed; outline-offset: 3px; }
+  @media (max-width: 480px) {
+    #PfuschGame-{{ section.id }} .pfusch-game__newsletter { padding: 28px 20px 24px; }
+  }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Wheelie Escape",
+  "tag": "section",
+  "class": "pfusch-street-run-section",
+  "enabled_on": { "templates": ["page", "index"] },
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Titel",
+      "default": "Wheelie Escape"
+    },
+    {
+      "type": "url",
+      "id": "game_url",
+      "label": "Spieladresse",
+      "info": "Leer lassen für https://pfusch-game.vercel.app/. Die Spielhöhe passt sich automatisch an die Shop-Kopfzeile an."
+    }
+  ],
+  "presets": [{ "name": "Wheelie Escape" }]
+}
+{% endschema %}

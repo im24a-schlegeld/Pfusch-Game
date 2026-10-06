@@ -22,6 +22,9 @@
     "typeCheck": true
   },
   "ignorePatterns": [
+    ".build-check/**",
+    "outputs/**",
+    "work/**",
     ".next/**",
     ".vinext/**",
     "out/**",

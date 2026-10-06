@@ -1,5 +1,5 @@
 import type { Helmet, Player } from './types';
-import { APPEARANCE_COLORS } from './appearanceColors';
+import { APPEARANCE_COLORS } from './appearanceColors.js';
 
 export const HELMETS = [
   { id: 'fullface', name: 'Integralhelm' },

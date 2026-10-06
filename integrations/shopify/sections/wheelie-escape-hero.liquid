@@ -1,0 +1,164 @@
+{% liquid
+  assign draft_game_page = routes.root_url | append: '?view=wheelie-escape'
+  assign game_page = section.settings.game_page | default: draft_game_page
+  assign image_loading = 'lazy'
+  assign image_priority = 'auto'
+  if section.index == nil or section.index < 3
+    assign image_loading = 'eager'
+    assign image_priority = 'high'
+  endif
+%}
+
+<div class="wheelie-hero" id="WheelieEscapeHero-{{ section.id }}">
+  <picture class="wheelie-hero__picture">
+    <source media="(max-width: 749px)" srcset="{{ 'wheelie-escape-portrait.webp' | file_url }}">
+    <img
+      class="wheelie-hero__image"
+      src="{{ 'wheelie-escape-wide.webp' | file_url }}"
+      alt=""
+      width="1400"
+      height="1080"
+      loading="{{ image_loading }}"
+      fetchpriority="{{ image_priority }}"
+      decoding="async"
+    >
+  </picture>
+  <div class="wheelie-hero__shade" aria-hidden="true"></div>
+  <div class="wheelie-hero__content">
+    <div class="wheelie-hero__title-group">
+      <p class="wheelie-hero__eyebrow"><span aria-hidden="true"></span>DAS PFUSCH BROWSERGAME</p>
+      <h2 class="wheelie-hero__title"><span>WHEELIE</span><span>ESCAPE<span class="wheelie-hero__dot">.</span></span></h2>
+    </div>
+    <div class="wheelie-hero__invitation">
+      <div class="wheelie-hero__actions">
+        <a class="wheelie-hero__play" href="{{ game_page | escape }}">
+          <span>JETZT SPIELEN</span>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"></path></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% style %}
+  #shopify-section-{{ section.id }} { margin: 0; padding: 0; }
+  #WheelieEscapeHero-{{ section.id }} {
+    --wheelie-violet: #c5a1ff;
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    min-width: 0;
+    height: clamp(560px, 75vh, 760px);
+    height: clamp(560px, 75svh, 760px);
+    overflow: hidden;
+    background: #111014;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  #WheelieEscapeHero-{{ section.id }} * { box-sizing: border-box; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__picture,
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__shade { position: absolute; inset: 0; pointer-events: none; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__picture { z-index: -2; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: center 34%;
+    transition: transform 850ms cubic-bezier(.2,.65,.2,1);
+  }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__shade {
+    z-index: -1;
+    background: linear-gradient(90deg, rgba(10,8,15,.92), rgba(10,8,15,.72) 27%, rgba(10,8,15,.12) 62%, rgba(10,8,15,.04)), linear-gradient(0deg, rgba(10,8,15,.66), transparent 48%);
+  }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    width: min(100%, 1680px);
+    height: 100%;
+    margin: 0 auto;
+    padding: clamp(40px, 5vw, 76px) clamp(24px, 6vw, 100px);
+  }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 23px;
+    color: #e6e2eb;
+    font: 700 11px/1.4 Arial, Helvetica, sans-serif;
+    letter-spacing: .15em;
+  }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__eyebrow > span { width: 22px; height: 3px; background: var(--wheelie-violet); }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__title {
+    display: grid;
+    width: fit-content;
+    margin: 0;
+    color: #fff;
+    font: 900 clamp(68px, 8.4vw, 126px)/.86 Arial, Helvetica, sans-serif;
+    letter-spacing: -.065em;
+    text-transform: uppercase;
+  }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__title > span { display: block; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__dot { color: var(--wheelie-violet); }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__invitation { max-width: 500px; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 36px;
+    min-height: 56px;
+    padding: 16px 23px;
+    border: 1px solid #fff;
+    background: #fff;
+    color: #131017;
+    font: 800 12px/1.3 Arial, Helvetica, sans-serif;
+    letter-spacing: .035em;
+    text-decoration: none;
+    transition: background-color 180ms ease, border-color 180ms ease;
+  }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play svg { flex: 0 0 22px; transition: transform 180ms ease; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play:focus-visible { outline: 3px solid var(--wheelie-violet); outline-offset: 5px; }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play:is(:hover, :focus-visible) { background: var(--wheelie-violet); border-color: var(--wheelie-violet); }
+  #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play:is(:hover, :focus-visible) svg { transform: translateX(4px); }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    #WheelieEscapeHero-{{ section.id }}:is(:hover, :focus-within) .wheelie-hero__image { transform: scale(1.025); }
+  }
+  @media (max-width: 749px) {
+    #WheelieEscapeHero-{{ section.id }} { height: clamp(600px, 75vh, 760px); height: clamp(600px, 75svh, 760px); }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__image { object-position: center 44%; }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__shade { background: linear-gradient(180deg, rgba(12,8,19,.78), rgba(12,8,19,.07) 30%, rgba(12,8,19,.05) 49%, rgba(12,8,19,.92) 87%, #100d16); }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__content { padding: 32px 24px 28px; }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__eyebrow { font-size: 9px; letter-spacing: .12em; margin-bottom: 18px; }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__title { font-size: clamp(58px, 15.8vw, 100px); }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__actions { gap: 14px; }
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play { flex: 1 1 100%; min-height: 52px; padding: 14px 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__image,
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play,
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play svg,
+    #WheelieEscapeHero-{{ section.id }} .wheelie-hero__play:is(:hover, :focus-visible) svg { transition: none; transform: none; }
+  }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Wheelie Escape Hero",
+  "tag": "section",
+  "class": "wheelie-escape-hero-section",
+  "enabled_on": { "templates": ["index"] },
+  "settings": [
+    {
+      "type": "url",
+      "id": "game_page",
+      "label": "Spielseite",
+      "info": "Leer lassen für die Spielansicht im Theme: /?view=wheelie-escape."
+    }
+  ],
+  "presets": [{ "name": "Wheelie Escape Hero" }]
+}
+{% endschema %}

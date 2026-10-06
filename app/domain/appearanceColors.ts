@@ -1,4 +1,4 @@
-import catalog from '../../public/catalog/products.json';
+import catalog from '../../public/catalog/products.json' with { type: 'json' };
 import type { Product } from './types';
 
 /** sRGB channel values, one non-destructive 5% adjustment at catalog loading. */

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { suspensionTarget } from './activeSuspension';
+import { wheelieLanePose } from './riderMotion';
 import { rendererSessions } from './rendererSession';
 import type { Player, Product } from '../domain/types';
 import { Engine, LANE } from './engine';
@@ -21,9 +22,11 @@ import { createRideParticles, particleAnchors } from './rideParticles';
 import { createCrashTravel, type CrashDirection } from './crashTravel';
 import { makeSignCollectibleView } from './signCollectibleView';
 import { TAIL_CONTACT } from './tailContact';
-import { applyBikeStickers, clearBikeStickers } from './bikeStickers';
+import { applyBikeStickers, applyHelmetStickers, clearBikeStickers } from './bikeStickers';
+import { helmetStickerTarget } from '../domain/stickers';
 import { createPoliceCrashEffect } from './policeCrashEffect';
 import { importedBikeReady, preloadImportedBike } from './importedBikeAsset';
+import LoadingScreen, { PreviewLoading } from '../ui/LoadingScreen';
 
 export const preloadBikeAsset = preloadImportedBike;
 
@@ -43,6 +46,7 @@ function applyStickersSafely(
       player.paint,
       player.stickers[player.bike] ?? [],
     );
+    applyHelmetStickers(bike.rider, player.stickers[helmetStickerTarget(player.helmet)] ?? []);
   } catch (error) {
     console.error(
       'Gespeicherte Sticker konnten nicht angewendet werden.',
@@ -59,6 +63,7 @@ interface Props {
   engine?: Engine;
   onFrame?: (engine: Engine) => void;
   onReady?: () => void;
+  onLoadError?: (message: string) => void;
   onCrashComplete?: () => void;
   inspectionAngle?: number;
   inspectionRevision?: number;
@@ -70,6 +75,7 @@ export default function SceneView({
   engine,
   onFrame,
   onReady,
+  onLoadError,
   onCrashComplete,
   inspectionAngle,
   inspectionRevision,
@@ -77,6 +83,7 @@ export default function SceneView({
   const host = useRef<HTMLDivElement>(null);
   const frameCallback = useRef(onFrame);
   const readyCallback = useRef(onReady);
+  const errorCallback = useRef(onLoadError);
   const crashCallback = useRef(onCrashComplete);
   const [error, setError] = useState('');
   const [renderReady, setRenderReady] = useState(false);
@@ -103,7 +110,11 @@ export default function SceneView({
   const quality = player.settings.quality;
   frameCallback.current = onFrame;
   readyCallback.current = onReady;
+  errorCallback.current = onLoadError;
   crashCallback.current = onCrashComplete;
+  useEffect(() => {
+    if (error) errorCallback.current?.(error);
+  }, [error]);
   useEffect(() => {
     if (importedBikeReady(player.bike)) return;
     let cancelled = false;
@@ -505,6 +516,14 @@ export default function SceneView({
             1,
           );
           const steering = (engine.lane * LANE - engine.x) / LANE;
+          const lanePose = wheelieLanePose({
+            age: engine.laneChangeAge,
+            direction: engine.laneChangeDirection,
+            wheelie: engine.wheelie ? frontLift : 0,
+            airborne: engine.height > 0,
+            onTowTruck: engine.onTowTruck,
+            reducedMotion: appearance.current.player.settings.reducedMotion,
+          });
           const balancing = engine.wheelie
             ? Math.sin(engine.elapsed * 3.5) * 0.045 * frontLift +
               steering * 0.28
@@ -514,19 +533,6 @@ export default function SceneView({
               ? engine.laneChangeDirection *
                 Math.sin(Math.min(1, engine.laneChangeAge / 0.32) * Math.PI)
               : 0;
-          bike.animateRider(
-            {
-              wheelie: frontLift,
-              forward: engine.forwardLoad,
-              steer: balancing,
-              landing,
-              launch,
-              balance,
-              load,
-              road,
-            },
-            dt,
-          );
           const compression = suspensionTarget({
             landing,
             launch,
@@ -543,13 +549,28 @@ export default function SceneView({
             appearance.current.player.settings.reducedMotion ||
               engine.onTowTruck
               ? 0
-              : -balancing * 0.16 - drift * 0.026,
+              : -balancing * 0.16 - drift * 0.026 + lanePose.roll,
             1 - Math.exp(-dt * 12),
           );
           bike.root.rotation.y = appearance.current.player.settings
             .reducedMotion
             ? 0
-            : drift * 0.105;
+            : drift * 0.105 + lanePose.yaw;
+          bike.animateRider(
+            {
+              wheelie: frontLift,
+              forward: engine.forwardLoad,
+              steer: balancing + lanePose.steer,
+              bikePitch: tilt,
+              bikeRoll: bike.root.rotation.z,
+              landing,
+              launch,
+              balance,
+              load,
+              road,
+            },
+            dt,
+          );
         }
         if (!moving) previousLateralSpeed = 0;
         previousXPosition = engine.x;
@@ -880,10 +901,7 @@ export default function SceneView({
       }
     >
       {!renderReady && !error && (
-        <div className="scene-loading scene-loading-runtime" aria-live="polite">
-          <span className="spinner" />
-          <span>LÄDT</span>
-        </div>
+        mode === 'ride' ? <LoadingScreen label="STRECKE WIRD GELADEN" fullScreen /> : <PreviewLoading />
       )}
       {error && (
         <div className="graphics-error" role="alert">

@@ -17,7 +17,7 @@ import {
   type RiderPose,
 } from './riderSkeleton';
 import { BIKE_MODEL_SCALES } from './vehicleScale';
-import { riderMotionPose, type RiderMotion } from './riderMotion';
+import { riderHeadPose, riderMotionPose, type RiderMotion } from './riderMotion';
 import type { RagdollPose } from './ragdoll';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
@@ -283,7 +283,8 @@ function makeFender(
   parent: THREE.Object3D,
   tireRadius: number,
   z: number,
-  m: THREE.MeshStandardMaterial,
+  paint: THREE.MeshStandardMaterial,
+  support: THREE.MeshStandardMaterial,
   endAngle = 1.25,
 ) {
   const positions: number[] = [],
@@ -329,7 +330,7 @@ function makeFender(
     new THREE.Float32BufferAttribute(positions, 3),
   );
   geometry.setIndex(indices);
-  const finish = m.clone();
+  const finish = paint.clone();
   finish.side = THREE.DoubleSide;
   const fender = mesh(parent, geometry, finish);
   fender.name = 'moped-mudguard';
@@ -340,7 +341,7 @@ function makeFender(
       [side * 0.068, tireRadius, z],
       [side * 0.053, tireRadius + 0.29, z + 0.1],
       0.006,
-      m,
+      support,
     );
 }
 /** Wheel-concentric shell: the old flattened tube crossed through the tire at its front tip. */
@@ -1022,8 +1023,8 @@ export function makeBike(player: Player, products: Product[]) {
       seat,
       'z',
     );
-    makeFender(frontAssembly, radius, front, dark);
-    makeFender(body, radius, rear, dark, MOPED_REAR_FENDER_ANGLE);
+    makeFender(frontAssembly, radius, front, paint, dark);
+    makeFender(body, radius, rear, paint, dark, MOPED_REAR_FENDER_ANGLE);
     tube(
       body,
       [
@@ -3226,6 +3227,8 @@ function makeRider(
     balance: 0,
     load: 0,
     road: 0,
+    bikePitch: 0,
+    bikeRoll: 0,
     crash: 0,
     crashSide: 1,
   };
@@ -3239,10 +3242,13 @@ function makeRider(
       'balance',
       'load',
       'road',
+      'bikePitch',
+      'bikeRoll',
       'crash',
     ] as const) {
       const response = key === 'launch'
         ? (target.launch ?? 0) > motion.launch ? 38 : 18
+        : key === 'bikePitch' || key === 'bikeRoll' ? 26
         : key === 'landing' ? 20 : 12;
       const blend = 1 - Math.exp(-response * dt);
       motion[key] += ((target[key] ?? 0) - motion[key]) * blend;
@@ -3269,11 +3275,8 @@ function makeRider(
       current.shoulder[2] - pose.shoulder[2],
     );
     helmet.position.set(...current.head);
-    helmet.rotation.set(
-      -0.07 - motion.wheelie * 0.16 + motion.balance * 0.025,
-      0,
-      motion.steer * 0.055,
-    );
+    const gaze = riderHeadPose(motion);
+    helmet.rotation.set(gaze.pitch, gaze.yaw, gaze.roll);
     current.limbs.forEach((limb, i) => {
       limbs[i].arm(limb.arm, {
         hip: current.hip,

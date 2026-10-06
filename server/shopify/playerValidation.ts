@@ -1,0 +1,122 @@
+import type { Player, Slot, StickerPlacement } from '../../app/domain/types.js';
+import { levelForXp, newPlayer } from '../../app/domain/progression.js';
+import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
+import { REWARDS } from '../../app/domain/config.js';
+import { ApiError } from './auth.js';
+
+export const MAX_BODY_BYTES = 131072;
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+const invalid = (): never => { throw new ApiError(400, 'invalid_player'); };
+const numeric = (value: unknown, max = 1e12): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max ? value : invalid();
+function text(value: unknown, max = 160): string {
+  if (typeof value !== 'string' || value.length < 1 || value.length > max || [...value].some(character => character.charCodeAt(0) < 32)) invalid();
+  return value as string;
+}
+function stringList(value: unknown, max: number) {
+  if (!Array.isArray(value) || value.length > max) invalid();
+  return [...new Set((value as unknown[]).map(item => text(item)))];
+}
+function record(value: unknown, max: number): Record<string, unknown> {
+  if (!isRecord(value) || Object.keys(value).length > max) invalid();
+  const result = value as Record<string, unknown>;
+  if (Object.keys(result).some(key => ['__proto__', 'constructor', 'prototype'].includes(key))) invalid();
+  for (const key of Object.keys(result)) text(key);
+  return result;
+}
+function date(value: unknown) {
+  const result = text(value, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(result) || !Number.isFinite(Date.parse(result)) ||
+    new Date(result).toISOString().slice(0, 10) !== result) invalid();
+  return result;
+}
+const bikes = ['125', 'scooter', '450', '701'];
+const slots: Slot[] = ['upper', 'lower', 'head', 'accessory', 'keychain', 'collectible', 'bike'];
+const digitalRewards = new Set<string>(REWARDS.filter(reward => reward.kind === 'coins' || reward.kind === 'cosmetic').map(reward => reward.id));
+
+/** This is a backup of untrusted digital game progress, never proof of a
+ * purchase, a prize entitlement, or a verified competitive score. Reconstruct
+ * every field rather than persisting arbitrary client properties. */
+export function sanitizeDigitalPlayer(value: unknown, customerId: string): Player {
+  const input = record(value, 32), player = newPlayer();
+  if (input.version !== 1 || Object.keys(input).some(key => !Object.prototype.hasOwnProperty.call(player, key))) invalid();
+  player.id = `shopify:${customerId}`;
+  for (const field of ['xp', 'coins', 'highScore', 'totalDistance', 'runsPlayed', 'totalNearMisses', 'totalWheelieMeters'] as const)
+    player[field] = numeric(input[field]);
+  if (!Number.isInteger(player.runsPlayed)) invalid();
+  player.level = levelForXp(player.xp);
+  player.ownedItems = stringList(input.ownedItems, 500).filter(id => !id.startsWith('decal:'));
+  // IRL ownership and redeemable balances must come from a separate trusted
+  // purchase/reward adapter. They are never imported from this digital backup.
+  stringList(input.irlItems, 500);
+  numeric(input.tickets);
+  player.irlItems = []; player.tickets = 0;
+  player.redeemedRewards = stringList(input.redeemedRewards, 100).filter(id => digitalRewards.has(id));
+  player.processedRuns = stringList(input.processedRuns, 100);
+  if (!bikes.includes(text(input.bike))) invalid();
+  player.bike = input.bike as string;
+  for (const field of ['paint', 'rims', 'helmetColor', 'helmetVisor'] as const) {
+    if (input[field] === undefined && ['helmetColor', 'helmetVisor'].includes(field)) continue;
+    const color = text(input[field], 7);
+    if (!/^#[a-f0-9]{6}$/i.test(color)) invalid();
+    player[field] = color;
+  }
+  if (input.helmet !== undefined) {
+    if (input.helmet !== 'fullface' && input.helmet !== 'motocross') invalid();
+    player.helmet = input.helmet as Player['helmet'];
+  }
+  const equipped = record(input.equipped, slots.length);
+  for (const [key, item] of Object.entries(equipped)) {
+    if (!slots.includes(key as Slot)) invalid();
+    const id = text(item);
+    if (player.ownedItems.includes(id)) player.equipped[key as Slot] = id;
+  }
+  for (const [id, variant] of Object.entries(record(input.variants, 500))) player.variants[id] = text(variant);
+  if (input.customizations !== undefined)
+    for (const [id, value] of Object.entries(record(input.customizations, 500))) {
+      const config = record(value, 2);
+      if (Object.keys(config).some(key => !['customNumber', 'hoodEnabled'].includes(key))) invalid();
+      const selection: Player['customizations'][string] = {};
+      if (config.customNumber !== undefined) {
+        if (typeof config.customNumber !== 'string' || !/^\d{1,2}$/.test(config.customNumber)) invalid();
+        selection.customNumber = config.customNumber as string;
+      }
+      if (config.hoodEnabled !== undefined) {
+        if (typeof config.hoodEnabled !== 'boolean') invalid();
+        selection.hoodEnabled = config.hoodEnabled as boolean;
+      }
+      player.customizations[id] = selection;
+    }
+  if (input.stickers !== undefined)
+    for (const [target, value] of Object.entries(record(input.stickers, STICKER_TARGETS.length))) {
+      if (!STICKER_TARGETS.includes(target) || !Array.isArray(value) || value.length > MAX_STICKERS) invalid();
+      const placements: StickerPlacement[] = [];
+      for (const item of value as unknown[]) {
+        if (!validStickerForTarget(target, item)) invalid();
+        const s = item as StickerPlacement;
+        if (!player.ownedItems.includes(s.productId)) continue;
+        if (placements.some(placement => placement.id === s.id)) invalid();
+        placements.push({ id: s.id, productId: s.productId, surface: s.surface,
+          point: [...s.point], normal: [...s.normal], size: s.size, rotation: s.rotation });
+      }
+      player.stickers[target] = placements;
+    }
+  const challenges = record(input.challenges, 3);
+  const values: Record<string, number> = {};
+  for (const [key, value] of Object.entries(record(challenges.values, 40))) values[key] = numeric(value);
+  player.challenges = { date: date(challenges.date), values, claimed: stringList(challenges.claimed, 40) };
+  const settings = record(input.settings, 4);
+  for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const) {
+    if (typeof settings[field] !== 'boolean') invalid();
+    player.settings[field] = settings[field] as boolean;
+  }
+  if (settings.quality !== 'auto' && settings.quality !== 'low') invalid();
+  player.settings.quality = settings.quality as Player['settings']['quality'];
+  if (!Array.isArray(input.history) || input.history.length > 200) invalid();
+  player.history = (input.history as unknown[]).map(value => {
+    const entry = record(value, 2);
+    return { score: numeric(entry.score), date: date(entry.date) };
+  });
+  return player;
+}

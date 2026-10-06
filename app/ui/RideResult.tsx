@@ -6,12 +6,14 @@ export default function RideResult({
   run,
   reward,
   start,
+  startLocked = false,
   garage,
 }: {
   player: Player;
   run: RunStats;
   reward: RunReward;
   start: () => void;
+  startLocked?: boolean;
   garage: () => void;
 }) {
   const score = fmt(run.score);
@@ -71,9 +73,10 @@ export default function RideResult({
           <p>
             BESTLEISTUNG <b>{fmt(player.highScore)}</b>
           </p>
+          {startLocked && <p className="result-access-notice">Für die nächste Fahrt muss dein Newsletter-Status bestätigt sein. Dein Ergebnis bleibt sichtbar.</p>}
           <div className="result-actions-v38">
             <button className="button primary" onClick={start}>
-              NOCHMAL FAHREN <ArrowRight size={18} />
+              {startLocked ? 'WEITERFAHREN FREISCHALTEN' : 'NOCHMAL FAHREN'} <ArrowRight size={18} />
             </button>
             <button className="button" onClick={garage}>
               ZUR GARAGE <Wrench size={18} />

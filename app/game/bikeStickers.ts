@@ -74,6 +74,39 @@ export function stickerSurfaces(
   visit(body, 'body');
   return result;
 }
+export function stickerHelmet(rider: THREE.Object3D): THREE.Object3D | undefined {
+  if (rider.userData.helmetStyle) return rider;
+  let helmet: THREE.Object3D | undefined;
+  rider.traverse((object) => { if (object.userData.helmetStyle) helmet = object; });
+  return helmet;
+}
+const helmetShells = new Set(['full-face-helmet', 'motocross-helmet', 'motocross-peak',
+  'motocross-rear-ridge', 'motocross-molded-panels', 'motocross-chin-splitter']);
+/** Only hard outer shells: never the lens, goggles, straps, vents or padding. */
+export function helmetStickerSurfaces(rider: THREE.Object3D) {
+  const result = new Map<string, THREE.Mesh>();
+  const helmet = stickerHelmet(rider);
+  if (!helmet) return result;
+  function visit(object: THREE.Object3D, path: string) {
+    if (object.userData.bikeSticker) return;
+    if (object instanceof THREE.Mesh && helmetShells.has(object.name)) result.set(path, object);
+    object.children.forEach((child, index) => visit(child, `${path}/${child.name || 'mesh'}:${index}`));
+  }
+  visit(helmet, `helmet/${helmet.userData.helmetStyle}/${helmet.name}`);
+  return result;
+}
+/** Helmet material group 0 is the painted outer skin on both stock models. */
+function helmetShellGeometry(source: THREE.Mesh) {
+  const geometry = new THREE.BufferGeometry();
+  for (const [name, attribute] of Object.entries(source.geometry.attributes)) geometry.setAttribute(name, attribute);
+  const sourceIndex = source.geometry.getIndex(), indices: number[] = [];
+  for (const group of source.geometry.groups) {
+    if (group.materialIndex !== 0) continue;
+    for (let i = group.start; i < group.start + group.count; i++) indices.push(sourceIndex ? sourceIndex.getX(i) : i);
+  }
+  geometry.setIndex(indices);
+  return geometry;
+}
 export function clearBikeStickers(body: THREE.Object3D) {
   const old: THREE.Mesh[] = [];
   body.traverse((o) => {
@@ -238,17 +271,31 @@ export function applyBikeStickers(
 ) {
   clearBikeStickers(body);
   if (!placements.length) return;
-  const surfaces = stickerSurfaces(body, rider, paint);
+  applySurfaceStickers(stickerSurfaces(body, rider, paint), placements);
+}
+export function applyHelmetStickers(rider: THREE.Object3D, placements: StickerPlacement[]) {
+  const helmet = stickerHelmet(rider);
+  if (!helmet) return;
+  clearBikeStickers(helmet);
+  if (placements.length) applySurfaceStickers(helmetStickerSurfaces(helmet), placements, true);
+}
+function applySurfaceStickers(surfaces: Map<string, THREE.Mesh>, placements: StickerPlacement[], helmet = false) {
   for (const placement of placements) {
+    let shellGeometry: THREE.BufferGeometry | undefined;
     try {
       const source = savedSurface(surfaces, placement);
       if (!source) continue;
+      // Project only onto the hard shell, even when a sticker overlaps a visor edge.
+      // The temporary CPU mesh shares positions; the rendered decal is attached
+      // to the original helmet mesh and follows its head animation naturally.
+      if (helmet) shellGeometry = helmetShellGeometry(source);
+      const projectionSource = shellGeometry ? new THREE.Mesh(shellGeometry, source.material) : source;
       const selectedNormal = new THREE.Vector3(...placement.normal).normalize();
       const point = new THREE.Vector3(...placement.point);
       source.geometry.computeBoundingBox();
       if (source.geometry.boundingBox)
         source.geometry.boundingBox.clampPoint(point, point);
-      let geometry = projectedStickerGeometry(source, point, selectedNormal, placement);
+      let geometry = projectedStickerGeometry(projectionSource, point, selectedNormal, placement);
       if (!geometry?.getIndex()?.count) {
         geometry?.dispose();
         const recovered = reshapedSurfacePoint(source, point, selectedNormal);
@@ -280,6 +327,8 @@ export function applyBikeStickers(
       // One stale placement should not hide the valid placements or stop the
       // workshop render loop. The saved entry remains editable/removable.
       console.error(`Sticker ${placement.id} konnte nicht dargestellt werden.`, error);
+    } finally {
+      shellGeometry?.dispose();
     }
   }
 }

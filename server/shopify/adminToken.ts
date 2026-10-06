@@ -1,0 +1,58 @@
+import { createHash } from 'node:crypto';
+import { ApiError, type ShopifyConfig } from './auth.js';
+
+interface CachedToken { key: string; token?: string; expiresAt: number; pending?: Promise<string> }
+const REFRESH_EARLY_MS = 60_000;
+
+/** A single configured shop per deployment: retain at most one credential set.
+ * Warm instances share an in-flight exchange; cold starts safely request again.
+ * Tokens and credentials never leave the server or enter persistent storage. */
+export function createShopifyAdminTokenProvider(now: () => number = Date.now) {
+  let cached: CachedToken | undefined;
+  return async function adminToken(config: ShopifyConfig, request: typeof fetch): Promise<string> {
+    if (!config.clientId) {
+      if (config.adminToken) return config.adminToken;
+      throw new ApiError(503, 'not_configured');
+    }
+    const key = createHash('sha256').update(JSON.stringify([config.shop, config.clientId, config.secret])).digest('hex');
+    if (cached?.key !== key) cached = { key, expiresAt: 0 };
+    const entry = cached;
+    if (entry.token && now() < entry.expiresAt - REFRESH_EARLY_MS) return entry.token;
+    if (entry.pending) return entry.pending;
+    // An expired token must never be reused when an exchange fails.
+    entry.token = undefined;
+    const startedAt = now();
+    const exchange = async () => {
+      try {
+        const response = await request(`https://${config.shop}/admin/oauth/access_token`, {
+          method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ grant_type: 'client_credentials', client_id: config.clientId!, client_secret: config.secret }).toString(),
+        });
+        if (!response.ok) throw new Error('exchange_failed');
+        const raw = await response.text();
+        if (Buffer.byteLength(raw) > 16_384) throw new Error('invalid_token_response');
+        const result: unknown = JSON.parse(raw);
+        if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('invalid_token_response');
+        const { access_token: token, expires_in: lifetime, scope } = result as Record<string, unknown>;
+        if (typeof token !== 'string' || !/^[A-Za-z0-9._~-]{1,2048}$/.test(token)
+          || typeof lifetime !== 'number' || !Number.isInteger(lifetime) || lifetime <= 60 || lifetime > 86_400
+          || typeof scope !== 'string' || scope.length > 4096 || !scope.split(',').map(value => value.trim()).includes('write_customers'))
+          throw new Error('invalid_token_response');
+        const expiresAt = startedAt + lifetime * 1000;
+        if (now() >= expiresAt - REFRESH_EARLY_MS) throw new Error('expired_token_response');
+        entry.token = token;
+        entry.expiresAt = expiresAt;
+        return token;
+      } catch {
+        // Never forward Shopify's error body, client secret or access token.
+        throw new ApiError(503, 'shopify_unavailable');
+      }
+    };
+    entry.pending = exchange();
+    try { return await entry.pending; }
+    finally { entry.pending = undefined; }
+  };
+}
+
+export const shopifyAdminToken = createShopifyAdminTokenProvider();

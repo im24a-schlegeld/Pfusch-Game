@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "game": {
+      "type": "pfusch-street-run",
+      "settings": {
+        "heading": "Wheelie Escape",
+        "game_url": "https://pfusch-game.vercel.app/"
+      }
+    }
+  },
+  "order": ["game"]
+}

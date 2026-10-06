@@ -2,6 +2,7 @@ import {
   Component,
   lazy,
   Suspense,
+  useEffect,
   type ErrorInfo,
   type ReactNode,
 } from 'react';
@@ -9,10 +10,12 @@ import { ArrowUpRight, Coins, ChevronLeft } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import type { Player } from '../domain/types';
 import { levelProgress } from '../domain/progression';
+import LoadingScreen, { PreviewLoading } from './LoadingScreen';
 type SceneModule = Pick<typeof import('../game/SceneView'), 'default'> &
   Partial<Pick<typeof import('../game/SceneView'), 'preloadBikeAsset'>>;
 let sceneModule: Promise<SceneModule> | undefined;
-function SceneLoadError() {
+function SceneLoadError({ onLoadError }: { onLoadError?: (message: string) => void }) {
+  useEffect(() => { onLoadError?.('3D-Ansicht konnte nicht geladen werden.'); }, [onLoadError]);
   return (
     <div className="scene-loading" role="alert">
       <span>3D-Ansicht konnte nicht geladen werden.</span>
@@ -29,7 +32,7 @@ interface SceneBoundaryState {
 
 /** A WebGL preview must never take the menu or ride navigation down with it. */
 class SceneErrorBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; onLoadError?: (message: string) => void },
   SceneBoundaryState
 > {
   state: SceneBoundaryState = { failed: false };
@@ -43,7 +46,7 @@ class SceneErrorBoundary extends Component<
   }
 
   render() {
-    return this.state.failed ? <SceneLoadError /> : this.props.children;
+    return this.state.failed ? <SceneLoadError onLoadError={this.props.onLoadError} /> : this.props.children;
   }
 }
 /** Preload code only; the renderer is still created by the mounted Scene. */
@@ -87,18 +90,13 @@ export function gameText(text: string) {
   if (text.startsWith('SIGN · ')) return `ZEICHEN · ${text.slice(7)}`;
   return exact[text] ?? text;
 }
-export function SceneLoading() {
-  return (
-    <div className="scene-loading">
-      <span className="spinner" />
-      <span>WIRD GELADEN</span>
-    </div>
-  );
+export function SceneLoading({ mode }: { mode: 'menu' | 'garage' | 'ride' }) {
+  return mode === 'ride' ? <LoadingScreen label="STRECKE WIRD GELADEN" fullScreen /> : <PreviewLoading />;
 }
 export function Preview(props: React.ComponentProps<typeof Scene>) {
   return (
-    <SceneErrorBoundary>
-      <Suspense fallback={<SceneLoading />}>
+    <SceneErrorBoundary onLoadError={props.onLoadError}>
+      <Suspense fallback={<SceneLoading mode={props.mode} />}>
         <Scene {...props} />
       </Suspense>
     </SceneErrorBoundary>
@@ -142,7 +140,7 @@ export function ScreenHeading({
       <button
         className="icon-button"
         onClick={back}
-        aria-label="Zurück zum Hauptmenü"
+        aria-label="Zurück zur Garage"
       >
         <ChevronLeft />
       </button>

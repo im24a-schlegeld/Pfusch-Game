@@ -1,7 +1,7 @@
-import { ArrowRight, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, Volume2, VolumeX, Wrench } from 'lucide-react';
 import { DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-export default function RidePause({ muted, onMute, resume, end }: {
-  muted: boolean; onMute: () => void; resume: () => void; end: () => void;
+export default function RidePause({ muted, onMute, resume, end, garage }: {
+  muted: boolean; onMute: () => void; resume: () => void; end: () => void; garage: () => void;
 }) {
   return <DialogContent className="game-dialog ride-pause-v38" showCloseButton={false}>
     <div className="pause-head-v38">
@@ -18,5 +18,6 @@ export default function RidePause({ muted, onMute, resume, end }: {
     </div>
     <button className="button primary pause-continue-v38" onClick={resume}>WEITERFAHREN <ArrowRight size={18}/></button>
     <button className="button pause-end-v38" onClick={end}>FAHRT BEENDEN</button>
+    <button className="button pause-garage-v38" onClick={garage}>ZUR GARAGE <Wrench size={18}/></button>
   </DialogContent>;
 }

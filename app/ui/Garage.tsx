@@ -1,12 +1,12 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
-import { ArrowRight, Check, Lock, RotateCw } from 'lucide-react';
+import { ArrowRight, RotateCw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Player, Product, ProductConfiguration } from '../domain/types';
 import type { Services } from '../services';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
 import { digitalPrice, ownership, unlock } from '../domain/progression';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS, equipHelmet } from '../domain/helmet';
-import { isSticker, saveStickers } from '../domain/stickers';
+import { isSticker, saveStickerTargets } from '../domain/stickers';
 import {
   equipConfiguration,
   equipmentSlot,
@@ -19,15 +19,12 @@ import {
 } from '../domain/preview';
 import {
   Coin,
-  ExternalArrow,
   Preview,
-  ScreenHeading,
   XpBar,
-  money,
 } from './shared';
 import { ProgressContent } from './Screens';
 import ColorSection from './ColorSection';
-import { visiblePalette } from '../domain/paletteView';
+import { colorName, visiblePalette } from '../domain/paletteView';
 const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
 
 const isMotorcycleProduct = (p: Product) =>
@@ -41,6 +38,10 @@ interface Props {
   notify: (s: string) => void;
   back: () => void;
   start: () => void;
+  embedded?: boolean;
+  onProgress?: () => void;
+  onReady?: () => void;
+  onLoadError?: (message: string) => void;
 }
 export default function Garage({
   player,
@@ -48,8 +49,11 @@ export default function Garage({
   update,
   services,
   notify,
-  back,
   start,
+  embedded = false,
+  onProgress,
+  onReady,
+  onLoadError,
 }: Props) {
   const [tab, setTab] = useState('rider');
   const [filter, setFilter] = useState('all');
@@ -58,6 +62,7 @@ export default function Garage({
   >({});
   const [draft, setDraft] = useState<Player | null>(null);
   const [stickerBike, setStickerBike] = useState<Player | null>(null);
+  const [stickerTarget, setStickerTarget] = useState<'bike' | 'helmet'>('bike');
   const [selected, setSelected] = useState<Product | null>(null);
   const [configuration, setConfiguration] =
     useState<ProductConfiguration | null>(null);
@@ -133,6 +138,56 @@ export default function Garage({
   ) {
     setDraft({ ...appearance, ...values });
   }
+  function buyBikeOption(id: string, price: number, name: string, level = 1) {
+    const next = unlock(player, id, price, level);
+    if (!next) {
+      notify(player.level < level ? `Ab Level ${level} erhältlich.` : 'Du brauchst mehr Coins.');
+      return;
+    }
+    if (next === player) return;
+    update(next);
+    // Buying changes ownership only. Keep the free try-on setup until Equip.
+    setDraft((current) => current ? { ...current, coins: next.coins, ownedItems: next.ownedItems } : null);
+    notify(`${name} gekauft. Mit Ausrüsten wird deine Auswahl gespeichert.`);
+  }
+  function equipBikeOption(values: Partial<Pick<Player, 'bike' | 'paint' | 'rims'>>) {
+    if (Object.entries(values).some(([kind, value]) => !owned(`${kind}:${value}`))) return;
+    if (values.bike && player.level < (BIKES.find((entry) => entry.id === values.bike)?.level ?? Infinity)) return;
+    update({ ...player, ...values });
+    setDraft(null);
+    notify('Ausgerüstet und gespeichert.');
+  }
+  function colorOptions(kind: 'paint' | 'rims') {
+    const palette = kind === 'paint' ? PAINTS : RIMS;
+    const title = kind === 'paint' ? 'Lackfarbe' : 'Felgenfarbe';
+    const colors = visiblePalette(palette, appearance[kind]);
+    for (const color of palette) {
+      if (owned(`${kind}:${color.value}`) && !colors.some((entry) => entry.value === color.value))
+        colors.push({ ...color, name: colorName(color.value) });
+    }
+    return <ColorSection title={title} value={appearance[kind]}>
+      <div className="finish-options" aria-label={title}>
+        {colors.map((color) => {
+          const isOwned = owned(`${kind}:${color.value}`);
+          const isEquipped = player[kind] === color.value;
+          return <article className={`finish-option ${appearance[kind] === color.value ? 'selected' : ''}`} key={color.value}>
+            <button className="finish-preview" aria-label={`${color.name} ${kind}`} aria-pressed={appearance[kind] === color.value}
+              onClick={() => previewBike({ [kind]: color.value })}>
+              <i style={{ background: color.value }} />
+              <span><b>{color.name}</b><small>ANSEHEN</small></span>
+            </button>
+            <button className="button small" aria-label={`${isOwned ? 'Ausrüsten' : 'Kaufen'} ${title} ${color.name}`}
+              disabled={isOwned ? isEquipped : player.coins < color.price}
+              onClick={() => isOwned
+                ? equipBikeOption({ [kind]: color.value })
+                : buyBikeOption(`${kind}:${color.value}`, color.price, color.name)}>
+              {isOwned ? (isEquipped ? 'AUSGERÜSTET' : 'AUSRÜSTEN') : <>KAUFEN <Coin value={color.price} /></>}
+            </button>
+          </article>;
+        })}
+      </div>
+    </ColorSection>;
+  }
   function equipHelmetNow(
     values: Partial<Pick<Player, 'helmet' | 'helmetColor' | 'helmetVisor'>>,
   ) {
@@ -145,20 +200,6 @@ export default function Garage({
     update(next);
     setDraft(null);
     notify('Helm ausgerüstet.');
-  }const bikeSetupOwned =
-    owned(`bike:${appearance.bike}`) &&
-    owned(`paint:${appearance.paint}`) &&
-    owned(`rims:${appearance.rims}`);
-  function equipBike() {
-    if (!bikeSetupOwned || player.level < bike.level) return;
-    update({
-      ...player,
-      bike: appearance.bike,
-      paint: appearance.paint,
-      rims: appearance.rims,
-    });
-    setDraft(null);
-    notify(`${bike.name} Setup ausgerüstet.`);
   }
   const visible = useMemo(
     () => {
@@ -217,10 +258,10 @@ export default function Garage({
       </div>
       <div className="product-grid compact-product-grid">
         {products.length === 0 ? (
-          <div className="product-loading" role="status">
+          <output className="product-loading">
             <span className="spinner" />
             <span>PRODUKTE WERDEN GELADEN</span>
-          </div>
+          </output>
         ) : visible.map((p) => {
           const state = ownership(player, p);
           const colors = productColors(p);
@@ -266,15 +307,12 @@ export default function Garage({
               className="product-card compact-product-card"
               data-testid="product-card"
             >
+              <div className="product-image">
               <button
-                className="product-image product-open"
-                aria-label={`${isOwned && canWear ? 'Ausrüsten' : isSticker(p) ? 'Stickerbild' : 'Ansehen'} ${p.title}`}
+                className="product-open product-main-action"
+                aria-label={`${isSticker(p) ? 'Stickerbild' : 'Ansehen'} ${p.title}`}
                 onClick={() => {
-                  if (isOwned && canWear) {
-                    equipProduct(p, config);
-                  } else if (!isSticker(p)) {
-                    openProduct(p);
-                  }
+                  if (!isSticker(p)) openProduct(p);
                   setAngle(productView === 'front' ? Math.PI : 0);
                   setInspectionRevision((r) => r + 1);
                 }}
@@ -301,13 +339,12 @@ export default function Garage({
                       ?.classList.add('image-loaded')
                   }
                 />
+              </button>
                 {hasFrontAndBack && (
                   <>
-                    <span
+                    <button
                       className="mockup-arrow mockup-arrow-left"
-                      role="button"
                       aria-label={`${p.title} vorherige Ansicht`}
-                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         const nextView =
@@ -329,12 +366,10 @@ export default function Garage({
                       }}
                     >
                       ‹
-                    </span>
-                    <span
+                    </button>
+                    <button
                       className="mockup-arrow mockup-arrow-right"
-                      role="button"
                       aria-label={`${p.title} nächste Ansicht`}
-                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         const nextView =
@@ -356,7 +391,7 @@ export default function Garage({
                       }}
                     >
                       ›
-                    </span>
+                    </button>
                   </>
                 )}
                 <span className="ownership">
@@ -371,7 +406,7 @@ export default function Garage({
                 {recentProductIds.includes(p.id) && (
                   <span className="recent-product-badge">ZULETZT</span>
                 )}
-              </button>
+              </div>
               <div className="product-body compact-product-body">
                 <h3>{p.title}</h3>
                 <p className="compact-product-description">{p.description}</p>
@@ -512,9 +547,9 @@ export default function Garage({
                 {isSticker(p) && (
                   <button
                     className="button small"
-                    onClick={() => setStickerBike(appearance)}
+                    onClick={() => { setStickerTarget('bike'); setStickerBike(appearance); }}
                   >
-                    AUF FAHRZEUG PLATZIEREN
+                    AUF FAHRZEUG / HELM PLATZIEREN
                   </button>
                 )}
               </div>
@@ -525,16 +560,16 @@ export default function Garage({
     </>
   );
   if (stickerBike) return <Suspense fallback={<main className="sticker-loading"><span className="spinner"/><output>STICKER-WERKSTATT WIRD GELADEN</output><button className="button" onClick={() => setStickerBike(null)}>ABBRECHEN</button></main>}>
-    <StickerWorkshop player={stickerBike} account={player} products={products} onClose={() => setStickerBike(null)} onBuySticker={() => {
+    <StickerWorkshop player={stickerBike} account={player} products={products} initialTarget={stickerTarget} onClose={() => setStickerBike(null)} onBuySticker={() => {
       const product = products.find(isSticker);
       if (!product) return;
       const next = unlock(player, product.id, digitalPrice(product));
       if (!next) { notify('Du brauchst mehr Coins.'); return; }
       update(next);
       notify('Sticker gekauft. Deine Platzierung bleibt in der Vorschau.');
-    }} onSave={(placements) => {
-      const next = saveStickers(player, stickerBike.bike, placements, products);
-      if (!next) { notify('Fahrzeug und Sticker zuerst freischalten.'); return; }
+    }} onSave={(drafts) => {
+      const next = saveStickerTargets(player, drafts, products);
+      if (!next) { notify('Sticker und gegebenenfalls das Fahrzeug zuerst freischalten.'); return; }
       update(next); setStickerBike(null); setDraft(null); notify('Sticker platziert und gespeichert.');
     }}/>
   </Suspense>;
@@ -546,6 +581,12 @@ export default function Garage({
             <span className="eyebrow">
               {draft ? 'VORSCHAU' : 'AKTUELLES SETUP'}
             </span>
+            {embedded && <div className="garage-balance">
+              <Coin value={player.coins} />
+              <button className="level-chip" onClick={onProgress} aria-label={`Fortschritt, Stufe ${player.level}`}>
+                ST. {String(player.level).padStart(2, '0')}
+              </button>
+            </div>}
             {draft && (
               <button
                 className="reset-preview"
@@ -582,6 +623,8 @@ export default function Garage({
               player={appearance}
               products={products}
               mode="garage"
+              onReady={onReady}
+              onLoadError={onLoadError}
               inspectionAngle={angle}
               inspectionRevision={inspectionRevision}
             />
@@ -615,7 +658,7 @@ export default function Garage({
             </p>
             <XpBar player={player} />
             <button className="button primary" onClick={start}>
-              FAHREN <ArrowRight />
+              FAHRT STARTEN <ArrowRight />
             </button>
           </div>
         </section>
@@ -703,6 +746,7 @@ export default function Garage({
                   {VISOR_COLORS.map((color) => <button key={color.value} aria-label={color.name} aria-pressed={appearance.helmetVisor === color.value} className={appearance.helmetVisor === color.value ? 'selected' : ''} onClick={() => setDraft({ ...appearance, helmetVisor: color.value })}><i style={{ background: color.value }}/><b>{color.name}</b><span>VORSCHAU</span></button>)}
                 </div></ColorSection>
                 <button className="button small" disabled={appearance.helmet === player.helmet && appearance.helmetColor === player.helmetColor && appearance.helmetVisor === player.helmetVisor} onClick={() => equipHelmetNow(appearance)}>HELM AUSRÜSTEN</button>
+                {products.some(isSticker) && <button className="button small helmet-sticker-open" onClick={() => { setStickerTarget('helmet'); setStickerBike(appearance); }}>STICKER AUF HELM PLATZIEREN</button>}
               </section>
               {grid}
             </TabsContent>
@@ -734,29 +778,22 @@ export default function Garage({
                           : `FREISCHALTEN · LEVEL ${b.level} · ${b.price} COINS`}
                       </span>
                     </div>
-                    <button
-                      className="button small"
-                      aria-label={`${owned(`bike:${b.id}`) ? 'Ausrüsten' : 'Ansehen'} ${b.name}`}
-                      disabled={owned(`bike:${b.id}`) && player.bike === b.id}
-                      onClick={() => {
-                        if (owned(`bike:${b.id}`)) {
-                          update({ ...player, bike: b.id });
-                          setDraft(null);
-                          notify(`${b.name} ausgerüstet.`);
-                        } else {
-                          previewBike({ bike: b.id });
-                        }
-                      }}
-                    >
-                      {owned(`bike:${b.id}`)
-                        ? player.bike === b.id
-                          ? 'AUSGERÜSTET'
-                          : 'AUSRÜSTEN'
-                        : 'ANSEHEN'}
-                    </button>
+                    <div className="garage-item-actions">
+                      <button className="button small" aria-label={`Ansehen ${b.name}`} aria-pressed={appearance.bike === b.id}
+                        onClick={() => previewBike({ bike: b.id })}>ANSEHEN</button>
+                      <button className="button small" aria-label={`${owned(`bike:${b.id}`) ? 'Ausrüsten' : 'Kaufen'} ${b.name}`}
+                        disabled={owned(`bike:${b.id}`) ? player.bike === b.id : player.level < b.level || player.coins < b.price}
+                        onClick={() => owned(`bike:${b.id}`)
+                          ? equipBikeOption({ bike: b.id })
+                          : buyBikeOption(`bike:${b.id}`, b.price, b.name, b.level)}>
+                        {owned(`bike:${b.id}`) ? (player.bike === b.id ? 'AUSGERÜSTET' : 'AUSRÜSTEN') : 'KAUFEN'}
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
+              {colorOptions('paint')}
+              {colorOptions('rims')}
               <div className="equipped-slots motorcycle-equipped">
                 <div>
                   <span className="eyebrow">SCHLÜSSELANHÄNGER</span>
@@ -779,142 +816,6 @@ export default function Garage({
                 </div>
               </div>
               {grid}
-              {!owned(`bike:${bike.id}`) && (
-                <button
-                  className="button bike-unlock"
-                  disabled={
-                    player.level < bike.level || player.coins < bike.price
-                  }
-                  onClick={() => {
-                    const p = unlock(
-                      player,
-                      `bike:${bike.id}`,
-                      bike.price,
-                      bike.level,
-                    );
-                    if (p) {
-                      update({ ...p, bike: bike.id });
-                      setDraft(null);
-                      notify(`${bike.name} freigeschaltet und direkt ausgerüstet.`);
-                    }
-                  }}
-                >
-                  {player.level < bike.level ? (
-                    <>
-                      <Lock size={14} /> FREISCHALTEN AB LEVEL {bike.level}
-                    </>
-                  ) : (
-                    <>
-                      <Coin value={bike.price} /> FREISCHALTEN{' '}
-                      {bike.name.toUpperCase()}
-                    </>
-                  )}
-                </button>
-              )}
-              
-              <ColorSection title="Lackfarbe" value={appearance.paint}><div className="swatches">
-                {visiblePalette(PAINTS, appearance.paint).map((c) => (
-                  <button
-                    key={c.value}
-                    aria-label={`${c.name} paint`}
-                    aria-pressed={appearance.paint === c.value}
-                    className={appearance.paint === c.value ? 'selected' : ''}
-                    onClick={() => {
-                      if (owned(`paint:${c.value}`)) {
-                        update({ ...player, paint: c.value });
-                        setDraft(null);
-                        notify(`${c.name} ausgerüstet.`);
-                      } else {
-                        previewBike({ paint: c.value });
-                      }
-                    }}
-                  >
-                    <i style={{ background: c.value }} />
-                    <b>{c.name}</b>
-                    <span>
-                      {owned(`paint:${c.value}`)
-                        ? player.paint === c.value
-                          ? 'AUSGERÜSTET'
-                          : 'AUSRÜSTEN'
-                        : 'ANSEHEN'}
-                    </span>
-                  </button>
-                ))}
-              </div></ColorSection>
-              {!owned(`paint:${appearance.paint}`) && (
-                <button
-                  className="button small finish-unlock"
-                  disabled={
-                    player.coins <
-                    (PAINTS.find((c) => c.value === appearance.paint)?.price ??
-                      0)
-                  }
-                  onClick={() => {
-                    const c = PAINTS.find((c) => c.value === appearance.paint)!;
-                    const p = unlock(player, `paint:${c.value}`, c.price);
-                    if (p) {
-                      update({ ...p, paint: c.value });
-                      setDraft(null);
-                      notify(`${c.name} freigeschaltet und direkt ausgerüstet.`);
-                    }
-                  }}
-                >
-                  FARBE FREISCHALTEN ·{' '}
-                  {PAINTS.find((c) => c.value === appearance.paint)?.price}{' '}
-                  COINS
-                </button>
-              )}
-              
-              <ColorSection title="Felgenfarbe" value={appearance.rims}><div className="swatches">
-                {visiblePalette(RIMS, appearance.rims).map((c) => (
-                  <button
-                    key={c.value}
-                    aria-label={`${c.name} rims`}
-                    aria-pressed={appearance.rims === c.value}
-                    className={appearance.rims === c.value ? 'selected' : ''}
-                    onClick={() => {
-                      if (owned(`rims:${c.value}`)) {
-                        update({ ...player, rims: c.value });
-                        setDraft(null);
-                        notify(`${c.name} ausgerüstet.`);
-                      } else {
-                        previewBike({ rims: c.value });
-                      }
-                    }}
-                  >
-                    <i style={{ background: c.value }} />
-                    <b>{c.name}</b>
-                    <span>
-                      {owned(`rims:${c.value}`)
-                        ? player.rims === c.value
-                          ? 'AUSGERÜSTET'
-                          : 'AUSRÜSTEN'
-                        : 'ANSEHEN'}
-                    </span>
-                  </button>
-                ))}
-              </div></ColorSection>
-              {!owned(`rims:${appearance.rims}`) && (
-                <button
-                  className="button small finish-unlock"
-                  disabled={
-                    player.coins <
-                    (RIMS.find((c) => c.value === appearance.rims)?.price ?? 0)
-                  }
-                  onClick={() => {
-                    const c = RIMS.find((c) => c.value === appearance.rims)!;
-                    const p = unlock(player, `rims:${c.value}`, c.price);
-                    if (p) {
-                      update({ ...p, rims: c.value });
-                      setDraft(null);
-                      notify(`${c.name} freigeschaltet und direkt ausgerüstet.`);
-                    }
-                  }}
-                >
-                  FELGEN FREISCHALTEN ·{' '}
-                  {RIMS.find((c) => c.value === appearance.rims)?.price} COINS
-                </button>
-              )}
             </TabsContent>
             <TabsContent value="progress">
               <ProgressContent player={player} />

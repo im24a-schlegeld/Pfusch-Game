@@ -1,0 +1,36 @@
+# Local verification dependencies, generated output and editor/session files.
+.build-check/
+.vscode/
+.codex/
+.agents/
+.openai/
+.vercel/
+.git/
+node_modules/
+outputs/
+work/
+dist/
+.next/
+.vinext/
+.wrangler/
+out/
+coverage/
+test-results/
+playwright-report/
+_pfusch_ui_backup_*/
+
+# Credentials and local machine state never belong in an upload.
+.env*
+**/.env*
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.log
+**/*.log
+*.tsbuildinfo
+**/*.tsbuildinfo
+.DS_Store
+
+# Keep app/, api/, server/, tests/ and public/ intact: the source build checks
+# the application and server types, and all published model assets are needed.

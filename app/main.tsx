@@ -59,3 +59,4 @@ createRoot(rootElement).render(
 import './refinement-v40.css';
 
 import './ride-fix-v42.css';
+import './shop-typography.css';

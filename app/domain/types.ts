@@ -101,7 +101,7 @@ export type Helmet = 'fullface' | 'motocross';
 export interface StickerPlacement {
   id: string;
   productId: string;
-  /** Deterministic mesh path within the motorcycle body, never the rider. */
+  /** Deterministic mesh path within the bike body or selected helmet shell. */
   surface: string;
   point: [number, number, number];
   normal: [number, number, number];
@@ -134,6 +134,7 @@ export interface Player {
   helmet: Helmet;
   helmetColor: string;
   helmetVisor: string;
+  /** Bike IDs plus additive v1 keys helmet:fullface and helmet:motocross. */
   stickers: Record<string, StickerPlacement[]>;
   challenges: ChallengeProgress;
   redeemedRewards: string[];
