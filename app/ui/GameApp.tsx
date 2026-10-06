@@ -163,6 +163,7 @@ export default function GameApp() {
     audio.unlock();
     if (!current.current || accessPending.current) return;
     const request = ++accessRequest.current;
+    let enteredRide = false;
     accessPending.current = true;
     setCheckingAccess(true);
     setStartingRide(startRide);
@@ -180,6 +181,7 @@ export default function GameApp() {
         setResult(null);
         setRunKey(activeRun.current);
         setScreen('ride');
+        enteredRide = true;
         services.analytics.track('run_started');
         return;
       }
@@ -202,6 +204,7 @@ export default function GameApp() {
       setResult(null);
       setRunKey(activeRun.current);
       setScreen('ride');
+      enteredRide = true;
       services.analytics.track('run_started');
     } catch {
       if (request !== accessRequest.current) return;
@@ -211,7 +214,10 @@ export default function GameApp() {
       if (request === accessRequest.current) {
         accessPending.current = false;
         setCheckingAccess(false);
-        setStartingRide(false);
+        // Keep the transition screen mounted until the first ride frame is
+        // ready. Clearing it here used to batch with setScreen('ride'), so the
+        // loading artwork was often skipped even though Three.js was loading.
+        if (!enteredRide) setStartingRide(false);
       }
     }
   }
@@ -277,16 +283,23 @@ export default function GameApp() {
   if (!player) return <LoadingScreen label="GARAGE WIRD GELADEN" fullScreen />;
   if (screen === 'ride')
     return (
-      <Ride
-        key={runKey}
-        player={player}
-        products={products}
-        audio={audio}
-        onFinish={(run) => finish(run, runKey)}
-        onResultsReady={(runId) => revealResults(runId, runKey)}
-        onExit={() => navigate('garage')}
-        onMute={mute}
-      />
+      <>
+        <Ride
+          key={runKey}
+          player={player}
+          products={products}
+          audio={audio}
+          onFinish={(run) => finish(run, runKey)}
+          onResultsReady={(runId) => revealResults(runId, runKey)}
+          onExit={() => navigate('garage')}
+          onMute={mute}
+          onReady={() => setStartingRide(false)}
+          onLoadError={() => setStartingRide(false)}
+        />
+        {startingRide && (
+          <LoadingScreen label="FAHRT WIRD VORBEREITET" fullScreen />
+        )}
+      </>
     );
   const back = () => navigate('garage');
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);

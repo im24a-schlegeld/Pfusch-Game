@@ -40,16 +40,19 @@ const radians = (value: number | undefined, min: number, max: number) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 
 /** Keep the gaze near the road horizon as the motorcycle rises. The neck
- * counters most of the chassis rotation, with limited natural head movement;
+ * counters most of the chassis rotation but follows it slightly, so a wheelie
+ * still has a relaxed, human head movement instead of a locked horizon;
  * no joint position, skeleton dimension or control contact is changed. */
 export function riderHeadPose(motion: RiderMotion) {
   const pitch = radians(motion.bikePitch, -0.2, 1.3);
   const roll = radians(motion.bikeRoll, -0.3, 0.3);
   const steer = bounded(motion.steer, -1);
+  const wheelie = bounded(motion.wheelie);
+  const balance = bounded(motion.balance, -1);
   return {
-    pitch: -0.07 - pitch * 0.9 + bounded(motion.balance, -1) * 0.01,
+    pitch: -0.06 - pitch * (0.84 - wheelie * 0.025) + balance * 0.018,
     yaw: -steer * 0.035,
-    roll: -roll * 0.88 + steer * 0.008,
+    roll: -roll * 0.8 + steer * 0.008 + balance * wheelie * 0.012,
   };
 }
 

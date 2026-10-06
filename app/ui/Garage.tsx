@@ -171,18 +171,24 @@ export default function Garage({
           const isOwned = owned(`${kind}:${color.value}`);
           const isEquipped = player[kind] === color.value;
           return <article className={`finish-option ${appearance[kind] === color.value ? 'selected' : ''}`} key={color.value}>
-            <button className="finish-preview" aria-label={`${color.name} ${kind}`} aria-pressed={appearance[kind] === color.value}
-              onClick={() => previewBike({ [kind]: color.value })}>
+            <div className="finish-preview" aria-label={`${color.name} ${kind}`}>
               <i style={{ background: color.value }} />
-              <span><b>{color.name}</b><small>ANSEHEN</small></span>
-            </button>
-            <button className="button small" aria-label={`${isOwned ? 'Ausrüsten' : 'Kaufen'} ${title} ${color.name}`}
-              disabled={isOwned ? isEquipped : player.coins < color.price}
-              onClick={() => isOwned
-                ? equipBikeOption({ [kind]: color.value })
-                : buyBikeOption(`${kind}:${color.value}`, color.price, color.name)}>
-              {isOwned ? (isEquipped ? 'AUSGERÜSTET' : 'AUSRÜSTEN') : <>KAUFEN <Coin value={color.price} /></>}
-            </button>
+              <span><b>{color.name}</b></span>
+            </div>
+            <div className="finish-option-actions">
+              <button className="button small" aria-label={`Ansehen ${title} ${color.name}`}
+                aria-pressed={appearance[kind] === color.value}
+                onClick={() => previewBike({ [kind]: color.value })}>
+                ANSEHEN
+              </button>
+              <button className="button small" aria-label={`${isOwned ? 'Ausrüsten' : 'Kaufen'} ${title} ${color.name}`}
+                disabled={isOwned ? isEquipped : player.coins < color.price}
+                onClick={() => isOwned
+                  ? equipBikeOption({ [kind]: color.value })
+                  : buyBikeOption(`${kind}:${color.value}`, color.price, color.name)}>
+                {isOwned ? (isEquipped ? 'AUSGERÜSTET' : 'AUSRÜSTEN') : <>KAUFEN <Coin value={color.price} /></>}
+              </button>
+            </div>
           </article>;
         })}
       </div>

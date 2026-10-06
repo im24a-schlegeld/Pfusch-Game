@@ -26,7 +26,10 @@ describe('rider gaze follows the horizon', () => {
     const head = body.multiply(new Quaternion().setFromEuler(new Euler(gaze.pitch, gaze.yaw, gaze.roll)));
     const forward = new Vector3(0, 0, -1).applyQuaternion(head);
     const up = new Vector3(0, 1, 0).applyQuaternion(head);
-    expect(Math.abs(forward.y)).toBeLessThan(0.02);
+    // The rider still looks ahead, but the head follows the wheelie by a
+    // small amount instead of being unnaturally locked to the horizon.
+    expect(Math.abs(forward.y)).toBeGreaterThan(0.02);
+    expect(Math.abs(forward.y)).toBeLessThan(0.07);
     expect(forward.z).toBeLessThan(-0.99);
     expect(Math.abs(up.x)).toBeLessThan(0.035);
   });
@@ -48,7 +51,8 @@ describe('rider gaze follows the horizon', () => {
     bike.root.updateMatrixWorld(true);
     const world = helmet.getWorldQuaternion(new Quaternion());
     const forward = new Vector3(0, 0, -1).applyQuaternion(world);
-    expect(Math.abs(forward.y)).toBeLessThan(0.035);
+    expect(Math.abs(forward.y)).toBeGreaterThan(0.015);
+    expect(Math.abs(forward.y)).toBeLessThan(0.07);
     expect(forward.z).toBeLessThan(-0.99);
     expect(Math.abs(new Vector3(0, 1, 0).applyQuaternion(world).x)).toBeLessThan(0.035);
     expect(helmet.scale.toArray()).toEqual(scale.toArray());

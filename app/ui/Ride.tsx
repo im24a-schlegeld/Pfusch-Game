@@ -18,6 +18,8 @@ interface Props {
   onResultsReady: (runId: string) => void;
   onExit: () => void;
   onMute: () => void;
+  onReady?: () => void;
+  onLoadError?: (message: string) => void;
 }
 export default function Ride({
   player,
@@ -27,6 +29,8 @@ export default function Ride({
   onResultsReady,
   onExit,
   onMute,
+  onReady,
+  onLoadError,
 }: Props) {
   const engine = useMemo(
     () =>
@@ -302,7 +306,16 @@ export default function Ride({
         mode="ride"
         engine={engine}
         onFrame={frame}
-        onReady={() => setReady(true)}
+        onReady={() => {
+          setReady(true);
+          onReady?.();
+        }}
+        onLoadError={(message) => {
+          // Let the app remove its transition overlay when WebGL fails so the
+          // error state remains actionable instead of looking like a hang.
+          setReady(true);
+          onLoadError?.(message);
+        }}
         onCrashComplete={revealResults}
       />
       <div

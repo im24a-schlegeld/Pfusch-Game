@@ -2306,7 +2306,7 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
 }
 .finish-option {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   border: 1px solid #505050;
@@ -2335,7 +2335,11 @@ input, select, .variant-select, [data-slot='select-trigger'], [data-slot='select
 }
 .finish-preview span { min-width: 0; }
 .finish-preview b { display: block; font-size: 11px; overflow-wrap: anywhere; }
-.finish-preview small { display: block; margin-top: 4px; font-size: 9px; color: #c3c3be; }
+.finish-option-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
 .finish-option .button { gap: 6px; }
 .finish-option .coin { gap: 3px; font-size: 10px; }
 .finish-option .coin svg { width: 13px; height: 13px; }
