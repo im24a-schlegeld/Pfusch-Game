@@ -88,7 +88,7 @@ describe('stock helmet options', () => {
       helmet: 'motocross' as const,
       helmetColor: '#202324',
       bike: '701',
-      paint: '#d9f365',
+      paint: '#7461a5',
       rims: '#000000',
       equipped: { ...player.equipped, upper: 'locked-jersey' },
       variants: { 'locked-jersey': 'locked-variant' },

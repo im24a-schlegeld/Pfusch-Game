@@ -153,7 +153,7 @@ describe('progression and storage', () => {
     });
     const p = finishRun(newPlayer(), run)!.player;
     p.settings.muted = false;
-    p.paint = '#d9f365';
+    p.paint = '#7461a5';
     repo.save(p);
     expect(await repo.load()).toEqual(p);
     expect(decodePlayer(JSON.stringify({ ...p, level: 99 })).level).toBe(

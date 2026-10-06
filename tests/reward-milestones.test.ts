@@ -30,10 +30,10 @@ describe('digital level rewards', () => {
 
   it('grants real selectable cosmetics without duplicates or auto-equipping', () => {
     const initial = { ...newPlayer(), xp: LEVELS[7], level: 8 };
-    expect(RIMS.some((entry) => entry.value === '#d9f365')).toBe(true);
+    expect(RIMS.some((entry) => entry.value === '#7461a5')).toBe(true);
     expect(PAINTS.some((entry) => entry.value === '#7461a5')).toBe(true);
-    const rims = service.redeem({ ...initial, ownedItems: [...initial.ownedItems, 'rims:#d9f365'] }, 'exclusive-rims')!;
-    expect(rims.ownedItems.filter((id) => id === 'rims:#d9f365')).toHaveLength(1);
+    const rims = service.redeem({ ...initial, ownedItems: [...initial.ownedItems, 'rims:#7461a5'] }, 'exclusive-rims')!;
+    expect(rims.ownedItems.filter((id) => id === 'rims:#7461a5')).toHaveLength(1);
     const paint = service.redeem(rims, 'amethyst-paint')!;
     expect(paint.ownedItems).toContain('paint:#7461a5');
     expect(paint.paint).toBe(initial.paint);
