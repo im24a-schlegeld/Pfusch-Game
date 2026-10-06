@@ -70,6 +70,19 @@ function endpoint(value: unknown, config: OxygenAuthConfig) {
       || host === 'pfusch-clothing.ch' || host.endsWith('.pfusch-clothing.ch'))) throw new ApiError(503, 'invalid_discovery');
   return url.href;
 }
+function trustedHost(host: string, config: OxygenAuthConfig) {
+  return host === 'shopify.com' || host.endsWith('.shopify.com') || host === config.shop
+    || host === 'pfusch-clothing.ch' || host.endsWith('.pfusch-clothing.ch');
+}
+async function trustedRequest(url: string, config: OxygenAuthConfig, fetcher: typeof fetch, init: RequestInit) {
+  const response = await fetcher(url, { ...init, redirect: 'follow' });
+  if (response.url) {
+    let final: URL;
+    try { final = new URL(response.url); } catch { throw new ApiError(503, 'invalid_discovery'); }
+    if (final.protocol !== 'https:' || !trustedHost(final.hostname, config)) throw new ApiError(503, 'invalid_discovery');
+  }
+  return response;
+}
 async function objectResponse(response: Response) {
   if (!response.ok) throw new ApiError(response.status === 401 ? 401 : 503, response.status === 401 ? 'login_required' : 'customer_account_unavailable');
   const text = await response.text();
@@ -116,7 +129,7 @@ export async function startLogin(request: Request, config: OxygenAuthConfig, fet
 }
 async function customerId(accessToken: string, config: OxygenAuthConfig, fetcher: typeof fetch): Promise<string> {
   const info = await discovery(config, fetcher, 'customer-account-api');
-  const data = await objectResponse(await fetcher(endpoint(info.graphql_api, config), { method: 'POST', redirect: 'error',
+  const data = await objectResponse(await trustedRequest(endpoint(info.graphql_api, config), config, fetcher, { method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: accessToken, Origin: config.origin, 'User-Agent': 'WheelieEscape/1.0' },
     body: JSON.stringify({ query: 'query WheelieIdentity { customer { id } }' }) }));
   const customer = record(data.data) && record(data.data.customer) ? data.data.customer : null;
@@ -133,7 +146,7 @@ export async function finishLogin(request: Request, config: OxygenAuthConfig, fe
   const info = await discovery(config, fetcher, 'openid-configuration');
   const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', Origin: config.origin, 'User-Agent': 'WheelieEscape/1.0' };
   if (config.clientSecret) headers.Authorization = `Basic ${btoa(`${config.clientId}:${config.clientSecret}`)}`;
-  const tokens = await objectResponse(await fetcher(endpoint(info.token_endpoint, config), { method: 'POST', redirect: 'error', headers,
+  const tokens = await objectResponse(await trustedRequest(endpoint(info.token_endpoint, config), config, fetcher, { method: 'POST', headers,
     body: new URLSearchParams({ grant_type: 'authorization_code', client_id: config.clientId, redirect_uri: config.origin + '/auth/callback', code: params.get('code')!, code_verifier: flow.verifier }) }));
   if (typeof tokens.access_token !== 'string' || tokens.access_token.length > 2300 || !tokens.access_token
     || typeof tokens.expires_in !== 'number' || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) throw new ApiError(503, 'invalid_token_response');
