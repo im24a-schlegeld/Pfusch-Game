@@ -87,7 +87,7 @@ async function discovery(config: OxygenAuthConfig, fetcher: typeof fetch, kind: 
   let failure: unknown;
   for (const origin of origins) {
     try {
-      const response = await fetcher(`${origin}/.well-known/${kind}`, { redirect: 'follow', headers: { Accept: 'application/json' } });
+      const response = await fetcher(`${origin}/.well-known/${kind}`, { redirect: 'follow', headers: { Accept: 'application/json', 'User-Agent': 'WheelieEscape/1.0' } });
       if (response.url) {
         const final = new URL(response.url);
         const trusted = final.protocol === 'https:' && (final.hostname === config.shop
