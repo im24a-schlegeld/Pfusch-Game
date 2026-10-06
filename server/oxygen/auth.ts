@@ -8,16 +8,20 @@ const decode = (value: string) => Uint8Array.from(atob(value.replace(/-/g, '+').
 const bytes = (value: string) => new TextEncoder().encode(value);
 const random = () => encode(crypto.getRandomValues(new Uint8Array(32)));
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
-export interface OxygenAuthConfig { origin: string; storefront: string; clientId: string; clientSecret?: string; sessionSecret: string; shop: string }
+export interface OxygenAuthConfig { origin: string; storefront: string; customerAccountOrigin: string; clientId: string; clientSecret?: string; sessionSecret: string; shop: string }
 export function readOxygenAuth(env: Record<string, string | undefined>): OxygenAuthConfig | null {
   try {
     const origin = new URL(env.OXYGEN_APP_ORIGIN ?? ''), storefront = new URL(env.SHOPIFY_STOREFRONT_ORIGIN ?? 'https://pfusch-clothing.ch');
-    const shop = env.SHOPIFY_SHOP_DOMAIN ?? '', clientId = env.CUSTOMER_ACCOUNT_CLIENT_ID ?? '', sessionSecret = env.OXYGEN_SESSION_SECRET ?? '';
+    const shop = env.SHOPIFY_SHOP_DOMAIN ?? '', customerAccountOrigin = new URL(env.CUSTOMER_ACCOUNT_ORIGIN ?? storefront.href);
+    const clientId = env.CUSTOMER_ACCOUNT_CLIENT_ID ?? '', sessionSecret = env.OXYGEN_SESSION_SECRET ?? '';
+    const trustedAccountHost = (host: string) => host === shop || host.endsWith('.shopify.com') || host === 'pfusch-clothing.ch' || host.endsWith('.pfusch-clothing.ch');
     if (origin.protocol !== 'https:' || origin.href !== origin.origin + '/' || origin.username || origin.password
       || !SHOP_ORIGINS.includes(storefront.origin) || storefront.href !== storefront.origin + '/'
+      || customerAccountOrigin.protocol !== 'https:' || customerAccountOrigin.href !== customerAccountOrigin.origin + '/' || customerAccountOrigin.username || customerAccountOrigin.password
+      || !trustedAccountHost(customerAccountOrigin.hostname)
       || !/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop) || !clientId || clientId.length > 200
       || !/^[a-f0-9]{64}$/i.test(sessionSecret)) return null;
-    return { origin: origin.origin, storefront: storefront.origin, clientId, sessionSecret, shop,
+    return { origin: origin.origin, storefront: storefront.origin, customerAccountOrigin: customerAccountOrigin.origin, clientId, sessionSecret, shop,
       clientSecret: env.CUSTOMER_ACCOUNT_CLIENT_SECRET || undefined };
   } catch { return null; }
 }
@@ -79,7 +83,7 @@ async function discovery(config: OxygenAuthConfig, fetcher: typeof fetch, kind: 
   // A shop's vanity domain can redirect or omit the Customer Account
   // discovery document. Shopify's canonical myshopify domain is the stable
   // fallback while the configured storefront remains the preferred origin.
-  const origins = [...new Set([config.storefront, `https://${config.shop}`])];
+  const origins = [...new Set([config.customerAccountOrigin, config.storefront, `https://${config.shop}`])];
   let failure: unknown;
   for (const origin of origins) {
     try {
