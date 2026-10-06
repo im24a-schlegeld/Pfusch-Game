@@ -83,7 +83,15 @@ async function discovery(config: OxygenAuthConfig, fetcher: typeof fetch, kind: 
   let failure: unknown;
   for (const origin of origins) {
     try {
-      return await objectResponse(await fetcher(`${origin}/.well-known/${kind}`, { redirect: 'error', headers: { Accept: 'application/json' } }));
+      const response = await fetcher(`${origin}/.well-known/${kind}`, { redirect: 'follow', headers: { Accept: 'application/json' } });
+      if (response.url) {
+        const final = new URL(response.url);
+        const trusted = final.protocol === 'https:' && (final.hostname === config.shop
+          || final.hostname.endsWith('.shopify.com') || final.hostname === 'pfusch-clothing.ch'
+          || final.hostname.endsWith('.pfusch-clothing.ch'));
+        if (!trusted) throw new ApiError(503, 'invalid_discovery');
+      }
+      return await objectResponse(response);
     } catch (error) {
       failure = error;
     }
