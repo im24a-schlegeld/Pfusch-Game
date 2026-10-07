@@ -64,6 +64,7 @@ export function newPlayer(): Player {
       reducedMotion: false,
       quality: 'auto',
       tutorialSeen: false,
+      tutorialHintsSeen: [],
     },
     history: [],
   };

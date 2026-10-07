@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { PAINTS } from '../../app/domain/config';
 import { visiblePalette } from '../../app/domain/paletteView';
+import { chooseArea, choosePart, choosePaletteValue, primaryAction } from './garage-helpers';
 
 test('Escape pauses and resumes without double handling', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }).click();
-  await page.getByTestId('first-ride-start').click();
+  await primaryAction(page).click();
+  await expect(page.getByTestId('ride-tutorial-overlay')).toBeVisible({ timeout: 60000 });
+  await page.getByRole('button', { name: 'Hinweise überspringen', exact: true }).click();
   const ride = page.getByTestId('ride-screen');
   await expect(ride).toHaveAttribute('data-phase', 'playing');
   await page.keyboard.press('Escape');
@@ -47,7 +49,7 @@ test('production assets, console, narrow screens and saved customization', async
       ),
     ).toBe(true);
     await expect(
-      page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }),
+      primaryAction(page),
     ).toBeVisible();
   }
   await page
@@ -64,26 +66,19 @@ test('production assets, console, narrow screens and saved customization', async
     .getByRole('navigation')
     .getByRole('button', { name: 'GARAGE', exact: true })
     .click();
-  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
-  await page.locator('summary').filter({ hasText: 'Lackfarbe' }).click();
+  await chooseArea(page, 'Motorrad');
+  await choosePart(page, 'Lack');
   const color = visiblePalette(PAINTS).find((entry) => entry.price > 0)!;
-  const preview = page.getByRole('button', { name: `${color.name} paint`, exact: true });
-  await preview.click();
-  await expect(
-    preview,
-  ).toHaveAttribute('aria-pressed', 'true');
-  await page
-    .getByRole('button', { name: `Kaufen Lackfarbe ${color.name}`, exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: `Ausrüsten Lackfarbe ${color.name}`, exact: true })
-    .click();
+  await choosePaletteValue(page, 'Lackfarbe', color.value);
+  await expect(primaryAction(page)).toHaveText(/Kaufen & ausrüsten/i);
+  await primaryAction(page).click();
+  await expect(page.getByTestId('garage-model')).toHaveAttribute('data-paint', color.value);
   await page.reload();
-  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
-  await page.locator('summary').filter({ hasText: 'Lackfarbe' }).click();
-  await expect(
-    preview,
-  ).toHaveAttribute('aria-pressed', 'true');
+  await chooseArea(page, 'Motorrad');
+  await choosePart(page, 'Lack');
+  const preview = page.getByRole('group', { name: 'Lackfarbe', exact: true }).locator(`input[value="${color.value}"]`);
+  await expect(preview).toBeChecked();
+  await expect(page.getByTestId('garage-model')).toHaveAttribute('data-paint', color.value);
   expect(errors).toEqual([]);
   expect(failedRequests).toEqual([]);
 });

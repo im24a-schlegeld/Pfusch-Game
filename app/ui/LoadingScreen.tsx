@@ -13,15 +13,16 @@ export function PreviewLoading() {
 export default function LoadingScreen({
   label = 'DEIN SETUP WIRD GELADEN',
   fullScreen = false,
-}: { label?: string; fullScreen?: boolean }) {
+  embedded = typeof window !== 'undefined' && window.parent !== window,
+}: { label?: string; fullScreen?: boolean; embedded?: boolean }) {
   return (
-    <output className={`ride-loading${fullScreen ? ' ride-loading-full' : ''}`} aria-label={label}>
+    <output className={`ride-loading${fullScreen ? ' ride-loading-full' : ''}${embedded ? ' ride-loading-embedded' : ''}`} aria-label={label}>
       <picture>
-        {fullScreen && <source media="(max-aspect-ratio: 3/4)" srcSet="/branding/loading-wheelie-portrait.webp" />}
-        <img className="ride-loading-art" src="/branding/loading-wheelie.webp" alt="" fetchPriority="high" />
+        <source media="(max-aspect-ratio: 3/4)" srcSet="/branding/loading-trailer-portrait.webp" />
+        <img className="ride-loading-art" src="/branding/loading-trailer.webp" alt="" fetchPriority="high" />
       </picture>
       <div className="ride-loading-brand">
-        <img src="/branding/pfusch-logo.webp" alt="PFUSCH" />
+        <img src="/images/artwork/signs.png" alt="PFUSCH Signs" />
         <span>WHEELIE ESCAPE</span>
       </div>
       <div className="ride-loading-caption">

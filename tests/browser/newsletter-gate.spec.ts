@@ -5,7 +5,7 @@ test('fifth ride settles once and every later start stays gated after reload', a
   await page.setViewportSize({ width: 390, height: 844 });
   const initial = newPlayer();
   initial.runsPlayed = 4;
-  initial.settings.tutorialSeen = true;
+  initial.settings.tutorialSeen = true; initial.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   initial.settings.reducedMotion = true;
   await page.addInitScript((player) => {
     if (!localStorage.getItem('pfusch:player:v1'))

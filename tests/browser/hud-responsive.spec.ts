@@ -16,7 +16,7 @@ test('top instruments stay separate at desktop and narrow phone sizes', async ({
       newPlayer: () => Player;
     };
     const player = newPlayer();
-    player.settings.tutorialSeen = true;
+    player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
     localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
   });
   await page.reload();

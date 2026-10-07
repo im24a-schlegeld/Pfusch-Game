@@ -1,5 +1,13 @@
 # Wheelie Escape in Shopify
 
+## Garage, Ladebild und Fahrhinweise (07.10.2026)
+
+Die Garage hat zwei Bereiche: Motorrad und Fahrer. Antippen zeigt eine kostenlose Vorschau; erst der gemeinsame Kaufen-/Ausrüsten-Knopf übernimmt die Auswahl. Gespeicherte Setups bleiben separat verwaltbar. Sticker werden nach Wahl von Motorrad oder Helm direkt platziert; der gemeinsame Abschluss kauft bei Bedarf und speichert beide Ziele zusammen. Größe und Drehung stehen unter „Weitere Optionen“.
+
+Die erste Fahrt beginnt direkt im Spiel. Kurze Hinweise pausieren die Fahrt und zeigen Wischgesten sowie die erste passende Begegnung mit Verkehr, Rampen, Polizei, Blitzern und PFUSCH-Zeichen. Bestätigte Hinweise werden im Spielstand gespeichert; unter Einstellungen können sie erneut gestartet werden. Ein Tabwechsel setzt eine pausierte Fahrt nicht automatisch fort.
+
+Die neuen Ladebilder liegen auf Oxygen unter `/branding/loading-trailer.webp` und `/branding/loading-trailer-portrait.webp`. Der vollständige Ladebildschirm füllt den Spiel-Viewport; der Shop-Hero bleibt eine begrenzte Section. Die aktualisierte Datei `sections/wheelie-escape-hero.liquid` verwendet diese Bilder direkt und benötigt keinen Upload in Shopify-Dateien. Ein Git-Push stellt das Spiel auf Oxygen bereit, aktualisiert aber keine Liquid-Datei im Theme: diese Section muss zusätzlich im gewünschten Theme übernommen werden. Ein neuer WHEELIE-ESCAPE-Schriftzug bleibt bis zur ausdrücklichen Freigabe ein separater Entwurf.
+
 > **Aktuelle Vorgabe vom 06.10.2026:** Vercel war ausschließlich eine Vorschau. Das Spiel soll vollständig bei Shopify laufen; die folgenden früheren Vercel-Release-Anweisungen sind überholt. Die Migration ist noch nicht umgesetzt. Maßgeblicher aktueller Stand und nächste Schritte: [Shopify-only hosting handoff](../../docs/SHOPIFY-HOSTING-NEXT.md). Das Shop-Theme bleibt unveröffentlicht.
 
 Die lokale Integration umfasst eine Online-Store-2.0-Spielansicht, einen Startseitenblock, eine begrenzte Nachrichtenbrücke zum Spiel und serverseitige Kunden-Spielstände. Im Shopify-Shop `gkhnzi-gc.myshopify.com` besteht die **unveröffentlichte Theme-Kopie „Wheelie Escape – Entwurf“**, ID **189577920841**. Das aktive Theme bleibt unverändert. **Die Aktualisierung der bestehenden Vercel-Spieladresse wurde ausdrücklich genehmigt; ausschließlich das Shopify-Theme soll unveröffentlicht bleiben.** Der Spiel-Release wird vorbereitet; eine erfolgreiche Bereitstellung ist erst nach Abschluss gesondert zu bestätigen.

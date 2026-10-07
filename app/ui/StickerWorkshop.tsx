@@ -15,9 +15,9 @@ import './stickerWorkshop.css';
 
 type Target = 'bike' | 'helmet';
 const emptyPlacements: StickerPlacement[] = [];
-interface Props { player: Player; account: Player; products: Product[]; initialTarget?: Target; onClose: () => void; onBuySticker: () => void; onSave: (drafts: Record<string, StickerPlacement[]>) => void }
+interface Props { player: Player; account: Player; products: Product[]; initialTarget?: Target; onClose: () => void; onSave: (drafts: Record<string, StickerPlacement[]>) => boolean | Promise<boolean> }
 /** Imported only after the explicit workshop action. No renderer or physics on garage entry. */
-export default function StickerWorkshop({ player, account, products, initialTarget = 'bike', onClose, onBuySticker, onSave }: Props) {
+export default function StickerWorkshop({ player, account, products, initialTarget = 'bike', onClose, onSave }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<Target>(initialTarget);
   const [drafts, setDrafts] = useState<Record<string, StickerPlacement[]>>({});
@@ -25,24 +25,28 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   const targetKey = target === 'helmet' ? helmetKey : player.bike;
   const placements = drafts[targetKey] ?? player.stickers[targetKey] ?? emptyPlacements;
   const [selected, setSelected] = useState<string | null>(null);
-  const [tool, setTool] = useState<'view' | 'place'>('view');
+  const [saving, setSaving] = useState(false);
+  const savePending = useRef(false);
   const [size, setSize] = useState(initialTarget === 'helmet' ? 0.07 : 0.18);
   const [rotation, setRotation] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [assetRevision, setAssetRevision] = useState(0);
-  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Drehe den Helm zur gewünschten Schale. Visier und Brille bleiben frei.' : 'Drehe das Fahrzeug zur gewünschten Fläche.');
-  const state = useRef({ placements, drafts, target, targetKey, tool, size, rotation, selected });
-  state.current = { placements, drafts, target, targetKey, tool, size, rotation, selected };
+  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Tippe auf die Helmschale. Ziehen dreht die Ansicht.' : 'Tippe auf eine lackierte Fläche. Ziehen dreht die Ansicht.');
+  const state = useRef({ placements, drafts, target, targetKey, size, rotation, selected });
+  state.current = { placements, drafts, target, targetKey, size, rotation, selected };
   const view = useRef<((angle: number) => void) | null>(null);
   const product = products.find(isSticker);
   // Inventory updates independently of the frozen preview: buying must not reset
   // the camera, renderer or unsaved sticker positions.
   const stickerOwned = Boolean(product && (account.ownedItems.includes(product.id) || account.irlItems.includes(product.id)));
-  const bikeOwned = ownsStickerTarget(account, player.bike);
   const hasChanges = Object.keys(drafts).length > 0;
-  const owned = stickerOwned && Object.keys(drafts).every((key) => ownsStickerTarget(account, key));
+  const targetOwned = Object.keys(drafts).every((key) => ownsStickerTarget(account, key));
+  const needsSticker = Object.values(drafts).some(items => items.length > 0);
   const price = product ? digitalPrice(product) : 0;
+  const purchaseRequired = !stickerOwned && needsSticker;
+  const disabledReason = !hasChanges ? 'Sticker platzieren' : !targetOwned ? 'Motorrad zuerst freischalten'
+    : purchaseRequired && account.coins < price ? `Dir fehlen ${price - account.coins} Coins` : '';
   useEffect(() => {
     if (importedBikeReady(player.bike)) return;
     let cancelled = false;
@@ -56,7 +60,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   }, [player.bike]);
   const close = useRef(onClose); close.current = onClose;
   useEffect(() => {
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') close.current(); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !savePending.current) close.current(); };
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
   }, []);
@@ -105,7 +109,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     let down: [number, number] | undefined;
     const pointerDown = (event: PointerEvent) => { down = [event.clientX, event.clientY]; };
     const pointerUp = (event: PointerEvent) => {
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 8 || state.current.tool !== 'place') { down = undefined; return; }
+      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 8 || savePending.current) { down = undefined; return; }
       down = undefined;
       const current = state.current;
       const helmetView = current.target === 'helmet';
@@ -128,7 +132,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
       const id = current.selected ?? crypto.randomUUID();
       const placement: StickerPlacement = { id, productId: product.id, surface, point: hit.object.worldToLocal(hit.point.clone()).toArray(), normal: hit.face.normal.clone().normalize().toArray(), size: current.size, rotation: current.rotation };
       setDrafts((previous) => ({ ...previous, [current.targetKey]: current.selected ? current.placements.map((p) => p.id === id ? placement : p) : [...current.placements, placement] }));
-      setSelected(id); setHint('Position gesetzt. Größe und Drehung kannst du unten anpassen.');
+      setSelected(id); setHint('Sticker gesetzt. Erneut tippen verschiebt ihn. Speichern übernimmt deine Vorschau.');
     };
     const lost = (event: Event) => { event.preventDefault(); setError('Grafik angehalten. Schließe und öffne die Werkstatt erneut.'); };
     renderer.domElement.addEventListener('pointerdown', pointerDown);
@@ -137,7 +141,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     let raf = 0, lastBikePlacements: StickerPlacement[] | undefined, lastHelmetPlacements: StickerPlacement[] | undefined;
     const render = () => {
       raf = requestAnimationFrame(render);
-      controls.enabled = state.current.tool === 'view'; controls.update();
+      controls.enabled = !savePending.current; controls.update();
       const bikePlacements = state.current.drafts[player.bike] ?? player.stickers[player.bike] ?? emptyPlacements;
       const helmetPlacements = state.current.drafts[helmetKey] ?? player.stickers[helmetKey] ?? emptyPlacements;
       if (lastBikePlacements !== bikePlacements) {
@@ -171,37 +175,42 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     setDrafts((previous) => ({ ...previous, [targetKey]: update(previous[targetKey] ?? player.stickers[targetKey] ?? emptyPlacements) }));
   }
   function selectTarget(next: Target) {
-    setTarget(next); setSelected(null); setTool('view'); setSize(next === 'helmet' ? 0.07 : 0.18);
-    setHint(next === 'helmet' ? 'Drehe den Helm zur gewünschten Schale. Visier und Brille bleiben frei.' : 'Drehe das Fahrzeug zur gewünschten Fläche.');
+    if (next === target || savePending.current) return;
+    setTarget(next); setSelected(null); setSize(next === 'helmet' ? 0.07 : 0.18); setRotation(0);
+    setHint(next === 'helmet' ? 'Tippe auf die Helmschale. Deine Motorrad-Sticker bleiben erhalten.' : 'Tippe auf eine lackierte Fläche. Deine Helm-Sticker bleiben erhalten.');
   }
   function change(value: number, field: 'size' | 'rotation') {
     if (field === 'size') setSize(value); else setRotation(value);
     if (selected) setPlacements((previous) => previous.map((p) => p.id === selected ? { ...p, [field]: value } : p));
   }
+  async function save() {
+    if (savePending.current || disabledReason || !ready || error) return;
+    savePending.current = true; setSaving(true);
+    const confirmedDrafts = structuredClone(state.current.drafts);
+    try {
+      const saved = await onSave(confirmedDrafts);
+      if (!saved) setHint('Nicht gespeichert. Deine Vorschau bleibt erhalten; es wurde nichts abgezogen.');
+    } catch { setHint('Speicherung nicht bestätigt. Bitte erneut versuchen.'); }
+    finally { savePending.current = false; setSaving(false); }
+  }
   return <main className="sticker-workshop" aria-label="Sticker-Werkstatt">
-    <header><button className="button small" onClick={onClose}>ZURÜCK</button><div><p className="eyebrow">DEIN SETUP. DEINE POSITION.</p><h1>STICKER-WERKSTATT</h1></div><span>{target === 'helmet' ? HELMETS.find((entry) => entry.id === player.helmet)?.name : BIKES.find((b) => b.id === player.bike)?.name}</span></header>
-    <fieldset className="sticker-targets" aria-label="Sticker-Ziel"><button type="button" aria-pressed={target === 'bike'} onClick={() => selectTarget('bike')}>FAHRZEUG</button><button type="button" aria-pressed={target === 'helmet'} onClick={() => selectTarget('helmet')}>HELM</button></fieldset>
+    <header><button className="button small" disabled={saving} onClick={onClose}>ZURÜCK</button><div><p className="eyebrow">KOSTENLOSE VORSCHAU</p><h1>STICKER PLATZIEREN</h1></div><span>{target === 'helmet' ? HELMETS.find((entry) => entry.id === player.helmet)?.name : BIKES.find((b) => b.id === player.bike)?.name}</span></header>
+    <fieldset className="sticker-targets" aria-label="Sticker-Ziel"><button type="button" disabled={saving} aria-pressed={target === 'bike'} onClick={() => selectTarget('bike')}>MOTORRAD</button><button type="button" disabled={saving} aria-pressed={target === 'helmet'} onClick={() => selectTarget('helmet')}>HELM</button></fieldset>
+    <div className="sticker-views" aria-label="Ansicht wählen">{[['LINKS', -Math.PI / 2], ['VORNE', Math.PI], ['RECHTS', Math.PI / 2], ['HINTEN', 0]].map(([label, angle]) => <button key={String(label)} disabled={!ready || saving} onClick={() => view.current?.(Number(angle))}>{label}</button>)}</div>
     <div className="sticker-stage" ref={host} data-testid="sticker-stage">
       {!ready && !error && <div className="scene-loading"><span className="spinner"/>SIMULATION WIRD GELADEN</div>}
       {error && <p className="graphics-error" role="alert">{error}</p>}
     </div>
     <section className="sticker-tools">
-      <div className="sticker-tools-top"><div className="sticker-mode"><button aria-pressed={tool === 'view'} onClick={() => setTool('view')}>{target === 'helmet' ? 'HELM' : 'FAHRZEUG'} DREHEN</button><button disabled={!ready} aria-pressed={tool === 'place'} onClick={() => { setTool('place'); setHint('Tippe die gewünschte Stelle an.'); }}>STICKER PLATZIEREN</button></div>
-        <div className="sticker-views">{[['LINKS', -Math.PI / 2], ['VORNE', Math.PI], ['RECHTS', Math.PI / 2], ['HINTEN', 0]].map(([label, angle]) => <button key={String(label)} onClick={() => view.current?.(Number(angle))}>{label}</button>)}</div></div>
       <output className="sticker-hint">{hint}</output>
-      <div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label></div>
-      <div className="sticker-items" aria-label="Platzierte Sticker">{placements.map((p, index) => <button key={p.id} aria-pressed={selected === p.id} onClick={() => { setSelected(p.id); setSize(p.size); setRotation(p.rotation); setTool('place'); setHint(`Sticker ${index + 1} ausgewählt. Du kannst ihn unten entfernen.`); }}>STICKER {index + 1}</button>)}<button disabled={placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setTool('place'); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ NEUER STICKER</button>{selected && <button aria-label="Ausgewählten Sticker entfernen" onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); setHint('Sticker entfernt. Zum Übernehmen unten speichern.'); }}>STICKER ENTFERNEN</button>}</div>
-      <div className="sticker-footer">{product && <a href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>{product.title}<small>ORIGINAL IM SHOP</small></span></a>}<div>
-        {product && !stickerOwned && <div className="sticker-purchase">
-          <p>Digitaler Sticker · Guthaben: {account.coins.toLocaleString('de-CH')} Coins</p>
-          <button className="button" disabled={account.coins < price} onClick={onBuySticker}>STICKER KAUFEN · {price} COINS</button>
-          {account.coins < price && <p>Dir fehlen {price - account.coins} Coins.</p>}
-        </div>}
-        {!bikeOwned && (target === 'bike' || drafts[player.bike]) && <p>Kostenlose Vorschau · Für Fahrzeug-Sticker dieses Motorrad zuerst freischalten. Helm-Sticker benötigen keinen Motorradkauf.</p>}
-        {target === 'helmet' && <p>Gilt für diesen Helmtyp auf allen Motorrädern. Helmfarbe und Visier bleiben erhalten.</p>}
-        {stickerOwned && <p>Sticker freigeschaltet · Änderungen an Fahrzeug und Helm erst mit Speichern übernehmen.</p>}
-        <button className="button primary" disabled={!hasChanges || !owned || !ready || Boolean(error)} onClick={() => onSave(drafts)}>POSITIONEN SPEICHERN & ANWENDEN</button>
-      </div></div>
+      <div className="sticker-items" aria-label="Platzierte Sticker">{placements.map((p, index) => <button key={p.id} disabled={saving} aria-pressed={selected === p.id} onClick={() => { setSelected(p.id); setSize(p.size); setRotation(p.rotation); setHint(`Sticker ${index + 1} ausgewählt. Tippen verschiebt ihn.`); }}>STICKER {index + 1}</button>)}
+        {placements.length > 0 && <button disabled={saving || placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ WEITERER STICKER</button>}
+        {selected && <button disabled={saving} aria-label="Ausgewählten Sticker entfernen" onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); setHint('Sticker entfernt. Speichern übernimmt die Änderung.'); }}>ENTFERNEN</button>}
+      </div>
+      <details className="sticker-more"><summary>Weitere Optionen</summary><div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input disabled={saving} aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input disabled={saving} aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label></div></details>
+      <p className="sticker-save-note">Erst Speichern übernimmt deine Sticker auf Helm und Motorrad.</p>
+      {product && <a className="sticker-original" href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>{product.title} · Original im Shop</span></a>}
     </section>
+    <footer className="sticker-footer"><span>{stickerOwned ? 'Sticker in deinem Besitz' : `Sticker · ${price} Coins`}<small>Guthaben: {account.coins.toLocaleString('de-CH')} Coins</small></span><button className="button primary" disabled={saving || !!disabledReason || !ready || Boolean(error)} onClick={() => { void save(); }}>{saving ? 'Wird gespeichert …' : disabledReason || (purchaseRequired ? `Für ${price} Coins kaufen & speichern` : 'Speichern')}</button></footer>
   </main>;
 }

@@ -11,12 +11,14 @@ import { Progress } from '@/components/ui/progress';
 import type { Player } from '../domain/types';
 import { levelProgress } from '../domain/progression';
 import LoadingScreen, { PreviewLoading } from './LoadingScreen';
+import SceneFallback from './SceneFallback';
 type SceneModule = Pick<typeof import('../game/SceneView'), 'default'> &
   Partial<Pick<typeof import('../game/SceneView'), 'preloadBikeAsset'>>;
 let sceneModule: Promise<SceneModule> | undefined;
-function SceneLoadError({ onLoadError, detail }: { onLoadError?: (message: string) => void; detail?: string }) {
+function SceneLoadError({ onLoadError, detail, scene }: { onLoadError?: (message: string) => void; detail?: string; scene: SceneProps }) {
   const message = detail || '3D-Ansicht konnte nicht geladen werden.';
   useEffect(() => { onLoadError?.(message); }, [message, onLoadError]);
+  if (scene.mode !== 'ride') return <div className={`scene scene-${scene.mode}`}><SceneFallback player={scene.player} products={scene.products} /></div>;
   return (
     <div className="scene-loading" role="alert">
       <span>{message}</span>
@@ -33,7 +35,7 @@ interface SceneBoundaryState {
 
 /** A WebGL preview must never take the menu or ride navigation down with it. */
 class SceneErrorBoundary extends Component<
-  { children: ReactNode; onLoadError?: (message: string) => void },
+  { children: ReactNode; scene: SceneProps; onLoadError?: (message: string) => void },
   SceneBoundaryState
 > {
   state: SceneBoundaryState = { failed: false };
@@ -47,7 +49,7 @@ class SceneErrorBoundary extends Component<
   }
 
   render() {
-    return this.state.failed ? <SceneLoadError onLoadError={this.props.onLoadError} /> : this.props.children;
+    return this.state.failed ? <SceneLoadError scene={this.props.scene} onLoadError={this.props.onLoadError} /> : this.props.children;
   }
 }
 /** Preload code only; the renderer is still created by the mounted Scene. */
@@ -75,7 +77,7 @@ function SceneHost(props: SceneProps) {
     });
     return () => { active = false; };
   }, []);
-  if (error) return <SceneLoadError onLoadError={props.onLoadError} detail={error} />;
+  if (error) return <SceneLoadError scene={props} onLoadError={props.onLoadError} detail={error} />;
   if (!loaded) return <SceneLoading mode={props.mode} />;
   const LoadedScene = loaded;
   return <LoadedScene {...props} />;
@@ -115,7 +117,7 @@ export function SceneLoading({ mode }: { mode: 'menu' | 'garage' | 'ride' }) {
 }
 export function Preview(props: ComponentProps<typeof Scene>) {
   return (
-    <SceneErrorBoundary onLoadError={props.onLoadError}>
+    <SceneErrorBoundary scene={props} onLoadError={props.onLoadError}>
       <Scene {...props} />
     </SceneErrorBoundary>
   );

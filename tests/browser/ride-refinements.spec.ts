@@ -102,7 +102,7 @@ async function start(page: Page) {
     const player = newPlayer();
     player.bike = '450';
     player.helmet = 'fullface';
-    player.settings.tutorialSeen = true;
+    player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
     player.settings.muted = true;
     localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
   });

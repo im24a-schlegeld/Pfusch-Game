@@ -3,6 +3,7 @@ import { levelForXp, newPlayer, normalizeLeaderboardName } from '../../app/domai
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
 import { REWARDS } from '../../app/domain/config.js';
 import { MAX_SAVED_SETUPS, MAX_SAVED_SETUPS_BYTES, sanitizeSavedSetups } from '../../app/domain/setups.js';
+import { isTutorialHint, normalizeTutorialHints, TUTORIAL_HINTS } from '../../app/domain/tutorial.js';
 import { ApiError } from './auth.js';
 
 export const MAX_BODY_BYTES = 131072;
@@ -112,13 +113,20 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   const values: Record<string, number> = {};
   for (const [key, value] of Object.entries(record(challenges.values, 40))) values[key] = numeric(value);
   player.challenges = { date: date(challenges.date), values, claimed: stringList(challenges.claimed, 40) };
-  const settings = record(input.settings, 4);
+  const settings = record(input.settings, 5);
+  if (Object.keys(settings).some(key => !['muted', 'reducedMotion', 'tutorialSeen', 'quality', 'tutorialHintsSeen'].includes(key))) invalid();
   for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const) {
     if (typeof settings[field] !== 'boolean') invalid();
     player.settings[field] = settings[field] as boolean;
   }
   if (settings.quality !== 'auto' && settings.quality !== 'low') invalid();
   player.settings.quality = settings.quality as Player['settings']['quality'];
+  // Optional only for older schema-1 snapshots; server writes accept exactly the shipped lesson IDs.
+  if (settings.tutorialHintsSeen !== undefined) {
+    if (!Array.isArray(settings.tutorialHintsSeen) || settings.tutorialHintsSeen.length > TUTORIAL_HINTS.length ||
+      !settings.tutorialHintsSeen.every(isTutorialHint)) invalid();
+    player.settings.tutorialHintsSeen = normalizeTutorialHints(settings.tutorialHintsSeen);
+  }
   if (!Array.isArray(input.history) || input.history.length > 200) invalid();
   player.history = (input.history as unknown[]).map(value => {
     const entry = record(value, 2);

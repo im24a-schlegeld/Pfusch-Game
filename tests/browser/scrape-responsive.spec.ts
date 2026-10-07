@@ -58,7 +58,7 @@ for (const model of ['701', 'scooter'] as const) {
       const player = newPlayer();
       player.bike = bike;
       player.paint = '#ff3300';
-      player.settings.tutorialSeen = true;
+      player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
       localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
     }, model);
     await page.reload();

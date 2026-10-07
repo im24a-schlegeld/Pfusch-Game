@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@/components/ui/dialog';
-import type { Player, Product, RunStats } from '../domain/types';
+import type { Player, Product, RunStats, TutorialHint } from '../domain/types';
 import { BIKES } from '../domain/config';
+import { TUTORIAL_HINTS } from '../domain/tutorial';
 import { Engine } from '../game/engine';
+import type { TutorialCue } from '../game/tutorialCues';
 import { GameAudio } from '../game/audio';
 import { Preview, gameText } from './shared';
 import { RideGestures } from './rideGestures';
+import { tutorialGestureIntent } from './tutorialGesture';
 import { updateGestureIndicator, type GestureBounds } from './rideGestureIndicator';
 import RidePause from './RidePause';
 import RideHud from './RideHud';
@@ -21,7 +24,9 @@ interface Props {
   onMute: () => void;
   onReady?: () => void;
   onLoadError?: (message: string) => void;
+  onTutorialSeen?: (ids: readonly TutorialHint[]) => void;
 }
+type ActiveTutorial = { id: TutorialHint; target?: { x: number; y: number } };
 export default function Ride({
   player,
   products,
@@ -32,6 +37,7 @@ export default function Ride({
   onMute,
   onReady,
   onLoadError,
+  onTutorialSeen,
 }: Props) {
   const engine = useMemo(
     () =>
@@ -44,8 +50,15 @@ export default function Ride({
   const [tick, setTick] = useState(0),
     [ready, setReady] = useState(false),
     [countdown, setCountdown] = useState(3),
-    [guideOpen, setGuideOpen] = useState(false);
-  const guideEligible = player.highScore <= 1000;
+    [tutorial, setTutorial] = useState<ActiveTutorial | null>(null);
+  const tutorialRef = useRef<ActiveTutorial | null>(null);
+  const seenTutorials = useRef(new Set(player.settings.tutorialHintsSeen ?? []));
+  for (const hint of player.settings.tutorialHintsSeen ?? []) seenTutorials.current.add(hint);
+  const tutorialCallback = useRef(onTutorialSeen);
+  tutorialCallback.current = onTutorialSeen;
+  const lastTutorialElapsed = useRef(-Infinity);
+  const tutorialPointer = useRef<{ id: number; x: number; y: number; time: number } | null>(null);
+  const gestureSurface = useRef<HTMLDivElement>(null);
   const settled = useRef<RunStats | null>(null),
     revealed = useRef(false),
     lastEvent = useRef(0),
@@ -80,14 +93,59 @@ export default function Ride({
     gestures.cancel();
     updateGestureIndicator(gestureIndicator.current, null);
   }, [gestures]);
-  const dismissGuide = useCallback(() => {
-    if (!guideOpen) return;
-    setGuideOpen(false);
+  const dismissTutorial = useCallback((skipAll = false) => {
+    const active = tutorialRef.current;
+    if (!active || document.hidden) return false;
+    const acknowledged = skipAll ? TUTORIAL_HINTS : [active.id];
+    for (const hint of acknowledged) seenTutorials.current.add(hint);
+    tutorialRef.current = null;
+    tutorialPointer.current = null;
+    setTutorial(null);
     clearGestures();
-    engine.resume();
+    engine.resumeTutorial();
+    lastTutorialElapsed.current = engine.elapsed;
+    suppressClicksUntil.current = performance.now() + 350;
     audio.unlock();
+    tutorialCallback.current?.(acknowledged);
     setTick((n) => n + 1);
-  }, [audio, clearGestures, engine, guideOpen]);
+    return true;
+  }, [audio, clearGestures, engine]);
+  const showTutorialCue = useCallback((cue: TutorialCue | null) => {
+    const active = tutorialRef.current;
+    if (active && active.id !== 'controls' && engine.phase === 'paused') {
+      if (!cue || cue.id === active.id) {
+        const target = cue ? { x: cue.x, y: cue.y } : undefined;
+        if (active.target?.x !== target?.x || active.target?.y !== target?.y) {
+          const next = { ...active, target };
+          tutorialRef.current = next;
+          setTutorial(next);
+        }
+      }
+      return;
+    }
+    if (!cue || tutorialRef.current || seenTutorials.current.has(cue.id) ||
+      !seenTutorials.current.has('controls') ||
+      engine.phase !== 'playing' || engine.elapsed - lastTutorialElapsed.current < 8 ||
+      gestures.feedback() || document.hidden) return;
+    clearGestures();
+    engine.pause();
+    const next = { id: cue.id, target: { x: cue.x, y: cue.y } };
+    tutorialRef.current = next;
+    setTutorial(next);
+    audio.update(0, false, false);
+    setTick(n => n + 1);
+  }, [audio, clearGestures, engine, gestures]);
+  const showControls = useCallback(() => {
+    if (tutorialRef.current || seenTutorials.current.has('controls') ||
+      engine.phase !== 'playing' || document.hidden || !document.hasFocus()) return;
+    clearGestures();
+    engine.pause();
+    audio.update(0, false, false);
+    const next = { id: 'controls' as const };
+    tutorialRef.current = next;
+    setTutorial(next);
+    setTick(n => n + 1);
+  }, [audio, clearGestures, engine]);
   useEffect(() => {
     if (!ready) return;
     let remaining = 3;
@@ -97,22 +155,32 @@ export default function Ride({
       if (remaining === 0) {
         clearInterval(timer);
         engine.start();
-        if (guideEligible) {
+        if (document.hidden || !document.hasFocus()) {
           engine.pause();
-          audio.update(0, false, false);
-          setGuideOpen(true);
           setTick((n) => n + 1);
-        }
+        } else showControls();
       }
     }, 650);
     return () => clearInterval(timer);
-  }, [audio, engine, guideEligible, ready]);
+  }, [engine, ready, showControls]);
   useEffect(() => {
     const showGesture = () => updateGestureIndicator(gestureIndicator.current,
       touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
     const down = (event: PointerEvent) => {
       if (engine.resumeRemaining > 0) return;
       const target = event.target instanceof Element ? event.target : null;
+      if (tutorialRef.current) {
+        if (target?.closest('button') || tutorialPointer.current ||
+          (event.pointerType === 'mouse' && event.button !== 0)) return;
+        event.preventDefault();
+        tutorialPointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp };
+        // Capture on the persistent gameplay surface, not the temporary hint.
+        // A continuing drag then survives the overlay's removal.
+        gestureSurface.current?.setPointerCapture(event.pointerId);
+        touchFeedback.current = event.pointerType === 'touch' || event.pointerType === 'pen';
+        gestureBounds.current = gestureIndicator.current?.getBoundingClientRect();
+        return;
+      }
       const surface = target?.closest('.gesture-zone');
       const dialog =
         engine.phase === 'paused' && target?.closest('[role="dialog"]');
@@ -138,14 +206,23 @@ export default function Ride({
       showGesture();
     };
     const move = (event: PointerEvent) => {
+      if (tutorialRef.current) {
+        const start = tutorialPointer.current;
+        if (!start || start.id !== event.pointerId ||
+          !tutorialGestureIntent(event.clientX - start.x, event.clientY - start.y)) return;
+        if (!dismissTutorial()) return;
+        gestures.down(start.id, start.x, start.y, start.time);
+      }
       gestures.move(event.pointerId, event.clientX, event.clientY);
       showGesture();
     };
     const up = (event: PointerEvent) => {
+      if (tutorialPointer.current?.id === event.pointerId) tutorialPointer.current = null;
       gestures.up(event.pointerId, event.timeStamp);
       showGesture();
     };
     const cancel = (event: PointerEvent) => {
+      if (tutorialPointer.current?.id === event.pointerId) tutorialPointer.current = null;
       gestures.cancel(event.pointerId);
       showGesture();
     };
@@ -175,13 +252,16 @@ export default function Ride({
       window.removeEventListener('click', click, true);
       window.removeEventListener('resize', clearGestures);
     };
-  }, [engine, gestures, clearGestures]);
+  }, [engine, gestures, clearGestures, dismissTutorial]);
   useEffect(() => {
     if (engine.phase !== 'playing') clearGestures();
   }, [engine.phase, clearGestures]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      const activeTutorial = tutorialRef.current;
+      const button = e.target instanceof Element && !!e.target.closest('button');
+      if (activeTutorial && button && (k === ' ' || k === 'enter')) return;
       if (
         [
           'arrowleft',
@@ -199,9 +279,11 @@ export default function Ride({
       )
         e.preventDefault();
       if (e.repeat) return;
-      if (guideOpen) {
-        dismissGuide();
-        return;
+      if (activeTutorial) {
+        if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'a', 'd', 'w', 's', 'enter', ' '].includes(k)) return;
+        e.preventDefault();
+        if (!dismissTutorial()) return;
+        if (k === 'enter' || k === ' ') return;
       }
       if (k === 'escape' || k === 'p') {
         clearGestures();
@@ -222,6 +304,7 @@ export default function Ride({
       if (k === 'arrowdown' || k === 's') engine.hold(false);
     };
     const blur = () => {
+      tutorialPointer.current = null;
       clearGestures();
       engine.pause();
       engine.clearInput();
@@ -239,7 +322,7 @@ export default function Ride({
       document.removeEventListener('visibilitychange', blur);
       audio.update(0, false, false);
     };
-  }, [audio, clearGestures, dismissGuide, engine, guideOpen]);
+  }, [audio, clearGestures, dismissTutorial, engine]);
   function settle(e: Engine) {
     if (e.phase !== 'crashed' || settled.current) return;
     const run = e.stats();
@@ -253,6 +336,7 @@ export default function Ride({
     resultsReady.current(settled.current.id);
   }
   function frame(e: Engine) {
+    showControls();
     audio.update(
       e.speed,
       e.throttleInput > 0,
@@ -320,6 +404,7 @@ export default function Ride({
       data-sign-sets={engine.signSetCount}
       data-frame={tick}
       data-resume-countdown={Math.ceil(engine.resumeRemaining)}
+      data-tutorial={tutorial?.id ?? ''}
     >
       <Preview
         player={player}
@@ -338,10 +423,15 @@ export default function Ride({
           onLoadError?.(message);
         }}
         onCrashComplete={revealResults}
+        tutorialHintsSeen={[...seenTutorials.current]}
+        onTutorialCue={showTutorialCue}
       />
-      <RideTutorialOverlay open={guideOpen} onSwipe={dismissGuide} />
+      <RideTutorialOverlay hint={tutorial?.id ?? null} target={tutorial?.target}
+        reducedMotion={player.settings.reducedMotion} onContinue={() => { dismissTutorial(); }}
+        onSkip={() => { dismissTutorial(true); }} />
       <div
         className="gesture-zone"
+        ref={gestureSurface}
         aria-label="Steuerung: seitlich wischen für Spurwechsel; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
         onContextMenu={(e) => e.preventDefault()}
       />
@@ -408,18 +498,8 @@ export default function Ride({
           <span>WEITERFAHREN</span>
         </output>
       )}
-      {engine.elapsed < 9 && countdown === 0 && engine.phase === 'playing' && (
-        <div className="ride-tip">
-          <span className="desktop-control-tip">
-            S / ↓ ANHEBEN · W / ↑ KORRIGIEREN
-          </span>
-          <span className="touch-control-tip">
-            ↓ ZIEHEN = ANHEBEN · ↑ = SENKEN · ← / → = AUSWEICHEN
-          </span>
-        </div>
-      )}
       <Dialog
-        open={engine.phase === 'paused' && !resuming && !guideOpen}
+        open={engine.phase === 'paused' && !resuming && !tutorial}
         disablePointerDismissal
         onOpenChange={(open) => {
           if (!open) resume();

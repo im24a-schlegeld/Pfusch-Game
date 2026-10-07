@@ -58,6 +58,7 @@ async function install(page: Page, reducedMotion = false, tutorialSeen = true) {
       const player = newPlayer();
       player.helmet = 'fullface';
       player.settings.tutorialSeen = tutorialSeen;
+      player.settings.tutorialHintsSeen = tutorialSeen ? ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'] : [];
       player.settings.reducedMotion = reducedMotion;
       localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
     },
@@ -81,6 +82,8 @@ async function waitForPlaying(page: Page) {
     .poll(
       async () => {
         await page.clock.fastForward(700);
+        const tutorial = page.getByTestId('ride-tutorial-overlay');
+        if (await tutorial.isVisible()) await page.getByRole('button', { name: 'Hinweise überspringen', exact: true }).click();
         return page.getByTestId('ride-screen').getAttribute('data-phase');
       },
       { timeout: 60000 },
@@ -95,13 +98,8 @@ async function waitForPlaying(page: Page) {
 
 async function start(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'LOSFAHREN', exact: true }).click();
-  const tutorial = page.getByRole('button', {
-    name: 'VERSTANDEN. LOSFAHREN',
-    exact: true,
-  });
-  await expect(page.getByTestId('ride-screen').or(tutorial)).toBeVisible();
-  if (await tutorial.isVisible()) await tutorial.click();
+  await page.locator('.gc-primary').click();
+  await expect(page.getByTestId('ride-screen')).toBeVisible();
   await waitForPlaying(page);
   await page.evaluate(() => {
     type Hook = { memoizedState: unknown; next: Hook | null };

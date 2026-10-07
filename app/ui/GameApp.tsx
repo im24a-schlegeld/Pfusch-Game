@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { Player, Product, RunReward, RunStats } from '../domain/types';
 import { refreshDaily } from '../domain/progression';
+import { markTutorialsSeen } from '../domain/tutorial';
 import { createServices, type Services } from '../services';
 import { unavailableAccess } from '../services/playerAccess';
 import { shopifyParentOrigin, SHOPIFY_STOREFRONT_ORIGIN } from '../services/shopifyBridge';
@@ -29,7 +30,6 @@ import {
 } from './Screens';
 import RideResult from './RideResult';
 import LoadingScreen from './LoadingScreen';
-import FirstRideTutorial from './FirstRideTutorial';
 import SaveAccessGate from './SaveAccessGate';
 import './account-header.css';
 type Screen =
@@ -62,12 +62,9 @@ export default function GameApp() {
   const [screen, setScreen] = useState<Screen>('garage');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [tutorial, setTutorial] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [startingRide, setStartingRide] = useState(false);
-  const [garageLoading, setGarageLoading] = useState(true);
-  const garageSettled = useCallback(() => setGarageLoading(false), []);
   const [accessError, setAccessError] = useState('');
   const accessRequest = useRef(0);
   const accessPending = useRef(false);
@@ -169,7 +166,6 @@ export default function GameApp() {
     accessPending.current = false;
     setCheckingAccess(false);
     setStartingRide(false);
-    setGarageLoading(next === 'garage' && screen !== 'garage');
     setAccessOpen(false);
     audio.unlock();
     audio.cue();
@@ -191,10 +187,6 @@ export default function GameApp() {
       if (vercelPreview) {
         if (!startRide) return;
         setAccessOpen(false);
-        if (!current.current.settings.tutorialSeen) {
-          setTutorial(true);
-          return;
-        }
         activeRun.current += 1;
         pendingResult.current = null;
         setResult(null);
@@ -208,16 +200,11 @@ export default function GameApp() {
         ?? services.players.getAccess?.() ?? unavailableAccess(current.current.runsPlayed);
       if (request !== accessRequest.current) return;
       if (!access.allowed) {
-        setTutorial(false);
         setAccessOpen(true);
         return;
       }
       if (!startRide) return;
       setAccessOpen(false);
-      if (!current.current.settings.tutorialSeen) {
-        setTutorial(true);
-        return;
-      }
       activeRun.current += 1;
       pendingResult.current = null;
       setResult(null);
@@ -314,6 +301,11 @@ export default function GameApp() {
           onMute={mute}
           onReady={() => setStartingRide(false)}
           onLoadError={() => setStartingRide(false)}
+          onTutorialSeen={(ids) => {
+            const latest = current.current;
+            if (!latest) return;
+            update(markTutorialsSeen(latest, ids));
+          }}
         />
         {startingRide && (
           <LoadingScreen label="FAHRT WIRD VORBEREITET" fullScreen />
@@ -324,8 +316,8 @@ export default function GameApp() {
   const goToShop = () => window.location.assign(`${SHOPIFY_STOREFRONT_ORIGIN}/`);
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
   const newsletterOrigin = parentOrigin;
-  const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET'
-    : screen === 'garage' && garageLoading ? 'GARAGE WIRD GELADEN' : null;
+  // Asset loading belongs to the preview. Keep garage navigation and edits usable.
+  const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET' : null;
   const hasAccountAction = !!services.auth.login || accountKind === 'customer';
   const accountAction = hasAccountAction ? <button type="button" className="account-header-button"
     disabled={openingLogin} aria-label={accountKind === 'customer' ? 'Konto öffnen' : 'Anmelden'}
@@ -339,7 +331,7 @@ export default function GameApp() {
       {!embedded && screen !== 'results' && <header className="topbar">
         {accountAction}
         <button className="brand" aria-label="PFUSCH-Shop öffnen" onClick={goToShop}>
-          <img className="brand-logo" src="/branding/pfusch-logo.webp" alt="Pfusch" />
+          <img className="brand-logo" src="/images/artwork/signs.png" alt="PFUSCH Signs" />
           <span className="brand-sub">WHEELIE ESCAPE</span>
         </button>
         <span className="top-status">
@@ -371,7 +363,9 @@ export default function GameApp() {
         </div>
       </header>}
       {embedded && hasAccountAction && screen !== 'results' && <header className="account-header-embedded">
-        <span>WHEELIE ESCAPE</span>
+        <button className="game-signs-home" aria-label="PFUSCH-Shop öffnen" onClick={goToShop}>
+          <img src="/images/artwork/signs.png" alt="PFUSCH Signs" />
+        </button>
         {accountAction}
       </header>}
       {screen === 'garage' && (
@@ -385,8 +379,6 @@ export default function GameApp() {
           start={start}
           embedded={embedded}
           onProgress={() => navigate('progress')}
-          onReady={garageSettled}
-          onLoadError={garageSettled}
         />
       )}
       {screen === 'results' && result && (
@@ -422,7 +414,10 @@ export default function GameApp() {
           services={services}
           update={update}
           back={back}
-          onTutorial={() => setTutorial(true)}
+          onTutorial={() => {
+            update({ ...player, settings: { ...player.settings, tutorialHintsSeen: [] } });
+            start();
+          }}
           onAccess={() => setAccessOpen(true)}
         />
       )}
@@ -464,13 +459,6 @@ export default function GameApp() {
           <span>OPTIONEN</span>
         </button>}
       </nav>}
-      <FirstRideTutorial open={tutorial} onOpenChange={setTutorial}
-        reducedMotion={player.settings.reducedMotion}
-        onStart={() => {
-          update({ ...player, settings: { ...player.settings, tutorialSeen: true } });
-          setTutorial(false);
-          start();
-        }} />
       {notice && <output className="toast">{notice}</output>}
     </div>
     {loadingLabel && <LoadingScreen label={loadingLabel} fullScreen />}

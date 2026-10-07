@@ -63,7 +63,7 @@ test('the actual ride selects four different engine voices, reacts to throttle a
   const player = newPlayer();
   player.ownedItems.push('bike:scooter', 'bike:450', 'bike:701');
   player.settings.muted = false;
-  player.settings.tutorialSeen = true;
+  player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   await page.addInitScript((p) => {
     p.bike = new URL(location.href).searchParams.get('sound-bike') ?? '125';
     localStorage.setItem('pfusch:player:v1', JSON.stringify(p));

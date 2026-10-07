@@ -42,6 +42,9 @@
   font-weight: 700;
   letter-spacing: .08em;
 }
+.game-signs-home { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0; border: 0; background: transparent; }
+.game-signs-home img { display: block; width: 108px; height: 36px; object-fit: contain; }
+.game-signs-home:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (max-width: 360px) {
   .app-shell.has-account-header .topbar > .brand { width: 80px !important; min-width: 80px !important; }
   .app-shell.has-account-header .topbar > .brand .brand-logo { width: 80px !important; max-width: 80px !important; }

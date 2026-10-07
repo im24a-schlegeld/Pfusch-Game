@@ -18,6 +18,7 @@ import { isHelmet, isHelmetColor, isVisorColor } from '../domain/helmet';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../domain/stickers';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
 import { sanitizeSavedSetups } from '../domain/setups';
+import { normalizeTutorialHints } from '../domain/tutorial';
 import catalog from '../../public/catalog/products.json';
 import { SHOPIFY_BRIDGE_VERSION, ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
 import { ShopifyCloudRepository } from './shopifyCloud';
@@ -197,6 +198,9 @@ export function decodePlayer(raw: string): Player {
       if (typeof v.settings[field] === 'boolean')
         p.settings[field] = v.settings[field];
     if (v.settings.quality === 'low') p.settings.quality = 'low';
+    // v1 saves from before contextual onboarding have no lesson acknowledgements.
+    // Do not infer these from tutorialSeen: the old static guide did not teach these encounters.
+    p.settings.tutorialHintsSeen = normalizeTutorialHints(v.settings.tutorialHintsSeen);
   }
   if (
     isRecord(v.challenges) &&

@@ -74,11 +74,14 @@ export interface Bike {
   maxSpeed: number;
   color: string;
 }
+export type TutorialHint = 'controls' | 'ramp' | 'police' | 'radar' | 'traffic' | 'signs';
 export interface Settings {
   muted: boolean;
   reducedMotion: boolean;
   quality: 'auto' | 'low';
   tutorialSeen: boolean;
+  /** Additive schema-1 progress for first encounters; independent of the legacy intro flag. */
+  tutorialHintsSeen: TutorialHint[];
 }
 export interface RunStats {
   id: string;

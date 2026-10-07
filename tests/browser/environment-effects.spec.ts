@@ -200,7 +200,7 @@ for (const item of keepUp) {
     const product = products.find((product) => product.id === item.id)!;
     expect(product.handle).toBe(item.handle);
     const player = newPlayer();
-    player.settings.tutorialSeen = true;
+    player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
     player.ownedItems.push(item.id);
     player.equipped.upper = item.id;
     player.variants[item.id] = product.preview!.colors.find(
@@ -301,7 +301,7 @@ test('all other catalog tops and the actual custom-number canvas have no garment
     await request.get('/catalog/products.json')
   ).json();
   const player = newPlayer();
-  player.settings.tutorialSeen = true;
+  player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   await installProbe(page, player);
   await page.goto('/');
   await page.getByRole('button', { name: 'OPEN GARAGE' }).click();
@@ -356,7 +356,7 @@ test('real tunnel entry and exit change reflection output without changing cappe
   await page.clock.pauseAt(new Date('2026-09-13T10:00:01Z'));
   const player = newPlayer();
   player.settings.muted = false;
-  player.settings.tutorialSeen = true;
+  player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   await installProbe(page, player);
   await page.addInitScript(() => {
     const Original = window.AudioContext;

@@ -1,60 +1,74 @@
-import { useRef, type PointerEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
+import type { TutorialHint } from '../domain/types';
+import './ride-context-tutorial.css';
 
 interface Props {
-  open: boolean;
-  onSwipe(): void;
+  hint: TutorialHint | null;
+  target?: { x: number; y: number };
+  reducedMotion?: boolean;
+  onContinue(): void;
+  onSkip(): void;
 }
 
-/**
- * A short, in-ride control cue for new riders. It owns the gesture only while
- * visible; the game engine remains paused until the player makes a deliberate
- * swipe (or uses a keyboard control).
- */
-export default function RideTutorialOverlay({ open, onSwipe }: Props) {
-  const start = useRef<{ x: number; y: number } | null>(null);
+const lessons: Record<TutorialHint, { title: string; copy: string; target: string }> = {
+  controls: { title: 'So steuerst du', copy: 'Dein Bike gibt automatisch Gas. Wisch los, um weiterzufahren.', target: '' },
+  traffic: { title: 'Weiche dem Verkehr aus', copy: 'Wechsle in eine freie Spur. Ein kurzer Wisch nach links oder rechts reicht.', target: 'VERKEHR' },
+  ramp: { title: 'Von der Rampe springen', copy: 'Auf der Rampe geht es automatisch hoch. Wische oben seitlich weg, bevor du das Fahrerhaus erreichst.', target: 'RAMPE' },
+  police: { title: 'Häng die Polizei ab', copy: 'Ein Wheelie vor der Polizei startet eine Verfolgung. Mit knappem Ausweichen oder einem Rampensprung hängst du sie ab.', target: 'POLIZEI' },
+  radar: { title: 'Da steht ein Blitzer', copy: 'Wheelie oder Sprung am Blitzer? Dann folgt die Polizei. Nach oben ziehen senkt das Vorderrad.', target: 'BLITZER' },
+  signs: { title: 'Sammle die PFUSCH-Zeichen', copy: 'Fahre durch die Zeichen. Sammle P F U S C H für 750 Bonuspunkte.', target: 'ZEICHEN' },
+};
 
-  if (!open) return null;
+function SwipeArrow({ direction }: { direction: 'side' | 'up' | 'down' }) {
+  return <svg className="ride-coach-arrow" viewBox="0 0 90 40" aria-hidden="true" fill="none">
+    {direction === 'side' ? <><path d="M9 20h72M20 9 9 20l11 11M70 9l11 11-11 11" /><circle className="ride-coach-finger side" cx="45" cy="20" r="5" /></>
+      : <g transform={direction === 'down' ? 'rotate(180 45 20)' : undefined}><path d="M45 33V7M33 19 45 7l12 12" /><circle className="ride-coach-finger vertical" cx="45" cy="33" r="4" /></g>}
+  </svg>;
+}
 
-  const down = (event: PointerEvent<HTMLDivElement>) => {
-    start.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
+/** The ride owns gestures, so continuing a swipe never loses the finger's input. */
+export default function RideTutorialOverlay({ hint, target, reducedMotion, onContinue, onSkip }: Props) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if (hint) heading.current?.focus({ preventScroll: true }); }, [hint]);
+  if (!hint) return null;
+  const lesson = lessons[hint];
+  const trapFocus = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== 'Tab') return;
+    const buttons = dialog.current?.querySelectorAll<HTMLButtonElement>('button');
+    if (!buttons?.length) return;
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === heading.current)) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === heading.current)) {
+      event.preventDefault(); first.focus();
+    }
   };
-  const up = (event: PointerEvent<HTMLDivElement>) => {
-    const origin = start.current;
-    start.current = null;
-    if (!origin) return;
-    const distance = Math.hypot(event.clientX - origin.x, event.clientY - origin.y);
-    if (distance >= 24) onSwipe();
-  };
-
-  return (
-    <div
-      className="ride-tutorial-overlay"
-      data-testid="ride-tutorial-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ride-tutorial-title"
-      onPointerDown={down}
-      onPointerUp={up}
-      onPointerCancel={() => { start.current = null; }}
-    >
-      <div className="ride-tutorial-card">
-        <p className="eyebrow">DEINE ERSTEN FAHRTEN</p>
-        <h2 id="ride-tutorial-title">WISCHEN ZUM STARTEN</h2>
-        <p className="ride-tutorial-copy">
-          Die Fahrt steht kurz. Wische einmal in eine Richtung, dann geht es los.
-        </p>
-        <div className="ride-tutorial-arrows" aria-hidden="true">
-          <span className="ride-tutorial-arrow ride-tutorial-arrow-side">←</span>
-          <span className="ride-tutorial-arrow ride-tutorial-arrow-down">↓</span>
-          <span className="ride-tutorial-arrow ride-tutorial-arrow-up">↑</span>
-          <span className="ride-tutorial-arrow ride-tutorial-arrow-side">→</span>
-        </div>
-        <p className="ride-tutorial-help">
-          ↓ anheben · ↑ senken · ← → ausweichen
-        </p>
-        <p className="ride-tutorial-hint">Wisch los oder drücke eine Pfeiltaste.</p>
-      </div>
-    </div>
-  );
+  return <dialog open className="ride-coach" data-testid="ride-tutorial-overlay" data-tutorial={hint}
+    data-card-side={target && target.y > 0.56 ? 'top' : 'bottom'} data-reduced-motion={reducedMotion}
+    aria-modal="true" aria-labelledby="ride-tutorial-title" aria-describedby="ride-tutorial-copy"
+    ref={dialog} onKeyDown={trapFocus}>
+    <span className="ride-coach-pause">Fahrt angehalten</span>
+    {hint === 'controls' && <svg className="ride-coach-stage-gesture" viewBox="0 0 220 130" fill="none" aria-hidden="true">
+      <path d="M30 65h160M45 50 30 65l15 15M175 50l15 15-15 15M110 15v100M96 29l14-14 14 14M96 101l14 14 14-14" />
+      <circle className="ride-coach-stage-finger" cx="110" cy="65" r="13" /><circle className="ride-coach-stage-finger-inner" cx="110" cy="65" r="5" />
+    </svg>}
+    {target && <div className="ride-coach-target" aria-hidden="true" data-testid="tutorial-target"
+      style={{ left: `${target.x * 100}%`, top: `${target.y * 100}%` }}>
+      <span className="ride-coach-ring" /><span className="ride-coach-target-label">{lesson.target}</span>
+    </div>}
+    <section className="ride-coach-card">
+      <h2 id="ride-tutorial-title" ref={heading} tabIndex={-1}>{lesson.title}</h2>
+      <p id="ride-tutorial-copy">{lesson.copy}</p>
+      {hint === 'controls' ? <div className="ride-coach-controls" aria-label="Wischgesten">
+        <div><SwipeArrow direction="side" /><span>Spur wechseln</span></div>
+        <div><SwipeArrow direction="down" /><span>Wheelie anheben</span></div>
+        <div><SwipeArrow direction="up" /><span>Vorderrad senken</span></div>
+        <small>Ziehen und halten · Loslassen ist neutral</small>
+      </div> : ['traffic', 'ramp', 'signs'].includes(hint) ? <div className="ride-coach-single"><SwipeArrow direction="side" /><span>Seitlich wischen</span></div>
+        : hint === 'radar' ? <div className="ride-coach-single"><SwipeArrow direction="up" /><span>Nach oben ziehen</span></div> : null}
+      <p className="ride-coach-keyboard">{hint === 'controls' ? 'Tastatur: A/D ausweichen · S anheben · W senken' : 'Pfeiltasten oder A/D · Enter weiter'}</p>
+      <div className="ride-coach-actions"><button type="button" onClick={onContinue} data-testid="tutorial-continue">Weiter</button><button type="button" onClick={onSkip}>Hinweise überspringen</button></div>
+    </section>
+  </dialog>;
 }

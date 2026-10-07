@@ -1,824 +1,272 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
-import { ArrowRight, RotateCw } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import type { Player, Product, ProductConfiguration } from '../domain/types';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { ArrowRight, Check, ChevronDown, ExternalLink, RotateCw } from 'lucide-react';
+import type { Player, Product, ProductConfiguration, Slot } from '../domain/types';
 import type { Services } from '../services';
+import { confirmPlayerSave } from '../services/saveConfirmation';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
-import { digitalPrice, ownership, unlock } from '../domain/progression';
-import { HELMETS, HELMET_COLORS, VISOR_COLORS, equipHelmet } from '../domain/helmet';
-import { isSticker, saveStickerTargets } from '../domain/stickers';
-import {
-  equipConfiguration,
-  equipmentSlot,
-  equippable,
-  imagePath,
-  previewLoadout,
-  initialConfiguration,
-  productColors,
-  supportsHood,
-} from '../domain/preview';
-import {
-  Coin,
-  Preview,
-  XpBar,
-} from './shared';
-import { ProgressContent } from './Screens';
-import ColorSection from './ColorSection';
+import { digitalPrice, ownership } from '../domain/progression';
+import { HELMETS, HELMET_COLORS, VISOR_COLORS } from '../domain/helmet';
+import { isSticker } from '../domain/stickers';
+import { equipmentSlot, equippable, imagePath, initialConfiguration, productColors, supportsHood } from '../domain/preview';
+import { commitGarageEdit, commitStickerEdit, garageAppearance, garageEditChanged, garageOffer, type GarageEdit } from '../domain/garageEdit';
+import { colorName, perceptualDistance } from '../domain/paletteView';
+import { Coin, Preview } from './shared';
 import SavedSetups from './SavedSetups';
-import { colorName, visiblePalette } from '../domain/paletteView';
-const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
+import './garage-configurator.css';
 
-const isMotorcycleProduct = (p: Product) =>
-  p.category === 'bike' || p.handle === 'schlusselanhanger' || isSticker(p);
+const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
+type Part = 'model' | 'paint' | 'rims' | 'extras' | 'upper' | 'helmet' | 'head' | 'accessory' | 'collection';
+type PaletteColor = { value: string; name: string; price?: number };
+const bikeParts = [{ id: 'model', name: 'Modell' }, { id: 'paint', name: 'Lack' }, { id: 'rims', name: 'Felgen' }, { id: 'extras', name: 'Extras' }] as const;
+const riderParts = [{ id: 'upper', name: 'Oberteil' }, { id: 'helmet', name: 'Kopf' }, { id: 'accessory', name: 'Accessoires' }] as const;
+const partNames: Record<Part, string> = { model: 'Dein Motorrad', paint: 'Lack', rims: 'Felgen', extras: 'Motorrad-Extras', upper: 'Oberteil', helmet: 'Helm & Caps', head: 'Helm & Caps', accessory: 'Accessoires', collection: 'Deine Sammlung' };
+
+/** Collapsing never hides the selected or equipped value. Expanding includes every original ID. */
+function Palette({ title, colors, value, equipped, status, onChange }: {
+  title: string; colors: readonly PaletteColor[]; value: string; equipped?: string;
+  status: (color: PaletteColor) => string; onChange: (value: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const options = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const color of colors) counts.set(color.name, (counts.get(color.name) ?? 0) + 1);
+    return colors.map(color => ({ ...color, name: (counts.get(color.name) ?? 0) > 1
+      ? `${color.name} · ${color.value.toUpperCase()}` : color.name }));
+  }, [colors]);
+  const compact = useMemo(() => {
+    const remaining = [...options], chosen = remaining.splice(0, 1);
+    while (chosen.length < 12 && remaining.length) {
+      let best = 0, distance = -1;
+      remaining.forEach((color, index) => {
+        const nearest = Math.min(...chosen.map(other => perceptualDistance(color.value, other.value)));
+        if (nearest > distance) { best = index; distance = nearest; }
+      });
+      chosen.push(...remaining.splice(best, 1));
+    }
+    for (const required of [value, equipped]) {
+      const current = options.find(color => color.value === required);
+      if (current && !chosen.some(color => color.value === required)) chosen.push(current);
+    }
+    return chosen;
+  }, [options, value, equipped]);
+  const selected = options.find(color => color.value === value);
+  if (options.length === 1) return <div className="gc-single-color"><i style={{ background: options[0].value }} /><span>{title}: {options[0].name}</span></div>;
+  return <fieldset className="gc-palette"><legend>{title}</legend>
+    <div className="gc-color-summary" aria-live="polite"><strong>{selected?.name ?? value}</strong><span>{selected ? status(selected) : ''}</span></div>
+    <div className="gc-swatches">{(expanded ? options : compact).map(color => <label key={color.value} className={value === color.value ? 'is-selected' : ''} title={`${color.name} · ${status(color)}`}>
+      <input type="radio" name={`garage-${title}`} value={color.value} checked={value === color.value} onChange={() => onChange(color.value)} aria-label={`${title}: ${color.name} · ${status(color)}`} />
+      <i style={{ background: color.value }} />{value === color.value && <Check size={16} aria-hidden="true" />}
+    </label>)}</div>
+    {options.length > 12 && <button className="gc-text-button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Weniger Farben' : `Weitere Farben (${options.length})`} <ChevronDown size={14} aria-hidden="true" /></button>}
+  </fieldset>;
+}
 
 interface Props {
-  player: Player;
-  products: Product[];
-  update: (p: Player) => void;
-  services: Services;
-  notify: (s: string) => void;
-  back: () => void;
-  start: () => void;
-  embedded?: boolean;
-  onProgress?: () => void;
-  onReady?: () => void;
-  onLoadError?: (message: string) => void;
+  player: Player; products: Product[]; update: (p: Player) => void; services: Services;
+  notify: (s: string) => void; back: () => void; start: () => void; embedded?: boolean;
+  onProgress?: () => void; onReady?: () => void; onLoadError?: (message: string) => void;
 }
-export default function Garage({
-  player,
-  products,
-  update,
-  services,
-  notify,
-  start,
-  embedded = false,
-  onProgress,
-  onReady,
-  onLoadError,
-}: Props) {
-  const [tab, setTab] = useState('rider');
-  const [filter, setFilter] = useState('all');
-  const [productViews, setProductViews] = useState<
-    Record<string, 'front' | 'back'>
-  >({});
-  const [draft, setDraft] = useState<Player | null>(null);
-  const [stickerBike, setStickerBike] = useState<Player | null>(null);
-  const [stickerTarget, setStickerTarget] = useState<'bike' | 'helmet'>('bike');
-  const [selected, setSelected] = useState<Product | null>(null);
-  const [configuration, setConfiguration] =
-    useState<ProductConfiguration | null>(null);
+export default function Garage({ player, products, update, services, notify, start, embedded = false, onProgress, onReady, onLoadError }: Props) {
+  const [part, setPart] = useState<Part>('model');
+  const [previewEdit, setPreviewEdit] = useState<GarageEdit | null>(null);
+  const [purchase, setPurchase] = useState<{ name: string; buying: boolean } | null>(null);
+  const [notice, setNotice] = useState('');
   const [angle, setAngle] = useState(2.35);
   const [inspectionRevision, setInspectionRevision] = useState(0);
-  const [recentProductIds, setRecentProductIds] = useState<string[]>([]);
-  const appearance = draft ?? player;
-  const bike = BIKES.find((b) => b.id === appearance.bike) ?? BIKES[0];
-  const owned = (id: string) => player.ownedItems.includes(id);
-  // Shopify saves are debounced so ordinary HUD edits stay cheap. Purchases
-  // and explicit equipment changes must survive an immediate page reload, so
-  // flush the repository right after the state update when that adapter
-  // supports it. Local storage remains synchronous and needs no extra work.
-  const flushSave = () => { void services.players.flush?.(); };
-  const rememberProduct = (id: string) =>
-    setRecentProductIds((ids) => [id, ...ids.filter((value) => value !== id)].slice(0, 3));
-  function unlockProduct(p: Product, config: ProductConfiguration) {
-    rememberProduct(p.id);
-    const unlocked = unlock(player, p.id, digitalPrice(p));
-    if (!unlocked) {
-      notify('Du brauchst mehr Coins.');
-      return;
+  const [productView, setProductView] = useState<'front' | 'back'>('front');
+  const [stickerBike, setStickerBike] = useState<Player | null>(null);
+  const [stickerTarget, setStickerTarget] = useState<'bike' | 'helmet'>('bike');
+  const pending = useRef(false);
+  const account = useRef(player); account.current = player;
+  const editRef = useRef(previewEdit); editRef.current = previewEdit;
+  const appearance = useMemo(() => garageAppearance(player, previewEdit, products), [player, previewEdit, products]);
+  const changed = garageEditChanged(player, previewEdit, products);
+  const offer = previewEdit ? garageOffer(player, previewEdit, products) : null;
+  const area = part === 'collection' ? 'collection' : bikeParts.some(item => item.id === part) ? 'bike' : 'rider';
+  const bike = BIKES.find(item => item.id === appearance.bike) ?? BIKES[0];
+  const activeProducts = useMemo(() => products.filter(product => {
+    const slot = equipmentSlot(product);
+    if (part === 'upper') return slot === 'upper';
+    if (part === 'head') return slot === 'head';
+    if (part === 'accessory') return slot === 'accessory' || slot === 'lower';
+    if (part === 'extras') return slot === 'keychain' || slot === 'bike' || isSticker(product);
+    if (part === 'collection') return !equippable(product) && !isSticker(product);
+    return false;
+  }), [products, part]);
+  const selectedProduct = previewEdit?.kind === 'product' ? activeProducts.find(product => product.id === previewEdit.productId)
+    : activeProducts.find(product => appearance.equipped[equipmentSlot(product)] === product.id);
+  const configuration = selectedProduct ? previewEdit?.kind === 'product' && previewEdit.productId === selectedProduct.id
+    ? previewEdit.configuration : initialConfiguration(player, selectedProduct) : null;
+  const colors = useMemo(() => selectedProduct ? productColors(selectedProduct) : [], [selectedProduct]);
+  const selectedColor = colors.find(color => color.variantIds.includes(configuration?.variantId ?? '')) ?? colors[0];
+  const placingSticker = Boolean(selectedProduct && isSticker(selectedProduct));
+  const mockup = productView === 'back' ? selectedColor?.back ?? selectedColor?.front : selectedColor?.front ?? selectedColor?.back;
+  const referenceProduct = selectedProduct ?? products.find(product => product.id === appearance.equipped.upper)
+    ?? products.find(product => product.category === 'upper');
+  const referenceImage = selectedProduct ? mockup?.localImage ?? selectedProduct.localImage ?? selectedProduct.image : referenceProduct?.localImage ?? referenceProduct?.image;
+  const focus = part === 'model' || part === 'paint' || part === 'rims' || part === 'upper' ? part
+    : part === 'helmet' || part === 'head' ? 'head' : part === 'extras' && selectedProduct?.handle === 'schlusselanhanger' ? 'keychain'
+      : part === 'extras' || part === 'collection' ? 'model' : 'accessory';
+  const helmetEdit = previewEdit?.kind === 'helmet' ? previewEdit : { kind: 'helmet' as const, helmet: player.helmet, helmetColor: player.helmetColor, helmetVisor: player.helmetVisor };
+
+  function selectPart(next: Part) {
+    if (next === part) return;
+    setNotice(changed ? 'Unbestätigte Vorschau verworfen. Dein ausgerüstetes Setup bleibt erhalten.' : '');
+    setPreviewEdit(null); editRef.current = null; setPart(next); setProductView('front');
+  }
+  function setEdit(edit: GarageEdit) { editRef.current = edit; setPreviewEdit(edit); setNotice(''); }
+  function selectProduct(product: Product) {
+    if (previewEdit?.kind === 'product' && previewEdit.productId === product.id) return;
+    setEdit({ kind: 'product', productId: product.id, configuration: initialConfiguration(player, product) });
+    setProductView('front'); services.analytics.track('product_viewed', { id: product.id });
+  }
+  function editProduct(patch: Partial<ProductConfiguration>) {
+    if (!selectedProduct || !configuration) return;
+    const current = editRef.current;
+    const base = current?.kind === 'product' && current.productId === selectedProduct.id ? current.configuration : configuration;
+    setEdit({ kind: 'product', productId: selectedProduct.id, configuration: { ...base, ...patch } });
+  }
+  function editHelmet(patch: Partial<Pick<Player, 'helmet' | 'helmetColor' | 'helmetVisor'>>) {
+    const current = editRef.current; setEdit({ ...(current?.kind === 'helmet' ? current : helmetEdit), ...patch });
+  }
+  function discard() { setPreviewEdit(null); editRef.current = null; setNotice('Vorschau verworfen.'); }
+  async function confirmEdit() {
+    if (pending.current) return;
+    if (placingSticker) { openWorkshop(stickerTarget); return; }
+    const snapshot = editRef.current, current = account.current;
+    if (!snapshot || !garageEditChanged(current, snapshot, products)) { start(); return; }
+    const confirmation = garageOffer(current, snapshot, products);
+    if (confirmation.blocked) return;
+    const next = commitGarageEdit(current, snapshot, products);
+    if (!next) { setNotice('Auswahl konnte nicht übernommen werden. Es wurden keine Coins abgezogen.'); return; }
+    pending.current = true; setPurchase({ name: confirmation.name, buying: !confirmation.owned && confirmation.price > 0 });
+    try {
+      // Ownership, exact variant, options and coins are committed in one synchronous update.
+      update(next); account.current = next;
+      if (editRef.current === snapshot) { editRef.current = null; setPreviewEdit(null); }
+      await services.players.flush?.();
+      const warning = services.players.warning;
+      setNotice(warning ? `Lokal übernommen. ${warning}` : `${confirmation.name} ${confirmation.collectible ? 'zur Sammlung hinzugefügt' : 'ausgerüstet'}.`);
+    } catch {
+      // Retain the complete local transaction; a persistence retry cannot charge the owned item again.
+      setNotice('Lokal übernommen. Die Kontospeicherung ist noch nicht bestätigt.');
+    } finally { pending.current = false; setPurchase(null); }
+  }
+  function colorPalette(kind: 'paint' | 'rims') {
+    const palette = (kind === 'paint' ? PAINTS : RIMS).map(color => ({ ...color, name: colorName(color.value) }));
+    for (const id of [...player.ownedItems, `${kind}:${player[kind]}`]) if (id.startsWith(`${kind}:`)) {
+      const value = id.slice(kind.length + 1);
+      if (/^#[\da-f]{6}$/i.test(value) && !palette.some(color => color.value === value)) palette.push({ value, name: colorName(value), price: 0 });
     }
-    if (supportsHood(p)) {
-      update(unlocked);
-      flushSave();
-      setDraft(previewLoadout(unlocked, p, config));
-      notify(
-        `${p.title} freigeschaltet. Mit Ausrüsten wird deine Auswahl gespeichert.`,
-      );
-      return;
-    }
-    if (equippable(p)) {
-      const equipped = equipConfiguration(unlocked, p, config);
-      if (equipped) {
-        update(equipped);
-        flushSave();
-        setDraft(null);
-        setSelected(null);
-        setConfiguration(null);
-        services.analytics.track('product_equipped', { id: p.id });
-        notify(`${p.title} freigeschaltet und direkt ausgerüstet.`);
-        return;
-      }
-    }
-    update(unlocked);
-    flushSave();
-    setDraft(null);
-    setSelected(null);
-    setConfiguration(null);
-    notify(`${p.title} freigeschaltet.`);
+    return <Palette title={kind === 'paint' ? 'Lackfarbe' : 'Felgenfarbe'} colors={palette} value={appearance[kind]} equipped={player[kind]}
+      status={color => player[kind] === color.value ? 'Ausgerüstet' : player.ownedItems.includes(`${kind}:${color.value}`) ? 'In deinem Besitz' : `${color.price} Coins`}
+      onChange={value => setEdit({ kind, value })} />;
   }
-  function equipProduct(p: Product, config: ProductConfiguration) {
-    rememberProduct(p.id);
-    const next = equipConfiguration(player, p, config);
-    if (!next) {
-      notify('Schalte den Artikel frei, bevor du ihn ausrüstest.');
-      return;
-    }
-    update(next);
-    flushSave();
-    setDraft(null);
-    services.analytics.track('product_equipped', { id: p.id });
-    notify(`${p.title} ausgerüstet und gespeichert.`);
-  }
-  function unequipProduct(p: Product) {
-    rememberProduct(p.id);
-    const slot = equipmentSlot(p);
-    if (player.equipped[slot] !== p.id) return;
-    const equipped = { ...player.equipped };
-    delete equipped[slot];
-    update({ ...player, equipped });
-    flushSave();
-    if (selected?.id === p.id) {
-      setDraft(null);
-      setSelected(null);
-      setConfiguration(null);
-    }
-    notify(`${p.title} abgelegt.`);
-  }
-  function previewBike(
-    values: Partial<Pick<Player, 'bike' | 'paint' | 'rims'>>,
-  ) {
-    setDraft({ ...appearance, ...values });
-  }
-  function buyBikeOption(id: string, price: number, name: string, level = 1) {
-    const next = unlock(player, id, price, level);
-    if (!next) {
-      notify(player.level < level ? `Ab Level ${level} erhältlich.` : 'Du brauchst mehr Coins.');
-      return;
-    }
-    if (next === player) return;
-    update(next);
-    flushSave();
-    // Buying changes ownership only. Keep the free try-on setup until Equip.
-    setDraft((current) => current ? { ...current, coins: next.coins, ownedItems: next.ownedItems } : null);
-    notify(`${name} gekauft. Mit Ausrüsten wird deine Auswahl gespeichert.`);
-  }
-  function equipBikeOption(values: Partial<Pick<Player, 'bike' | 'paint' | 'rims'>>) {
-    if (Object.entries(values).some(([kind, value]) => !owned(`${kind}:${value}`))) return;
-    if (values.bike && player.level < (BIKES.find((entry) => entry.id === values.bike)?.level ?? Infinity)) return;
-    update({ ...player, ...values });
-    flushSave();
-    setDraft(null);
-    notify('Ausgerüstet und gespeichert.');
-  }
-  function colorOptions(kind: 'paint' | 'rims') {
-    const palette = kind === 'paint' ? PAINTS : RIMS;
-    const title = kind === 'paint' ? 'Lackfarbe' : 'Felgenfarbe';
-    const colors = visiblePalette(palette, appearance[kind]);
-    for (const color of palette) {
-      if (owned(`${kind}:${color.value}`) && !colors.some((entry) => entry.value === color.value))
-        colors.push({ ...color, name: colorName(color.value) });
-    }
-    return <ColorSection title={title} value={appearance[kind]}>
-      <div className="finish-options" aria-label={title}>
-        {colors.map((color) => {
-          const isOwned = owned(`${kind}:${color.value}`);
-          const isEquipped = player[kind] === color.value;
-          return <article className={`finish-option ${appearance[kind] === color.value ? 'selected' : ''}`} key={color.value}>
-            <div className="finish-preview" aria-label={`${color.name} ${kind}`}>
-              <i style={{ background: color.value }} />
-              <span><b>{color.name}</b></span>
-            </div>
-            <div className="finish-option-actions">
-              <button className="button small" aria-label={`Ansehen ${title} ${color.name}`}
-                aria-pressed={appearance[kind] === color.value}
-                onClick={() => previewBike({ [kind]: color.value })}>
-                ANSEHEN
-              </button>
-              <button className="button small" aria-label={`${isOwned ? 'Ausrüsten' : 'Kaufen'} ${title} ${color.name}`}
-                disabled={isOwned ? isEquipped : player.coins < color.price}
-                onClick={() => isOwned
-                  ? equipBikeOption({ [kind]: color.value })
-                  : buyBikeOption(`${kind}:${color.value}`, color.price, color.name)}>
-                {isOwned ? (isEquipped ? 'AUSGERÜSTET' : 'AUSRÜSTEN') : <>KAUFEN <Coin value={color.price} /></>}
-              </button>
-            </div>
-          </article>;
-        })}
-      </div>
-    </ColorSection>;
-  }
-  function equipHelmetNow(
-    values: Partial<Pick<Player, 'helmet' | 'helmetColor' | 'helmetVisor'>>,
-  ) {
-    const next = equipHelmet(player, {
-      helmet: values.helmet ?? player.helmet,
-      helmetColor: values.helmetColor ?? player.helmetColor,
-      helmetVisor: values.helmetVisor ?? player.helmetVisor,
-    });
-    if (!next) return;
-    update(next);
-    flushSave();
-    setDraft(null);
-    notify('Helm ausgerüstet.');
-  }
-  const visible = useMemo(
-    () => {
-      const filtered = products.filter((p) => {
-        const motorcycleItem = isMotorcycleProduct(p);
-        if (tab === 'bike') {
-          return motorcycleItem && (filter === 'all' || filter === 'motorcycle');
-        }
-        return !motorcycleItem && (filter === 'all' || p.category === filter);
-      });
-      return [...filtered].sort(
-        (a, b) =>
-          (recentProductIds.indexOf(a.id) < 0 ? 99 : recentProductIds.indexOf(a.id)) -
-          (recentProductIds.indexOf(b.id) < 0 ? 99 : recentProductIds.indexOf(b.id)),
-      );
-    },
-    [products, tab, filter, recentProductIds],
-  );
-  const openProduct = (p: Product) => {
-    rememberProduct(p.id);
-    const config = initialConfiguration(appearance, p);
-    setConfiguration(config);
-    setDraft(previewLoadout(appearance, p, config));
-    setSelected(p);
-    services.analytics.track('product_viewed', { id: p.id });
+  const productStatus = (product: Product) => {
+    const state = ownership(player, product);
+    return state === 'EQUIPPED' ? 'Ausgerüstet' : state === 'OWNED_IRL' ? 'Dein PFUSCH-Artikel' : state === 'UNLOCKED_DIGITAL' ? 'In deinem Besitz' : `${digitalPrice(product)} Coins`;
   };
-  const grid = (
-    <>
-      <p className="digital-only-note">
-        Käufe in der Garage sind nur digitale Spielgegenstände. Es wird nichts physisch versendet.
-      </p>
-      <div className="category-filter" aria-label="Produktkategorien">
-        {(tab === 'bike'
-          ? ['all', 'motorcycle']
-          : ['all', 'upper', 'head', 'accessory', 'collectible']
-        ).map((f) => (
-          <button
-            key={f}
-            aria-pressed={filter === f}
-            className={filter === f ? 'active' : ''}
-            onClick={() => setFilter(f)}
-          >
-            {f === 'all'
-              ? 'ALLE'
-              : f === 'upper'
-                ? 'OBERTEILE'
-                : f === 'head'
-                  ? 'KOPFBEDECKUNG'
-                  : f === 'accessory'
-                    ? 'ACCESSOIRES'
-                    : f === 'collectible'
-                      ? 'SAMMELSTÜCKE'
-                      : 'MOTORRAD'}
-          </button>
-        ))}
-      </div>
-      <div className="product-grid compact-product-grid">
-        {products.length === 0 ? (
-          <output className="product-loading">
-            <span className="spinner" />
-            <span>PRODUKTE WERDEN GELADEN</span>
-          </output>
-        ) : visible.map((p) => {
-          const state = ownership(player, p);
-          const colors = productColors(p);
-          const baseConfig = initialConfiguration(player, p);
-          const variantId = appearance.variants[p.id] ?? baseConfig.variantId;
-          const config: ProductConfiguration = {
-            ...baseConfig,
-            variantId,
-            ...(supportsHood(p)
-              ? {
-                  hoodEnabled:
-                    appearance.customizations[p.id]?.hoodEnabled === true,
-                }
-              : {}),
-            ...(p.preview?.numberCustomization
-              ? {
-                  customNumber:
-                    appearance.customizations[p.id]?.customNumber ??
-                    baseConfig.customNumber ??
-                    '',
-                }
-              : {}),
-          };
-          const selectedColor =
-            colors.find((c) => c.variantIds.includes(config.variantId)) ??
-            colors[0];
-          const productView = productViews[p.id] ?? 'front';
-          const selectedMockup =
-            productView === 'back'
-              ? selectedColor?.back ?? selectedColor?.front
-              : selectedColor?.front ?? selectedColor?.back;
-          const mockupSource =
-            selectedMockup?.localImage ?? p.localImage ?? p.image;
-          const hasFrontAndBack = Boolean(
-            selectedColor?.front && selectedColor?.back,
-          );
-          const isOwned = state !== 'LOCKED';
-          const isEquipped = state === 'EQUIPPED';
-          const canWear = equippable(p);
-          return (
-            <article
-              key={p.id}
-              className="product-card compact-product-card"
-              data-testid="product-card"
-            >
-              <div className="product-image">
-              <button
-                className="product-open product-main-action"
-                aria-label={`${isSticker(p) ? 'Stickerbild' : 'Ansehen'} ${p.title}`}
-                onClick={() => {
-                  if (!isSticker(p)) openProduct(p);
-                  setAngle(productView === 'front' ? Math.PI : 0);
-                  setInspectionRevision((r) => r + 1);
-                }}
-              >
-                <span className="image-loader" aria-hidden="true">
-                  <i />
-                </span>
-                <img
-                  className="product-mockup-image"
-                  src={imagePath(mockupSource)}
-                  alt={p.title}
-                  loading="lazy"
-                  decoding="async"
-                  width="360"
-                  height="360"
-                  onLoad={(e) =>
-                    e.currentTarget
-                      .closest('.product-image')
-                      ?.classList.add('image-loaded')
-                  }
-                  onError={(e) =>
-                    e.currentTarget
-                      .closest('.product-image')
-                      ?.classList.add('image-loaded')
-                  }
-                />
-              </button>
-                {hasFrontAndBack && (
-                  <>
-                    <button
-                      className="mockup-arrow mockup-arrow-left"
-                      aria-label={`${p.title} vorherige Ansicht`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const nextView =
-                          productView === 'front' ? 'back' : 'front';
-                        setProductViews((views) => ({
-                          ...views,
-                          [p.id]: nextView,
-                        }));
-                        if (canWear) {
-                          setDraft(previewLoadout(player, p, config));
-                          setSelected(p);
-                          setConfiguration(config);
-                          services.analytics.track('product_viewed', {
-                            id: p.id,
-                          });
-                        }
-                        setAngle(nextView === 'front' ? Math.PI : 0);
-                        setInspectionRevision((r) => r + 1);
-                      }}
-                    >
-                      ‹
-                    </button>
-                    <button
-                      className="mockup-arrow mockup-arrow-right"
-                      aria-label={`${p.title} nächste Ansicht`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const nextView =
-                          productView === 'front' ? 'back' : 'front';
-                        setProductViews((views) => ({
-                          ...views,
-                          [p.id]: nextView,
-                        }));
-                        if (canWear) {
-                          setDraft(previewLoadout(player, p, config));
-                          setSelected(p);
-                          setConfiguration(config);
-                          services.analytics.track('product_viewed', {
-                            id: p.id,
-                          });
-                        }
-                        setAngle(nextView === 'front' ? Math.PI : 0);
-                        setInspectionRevision((r) => r + 1);
-                      }}
-                    >
-                      ›
-                    </button>
-                  </>
-                )}
-                <span className="ownership">
-                  {isEquipped
-                    ? 'AUSGERÜSTET'
-                    : isOwned && canWear
-                      ? 'AUSRÜSTEN'
-                      : isOwned
-                        ? 'GEKAUFT'
-                        : 'SPIELITEM'}
-                </span>
-                {recentProductIds.includes(p.id) && (
-                  <span className="recent-product-badge">ZULETZT</span>
-                )}
-              </div>
-              <div className="product-body compact-product-body">
-                <h3>{p.title}</h3>
-                <p className="compact-product-description">{p.description}</p>
-                {colors.length > 0 && (
-                  <div className="inline-color-swatches" aria-label={`${p.title} Farben`}>
-                    {colors.map((c) => {
-                      const colorSelected = c.variantIds.includes(config.variantId);
-                      return (
-                        <button
-                          key={c.id}
-                          className={colorSelected ? 'selected' : ''}
-                          aria-label={`Farbe ${c.label}`}
-                          aria-pressed={colorSelected}
-                          title={c.label}
-                          onClick={() => {
-                            const nextConfig: ProductConfiguration = {
-                              ...config,
-                              variantId: c.variantIds[0] ?? config.variantId,
-                            };
-                            setProductViews((views) => ({
-                              ...views,
-                              [p.id]: 'front',
-                            }));
-                            if (isOwned && canWear && !supportsHood(p)) {
-                              equipProduct(p, nextConfig);
-                            } else if (canWear) {
-                              setDraft(previewLoadout(player, p, nextConfig));
-                              setSelected(p);
-                              setConfiguration(nextConfig);
-                              services.analytics.track('product_viewed', {
-                                id: p.id,
-                              });
-                            }
-                            setAngle(Math.PI);
-                            setInspectionRevision((r) => r + 1);
-                          }}
-                        >
-                          <i style={{ background: c.baseColor }} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {p.preview?.numberCustomization && (
-                  <div className="inline-number-picker">
-                    <span>NUMMER</span>
-                    <input
-                      aria-label={`${p.title} Nummer`}
-                      inputMode="numeric"
-                      pattern="[0-9]{1,2}"
-                      maxLength={2}
-                      placeholder="23"
-                      value={config.customNumber ?? ''}
-                      onChange={(e) => {
-                        const customNumber = e.target.value
-                          .replace(/\D/g, '')
-                          .slice(0, 2);
-                        const nextConfig: ProductConfiguration = {
-                          ...config,
-                          customNumber,
-                        };
-                        if (
-                          isOwned &&
-                          canWear &&
-                          /^\d{1,2}$/.test(customNumber)
-                        ) {
-                          equipProduct(p, nextConfig);
-                        } else if (canWear) {
-                          setDraft(previewLoadout(player, p, nextConfig));
-                          services.analytics.track('product_viewed', { id: p.id });
-                        }
-                      }}
-                    />
-                    <small>1–2 ZIFFERN</small>
-                  </div>
-                )}
-                {supportsHood(p) && (
-                  <fieldset
-                    className="inline-hood-picker hood-options"
-                    aria-label="Windbreaker Kapuze · kostenlose Vorschau"
-                  >
-                    {[false, true].map((hoodEnabled) => (
-                      <button
-                        key={String(hoodEnabled)}
-                        aria-pressed={(config.hoodEnabled === true) === hoodEnabled}
-                        onClick={() => {
-                          const nextConfig = { ...config, hoodEnabled };
-                          setConfiguration(nextConfig);
-                          setSelected(p);
-                          setDraft(previewLoadout(appearance, p, nextConfig));
-                        }}
-                      >
-                        {hoodEnabled ? 'Mit Kapuze' : 'Ohne Kapuze'}
-                      </button>
-                    ))}
-                  </fieldset>
-                )}
-                <div
-                  className={`product-actions${isSticker(p) ? ' sticker-actions' : ''}`}
-                >
-                  <button
-                    className="button small primary compact-buy-button"
-                    disabled={
-                      (state === 'LOCKED' && player.coins < digitalPrice(p)) ||
-                      (p.preview?.numberCustomization &&
-                        !/^\d{1,2}$/.test(config.customNumber ?? ''))
-                    }
-                    onClick={() => {
-                      if (state === 'LOCKED') {
-                        unlockProduct(p, config);
-                      } else if (canWear) {
-                        if (isEquipped) unequipProduct(p);
-                        else equipProduct(p, config);
-                      }
-                    }}
-                  >
-                    {state === 'LOCKED'
-                      ? `KAUFEN · ${digitalPrice(p)} COINS`
-                      : canWear
-                        ? isEquipped
-                          ? 'ABLEGEN'
-                          : 'AUSRÜSTEN'
-                        : 'GEKAUFT'}
-                  </button>
-                  {!isSticker(p) && (
-                    <button
-                      className="button small"
-                      onClick={() => {
-                        openProduct(p);
-                        setAngle(productView === 'front' ? Math.PI : 0);
-                        setInspectionRevision((r) => r + 1);
-                      }}
-                    >
-                      ANSEHEN
-                    </button>
-                  )}
-                </div>
-                {isSticker(p) && (
-                  <button
-                    className="button small"
-                    onClick={() => { setStickerTarget('bike'); setStickerBike(appearance); }}
-                  >
-                    AUF FAHRZEUG / HELM PLATZIEREN
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </>
-  );
-  if (stickerBike) return <Suspense fallback={<main className="sticker-loading"><span className="spinner"/><output>STICKER-WERKSTATT WIRD GELADEN</output><button className="button" onClick={() => setStickerBike(null)}>ABBRECHEN</button></main>}>
-    <StickerWorkshop player={stickerBike} account={player} products={products} initialTarget={stickerTarget} onClose={() => setStickerBike(null)} onBuySticker={() => {
-      const product = products.find(isSticker);
-      if (!product) return;
-      const next = unlock(player, product.id, digitalPrice(product));
-      if (!next) { notify('Du brauchst mehr Coins.'); return; }
-      update(next);
-      flushSave();
-      notify('Sticker gekauft. Deine Platzierung bleibt in der Vorschau.');
-    }} onSave={(drafts) => {
-      const next = saveStickerTargets(player, drafts, products);
-      if (!next) { notify('Sticker und gegebenenfalls das Fahrzeug zuerst freischalten.'); return; }
-      update(next); flushSave(); setStickerBike(null); setDraft(null); notify('Sticker platziert und gespeichert.');
-    }}/>
+  const removeSlot = (slot: Slot) => setEdit({ kind: 'remove', slot });
+  const openWorkshop = (target: 'bike' | 'helmet') => { setStickerTarget(target); setStickerBike(player); };
+  const buttonText = purchase ? purchase.buying ? 'Wird gekauft …' : 'Wird gespeichert …' : placingSticker ? 'Platzieren' : !changed ? 'Fahrt starten'
+    : offer?.blocked ?? (offer?.owned || offer?.price === 0 ? 'Ausrüsten' : `Für ${offer?.price ?? 0} Coins ${offer?.collectible ? 'sammeln' : 'kaufen & ausrüsten'}`);
+
+  if (stickerBike) return <Suspense fallback={<main className="sticker-loading"><span className="spinner" /><output>STICKER-WERKSTATT WIRD GELADEN</output><button className="button" onClick={() => setStickerBike(null)}>ABBRECHEN</button></main>}>
+    <StickerWorkshop player={stickerBike} account={player} products={products} initialTarget={stickerTarget} onClose={() => setStickerBike(null)} onSave={async drafts => {
+      if (pending.current) return false;
+      const next = commitStickerEdit(account.current, drafts, products);
+      if (!next) { notify('Positionen konnten nicht gespeichert werden. Prüfe Coins und Fahrzeugbesitz. Es wurde nichts abgezogen.'); return false; }
+      pending.current = true;
+      try {
+        update(next); account.current = next;
+        const result = await confirmPlayerSave(services.players);
+        if (!result.confirmed) {
+          // Keep the frozen preview and all surface drafts. Ownership is already
+          // updated atomically, so retrying Save cannot buy the sticker twice.
+          notify(`In dieser Sitzung übernommen. Speicherung noch nicht bestätigt. ${result.detail}`);
+          return true;
+        }
+        setStickerBike(null); setPreviewEdit(null); editRef.current = null; notify('Sticker platziert und gespeichert.');
+        return true;
+      } finally { pending.current = false; }
+    }} />
   </Suspense>;
-  return (
-    <main className="garage-page">
-      <div className="garage-layout">
-        <section className="garage-preview">
-          <div className="preview-top">
-            <span className="eyebrow">
-              {draft ? 'VORSCHAU' : 'AKTUELLES SETUP'}
-            </span>
-            {embedded && <div className="garage-balance">
-              <Coin value={player.coins} />
-              <button className="level-chip" onClick={onProgress} aria-label={`Fortschritt, Stufe ${player.level}`}>
-                ST. {String(player.level).padStart(2, '0')}
-              </button>
-            </div>}
-            {draft && (
-              <button
-                className="reset-preview"
-                onClick={() => {
-                  setDraft(null);
-                  setSelected(null);
-                }}
-              >
-                ZUM AKTUELLEN SETUP
-              </button>
-            )}
-          </div>
-          <div
-            className="garage-model"
-            data-testid="garage-model"
-            data-bike={appearance.bike}
-            data-paint={appearance.paint}
-            data-rims={appearance.rims}
-            data-variant={configuration?.variantId ?? ''}
-            data-product={selected?.id ?? appearance.equipped.upper ?? ''}
-            data-number={
-              appearance.customizations[appearance.equipped.upper ?? '']
-                ?.customNumber ?? ''
-            }
-            data-hood={
-              appearance.customizations[appearance.equipped.upper ?? '']
-                ?.hoodEnabled === true
-            }
-            data-helmet={appearance.helmet}
-            data-helmet-color={appearance.helmetColor}
-            data-helmet-visor={appearance.helmetVisor}
-          >
-            <Preview
-              player={appearance}
-              products={products}
-              mode="garage"
-              onReady={onReady}
-              onLoadError={onLoadError}
-              inspectionAngle={angle}
-              inspectionRevision={inspectionRevision}
-            />
-          </div>
-          <div className="preview-bottom">
-            <div className="garage-angles">
-              {[
-                { label: 'VORNE ¾', angle: 2.35 },
-                { label: 'SEITE', angle: 1.57 },
-                { label: 'HINTEN ¾', angle: 0.55 },
-                { label: 'VORNE', angle: Math.PI },
-              ].map((v) => (
-                <button
-                  key={v.label}
-                  aria-label={`Inspect ${v.label}`}
-                  onClick={() => {
-                    setAngle(v.angle);
-                    setInspectionRevision((r) => r + 1);
-                  }}
-                >
-                  {v.label}
-                </button>
-              ))}
-              <RotateCw size={13} />
-            </div>
-            <h2>{bike.name}</h2>
-            <p>
-              {products.find((p) => p.id === appearance.equipped.upper)
-                ?.title ?? 'Standard-Outfit'}
-              {draft ? ' · temporäre Vorschau' : ''}
-            </p>
-            <XpBar player={player} />
-            <button className="button primary" onClick={start}>
-              FAHRT STARTEN <ArrowRight />
-            </button>
-          </div>
-        </section>
-        <section className="garage-controls">
-          <SavedSetups player={player} products={products} services={services} update={update} notify={notify}
-            previewing={draft !== null} onEquip={() => { setDraft(null); setSelected(null); setConfiguration(null); }} />
-          <Tabs
-            value={tab}
-            onValueChange={(v) => {
-              setTab(String(v));
-              setFilter('all');
-            }}
-          >
-            <TabsList className="garage-tabs" variant="line">
-              <TabsTrigger value="rider">FAHRER</TabsTrigger>
-              <TabsTrigger value="bike">MOTORRAD</TabsTrigger>
-              <TabsTrigger value="progress">FORTSCHRITT</TabsTrigger>
-            </TabsList>
-            <TabsContent value="rider">
-              <div className="section-intro">
-                <h2>KLEIDUNG</h2>
-              </div>
-              <section aria-label="Helmoptionen">
-                <h3 className="custom-label">HELM</h3>
-                <div className="category-filter" aria-label="Helmtyp">
-                  {HELMETS.map((helmet) => (
-                    <button
-                      key={helmet.id}
-                      aria-label={`Vorschau ${helmet.name} Helm`}
-                      aria-pressed={appearance.helmet === helmet.id}
-                      className={
-                        appearance.helmet === helmet.id ? 'active' : ''
-                      }
-                      onClick={() => setDraft({ ...appearance, helmet: helmet.id })}
-                    >
-                      {helmet.name.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-                <ColorSection title="Helmfarbe" value={appearance.helmetColor}><div className="swatches" aria-label="Helmfarbe">
-                  {visiblePalette(HELMET_COLORS, appearance.helmetColor).map((color) => (
-                    <button
-                      key={color.value}
-                      aria-label={`${color.name} helmet color`}
-                      aria-pressed={appearance.helmetColor === color.value}
-                      className={
-                        appearance.helmetColor === color.value ? 'selected' : ''
-                      }
-                      onClick={() =>
-                        setDraft({ ...appearance, helmetColor: color.value })
-                      }
-                    >
-                      <i style={{ background: color.value }} />
-                      <b>{color.name}</b>
-                      <span>KOSTENLOS</span>
-                    </button>
-                  ))}
-                </div></ColorSection>
-                <ColorSection title="Visier / Brillenglas" value={appearance.helmetVisor}><div className="swatches" aria-label="Visierfarbe">
-                  {VISOR_COLORS.map((color) => <button key={color.value} aria-label={color.name} aria-pressed={appearance.helmetVisor === color.value} className={appearance.helmetVisor === color.value ? 'selected' : ''} onClick={() => setDraft({ ...appearance, helmetVisor: color.value })}><i style={{ background: color.value }}/><b>{color.name}</b><span>VORSCHAU</span></button>)}
-                </div></ColorSection>
-                <button className="button small" disabled={appearance.helmet === player.helmet && appearance.helmetColor === player.helmetColor && appearance.helmetVisor === player.helmetVisor} onClick={() => equipHelmetNow(appearance)}>HELM AUSRÜSTEN</button>
-                {products.some(isSticker) && <button className="button small helmet-sticker-open" onClick={() => { setStickerTarget('helmet'); setStickerBike(appearance); }}>STICKER AUF HELM PLATZIEREN</button>}
-              </section>
-              {grid}
-            </TabsContent>
-            <TabsContent value="bike">
-              <div className="section-intro">
-                <h2>MOTORRÄDER</h2>
-              </div>
-              <div className="bike-options">
-                {BIKES.map((b, i) => (
-                  <article
-                    key={b.id}
-                    className={`bike-card ${appearance.bike === b.id ? 'selected' : ''}`}
-                  >
-                    <span className="bike-number">0{i + 1}</span>
-                    <div className="bike-info">
-                      <h3>{b.name}</h3>
-                      <p>
-                        {b.id === '125'
-                          ? 'Leichtes Bike. Direkt und unkompliziert.'
-                          : b.id === 'scooter'
-                            ? 'Kleine Räder. Für die Stadt.'
-                          : b.id === '450'
-                            ? 'Hohe Sitzposition. Strassenreifen.'
-                            : 'Vollverkleidung. Tiefe Lenkerposition.'}
-                      </p>
-                      <span className="eyebrow">
-                        {owned(`bike:${b.id}`)
-                          ? 'BESITZT'
-                          : `FREISCHALTEN · LEVEL ${b.level} · ${b.price} COINS`}
-                      </span>
-                    </div>
-                    <div className="garage-item-actions">
-                      <button className="button small" aria-label={`Ansehen ${b.name}`} aria-pressed={appearance.bike === b.id}
-                        onClick={() => previewBike({ bike: b.id })}>ANSEHEN</button>
-                      <button className="button small" aria-label={`${owned(`bike:${b.id}`) ? 'Ausrüsten' : 'Kaufen'} ${b.name}`}
-                        disabled={owned(`bike:${b.id}`) ? player.bike === b.id : player.level < b.level || player.coins < b.price}
-                        onClick={() => owned(`bike:${b.id}`)
-                          ? equipBikeOption({ bike: b.id })
-                          : buyBikeOption(`bike:${b.id}`, b.price, b.name, b.level)}>
-                        {owned(`bike:${b.id}`) ? (player.bike === b.id ? 'AUSGERÜSTET' : 'AUSRÜSTEN') : 'KAUFEN'}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-              {colorOptions('paint')}
-              {colorOptions('rims')}
-              <div className="equipped-slots motorcycle-equipped">
-                <div>
-                  <span className="eyebrow">SCHLÜSSELANHÄNGER</span>
-                  <b>
-                    {products.find((p) => p.id === player.equipped.keychain)
-                      ?.title ?? 'Kein Schlüsselanhänger'}
-                  </b>
-                  {player.equipped.keychain && (
-                    <button
-                      onClick={() => {
-                        const equipped = { ...player.equipped };
-                        delete equipped.keychain;
-                        update({ ...player, equipped });
-                        setDraft(null);
-                      }}
-                    >
-                      ENTFERNEN
-                    </button>
-                  )}
-                </div>
-              </div>
-              {grid}
-            </TabsContent>
-            <TabsContent value="progress">
-              <ProgressContent player={player} />
-            </TabsContent>
-          </Tabs>
-        </section>
+
+  return <main className="garage-page garage-configurator"><div className="gc-layout">
+    <section className="gc-preview" aria-label="Motorrad- und Fahrervorschau">
+      <div className="gc-preview-heading"><span className={`gc-state${changed ? ' is-preview' : ''}`}>{changed ? 'VORSCHAU' : 'AKTUELLES SETUP'}</span>
+        <div className="gc-balance"><Coin value={player.coins} />{embedded && <button onClick={onProgress} aria-label={`Fortschritt, Stufe ${player.level}`}>ST. {String(player.level).padStart(2, '0')}</button>}</div>
+        {changed && <button className="gc-text-button" onClick={discard}>Verwerfen</button>}
       </div>
-    </main>
-  );
+      <div className="gc-model" data-testid="garage-model" data-bike={appearance.bike} data-paint={appearance.paint} data-rims={appearance.rims}
+        data-variant={configuration?.variantId ?? ''} data-product={selectedProduct?.id ?? appearance.equipped.upper ?? ''}
+        data-number={appearance.customizations[appearance.equipped.upper ?? '']?.customNumber ?? ''}
+        data-hood={appearance.customizations[appearance.equipped.upper ?? '']?.hoodEnabled === true}
+        data-helmet={appearance.helmet} data-helmet-color={appearance.helmetColor} data-helmet-visor={appearance.helmetVisor}>
+        <Preview player={appearance} products={products} mode="garage" onReady={onReady} onLoadError={onLoadError}
+          inspectionFocus={focus} inspectionAngle={angle} inspectionRevision={inspectionRevision} />
+      </div>
+      <div className="gc-preview-footer"><div><h2>{bike.name}</h2><p>{products.find(product => product.id === appearance.equipped.upper)?.title ?? 'Standard-Outfit'}</p></div>
+        {referenceImage && <a className="gc-reference" href={referenceProduct?.url} target="_blank" rel="noreferrer" aria-label={`Originalprodukt im PFUSCH-Shop: ${referenceProduct?.title}`}><img src={imagePath(referenceImage)} alt={referenceProduct?.title ?? 'PFUSCH-Original'} /><span>ORIGINAL</span></a>}
+      </div>
+      <div className="gc-angles" aria-label="Kameraansicht"><RotateCw size={14} aria-hidden="true" />
+        {[{ name: 'Vorne ¾', value: 2.35 }, { name: 'Seite', value: 1.57 }, { name: 'Hinten ¾', value: .55 }].map(view => <button key={view.name} onClick={() => { setAngle(view.value); setInspectionRevision(revision => revision + 1); }}>{view.name}</button>)}
+        <span>Ziehen · Zoomen</span>
+      </div>
+    </section>
+    <section className="gc-controls" aria-label="Garage konfigurieren">
+      <nav className="gc-areas" aria-label="Garage-Bereiche"><button aria-pressed={area === 'bike'} onClick={() => { if (area !== 'bike') selectPart('model'); }}>Motorrad</button><button aria-pressed={area === 'rider'} onClick={() => { if (area !== 'rider') selectPart('upper'); }}>Fahrer</button></nav>
+      {area !== 'collection' && <nav className="gc-parts" aria-label="Ausrüstungsteil">{(area === 'bike' ? bikeParts : riderParts).map(item => <button key={item.id} aria-pressed={part === item.id || (part === 'head' && item.id === 'helmet')} onClick={() => selectPart(item.id)}>{item.name}</button>)}</nav>}
+      <div className="gc-panel"><div className="gc-panel-title"><h2>{partNames[part]}</h2><span>{part === 'collection' ? 'SAMMELSTÜCKE' : 'KOSTENLOS AUSPROBIEREN'}</span></div>
+        {part === 'model' && <div className="gc-bikes" aria-label="Motorradmodell">{BIKES.map((item, index) => {
+          const owned = player.ownedItems.includes(`bike:${item.id}`);
+          return <button key={item.id} className="gc-bike" aria-pressed={appearance.bike === item.id} onClick={() => setEdit({ kind: 'model', value: item.id })}>
+            <span className="gc-bike-index">0{index + 1}</span><span><strong>{item.name}</strong><small>{item.tag}</small><span>{player.bike === item.id ? 'Ausgerüstet' : owned ? 'In deinem Besitz' : `Level ${item.level} · ${item.price} Coins`}</span></span>
+            {appearance.bike === item.id ? <Check size={18} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
+          </button>;
+        })}</div>}
+        {(part === 'paint' || part === 'rims') && colorPalette(part)}
+        {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps am Hüftclip</button></div>}
+        {part === 'helmet' && <div className="gc-helmet-options">
+          <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name}</button>)}</div></fieldset>
+          <Palette title="Helmfarbe" colors={HELMET_COLORS.map(color => ({ ...color, name: colorName(color.value) }))} value={appearance.helmetColor} equipped={player.helmetColor} status={() => 'Kostenlos'} onChange={helmetColor => editHelmet({ helmetColor })} />
+          <Palette title="Visier / Brillenglas" colors={VISOR_COLORS} value={appearance.helmetVisor} equipped={player.helmetVisor} status={() => 'Kostenlos'} onChange={helmetVisor => editHelmet({ helmetVisor })} />
+          {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}
+        </div>}
+        {part === 'head' && <p className="gc-help">Caps hängen am Hüftclip. Dein Fahrhelm bleibt auf.</p>}
+        {part === 'accessory' && <p className="gc-help">Taschen werden am Fahrer getragen und lassen sich mit Caps kombinieren.</p>}
+        {part === 'extras' && <p className="gc-help">Passend für {bike.name}: Sticker auf gültigen Flächen, Schlüsselanhänger am Befestigungspunkt.</p>}
+        {part === 'collection' && <p className="gc-help">Diese Artikel sammelst du im Spiel; sie werden nicht am Fahrer ausgerüstet.</p>}
+        {['upper', 'head', 'accessory', 'extras', 'collection'].includes(part) && <>
+          {products.length === 0 && <output className="gc-help">Produkte werden geladen …</output>}
+          <div className="gc-products" aria-label="Artikelauswahl">{activeProducts.map(product => {
+            const active = selectedProduct?.id === product.id;
+            const config = active && configuration ? configuration : initialConfiguration(player, product);
+            const color = productColors(product).find(item => item.variantIds.includes(config.variantId));
+            return <button key={product.id} className="gc-product" data-testid="product-card" aria-label={`${product.title} · ${productStatus(product)}`} aria-pressed={active} onClick={() => selectProduct(product)}>
+              <span className="gc-product-image"><img src={imagePath(color?.front?.localImage ?? product.localImage ?? product.image)} alt={product.title} loading="lazy" />{active && <Check size={16} aria-hidden="true" />}</span><strong>{product.title}</strong><span>{productStatus(product)}</span>
+            </button>;
+          })}</div>
+          {part !== 'collection' && <div className="gc-remove-options">{([...new Set(activeProducts.filter(equippable).map(equipmentSlot))]).map(slot => player.equipped[slot] && <button key={slot} className="gc-text-button" onClick={() => removeSlot(slot)}>{slot === 'upper' ? 'Standard-Outfit' : `Ohne ${slot === 'head' ? 'Cap' : slot === 'keychain' ? 'Schlüsselanhänger' : 'Accessoire'}`}</button>)}</div>}
+        </>}
+        {selectedProduct && configuration && <section className="gc-product-options" aria-label={`${selectedProduct.title} konfigurieren`}>
+          <div className="gc-selected-heading"><h3>{selectedProduct.title}</h3><span>{productStatus(selectedProduct)}</span></div>
+          {colors.length > 0 && <Palette key={selectedProduct.id} title="Artikelfarbe" colors={colors.map(color => ({ name: color.label, value: color.baseColor }))}
+            value={selectedColor?.baseColor ?? selectedProduct.baseColor} status={() => productStatus(selectedProduct)} onChange={value => { const color = colors.find(item => item.baseColor === value); if (color?.variantIds[0]) editProduct({ variantId: color.variantIds[0] }); }} />}
+          {selectedProduct.preview?.numberCustomization && <label className="gc-number">Deine Racing-Nummer<input aria-label={`${selectedProduct.title} Nummer`} inputMode="numeric" pattern="[0-9]{1,2}" maxLength={2} placeholder="23" value={configuration.customNumber ?? ''} onChange={event => editProduct({ customNumber: event.target.value.replace(/\D/g, '').slice(0, 2) })} /><small>1–2 Ziffern · Pflichtfeld</small></label>}
+          {supportsHood(selectedProduct) && <fieldset className="gc-field"><legend>Kapuze</legend><div className="gc-toggle">{[false, true].map(hoodEnabled => <button key={String(hoodEnabled)} aria-pressed={(configuration.hoodEnabled === true) === hoodEnabled} onClick={() => editProduct({ hoodEnabled })}>{hoodEnabled ? 'Mit Kapuze' : 'Ohne Kapuze'}</button>)}</div></fieldset>}
+          {selectedColor?.front && selectedColor?.back && <button className="gc-text-button" onClick={() => { const next = productView === 'front' ? 'back' : 'front'; setProductView(next); setAngle(next === 'front' ? Math.PI : 0); setInspectionRevision(revision => revision + 1); }}>{productView === 'front' ? 'Rückseite zeigen' : 'Vorderseite zeigen'}</button>}
+          {isSticker(selectedProduct) && <div className="gc-placement"><p>Wo soll dein Sticker hin?</p><div className="gc-toggle" aria-label="Sticker-Ziel"><button aria-pressed={stickerTarget === 'bike'} onClick={() => setStickerTarget('bike')}>Motorrad</button><button aria-pressed={stickerTarget === 'helmet'} onClick={() => setStickerTarget('helmet')}>Helm</button></div><p>Mit „Platzieren“ kostenlos ausprobieren. Gekauft wird erst beim Speichern.</p></div>}
+          <details className="gc-details"><summary>Artikeldetails & Originalbild</summary><img src={imagePath(mockup?.localImage ?? selectedProduct.localImage ?? selectedProduct.image)} alt={selectedProduct.title} loading="lazy" /><p>{selectedProduct.description}</p><p>Digitaler Spielartikel · kein physischer Versand</p><a href={selectedProduct.url} target="_blank" rel="noreferrer">Original im PFUSCH-Shop <ExternalLink size={14} aria-hidden="true" /></a></details>
+        </section>}
+        <div className="gc-utilities"><button className="gc-text-button" aria-pressed={area === 'collection'} onClick={() => selectPart(part === 'collection' ? 'upper' : 'collection')}>{part === 'collection' ? 'Zurück zum Fahrer' : 'Sammlung'}</button><a href="https://pfusch-clothing.ch" target="_blank" rel="noreferrer">PFUSCH-Shop <ExternalLink size={13} aria-hidden="true" /></a></div>
+        <SavedSetups player={player} products={products} services={services} update={next => { account.current = next; update(next); }} notify={notify} previewing={changed || !!purchase} onEquip={discard} />
+        <output className="gc-notice">{notice || 'Nur Ausrüsten übernimmt deine Vorschau.'}</output>
+      </div>
+    </section>
+    <div className="gc-action" aria-label="Auswahl übernehmen"><div className="gc-action-summary" aria-live="polite"><strong>{placingSticker ? `Sticker auf ${stickerTarget === 'helmet' ? 'Helm' : bike.name}` : changed ? offer?.name : 'Dein Setup ist bereit'}</strong><span>{purchase ? `${purchase.name} wird gespeichert` : placingSticker ? 'Kostenlose Vorschau' : changed ? offer?.owned ? 'In deinem Besitz · kostenlose Änderung' : `${offer?.price ?? 0} Coins · digitaler Spielartikel` : 'Bestätigte Ausrüstung'}</span></div>
+      <button className="gc-primary" disabled={!!purchase || (!placingSticker && changed && !!offer?.blocked)} onClick={() => { void confirmEdit(); }}>{buttonText}{!purchase && (placingSticker || !(changed && offer?.blocked)) && <ArrowRight size={18} aria-hidden="true" />}</button>
+      {changed && <button className="gc-action-discard" onClick={discard}>Verwerfen</button>}
+    </div>
+  </div></main>;
 }

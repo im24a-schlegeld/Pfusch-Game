@@ -441,7 +441,7 @@ export function SettingsScreen({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2>STEUERUNG</h2>
           {onTutorial && <button className="button small" onClick={onTutorial}>
-            <Repeat2 size={18} aria-hidden="true" /> STEUERUNG ANSEHEN
+            <Repeat2 size={18} aria-hidden="true" /> SPIELHINWEISE ERNEUT STARTEN
           </button>}
         </div>
         <div className="control-guide">

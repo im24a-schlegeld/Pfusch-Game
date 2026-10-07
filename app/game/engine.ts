@@ -355,6 +355,14 @@ export class Engine {
       this.resumeRemaining = 3;
     }
   }
+  /** A deliberate tutorial gesture continues immediately without a catch-up. */
+  resumeTutorial() {
+    if (this.phase !== 'paused') return;
+    this.clearInput();
+    this.accumulator = 0;
+    this.resumeRemaining = 0;
+    this.phase = 'playing';
+  }
   /** Ending a paused run is explicit; it does not resume gameplay or a timer. */
   endRide() {
     if (this.phase === 'crashed') return;

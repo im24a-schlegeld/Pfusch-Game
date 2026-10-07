@@ -23,7 +23,7 @@ for (const model of ['125', '450'] as const) {
     await page.clock.pauseAt(new Date('2026-09-15T12:00:01Z'));
     const player = newPlayer();
     player.bike = model;
-    player.settings.tutorialSeen = true;
+    player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
     await page.addInitScript((saved) => {
       localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
       window.effectsProbe = {};

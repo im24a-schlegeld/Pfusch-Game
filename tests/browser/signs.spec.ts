@@ -41,7 +41,7 @@ async function start(page: Page, low: boolean) {
   await page.clock.install({ time: new Date('2026-09-15T10:00:00Z') });
   await page.clock.pauseAt(new Date('2026-09-15T10:00:01Z'));
   const player = newPlayer();
-  player.settings.tutorialSeen = true;
+  player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   player.settings.quality = low ? 'low' : 'auto';
   await page.addInitScript((saved) => {
     Math.random = () => 5489 / 0xffffffff;

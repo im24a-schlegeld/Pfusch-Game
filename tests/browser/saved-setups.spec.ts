@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { newPlayer } from '../../app/domain/progression';
 import type { Player } from '../../app/domain/types';
+import { chooseArea, choosePart, primaryAction } from './garage-helpers';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pfusch:player:v1')!) as Player);
 const openSetups = (page: Page) => page.getByRole('button', { name: 'Setups speichern und verwalten' }).click();
@@ -9,15 +10,16 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
   test(`setups save, restore and delete without changing inventory at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     const initial = newPlayer();
-    initial.settings.tutorialSeen = true;
+    initial.settings.tutorialSeen = true; initial.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
     await page.addInitScript(player => {
       if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
     }, initial);
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'FAHRT STARTEN', exact: true })).toBeEnabled({ timeout: 90000 });
-    await expect(page.locator('.garage-controls .equipped-slots').filter({ hasText: 'OBERTEIL' })).toHaveCount(0);
+    await expect(primaryAction(page)).toHaveText('Fahrt starten', { timeout: 90000 });
+    await expect(primaryAction(page)).toBeEnabled();
+    await expect(page.getByRole('navigation', { name: 'Garage-Bereiche' }).getByRole('button')).toHaveCount(2);
     await openSetups(page);
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('AKTUELLES SETUP SPEICHERN').fill('Strasse');
@@ -25,13 +27,16 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
     await expect(dialog.getByRole('article', { name: 'Strasse', exact: true })).toBeVisible();
     expect((await saved(page)).savedSetups).toHaveLength(1);
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByRole('button', { name: 'Vorschau Motocross Helm', exact: true }).click();
+    await chooseArea(page, 'Fahrer');
+    await choosePart(page, 'Kopf');
+    await page.getByRole('button', { name: 'Motocross', exact: true }).click();
     await openSetups(page);
     await dialog.getByLabel('AKTUELLES SETUP SPEICHERN').fill('Vorschau');
     await expect(dialog.getByRole('button', { name: 'SPEICHERN', exact: true })).toBeDisabled();
     expect((await saved(page)).helmet).toBe('fullface');
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByRole('button', { name: 'HELM AUSRÜSTEN', exact: true }).click();
+    await expect(primaryAction(page)).toHaveText('Ausrüsten');
+    await primaryAction(page).click();
     await openSetups(page);
     await dialog.getByLabel('AKTUELLES SETUP SPEICHERN').fill('Cross');
     await dialog.getByRole('button', { name: 'SPEICHERN', exact: true }).click();

@@ -1,7 +1,15 @@
 import { test, expect, type Page } from '@playwright/test';
 import type { Player, Product } from '../../app/domain/types';
+import { digitalPrice } from '../../app/domain/progression';
+import { chooseArea, chooseBike, chooseProduct, primaryAction } from './garage-helpers';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pfusch:player:v1')!) as Player);
+
+async function beginFirstRide(page: Page) {
+  await expect(page.getByTestId('ride-tutorial-overlay')).toBeVisible({ timeout: 60000 });
+  await page.getByRole('button', { name: 'Hinweise überspringen', exact: true }).click();
+  await expect(page.getByTestId('ride-screen')).toHaveAttribute('data-phase', 'playing', { timeout: 10000 });
+}
 
 async function waitForFirstSimulation(page: Page, errors: string[]) {
   try {
@@ -50,15 +58,16 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
   await expect(page.getByRole('navigation', { name: 'Spielnavigation' }).getByRole('button')).toHaveCount(4);
   await expect(page.getByRole('navigation', { name: 'Spielnavigation' }).getByRole('button', { name: 'FAHREN', exact: true })).toHaveCount(0);
   await expect(
-    page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }),
+    primaryAction(page),
   ).toBeVisible();
   await page.locator('canvas').waitFor();
   await page.screenshot({ path: 'outputs/garage-start-desktop.png' });
-  await page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }).click();
-  await page.getByTestId('first-ride-start').click();
+  await primaryAction(page).click();
+  await beginFirstRide(page);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',
     'playing',
+    { timeout: 60000 },
   );
   await waitForFirstSimulation(page, errors);
   await page.keyboard.press('ArrowLeft');
@@ -100,27 +109,30 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
     ),
   ).toBe(1);
   await expect(page.getByTestId('garage-model')).toBeVisible();
-  await page.getByRole('tab', { name: 'FAHRER', exact: true }).click();
   const products = await (await page.request.get('/catalog/products.json')).json() as Product[];
   const jacket = products.find((product) => product.handle === 'unisex-windbreaker')!;
-  const card = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: jacket.title, exact: true }) });
   const beforePreview = await saved(page);
-  await card.getByRole('button', { name: 'ANSEHEN', exact: true }).click();
+  await chooseProduct(page, jacket);
+  const card = page.getByTestId('product-card').filter({ has: page.getByText(jacket.title, { exact: true }) });
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
   expect(await saved(page)).toEqual(beforePreview);
-  await card.getByRole('button', { name: /KAUFEN/ }).click();
-  expect((await saved(page)).equipped.upper).toBeUndefined();
-  await card.getByRole('button', { name: 'AUSRÜSTEN', exact: true }).click();
-  await expect(card.getByRole('button', { name: 'ABLEGEN', exact: true })).toBeVisible();
+  await expect(primaryAction(page)).toHaveText(`Für ${digitalPrice(jacket)} Coins kaufen & ausrüsten`);
+  await primaryAction(page).click();
+  await expect(primaryAction(page)).toHaveText('Fahrt starten');
+  expect((await saved(page)).coins).toBe(beforePreview.coins - digitalPrice(jacket));
+  await expect(page.getByRole('button', { name: 'Standard-Outfit', exact: true })).toBeVisible();
   expect((await saved(page)).equipped.upper).toBe(jacket.id);
-  await page.getByRole('tab', { name: 'MOTORRAD', exact: true }).click();
-  await page.getByRole('button', { name: 'Ansehen Supermoto', exact: true }).click();
+  await chooseArea(page, 'Motorrad');
+  await chooseBike(page, 'Supermoto');
   expect((await saved(page)).bike).toBe('125');
   await page.screenshot({ path: 'outputs/garage-desktop.png' });
-  await page.getByRole('tab', { name: 'FORTSCHRITT', exact: true }).click();
-  await expect(page.getByText('DEIN FORTSCHRITT', { exact: true })).toBeVisible();
+  await page.locator('.level-chip').click();
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-screen', 'progress');
+  await expect(page.locator('.lifetime-stats')).toBeVisible();
+  await expect(page.locator('.lifetime-stats')).toContainText('FAHRTEN');
   for (const name of ['AUFGABEN', 'BELOHNUNGEN', 'RANG']) {
     await page
-      .getByRole('navigation')
+      .getByRole('navigation', { name: 'Spielnavigation' })
       .getByRole('button', { name, exact: true })
       .click();
     await expect(page.locator('main h1')).toBeVisible();
@@ -150,7 +162,7 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
   });
   await page.goto('/');
   await expect(
-    page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }),
+    primaryAction(page),
   ).toBeVisible();
   await page.locator('canvas').waitFor();
   await page.screenshot({ path: 'outputs/garage-start-mobile.png' });
@@ -159,8 +171,8 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }).tap();
-  await page.getByTestId('first-ride-start').tap();
+  await primaryAction(page).tap();
+  await beginFirstRide(page);
   await expect(page.getByTestId('ride-screen')).toHaveAttribute(
     'data-phase',
     'playing',
@@ -206,7 +218,7 @@ test('mobile portrait touch controls, swipe, natural collision and restart', asy
   await page.keyboard.press('p');
   await page.getByRole('button', { name: 'FAHRT BEENDEN' }).tap();
   await page.getByRole('button', { name: 'ZUR GARAGE' }).tap();
-  await page.getByRole('tab', { name: 'FAHRER' }).tap();
+  await chooseArea(page, 'Fahrer');
   await expect(page.getByTestId('product-card').first()).toBeVisible();
   await page.screenshot({ path: 'outputs/garage-mobile.png', fullPage: true });
   expect(

@@ -16,7 +16,7 @@ test('Roller previews freely, unlocks for 250 at level 2, equips explicitly and 
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const player = { ...newPlayer(), xp: 200, level: 2, coins: 250 };
-  player.settings.tutorialSeen = true;
+  player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   await page.addInitScript((initial) => {
     if (!localStorage.getItem('pfusch:player:v1'))
       localStorage.setItem('pfusch:player:v1', JSON.stringify(initial));

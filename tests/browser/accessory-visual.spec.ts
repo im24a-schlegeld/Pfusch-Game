@@ -71,7 +71,7 @@ test('hip cap remains clipped, responds to a real wheelie and freezes on pause',
   ).json()) as Product[];
   const cap = products.find((p) => p.handle === 'p-zero-cap')!;
   const player = newPlayer();
-  player.settings.tutorialSeen = true;
+  player.settings.tutorialSeen = true; player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   player.equipped.head = cap.id;
   player.ownedItems.push(cap.id);
   await page.clock.install({ time: new Date('2026-09-15T10:00:00Z') });
