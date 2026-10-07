@@ -129,12 +129,11 @@ export default function GameApp() {
     loginPending.current = true;
     setOpeningLogin(true);
     try {
-      // Finish any queued progress before top-level OAuth leaves the game.
-      // A temporary API outage must not block the login itself. The cloud
-      // repository keeps pending data and retries it after the session is
-      // available again.
-      try { await services.players.flush?.(); } catch { /* login remains available */ }
+      // Start OAuth while the click is still active. A slow or unavailable
+      // player API must never make the login button appear inert.
       services.auth.login();
+      // Finish queued progress on a best-effort basis after starting login.
+      void services.players.flush?.().catch(() => {});
     } catch {
       setNotice('Anmeldung konnte nicht geöffnet werden. Bitte erneut versuchen.');
     } finally {

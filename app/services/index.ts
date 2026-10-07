@@ -382,7 +382,7 @@ export function createServices(): Services {
     : undefined;
   return {
     auth: oxygen && cloud
-      ? { getUser: () => cloud.getUser(), login: () => startOxygenLogin(window, parentOrigin) }
+      ? { getUser: () => cloud.getUser(), login: () => startOxygenLogin(window, parentOrigin, document.referrer) }
       : cloud
         ? { getUser: () => cloud.getUser(), ...(shopifyLogin ? { login: shopifyLogin } : {}) }
         : new GuestAuthService(),
