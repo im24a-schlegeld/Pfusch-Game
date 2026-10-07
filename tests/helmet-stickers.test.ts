@@ -136,8 +136,7 @@ describe('helmet sticker geometry', () => {
     const [surface, shell] = [...helmetStickerSurfaces(bike.rider)][0];
     const probe = new THREE.Mesh(shell.geometry, shell.material);
     probe.updateMatrixWorld(true);
-    // The supplied racing shell has a central forehead intake. Place on its
-    // painted brow beside that intake, with the decal still crossing the visor.
+    // Place on the painted brow with the decal still crossing the visor.
     const hit = new THREE.Raycaster(new THREE.Vector3(.06, .075, -1), new THREE.Vector3(0, 0, 1)).intersectObject(probe, false)[0];
     expect(hit.face!.materialIndex).toBe(0);
     const saved = { ...placement(), surface, point: hit.point.toArray(), normal: hit.face!.normal.toArray(), size: 0.16 };

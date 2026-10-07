@@ -20,52 +20,95 @@ const { THREE, meshes, worldPositions, worldNormals } = source;
 const shellBounds = source.meshBox('Object_0');
 const scale = .299 / (shellBounds.max.y - shellBounds.min.y);
 const center = shellBounds.getCenter(new THREE.Vector3());
+const visorBounds = source.meshBox('Object_2');
 const ease = (value, low, high) => { const t = Math.max(0, Math.min(1, (value - low) / (high - low))); return t * t * (3 - 2 * t); };
 const slope = (value, low, high) => { const t = (value - low) / (high - low); return t > 0 && t < 1 ? 6 * t * (1 - t) / (high - low) : 0; };
+const edgeLow = shellBounds.min.y + .010, edgeHigh = shellBounds.min.y + .040;
+function visorLift(y, z) {
+  // Raise only the upper visor and its adjoining brow, blending back into the
+  // original shell within 3 cm. The crown, rear, chin and shell width stay intact.
+  const rise = ease(y, visorBounds.min.y, visorBounds.max.y);
+  const fall = 1 - ease(y, visorBounds.max.y, visorBounds.max.y + .055);
+  const front = 1 - ease(z, visorBounds.max.z, visorBounds.max.z + .04);
+  return { amount: .008 * rise * fall * front,
+    dy: .008 * (slope(y, visorBounds.min.y, visorBounds.max.y) * fall
+      - rise * slope(y, visorBounds.max.y, visorBounds.max.y + .055)) * front,
+    dz: -.008 * rise * fall * slope(z, visorBounds.max.z, visorBounds.max.z + .04) };
+}
 function restyle(x, y, z) {
-  // Subtle generic shaping, shared across adjoining shell/visor/vent surfaces.
-  // A broader, shorter chin and a flatter rear air outlet soften the source profile.
-  const chin = (1 - ease(y, .10, .25)) * (1 - ease(z, -.29, -.17));
-  const rear = ease(z, .06, .17) * ease(y, .36, .52);
-  // The reference exposes a very high rear neck cutout. Lower and round only
-  // that continuous rear skirt, keeping the adult-size front/visor unchanged.
-  const skirt = (1 - ease(y, .17, .32)) * ease(z, -.06, .15);
-  return [(x - center.x) * (1 + .045 * chin - .04 * skirt) * scale,
-    (y - center.y - .006 * rear - .14 * skirt) * scale + .0045,
-    (z - center.z + .012 * chin - .020 * rear - .035 * skirt) * scale];
+  // Preserve the supplied shell, chin, rear opening and vent silhouettes.
+  // Only tuck the very bottom front edge inward by at most 1.1 mm at game scale.
+  const edge = (1 - ease(y, edgeLow, edgeHigh)) * (1 - ease(z, -.10, .06));
+  return [(x - center.x) * scale,
+    (y - center.y + visorLift(y, z).amount) * scale + .0045,
+    (z - center.z + .002 * edge) * scale];
 }
 function restyleNormal(x, y, z, nx, ny, nz) {
-  const chinY = 1 - ease(y, .10, .25), chinZ = 1 - ease(z, -.29, -.17);
-  const chin = chinY * chinZ;
-  const cy = -slope(y, .10, .25) * chinZ, cz = -chinY * slope(z, -.29, -.17);
-  const ry = ease(z, .06, .17) * slope(y, .36, .52);
-  const rz = slope(z, .06, .17) * ease(y, .36, .52);
-  const skirtY = 1 - ease(y, .17, .32), skirtZ = ease(z, -.06, .15), skirt = skirtY * skirtZ;
-  const sy = -slope(y, .17, .32) * skirtZ, sz = skirtY * slope(z, -.06, .15);
-  // Inverse-transpose of the shared continuous deformation. Uniform scale
-  // cancels after normalisation; translations do not affect the Jacobian.
-  const a = 1 + .045 * chin - .04 * skirt, b = (x - center.x) * (.045 * cy - .04 * sy), c = (x - center.x) * (.045 * cz - .04 * sz);
-  const d = 1 - .006 * ry - .14 * sy, e = -.006 * rz - .14 * sz;
-  const f = .012 * cy - .020 * ry - .035 * sy, g = 1 + .012 * cz - .020 * rz - .035 * sz;
-  const tx = nx / a, iy = ny - b * tx, iz = nz - c * tx, determinant = d * g - e * f;
-  const ty = (g * iy - f * iz) / determinant, tz = (d * iz - e * iy) / determinant;
-  const length = Math.hypot(tx, ty, tz) || 1;
-  return [tx / length, ty / length, tz / length];
+  const edgeY = 1 - ease(y, edgeLow, edgeHigh), edgeZ = 1 - ease(z, -.10, .06);
+  const dy = -.002 * slope(y, edgeLow, edgeHigh) * edgeZ;
+  const dz = 1 - .002 * edgeY * slope(z, -.10, .06);
+  const lift = visorLift(y, z), yy = 1 + lift.dy;
+  // Inverse-transpose keeps the small edge/visor adjustments naturally lit.
+  const determinant = yy * dz - lift.dz * dy;
+  const ty = (dz * ny - dy * nz) / determinant, tz = (yy * nz - lift.dz * ny) / determinant;
+  const length = Math.hypot(nx, ty, tz) || 1;
+  return [nx / length, ty / length, tz / length];
 }
 // Material slots preserve existing paint, visor and sticker behavior.
 const selected = [
   ['Object_0', 0, 3600, .004], // continuous paint shell; original graphic atlas omitted
   ['Object_2', 1, 800, .004], // actual visor, not its separate logo strip (Object_13)
-  ['Object_3', 2, 240, .012], // shallow brow intake
-  ['Object_6', 2, 240, .016], // simple visor pivots
+  ['Object_4', 2, 280, .012], // original rear air outlet and profile
   ['Object_8', 2, 320, .012], // visible thin lower seal only
   ['Object_10', 2, 120, .035], // dense chin grille reduced to a plain dark recess
 ];
 const groups = [], positions = [], normals = [], indices = [], audit = [];
+// Seal only small openings formerly covered by the removed forehead intake
+// and visor screws. Preserve the visor perimeter, neck opening and chin vents.
+function closeRemovedMounts(name, sourcePosition, sourceNormal) {
+  if (name !== 'Object_0' && name !== 'Object_2') return [sourcePosition, sourceNormal];
+  const points = [], directions = [], ids = new Map(), edges = new Map(), triangleIds = [];
+  for (let i = 0; i < sourcePosition.length; i += 3) {
+    const p = Array.from(sourcePosition.subarray(i, i + 3));
+    const key = p.map(value => Math.round(value * 1000000)).join(',');
+    if (!ids.has(key)) { ids.set(key, points.length); points.push(p); directions.push(Array.from(sourceNormal.subarray(i, i + 3))); }
+    triangleIds.push(ids.get(key));
+  }
+  for (let i = 0; i < triangleIds.length; i += 3) for (let side = 0; side < 3; side++) {
+    const from = triangleIds[i + side], to = triangleIds[i + (side + 1) % 3];
+    const key = from < to ? `${from}:${to}` : `${to}:${from}`;
+    const edge = edges.get(key);
+    if (edge) edge.count++; else edges.set(key, { from, to, count: 1 });
+  }
+  const boundary = new Map([...edges.values()].filter(edge => edge.count === 1).map(edge => [edge.from, edge.to]));
+  const p = Array.from(sourcePosition), n = Array.from(sourceNormal);
+  while (boundary.size) {
+    const first = boundary.keys().next().value, loop = [];
+    let next = first;
+    while (boundary.has(next) && loop.length < 10000) {
+      loop.push(next); const to = boundary.get(next); boundary.delete(next); next = to;
+      if (next === first) break;
+    }
+    if (next !== first || loop.length < 3) continue;
+    const box = new THREE.Box3().setFromArray(loop.flatMap(id => points[id]));
+    const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+    if (Math.max(size.x, size.y, size.z) > (name === 'Object_0' ? .05 : .07)) continue;
+    if (name === 'Object_0' && (box.min.y < visorBounds.max.y - .005 || center.z >= 0)) continue;
+    const mean = new THREE.Vector3(), normal = new THREE.Vector3();
+    for (const id of loop) { mean.add(new THREE.Vector3(...points[id])); normal.add(new THREE.Vector3(...directions[id])); }
+    mean.divideScalar(loop.length); normal.normalize();
+    for (let i = 0; i < loop.length; i++) {
+      const from = loop[i], to = loop[(i + 1) % loop.length];
+      p.push(...mean.toArray(), ...points[to], ...points[from]);
+      n.push(...normal.toArray(), ...directions[to], ...directions[from]);
+    }
+  }
+  return [new Float32Array(p), new Float32Array(n)];
+}
 for (const [name, material, budget, errorLimit] of selected) {
   const mesh = meshes.find(value => value.name === name);
   if (!mesh) throw new Error('Missing source helmet part: ' + name);
-  const sourcePosition = worldPositions.get(name), sourceNormal = worldNormals.get(name);
+  const [sourcePosition, sourceNormal] = closeRemovedMounts(name, worldPositions.get(name), worldNormals.get(name));
   const transformed = new Float32Array(sourcePosition.length);
   const transformedNormals = new Float32Array(sourceNormal.length);
   for (let vertex = 0; vertex < sourcePosition.length; vertex += 3) {
