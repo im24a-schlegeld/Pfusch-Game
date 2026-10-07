@@ -197,9 +197,9 @@
       }
     },
     {
-      "name": "moped_chrome:fork",
+      "name": "moped_fork_alloy:fork",
       "rig": "fork",
-      "material": "moped_chrome",
+      "material": "moped_fork_alloy",
       "position": {
         "offset": 102696,
         "count": 102
@@ -265,19 +265,19 @@
       "material": "moped_chrome",
       "position": {
         "offset": 123368,
-        "count": 379
+        "count": 208
       },
       "normal": {
-        "offset": 127916,
-        "count": 379
+        "offset": 125864,
+        "count": 208
       },
       "uv": {
-        "offset": 132464,
-        "count": 379
+        "offset": 128360,
+        "count": 208
       },
       "index": {
-        "offset": 135496,
-        "count": 1674
+        "offset": 130024,
+        "count": 972
       }
     },
     {
@@ -285,19 +285,19 @@
       "rig": "body",
       "material": "moped_seat",
       "position": {
-        "offset": 138844,
+        "offset": 131968,
         "count": 99
       },
       "normal": {
-        "offset": 140032,
+        "offset": 133156,
         "count": 99
       },
       "uv": {
-        "offset": 141220,
+        "offset": 134344,
         "count": 99
       },
       "index": {
-        "offset": 142012,
+        "offset": 135136,
         "count": 462
       }
     },
@@ -306,20 +306,41 @@
       "rig": "swingarm",
       "material": "moped_mechanics",
       "position": {
-        "offset": 142936,
+        "offset": 136060,
         "count": 325
       },
       "normal": {
-        "offset": 146836,
+        "offset": 139960,
         "count": 325
       },
       "uv": {
-        "offset": 150736,
+        "offset": 143860,
         "count": 325
       },
       "index": {
-        "offset": 153336,
+        "offset": 146460,
         "count": 1014
+      }
+    },
+    {
+      "name": "moped_headlamp_chrome:steering",
+      "rig": "steering",
+      "material": "moped_headlamp_chrome",
+      "position": {
+        "offset": 148488,
+        "count": 135
+      },
+      "normal": {
+        "offset": 150108,
+        "count": 135
+      },
+      "uv": {
+        "offset": 151728,
+        "count": 135
+      },
+      "index": {
+        "offset": 152808,
+        "count": 594
       }
     },
     {
@@ -327,20 +348,41 @@
       "rig": "steering",
       "material": "moped_light",
       "position": {
-        "offset": 155364,
+        "offset": 153996,
         "count": 55
       },
       "normal": {
-        "offset": 156024,
+        "offset": 154656,
         "count": 55
       },
       "uv": {
-        "offset": 156684,
+        "offset": 155316,
         "count": 55
       },
       "index": {
-        "offset": 157124,
+        "offset": 155756,
         "count": 270
+      }
+    },
+    {
+      "name": "moped_lamp_seal:steering",
+      "rig": "steering",
+      "material": "moped_lamp_seal",
+      "position": {
+        "offset": 156296,
+        "count": 36
+      },
+      "normal": {
+        "offset": 156728,
+        "count": 36
+      },
+      "uv": {
+        "offset": 157160,
+        "count": 36
+      },
+      "index": {
+        "offset": 157448,
+        "count": 108
       }
     },
     {
@@ -712,10 +754,16 @@
       "roughness": 0.31
     },
     {
+      "name": "moped_fork_alloy",
+      "color": "#bdc5cc",
+      "metalness": 0.78,
+      "roughness": 0.38
+    },
+    {
       "name": "moped_gaiters",
-      "color": "#181a1c",
+      "color": "#101214",
       "metalness": 0,
-      "roughness": 0.88
+      "roughness": 0.93
     },
     {
       "name": "moped_seat",
@@ -724,10 +772,22 @@
       "roughness": 0.88
     },
     {
+      "name": "moped_headlamp_chrome",
+      "color": "#a5b0b9",
+      "metalness": 0.88,
+      "roughness": 0.2
+    },
+    {
       "name": "moped_light",
-      "color": "#edf3ec",
-      "metalness": 0.1,
-      "roughness": 0.19
+      "color": "#ffffff",
+      "metalness": 0,
+      "roughness": 0.12
+    },
+    {
+      "name": "moped_lamp_seal",
+      "color": "#1d2327",
+      "metalness": 0,
+      "roughness": 0.82
     },
     {
       "name": "moped_tyre",
@@ -749,9 +809,9 @@
     },
     {
       "name": "moped_indicator",
-      "color": "#e68a16",
-      "metalness": 0.08,
-      "roughness": 0.24
+      "color": "#e0770d",
+      "metalness": 0,
+      "roughness": 0.26
     }
   ],
   "statistics": {
@@ -759,6 +819,6 @@
     "triangles": 8764,
     "vertices": 7490,
     "geometryBytes": 292268,
-    "meshes": 28
+    "meshes": 30
   }
 }

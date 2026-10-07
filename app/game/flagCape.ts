@@ -6,18 +6,41 @@ import type { CarriedCapMotionInput } from './carriedCapMotion';
 export const FLAG_CAPE = Object.freeze({
   columns: 20, rows: 24, width: .626, length: 1.04,
   neckY: .619, neckZ: .012, collarRadiusX: .15, collarRadiusZ: .14,
-  collarStart: -4.10, collarEnd: 2.00,
+  collarStart: -Math.PI + .075, collarEnd: Math.PI - .075,
 });
 type Artwork = NonNullable<NonNullable<Product['preview']>['artwork']>;
 type TextureFactory = (url: string) => THREE.Texture;
 const clamp = (value: number | undefined, min: number, max: number) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
+const collarY = (angle: number) => FLAG_CAPE.neckY - .012 * (1 + Math.cos(angle)) - .03 * smooth(-Math.cos(angle));
 
 function collarPoint(u: number) {
-  const { collarStart, collarEnd, collarRadiusX, collarRadiusZ, neckY, neckZ } = FLAG_CAPE;
+  const { collarStart, collarEnd, collarRadiusX, collarRadiusZ, neckZ } = FLAG_CAPE;
   const angle = collarStart + (collarEnd - collarStart) * u;
-  return new THREE.Vector3(Math.sin(angle) * collarRadiusX, neckY - .012 * (1 + Math.cos(angle)), neckZ + Math.cos(angle) * collarRadiusZ);
+  return new THREE.Vector3(Math.sin(angle) * collarRadiusX, collarY(angle), neckZ + Math.cos(angle) * collarRadiusZ);
+}
+
+/** One cached conservative surface above the actual saddle and rear bodywork. */
+function bikeClearance(torso: THREE.Object3D | null) {
+  let body = torso;
+  while (body && !body.userData.importedBike) body = body.parent;
+  if (!body) return undefined;
+  const tail = body.userData.tailContact as readonly number[] | undefined;
+  const contact = body.userData.riderSeatContact as { surfaceY: number } | undefined;
+  let top = Math.max(tail?.[1] ?? -Infinity, contact?.surfaceY ?? -Infinity);
+  body.updateWorldMatrix(true, true);
+  const inverse = new THREE.Matrix4().copy(body.matrixWorld).invert();
+  const transform = new THREE.Matrix4(), bounds = new THREE.Box3();
+  body.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || !/seat|saddle/i.test(object.userData.importedPart ?? '')) return;
+    object.geometry.computeBoundingBox();
+    if (!object.geometry.boundingBox) return;
+    transform.multiplyMatrices(inverse, object.matrixWorld);
+    bounds.copy(object.geometry.boundingBox).applyMatrix4(transform);
+    top = Math.max(top, bounds.max.y);
+  });
+  return Number.isFinite(top) ? { body, top: top + .045 } : undefined;
 }
 
 export function flagCapeUv(artwork: Artwork) {
@@ -66,8 +89,10 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   const points = position.array as Float32Array, normals = normal.array as Float32Array;
   const indices = geometry.index!.array;
   const inverse = new THREE.Matrix4(), down = new THREE.Vector3(), back = new THREE.Vector3(), direction = new THREE.Vector3();
+  const clearance = bikeClearance(mesh.parent);
+  const torsoToBike = new THREE.Matrix4(), bikeToTorso = new THREE.Matrix4(), bikePoint = new THREE.Vector3();
   let phase = 0, wind = 0, sway = 0, impulse = 0, lastLanding = 0;
-  const { rows, columns, length, width, neckY, neckZ, collarStart, collarEnd, collarRadiusX, collarRadiusZ } = FLAG_CAPE;
+  const { rows, columns, length, width, neckZ, collarStart, collarEnd, collarRadiusX, collarRadiusZ } = FLAG_CAPE;
 
   const shape = (reducedMotion: boolean) => {
     down.set(0, -1, 0); back.set(0, 0, 1);
@@ -78,6 +103,10 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-10) return;
       inverse.copy(world).invert();
       down.transformDirection(inverse); back.transformDirection(inverse);
+      if (clearance) {
+        bikeToTorso.multiplyMatrices(inverse, clearance.body.matrixWorld);
+        torsoToBike.copy(bikeToTorso).invert();
+      }
     }
     direction.copy(down).multiplyScalar(1 - .90 * wind).addScaledVector(back, .13 + .97 * wind).normalize();
     for (let row = 0; row <= rows; row++) {
@@ -97,7 +126,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
         const collarAngle = collarStart + (collarEnd - collarStart) * u;
         const angle = collarAngle + (side * Math.PI / 2 - collarAngle) * spread;
         const radius = collarRadiusX + (width / 2 - collarRadiusX) * shoulders;
-        const anchorY = neckY - .012 * (1 + Math.cos(collarAngle));
+        const anchorY = collarY(collarAngle);
         const anchorZ = neckZ + Math.cos(collarAngle) * collarRadiusZ;
         const vertex = (row * (columns + 1) + column) * 3;
         if (row === 0) {
@@ -111,7 +140,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
           + .011 * Math.sin(phase * 13 - t * 17 - u * 7));
         const landing = reducedMotion ? 0 : impulse * t * Math.sin(phase * 11 - t * 8);
         // The collar first fans over both shoulders and then opens into the
-        // narrower, long flag. This keeps the tied corners beside the neck.
+        // narrower, long flag. The tied corners meet at the front centre.
         let x = Math.sin(angle) * radius * (1 - spread) + side * width / 2 * spread + centerX + sway * t * t;
         let y = anchorY + centerY + flutter * .4 + landing;
         let z = neckZ + Math.cos(angle) * (collarRadiusZ + .04 * shoulders) * (1 - spread)
@@ -131,6 +160,18 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
           const outside = Math.hypot(x / shoulderX, radialZ / shoulderZ);
           if (outside < 1 && outside > 1e-7) {
             x /= outside; z = neckZ + radialZ / outside;
+          }
+        }
+        if (clearance && t > .30) {
+          // A bike-space surface follows the real chassis through wheelies.
+          // Smoothly bend the drape above seat/tail instead of a flat Y clamp
+          // in torso space, which allowed the hem to cut through the bike.
+          bikePoint.set(x, y, z).applyMatrix4(torsoToBike);
+          const gap = bikePoint.y - clearance.top;
+          if (gap < .24) {
+            bikePoint.y = clearance.top + .065 * Math.log1p(Math.exp(gap / .065));
+            bikePoint.applyMatrix4(bikeToTorso);
+            x = bikePoint.x; y = bikePoint.y; z = bikePoint.z;
           }
         }
         x = Math.max(-.70, Math.min(.70, x));
@@ -194,7 +235,7 @@ function addTiedEyelets(mesh: THREE.Mesh) {
     hardware.add(eye);
     eyes[i].copy(eye.position);
   }
-  const knot = left.clone().add(right).multiplyScalar(.5).add(new THREE.Vector3(.009, -.008, -.01));
+  const knot = left.clone().add(right).multiplyScalar(.5).add(new THREE.Vector3(0, -.008, -.01));
   const tie = (name: string, points: THREE.Vector3[]) => {
     const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 14, .0045, 5, false), fabric);
     cord.name = name; hardware.add(cord);

@@ -7,7 +7,73 @@ import { TOW_TRANSFER } from '../app/game/towTransfer';
 import { RAMP_FRONT_CONTACT, RAMP_REAR_CONTACT, TRAFFIC_SHAPES } from '../app/game/trafficDomain';
 import { TAIL_CONTACT } from '../app/game/tailContact';
 
+function firstRampTransfer(bike = BIKES.find(item => item.id === '450')!, side = 1, paired = true) {
+  const engine = new Engine(bike, 907);
+  engine.elapsed = 25; engine.start();
+  const velocity = speedAtTime(engine.elapsed, bike) - 12;
+  const truck = engine.spawn('towtruck', 0, 14, 0, velocity)!;
+  const car = paired ? engine.spawn('car', side, 14, 0, velocity)! : undefined;
+  for (let frame = 0; frame < 120 && !engine.onTowTruck; frame++) engine.advance(STEP);
+  expect(engine.onTowTruck).toBe(true);
+  const launchHeight = engine.height, launchZ = truck.z;
+  engine.move(side);
+  return { engine, truck, car, launchHeight, launchZ, velocity };
+}
+
 describe('tight car clearance without changing the jump', () => {
+  it.each(BIKES)('$name keeps the first-ramp side transfer playable beside its paired car', bike => {
+    for (const side of [-1, 1]) {
+      const { engine, car: adjacent, launchHeight, launchZ, velocity } = firstRampTransfer(bike, side);
+      const car = adjacent!;
+      const reference = firstRampTransfer(bike, side, false).engine;
+      let landedAlongside = false;
+      for (let frame = 0; frame < 110 && engine.phase === 'playing'; frame++) {
+        engine.advance(STEP); reference.advance(STEP);
+        expect(engine.height).toBe(reference.height);
+        expect(engine.velocityY).toBe(reference.velocityY);
+        landedAlongside ||= engine.jumps === 1 && !car.passed;
+      }
+      expect(engine.phase, `${bike.id}: launchHeight=${launchHeight}, launchZ=${launchZ}, velocity=${velocity}, impactHeight=${engine.height}, carZ=${car.z}, x=${engine.x}`).toBe('playing');
+      expect(engine.jumps).toBe(1);
+      expect(landedAlongside).toBe(true);
+      expect(car.passed).toBe(true);
+    }
+  });
+  it('retains rear-bumper collisions before entering alongside a paired car', () => {
+    const { engine, car } = firstRampTransfer();
+    for (let frame = 0; frame < 18; frame++) engine.advance(STEP);
+    expect(engine.towJumpActive).toBe(true);
+    expect(car!.z).toBeGreaterThan(TRAFFIC_SHAPES.car.rearZ);
+    // A low tire arriving at the rear bumper has not entered the car's side.
+    engine.height = .05; engine.velocityY = 0;
+    for (let frame = 0; frame < 12 && engine.phase === 'playing'; frame++) engine.advance(STEP);
+    expect(engine.phase).toBe('crashed');
+    expect(engine.crashObstacle).toBe(car);
+    expect(car!.z).toBeGreaterThan(TRAFFIC_SHAPES.car.rearZ);
+  });
+  it('retains ordinary side impacts and does not grant grace to cars introduced after launch', () => {
+    const { engine, truck, velocity } = firstRampTransfer(undefined, 1, false);
+    const unrelated = engine.spawn('car', 1, truck.z, 0, velocity)!;
+    for (let frame = 0; frame < 70 && engine.phase === 'playing'; frame++) engine.advance(STEP);
+    expect(engine.phase).toBe('crashed'); expect(engine.crashObstacle).toBe(unrelated);
+    const ordinary = new Engine(engine.bike, 907); ordinary.start();
+    const beside = ordinary.spawn('car', 1, 0, 0, speedAtTime(0, engine.bike))!;
+    ordinary.move(1);
+    for (let frame = 0; frame < 60 && ordinary.phase === 'playing'; frame++) ordinary.advance(STEP);
+    expect(ordinary.phase).toBe('crashed'); expect(ordinary.crashObstacle).toBe(beside);
+  });
+  it('expires contact grace when the car pool slot is reused', () => {
+    const { engine, car } = firstRampTransfer();
+    for (let frame = 0; frame < 39; frame++) engine.advance(STEP);
+    expect(engine.phase).toBe('playing'); expect(engine.towJumpActive).toBe(true);
+    const priorId = car!.spawnId;
+    car!.active = false;
+    const reused = engine.spawn('car', 1, 3.5, 0, engine.speed)!;
+    expect(reused).toBe(car); expect(reused.spawnId).not.toBe(priorId);
+    engine.height = .05; engine.velocityY = 0;
+    engine.advance(STEP);
+    expect(engine.phase).toBe('crashed'); expect(engine.crashObstacle).toBe(reused);
+  });
   it('uses the hood, boot and roof actually shown instead of a full-height box', () => {
     expect(carSurfaceHeight(0, -2.5)).toBeLessThan(1);
     expect(carSurfaceHeight(0, 2.5)).toBeLessThan(1.1);

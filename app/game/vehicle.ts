@@ -49,6 +49,7 @@ import { motorcycleRim } from './wheelDetails';
 import { MOPED_REAR_FENDER_ANGLE } from './tailContact';
 import { makeScooter } from './scooterGeometry';
 import { createMotocrossHelmet } from './motocrossHelmet';
+import { createFullfaceHelmet } from './fullfaceHelmet';
 import {
   createCarriedCapMotion,
   type CarriedCapMotionInput,
@@ -429,140 +430,7 @@ function makeHelmet(
     parent.add(helmet);
     return helmet;
   }
-  const shell = material(color, 0.14, 0.31),
-    glass = material(visorColor, 0.44, 0.14),
-    trim = material('#202727', 0.1, 0.65);
-  const profile = new THREE.CatmullRomCurve3(
-    [
-      [-0.145, 0.079, 0.128],
-      [-0.115, 0.101, 0.173],
-      [-0.067, 0.12, 0.164],
-      [0, 0.127, 0.143],
-      [0.055, 0.123, 0.145],
-      [0.11, 0.1, 0.103],
-      [0.144, 0.052, 0.054],
-      [0.154, 0.003, 0.004],
-    ].map((p) => new THREE.Vector3(...p)),
-    false,
-    'catmullrom',
-    0.35,
-  );
-  const positions: number[] = [],
-    groups: number[][] = [[], [], []];
-  const levels = 112;
-  // Align mesh rows with the visor outline itself. More grid cells alone leave
-  // stair-stepped material boundaries when the curved outline crosses rows.
-  const angles = [
-    ...Array.from({ length: 161 }, (_, j) => (j / 160) * Math.PI * 2),
-    Math.PI - 1.74,
-    Math.PI - 1.68,
-    Math.PI + 1.68,
-    Math.PI + 1.74,
-  ].sort((a, b) => a - b);
-  const sides = angles.length - 1;
-  const samples = profile.getPoints(256);
-  const rearProfile = new THREE.SplineCurve([
-    new THREE.Vector2(-0.145, 0.102),
-    new THREE.Vector2(-0.12, 0.13),
-    new THREE.Vector2(-0.07, 0.146),
-    new THREE.Vector2(0, 0.153),
-    new THREE.Vector2(0.06, 0.14),
-    new THREE.Vector2(0.11, 0.105),
-    new THREE.Vector2(0.144, 0.05),
-    new THREE.Vector2(0.154, 0.004),
-  ]).getPoints(256);
-  const rearDepth = (y: number) => {
-    let lo = 0,
-      hi = rearProfile.length - 1;
-    while (hi - lo > 1) {
-      const mid = (lo + hi) >> 1;
-      if (rearProfile[mid].x < y) lo = mid;
-      else hi = mid;
-    }
-    return THREE.MathUtils.lerp(
-      rearProfile[lo].y,
-      rearProfile[hi].y,
-      (y - rearProfile[lo].x) / (rearProfile[hi].x - rearProfile[lo].x),
-    );
-  };
-  const atHeight = (y: number) => {
-    let lo = 0,
-      hi = samples.length - 1;
-    while (hi - lo > 1) {
-      const mid = (lo + hi) >> 1;
-      if (samples[mid].x < y) lo = mid;
-      else hi = mid;
-    }
-    return samples[lo]
-      .clone()
-      .lerp(samples[hi], (y - samples[lo].x) / (samples[hi].x - samples[lo].x));
-  };
-  for (let i = 0; i <= levels; i++) {
-    for (let j = 0; j <= sides; j++) {
-      const a = angles[j],
-        front = Math.cos(a) < 0;
-      const theta = Math.abs(a - Math.PI);
-      const corner = THREE.MathUtils.smoothstep(theta, 1, 1.74);
-      const lower = -0.049 + corner * 0.017,
-        upper = 0.045 - corner * 0.012;
-      const y =
-        i <= 28
-          ? THREE.MathUtils.lerp(-0.145, lower - 0.006, i / 28)
-          : i <= 31
-            ? THREE.MathUtils.lerp(lower - 0.006, lower, (i - 28) / 3)
-            : i <= 66
-              ? THREE.MathUtils.lerp(lower, upper, (i - 31) / 35)
-              : i <= 69
-                ? THREE.MathUtils.lerp(upper, upper + 0.006, (i - 66) / 3)
-                : THREE.MathUtils.lerp(upper + 0.006, 0.154, (i - 69) / 43);
-      const p = atHeight(y);
-      // The shell profile dipped inward between chin and brow. Give the visor
-      // its own shallow convex section: only 2.5 mm outside the edge chord.
-      const visorT = THREE.MathUtils.clamp(
-        (p.x - lower) / (upper - lower),
-        0,
-        1,
-      );
-      const visorDepth =
-        THREE.MathUtils.lerp(atHeight(lower).z, atHeight(upper).z, visorT) +
-        0.0025 * 4 * visorT * (1 - visorT);
-      const depth = front
-        ? i >= 31 && i <= 66
-          ? visorDepth
-          : p.z
-        : rearDepth(p.x);
-      positions.push(
-        Math.sin(a) * p.y,
-        p.x,
-        Math.cos(a) * depth + (front ? -0.005 : 0.006),
-      );
-    }
-  }
-  for (let i = 0; i < levels; i++)
-    for (let j = 0; j < sides; j++) {
-      const a = i * (sides + 1) + j,
-        b = a + sides + 1,
-        y = (positions[a * 3 + 1] + positions[b * 3 + 1]) * 0.5;
-      const theta = Math.abs((angles[j] + angles[j + 1]) / 2 - Math.PI);
-      let group = 0;
-      if (theta < 1.74 && i >= 28 && i < 69)
-        group = theta < 1.68 && i >= 31 && i < 66 ? 1 : 2;
-      if (theta < 0.4 && y > -0.116 && y < -0.098) group = 2;
-      if (theta > 0.65 && theta < 1.05 && y > -0.1 && y < -0.087) group = 2;
-      if (theta > 0.23 && theta < 0.42 && y > 0.074 && y < 0.086) group = 2;
-      if (y < -0.134) group = 2;
-      groups[group].push(a, a + 1, b, b, a + 1, b + 1);
-    }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const indices: number[] = [];
-  for (let i = 0; i < groups.length; i++) {
-    g.addGroup(indices.length, groups[i].length, i);
-    indices.push(...groups[i]);
-  }
-  g.setIndex(indices);
-  g.computeVertexNormals();
-  const helmet = new THREE.Mesh(g, [shell, glass, trim]);
+  const helmet = createFullfaceHelmet(color, visorColor);
   helmet.position.set(...center);
   helmet.scale.setScalar(1.065);
   helmet.rotation.x = -0.07;

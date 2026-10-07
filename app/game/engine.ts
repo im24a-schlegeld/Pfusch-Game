@@ -220,6 +220,7 @@ export class Engine {
   private accumulator = 0;
   private towCarrier: Obstacle | null = null;
   private towSafeObstacles = new Set<Obstacle>();
+  private towTransferCars = new Set<Obstacle>();
   private signSequence = 0;
   private nextSignAttempt = 300;
   private rampEntryRemaining = 0;
@@ -301,9 +302,18 @@ export class Engine {
       this.skill('WHEELIE LANE SWITCH', STUNT_POINTS.wheelieLaneSwitch);
     }
     if (this.towCarrier) {
-      // Only the truck being left gets a short exit exemption. Other vehicles
-      // still collide if the rider jumps into them below their actual roof.
+      // The immediate ramp-lip swipe retains its original low ballistic arc.
+      // Only a car paired alongside this carrier can receive side-contact
+      // grace; approaching its rear bumper remains an ordinary collision.
       const carrier = this.towCarrier;
+      this.towTransferCars.clear();
+      for (const obstacle of this.obstacles) {
+        if (obstacle.active && !obstacle.passed && obstacle.kind === 'car'
+          && obstacle.lane === next
+          && Math.abs(obstacle.z - carrier.z) <= TRAFFIC_SHAPES.car.length / 2
+          && Math.abs(this.x - (obstacle.lane * LANE + obstacle.offsetX)) >= TRAFFIC_SHAPES.car.contactHalfWidth)
+          this.towTransferCars.add(obstacle);
+      }
       if (this.policeChase)
         this.policeJumpTarget = { obstacle: carrier, spawnId: carrier.spawnId };
       this.towSafeObstacles.add(carrier);
@@ -450,6 +460,7 @@ export class Engine {
     this.towJumpActive = false;
     this.towCarrier = null;
     this.towSafeObstacles.clear();
+    this.towTransferCars.clear();
     this.event = { text: cause, kind: 'crash', serial: this.event.serial + 1 };
   }
   advance(dt: number) {
@@ -684,6 +695,7 @@ export class Engine {
     const o = this.obstacles.find((x) => !x.active);
     if (o) {
       this.towSafeObstacles.delete(o);
+      this.towTransferCars.delete(o);
       if (this.towWarningFor === o) this.towWarningFor = null;
       Object.assign(o, {
         spawnId: ++this.spawnSerial,
@@ -1325,6 +1337,9 @@ export class Engine {
     } else this.balancedSeconds = 0;
     this.spawnIn -= travel;
     let policeEscapeTarget: Obstacle | null = null;
+    // Landing ends eligibility. An already-entered side contact lasts only
+    // until geometric separation, so the landing tick cannot crash inside it.
+    if (landedTowJump) this.towTransferCars.clear();
     for (const o of this.obstacles) {
       if (!o.active) continue;
       const prev = o.z;
@@ -1358,7 +1373,7 @@ export class Engine {
       const contactWidth = road?.contactHalfWidth ?? traffic!.contactHalfWidth;
       // An early queued swipe can launch before the truck's rear collision
       // box reaches us. Keep its exit exemption until we actually clear it.
-      if (prev <= frontContact || dx >= contactWidth)
+      if (prev <= frontContact || dx >= contactWidth || (o.kind === 'car' && o.z >= rearContact))
         this.towSafeObstacles.delete(o);
       const top =
         o.kind === 'towtruck' && o.z > TOW_RAMP.cabRearZ
@@ -1370,6 +1385,12 @@ export class Engine {
       const tireClearance = airborneCar
         ? carJumpClearance(this.bike.id, this.height, contactPitch, o.z, dx, o.police)
         : -Infinity;
+      if (this.towJumpActive && this.towTransferCars.has(o)
+        && overlap && dx < contactWidth && o.z < TRAFFIC_SHAPES.car.rearZ
+        && tireClearance < -0.015) {
+        this.towSafeObstacles.add(o);
+        this.towTransferCars.delete(o);
+      }
       if (
         this.towJumpActive &&
         o.kind === 'car' &&

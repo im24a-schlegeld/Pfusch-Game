@@ -30,6 +30,7 @@ import LoadingScreen, { PreviewLoading } from '../ui/LoadingScreen';
 import SceneFallback from '../ui/SceneFallback';
 import { createPreviewColorUpdater, previewGeometryKey } from './previewAppearance';
 import { createSceneInvalidation } from './sceneInvalidation';
+import { createRenderCadence } from './renderCadence';
 import { selectTutorialCue, visibleTutorialProjection, type TutorialCue, type TutorialTarget } from './tutorialCues';
 
 export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'accessory' | 'cape' | 'keychain';
@@ -494,11 +495,11 @@ export default function SceneView({
     let drawnPhase = engine?.phase;
     let drawnHints = tutorial.current.seen;
     let drawnReducedMotion = reducedMotion();
+    const renderCadence = createRenderCadence();
     const animate = (now: number) => {
       raf = requestAnimationFrame(animate);
       const dt = Math.min((now - last) / 1000, 0.1);
-      last = now;
-      if (!graphicsAvailable) return;
+      if (!graphicsAvailable) { last = now; return; }
       let crashComplete = false;
       const nextAppearance = appearance.current;
       const command = inspection.current;
@@ -518,7 +519,11 @@ export default function SceneView({
       // Keep the last complete image while idle. Resume countdowns, crashes and
       // riding still advance every frame; controls and late artwork invalidate.
       const changed = continuous || invalidation.consume();
-      if (callbackReady && !continuous && !changed) return;
+      if (callbackReady && !continuous && !changed) { last = now; return; }
+      if (!renderCadence.accept(now, continuous)) return;
+      // Skipped display callbacks accumulate into this unchanged elapsed dt.
+      // Engine.advance still executes its deterministic 60 Hz fixed steps.
+      last = now;
       drawnPlayer = nextAppearance.player;
       drawnProducts = nextAppearance.products;
       drawnPhase = engine?.phase;

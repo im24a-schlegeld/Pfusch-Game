@@ -63,10 +63,6 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     if (paintable) color.set(player.paint);
     if (rimMaterial) color.set(player.rims);
     if (tireMaterial) color.set(id === '450' ? '#090909' : '#16181a');
-    // Only the rim hoops use a flat finish; spokes and hubs retain their metal shading.
-    if (id === '450' && definition.name === 'fs450_rim_hoop')
-      return new THREE.MeshBasicMaterial({ name: definition.name, color, toneMapped: false,
-        side: definition.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
     const material = new THREE.MeshStandardMaterial({
       name: definition.name, color,
       metalness: tireMaterial ? 0 : definition.metalness,

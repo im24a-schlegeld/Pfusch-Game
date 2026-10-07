@@ -132,11 +132,13 @@ describe('helmet sticker geometry', () => {
   });
 
   it('clips a brow sticker at the full-face visor instead of painting across the glass', () => {
-    const bike = makeBike(owner(), []);
+    const bike = makeBike({ ...owner(), bike: '450' }, []);
     const [surface, shell] = [...helmetStickerSurfaces(bike.rider)][0];
     const probe = new THREE.Mesh(shell.geometry, shell.material);
     probe.updateMatrixWorld(true);
-    const hit = new THREE.Raycaster(new THREE.Vector3(0, 0.064, -1), new THREE.Vector3(0, 0, 1)).intersectObject(probe, false)[0];
+    // The supplied racing shell has a central forehead intake. Place on its
+    // painted brow beside that intake, with the decal still crossing the visor.
+    const hit = new THREE.Raycaster(new THREE.Vector3(.06, .075, -1), new THREE.Vector3(0, 0, 1)).intersectObject(probe, false)[0];
     expect(hit.face!.materialIndex).toBe(0);
     const saved = { ...placement(), surface, point: hit.point.toArray(), normal: hit.face!.normal.toArray(), size: 0.16 };
     applyHelmetStickers(bike.rider, [saved]);
@@ -145,7 +147,9 @@ describe('helmet sticker geometry', () => {
     const positions = decal.geometry.getAttribute('position'), index = decal.geometry.getIndex()!;
     for (let i = 0; i < index.count; i++) {
       const vertex = new THREE.Vector3().fromBufferAttribute(positions, index.getX(i));
-      expect(Math.abs(vertex.x) < 0.02 && Math.abs(vertex.y) < 0.035 && vertex.z < 0).toBe(false);
+      // The imported visor's central upper edge is Y≈.023, below the former
+      // procedural opening. Its painted brow must remain stickerable.
+      expect(Math.abs(vertex.x) < 0.02 && vertex.y > -.035 && vertex.y < .015 && vertex.z < 0).toBe(false);
     }
   });
 });

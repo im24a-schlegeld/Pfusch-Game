@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DoubleSide, Group, Texture } from 'three';
+import { Box3, DoubleSide, Group, Matrix4, Mesh, MeshStandardMaterial, Texture, TextureLoader, Vector3 } from 'three';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { addFlagCape, FLAG_CAPE, flagCapeUv } from '../app/game/flagCape';
 import { createSceneInvalidation } from '../app/game/sceneInvalidation';
+import { installImportedBikeFixtures } from './importedBikeFixture';
+import { makeBike } from '../app/game/vehicle';
+import { newPlayer } from '../app/domain/progression';
+
+installImportedBikeFixtures();
+vi.mock('../app/game/garmentTexture', () => ({
+  garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
+  sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
+}));
 
 const product = catalog.find(item => item.category === 'cape') as Product;
 function cape() {
@@ -33,23 +42,26 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(FLAG_CAPE.length / FLAG_CAPE.width).toBeCloseTo(1.04 / .626);
     expect(flagCapeUv({ ...product.preview!.artwork!, crop: { x: 0, y: 0, width: 3000, height: 1 } })).toBeNull();
   });
-  it('brings both original eyelet corners together at a visible front-side knot and drapes beyond the back', () => {
+  it('brings both original eyelet corners together at the front centre below the helmet edge', () => {
     const { mesh } = cape();
     const positions = mesh.geometry.getAttribute('position');
     const last = FLAG_CAPE.columns;
-    expect(positions.getX(0)).toBeGreaterThan(.045);
-    expect(positions.getX(last)).toBeGreaterThan(.045);
+    expect(positions.getX(0)).toBeLessThan(0);
+    expect(positions.getX(last)).toBeGreaterThan(0);
+    expect(positions.getX(0) + positions.getX(last)).toBeCloseTo(0, 8);
     expect(positions.getZ(0)).toBeLessThan(0);
     expect(positions.getZ(last)).toBeLessThan(0);
     expect(Math.hypot(positions.getX(0) - positions.getX(last), positions.getY(0) - positions.getY(last),
       positions.getZ(0) - positions.getZ(last))).toBeLessThan(.03);
     const firstEye = mesh.getObjectByName('flag-original-bottom-left-eyelet')!;
     const lastEye = mesh.getObjectByName('flag-original-top-left-eyelet')!;
-    expect(firstEye.position.x).toBeGreaterThan(positions.getX(0));
+    expect(firstEye.position.x).toBeLessThan(positions.getX(0));
     expect(lastEye.position.x).toBeGreaterThan(positions.getX(last));
-    expect(firstEye.position.x - positions.getX(0)).toBeLessThan(.005);
+    expect(Math.abs(firstEye.position.x - positions.getX(0))).toBeLessThan(.005);
     expect(lastEye.position.x - positions.getX(last)).toBeLessThan(.005);
     expect(mesh.getObjectByName('flag-cape-knot')).toBeDefined();
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.x).toBeCloseTo(0, 8);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.58);
     expect(mesh.getObjectByName('flag-eyelet-connecting-tie')).toBeDefined();
     const center = Math.floor(FLAG_CAPE.columns / 2), hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1) + center;
     const previous = hem - (FLAG_CAPE.columns + 1);
@@ -58,6 +70,39 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(positions.getY(hem)).toBeLessThan(.09);
     expect(Math.abs(positions.getY(hem) - positions.getY(previous))).toBeGreaterThan(.001);
     expect(positions.getZ(hem)).toBeGreaterThan(positions.getZ(previous));
+  });
+  it.each(['125', 'moped', 'scooter', '450', '701'] as const)('keeps the lower flag above the actual %s seat and tail through idle, riding and wheelies', id => {
+    const loader = vi.spyOn(TextureLoader.prototype, 'load').mockImplementation(() => new Texture());
+    try {
+      const player = newPlayer(); player.bike = id; player.equipped.cape = product.id;
+      const bike = makeBike(player, [product]);
+      const flag = bike.root.getObjectByName('pfusch-flag-cape') as Mesh;
+      const positions = flag.geometry.getAttribute('position'), original = positions.array;
+      bike.body.updateWorldMatrix(true, true);
+      const inverse = new Matrix4().copy(bike.body.matrixWorld).invert(), transform = new Matrix4();
+      const bounds = new Box3(), point = new Vector3();
+      let highest = (bike.body.userData.tailContact as number[])[1];
+      bike.body.traverse(object => {
+        if (!(object instanceof Mesh) || !/seat|saddle/i.test(object.userData.importedPart ?? '')) return;
+        object.geometry.computeBoundingBox();
+        transform.multiplyMatrices(inverse, object.matrixWorld);
+        bounds.copy(object.geometry.boundingBox!).applyMatrix4(transform);
+        highest = Math.max(highest, bounds.max.y);
+      });
+      for (const [speed, pitch] of [[0, 0], [40, 0], [10, 1.1], [55, 1.1]]) {
+        bike.root.rotation.x = pitch;
+        bike.animateRider({ wheelie: pitch, steer: .2, landing: 0, bikePitch: pitch }, 1 / 60);
+        bike.animateAccessories({ speed, reducedMotion: true }, 1 / 60);
+        bike.body.updateWorldMatrix(true, true);
+        inverse.copy(bike.body.matrixWorld).invert();
+        transform.multiplyMatrices(inverse, flag.matrixWorld);
+        for (let vertex = 8 * (FLAG_CAPE.columns + 1); vertex < positions.count; vertex++) {
+          point.fromBufferAttribute(positions, vertex).applyMatrix4(transform);
+          expect(point.y, `${id}, speed=${speed}, pitch=${pitch}, vertex=${vertex}`).toBeGreaterThan(highest + .035);
+        }
+        expect(positions.array).toBe(original);
+      }
+    } finally { loader.mockRestore(); }
   });
   it('keeps every neck attachment fixed through wind, steering, wheelies and landings', () => {
     const { bike, torso, mesh, update } = cape();

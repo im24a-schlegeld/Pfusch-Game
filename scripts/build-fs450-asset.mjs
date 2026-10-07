@@ -5,6 +5,8 @@ import { drilledRotor } from './motorcycle-brake-rotor.mjs';
 import { importHeadlightMask } from './motorcycle-headlight-mask.mjs';
 import { recomputeWeldedNormals } from './motorcycle-tire-normals.mjs';
 import { perforatedSprocket } from './motorcycle-sprocket.mjs';
+import { recomputeHoopNormals } from './motorcycle-hoop-normals.mjs';
+import fs from 'node:fs';
 import path from 'node:path';
 
 let liveryComponents;
@@ -63,7 +65,7 @@ async function classifyComponents(context, meshName, components, atlasPattern) {
   }
 }
 
-await buildMotorcycleAsset({
+const manifest = await buildMotorcycleAsset({
   source: process.argv[2], id: 'fs450', name: 'Supermoto',
   async analyze(context) {
 const { meshes, meshBox, worldPositions, worldNormals, THREE } = context;
@@ -87,8 +89,8 @@ for (const vertex of [4, 5, 15, 16].flatMap(index => liveryComponents.components
 for (const name of ['Object_2', 'Object_3'])
   worldNormals.set(name, recomputeWeldedNormals(worldPositions.get(name)));
 // Each supplied wheel has one separate 1,024-triangle rim hoop. Keep hub,
-// spokes and valve hardware on the existing lit material; only hoops receive
-// the runtime's uniformly bright, configurable rim finish.
+// spokes and valve hardware on the fixed silver material; the texture-free
+// hoops receive the selectable finish and natural scene lighting.
 for (const name of ['Object_4', 'Object_5']) {
   const mesh = meshes.find(mesh => mesh.name === name);
   const parts = connectedComponents(mesh, worldPositions.get(name), THREE);
@@ -256,3 +258,17 @@ materialBudgets: {
   fs450_rim_hoop: 2048,
 }
 });
+
+// Repair the posed source's inconsistent hoop normals after packing, so this
+// changes only the two normal buffers. Positions, indices, UVs and all other
+// materials remain byte-identical to the standard export above.
+const binaryPath = new URL('../public/models/fs450/model.bin', import.meta.url);
+const binary = fs.readFileSync(binaryPath);
+for (const part of manifest.parts.filter(part => part.material === rimHoop.name)) {
+  const positions = new Float32Array(binary.buffer, binary.byteOffset + part.position.offset, part.position.count * 3);
+  const indices = new Uint16Array(binary.buffer, binary.byteOffset + part.index.offset, part.index.count);
+  const normals = new Float32Array(binary.buffer, binary.byteOffset + part.normal.offset, part.normal.count * 3);
+  const axle = manifest.anchors[part.rig === 'frontWheel' ? 'frontAxle' : 'rearAxle'];
+  normals.set(recomputeHoopNormals(positions, indices, axle));
+}
+fs.writeFileSync(binaryPath, binary);

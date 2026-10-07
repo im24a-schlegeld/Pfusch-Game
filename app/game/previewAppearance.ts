@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Player } from '../domain/types';
 import { helmetStickerSurfaces, stickerHelmet } from './bikeStickers';
 
-type ColoredMaterial = THREE.MeshStandardMaterial | THREE.MeshBasicMaterial;
+type ColoredMaterial = THREE.MeshStandardMaterial;
 type ColorSlot = 'paint' | 'rims' | 'helmetColor' | 'helmetVisor';
 
 /** Geometry changes are separate from the four existing material palettes. */
@@ -30,10 +30,6 @@ export function createPreviewColorUpdater(
     if (object instanceof THREE.Mesh) {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
-        if (material instanceof THREE.MeshBasicMaterial && material.name === 'fs450_rim_hoop') {
-          slots.rims.add(material);
-          continue;
-        }
         if (!(material instanceof THREE.MeshStandardMaterial)) continue;
         const importedRim = material.userData.rimPalette ?? /(^|[_\s-])rims?(?=\d|$|[_\s-])/i.test(material.name);
         const authoredRim = !object.userData.importedPart && /rim|wheel-ring|wheel-face/.test(object.name.toLowerCase()) &&
