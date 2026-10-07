@@ -24,6 +24,15 @@ const visorBounds = source.meshBox('Object_2');
 const ease = (value, low, high) => { const t = Math.max(0, Math.min(1, (value - low) / (high - low))); return t * t * (3 - 2 * t); };
 const slope = (value, low, high) => { const t = (value - low) / (high - low); return t > 0 && t < 1 ? 6 * t * (1 - t) / (high - low) : 0; };
 const edgeLow = shellBounds.min.y + .010, edgeHigh = shellBounds.min.y + .040;
+// The supplied integral shell contains a small integrated rear spoiler lip.
+// Keep the crown and rear shell round, but blend that lip back into the shell
+// so the game shows a clean road helmet rather than a cross-style wing.
+const spoilerTrimTarget = center.z + .035;
+function integratedSpoilerTrim(y, z) {
+  const vertical = ease(y, center.y + .185, center.y + .275);
+  const rear = ease(z, spoilerTrimTarget, spoilerTrimTarget + .105);
+  return Math.max(0, z - spoilerTrimTarget) * vertical * rear;
+}
 function visorLift(y, z) {
   // Raise only the upper visor and its adjoining brow, blending back into the
   // original shell within 3 cm. The crown, rear, chin and shell width stay intact.
@@ -41,7 +50,7 @@ function restyle(x, y, z) {
   const edge = (1 - ease(y, edgeLow, edgeHigh)) * (1 - ease(z, -.10, .06));
   return [(x - center.x) * scale,
     (y - center.y + visorLift(y, z).amount) * scale + .0045,
-    (z - center.z + .002 * edge) * scale];
+    (z - center.z - integratedSpoilerTrim(y, z) + .002 * edge) * scale];
 }
 function restyleNormal(x, y, z, nx, ny, nz) {
   const edgeY = 1 - ease(y, edgeLow, edgeHigh), edgeZ = 1 - ease(z, -.10, .06);
@@ -58,7 +67,6 @@ function restyleNormal(x, y, z, nx, ny, nz) {
 const selected = [
   ['Object_0', 0, 3600, .004], // continuous paint shell; original graphic atlas omitted
   ['Object_2', 1, 800, .004], // actual visor, not its separate logo strip (Object_13)
-  ['Object_8', 2, 320, .012], // visible thin lower seal only
   ['Object_10', 2, 120, .035], // dense chin grille reduced to a plain dark recess
 ];
 const groups = [], positions = [], normals = [], indices = [], audit = [];
@@ -137,17 +145,6 @@ for (const [name, material, budget, errorLimit] of selected) {
   for (const index of simplified) indices.push(base + index);
   audit.push({ name, material, before: input.length / 3, after: simplified.length / 3, error });
 }
-// A thin, dark underside closes the empty shell without keeping hidden cheek
-// pads, straps, buckles or the source's inner liner. It is not a second head.
-const centerIndex = positions.length / 3, sides = 24;
-positions.push(0, -.105, .012); normals.push(0, -1, 0);
-for (let i = 0; i < sides; i++) {
-  const angle = i * Math.PI * 2 / sides;
-  positions.push(Math.sin(angle) * .103, -.105, .012 + Math.cos(angle) * .114);
-  normals.push(0, -1, 0);
-}
-for (let i = 0; i < sides; i++) indices.push(centerIndex, centerIndex + 1 + (i + 1) % sides, centerIndex + 1 + i);
-groups.at(-1).count += sides * 3;
 // Fit the complete shell slightly forward around the unchanged adult head.
 // Bake the offset so all riding poses retain it without moving the skeleton.
 for (let i = 2; i < positions.length; i += 3) positions[i] -= .012;
