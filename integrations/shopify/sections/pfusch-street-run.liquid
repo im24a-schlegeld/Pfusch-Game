@@ -1,6 +1,6 @@
 {% liquid
-  assign game_url = section.settings.game_url | default: 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/'
   assign game_login_origin = 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev'
+  assign game_url = game_login_origin | append: '/'
   assign game_title = section.settings.heading | default: 'Wheelie Escape'
   assign game_return = request.path
   if template.suffix == 'wheelie-escape'
@@ -174,12 +174,6 @@
       "label": "Titel",
       "default": "Wheelie Escape"
     },
-    {
-      "type": "url",
-      "id": "game_url",
-      "label": "Spieladresse",
-      "info": "Leer lassen für die Shopify-Oxygen-Adresse. Die Spielhöhe passt sich automatisch an die Shop-Kopfzeile an."
-    }
   ],
   "presets": [{ "name": "Wheelie Escape" }]
 }
