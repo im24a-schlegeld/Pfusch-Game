@@ -3,6 +3,7 @@ import { Check, Save, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import type { Player, Product } from '../domain/types';
 import type { Services } from '../services';
+import { accessMessage } from '../services/playerAccess';
 import { BIKES } from '../domain/config';
 import { HELMETS } from '../domain/helmet';
 import { applySetup, deleteSetup, MAX_SAVED_SETUPS, saveSetup, SETUP_NAME_MAX_LENGTH } from '../domain/setups';
@@ -28,17 +29,23 @@ export default function SavedSetups({ player, products, previewing, services, up
   const pending = useRef(false);
   const setups = player.savedSetups;
 
-  async function persist(next: Player, action: string) {
-    if (pending.current) return;
-    if (services.players.getAccess?.().allowed === false) {
-      setMessage('Zum Speichern bitte im Header anmelden und deinen Zugang bestätigen.');
-      return;
-    }
+  async function persist(next: Player, action: string, beforeUpdate?: () => void) {
+    if (pending.current) return false;
     pending.current = true;
     setBusy(true);
-    setMessage('Wird gespeichert …');
-    update(next);
+    setMessage('Speicherzugang wird geprüft …');
     try {
+      let access = services.players.getAccess?.();
+      // A temporary shop failure must not leave an authenticated customer
+      // permanently blocked by the cached access flag. Recheck before editing.
+      if (access?.allowed === false) access = await services.players.refreshAccess?.() ?? access;
+      if (access?.allowed === false) {
+        setMessage(services.players.warning || accessMessage(access));
+        return false;
+      }
+      setMessage('Wird gespeichert …');
+      beforeUpdate?.();
+      update(next);
       await services.players.flush?.();
       const state = services.players.syncStatus?.state;
       const saved = !state || state === 'local' || state === 'guest' || state === 'synced';
@@ -47,24 +54,21 @@ export default function SavedSetups({ player, products, previewing, services, up
         : `Speicherung noch nicht bestätigt. ${services.players.warning || services.players.syncStatus?.message || 'Bitte erneut versuchen.'}`;
       setMessage(feedback);
       notify(feedback);
+      return saved && !services.players.warning;
     } catch {
       setMessage('Speicherung nicht bestätigt. Bitte Verbindung prüfen und erneut speichern.');
+      return false;
     } finally {
       pending.current = false;
       setBusy(false);
     }
   }
 
-  function saveCurrent() {
+  async function saveCurrent() {
     if (previewing || pending.current) return;
-    if (services.players.getAccess?.().allowed === false) {
-      setMessage('Zum Speichern bitte im Header anmelden und deinen Zugang bestätigen.');
-      return;
-    }
     const next = saveSetup(player, name, crypto.randomUUID());
     if (!next) { setMessage(`Setup konnte nicht angelegt werden. Prüfe den Namen und deine ausgerüsteten Artikel; maximal ${MAX_SAVED_SETUPS} Setups.`); return; }
-    setName('');
-    void persist(next, 'Setup gespeichert.');
+    if (await persist(next, 'Setup gespeichert.')) setName('');
   }
 
   return <>
@@ -76,7 +80,7 @@ export default function SavedSetups({ player, products, previewing, services, up
       <DialogContent className="game-dialog saved-setups-dialog" initialFocus={heading}>
         <DialogTitle ref={heading} tabIndex={-1}>DEINE SETUPS</DialogTitle>
         <DialogDescription>Motorrad, Farben, Helm, Kleidung und Sticker als komplette Zusammenstellung speichern.</DialogDescription>
-        <form className="setup-save-form" onSubmit={event => { event.preventDefault(); saveCurrent(); }}>
+        <form className="setup-save-form" onSubmit={event => { event.preventDefault(); void saveCurrent(); }}>
           <label htmlFor="setup-name">AKTUELLES SETUP SPEICHERN</label>
           <div>
             <input id="setup-name" value={name} onChange={event => setName(event.target.value)} maxLength={SETUP_NAME_MAX_LENGTH}
@@ -110,9 +114,7 @@ export default function SavedSetups({ player, products, previewing, services, up
                 <button className="button small" disabled={busy} aria-label={`${setup.name} ausrüsten`} onClick={() => {
                   const next = applySetup(player, setup.id, products);
                   if (!next) { setMessage('Dieses Setup enthält einen nicht verfügbaren Artikel.'); return; }
-                  if (services.players.getAccess?.().allowed === false) { setMessage('Zum Speichern bitte anmelden und deinen Zugang bestätigen.'); return; }
-                  onEquip();
-                  void persist(next, `${setup.name} ausgerüstet.`);
+                  void persist(next, `${setup.name} ausgerüstet.`, onEquip);
                 }}><Check size={15} aria-hidden="true" /> AUSRÜSTEN</button>
                 {deleting === setup.id ? <div className="setup-delete-confirm">
                   <button disabled={busy} onClick={() => { setDeleting(null); void persist(deleteSetup(player, setup.id), 'Setup gelöscht.'); }}>LÖSCHEN BESTÄTIGEN</button>

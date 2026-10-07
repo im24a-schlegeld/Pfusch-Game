@@ -36,7 +36,7 @@ function visorLift(y, z) {
     dz: -.008 * rise * fall * slope(z, visorBounds.max.z, visorBounds.max.z + .04) };
 }
 function restyle(x, y, z) {
-  // Preserve the supplied shell, chin, rear opening and vent silhouettes.
+  // Preserve the supplied shell, chin and rear opening silhouettes.
   // Only tuck the very bottom front edge inward by at most 1.1 mm at game scale.
   const edge = (1 - ease(y, edgeLow, edgeHigh)) * (1 - ease(z, -.10, .06));
   return [(x - center.x) * scale,
@@ -58,7 +58,6 @@ function restyleNormal(x, y, z, nx, ny, nz) {
 const selected = [
   ['Object_0', 0, 3600, .004], // continuous paint shell; original graphic atlas omitted
   ['Object_2', 1, 800, .004], // actual visor, not its separate logo strip (Object_13)
-  ['Object_4', 2, 280, .012], // original rear air outlet and profile
   ['Object_8', 2, 320, .012], // visible thin lower seal only
   ['Object_10', 2, 120, .035], // dense chin grille reduced to a plain dark recess
 ];
@@ -149,6 +148,9 @@ for (let i = 0; i < sides; i++) {
 }
 for (let i = 0; i < sides; i++) indices.push(centerIndex, centerIndex + 1 + (i + 1) % sides, centerIndex + 1 + i);
 groups.at(-1).count += sides * 3;
+// Fit the complete shell slightly forward around the unchanged adult head.
+// Bake the offset so all riding poses retain it without moving the skeleton.
+for (let i = 2; i < positions.length; i += 3) positions[i] -= .012;
 const vertexCount = positions.length / 3;
 if (vertexCount > 65535) throw new Error('Helmet exceeds compact vertex budget');
 const positionData = Int16Array.from(positions, value => Math.round(value * 100000));
