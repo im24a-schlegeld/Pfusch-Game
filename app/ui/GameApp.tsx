@@ -15,7 +15,7 @@ import { refreshDaily } from '../domain/progression';
 import { markTutorialsSeen } from '../domain/tutorial';
 import { createServices, type Services } from '../services';
 import { unavailableAccess } from '../services/playerAccess';
-import { shopifyParentOrigin, SHOPIFY_STOREFRONT_ORIGIN } from '../services/shopifyBridge';
+import { shopifyParentOrigin, SHOPIFY_OXYGEN_ORIGIN, SHOPIFY_STOREFRONT_ORIGIN } from '../services/shopifyBridge';
 import { startOxygenLogin } from '../services/oxygenRuntime';
 import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/shopifyViewport';
 import { GameAudio } from '../game/audio';
@@ -333,7 +333,7 @@ export default function GameApp() {
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
   const newsletterOrigin = parentOrigin;
   const oxygenLoginHref = (() => {
-    const login = new URL('/auth/login', window.location.origin);
+    const login = new URL('/auth/login', SHOPIFY_OXYGEN_ORIGIN);
     let returnTo = window.location.href;
     if (parentOrigin) {
       try {

@@ -1,4 +1,4 @@
-import { SHOPIFY_BRIDGE_VERSION, SHOPIFY_PARENT_ORIGINS } from './shopifyBridge';
+import { SHOPIFY_BRIDGE_VERSION, SHOPIFY_OXYGEN_ORIGIN, SHOPIFY_PARENT_ORIGINS } from './shopifyBridge';
 
 export interface OxygenRuntimeConfig { version: 1; mode: 'oxygen' }
 
@@ -30,7 +30,7 @@ export function startOxygenLogin(host: Window, parentOrigin: string | null, pare
     // Navigate immediately from the user gesture. The parent bridge is a
     // useful fallback for older shop themes, but waiting for it makes a
     // missing or stale theme asset look like an inert login button.
-    const fallback = new URL('/auth/login', host.location.origin);
+    const fallback = new URL('/auth/login', SHOPIFY_OXYGEN_ORIGIN);
     let returnTo = `${parentOrigin}/`;
     try {
       const candidate = new URL(parentReturnTo ?? '');
@@ -46,7 +46,8 @@ export function startOxygenLogin(host: Window, parentOrigin: string | null, pare
     return;
   }
   const current = new URL(host.location.href);
-  const login = new URL('/auth/login', current.origin);
+  const loginOrigin = current.hostname.endsWith('.vercel.app') ? SHOPIFY_OXYGEN_ORIGIN : current.origin;
+  const login = new URL('/auth/login', loginOrigin);
   login.searchParams.set('return_to', current.href);
   // OAuth must run top-level, including when an unsupported parent embeds the game.
   if (host.top && host.top !== host) host.top.location.href = login.href;

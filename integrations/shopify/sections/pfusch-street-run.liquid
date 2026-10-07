@@ -6,6 +6,8 @@
   if template.suffix == 'wheelie-escape'
     assign game_return = routes.root_url | append: '?view=wheelie-escape'
   endif
+  assign game_return_url = shop.url | append: game_return
+  assign game_login_url = game_login_origin | append: '/auth/login?return_to=' | append: game_return_url | url_encode
 %}
 
 <pfusch-game-bridge class="pfusch-game" id="PfuschGame-{{ section.id }}" data-customer-state="{% if customer %}customer{% else %}guest{% endif %}" data-login-origin="{{ game_login_origin }}">
@@ -41,7 +43,7 @@
       {% endform %}
     {% else %}
       <p>Melde dich zuerst mit deinem PFUSCH-Konto an. Verwende für das Newsletter-Abo dieselbe E-Mail-Adresse.</p>
-      <a href="{{ routes.account_login_url }}" class="pfusch-game__login">BEI PFUSCH ANMELDEN</a>
+      <a href="{{ game_login_url }}" class="pfusch-game__login">BEI PFUSCH ANMELDEN</a>
     {% endif %}
   </dialog>
 </pfusch-game-bridge>
