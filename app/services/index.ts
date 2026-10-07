@@ -20,7 +20,7 @@ import { shadeClothingCatalog } from '../domain/appearanceColors';
 import { sanitizeSavedSetups } from '../domain/setups';
 import { normalizeTutorialHints } from '../domain/tutorial';
 import catalog from '../../public/catalog/products.json';
-import { SHOPIFY_BRIDGE_VERSION, ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
+import { ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
 import { ShopifyCloudRepository } from './shopifyCloud';
 import { ShopifyLeaderboardService } from './shopifyLeaderboard';
 import { readOxygenRuntime, startOxygenLogin } from './oxygenRuntime';
@@ -378,7 +378,7 @@ export function createServices(): Services {
     ? new ShopifyCloudRepository(transport, storage, local, decodePlayer)
     : null;
   const shopifyLogin = parentOrigin
-    ? () => window.parent.postMessage({ type: 'pfusch:open-login', version: SHOPIFY_BRIDGE_VERSION }, parentOrigin)
+    ? () => startOxygenLogin(window, parentOrigin, document.referrer)
     : undefined;
   return {
     auth: oxygen && cloud
