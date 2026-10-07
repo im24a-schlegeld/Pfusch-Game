@@ -9,7 +9,7 @@ import { disposeUnique, makeTrafficVariants } from './models';
 import { makeBike } from './vehicle';
 import { makeWorldView } from './worldView';
 import { DAY_SKY, makeWorldLighting } from './worldLighting';
-import { createBikeHeadlightRig } from './bikeHeadlight';
+import { createBikeHeadlightGlowUpdater, createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
 import { createGarmentGlowUpdater } from './garmentGlow';
 import {
@@ -222,6 +222,7 @@ export default function SceneView({
       vehicleProducts = products;
     scene.add(bike.root);
     let updateGlow = createGarmentGlowUpdater(bike.root);
+    let updateHeadlightGlow = createBikeHeadlightGlowUpdater(bike.body);
     let updateColors = createPreviewColorUpdater(bike.body, bike.rider, player);
     let headlightRig = createBikeHeadlightRig(headlightModel(player.bike));
     const lighting =
@@ -553,6 +554,7 @@ export default function SceneView({
         invalidation.track(bike.root);
         fitPreviewGround(nextAppearance.player.bike);
         updateGlow = createGarmentGlowUpdater(bike.root);
+        updateHeadlightGlow = createBikeHeadlightGlowUpdater(bike.body);
         updateColors = createPreviewColorUpdater(bike.body, bike.rider, nextAppearance.player);
         headlightRig = createBikeHeadlightRig(
           headlightModel(nextAppearance.player.bike),
@@ -629,14 +631,14 @@ export default function SceneView({
             ? Math.min(1, engine.blitzerFlashRemaining * 5)
             : 0,
         );
-        updateGlow(
-          lighting!.update(
-            engine.world,
-            distance,
-            engine.x,
-            headlightRig.count,
-          ),
+        const darkness = lighting!.update(
+          engine.world,
+          distance,
+          engine.x,
+          headlightRig.count,
         );
+        updateGlow(darkness);
+        updateHeadlightGlow(darkness);
         if (!crash) bike.root.position.set(engine.x, engine.height, 0);
         if (moving) {
           if (engine.landingSerial !== landingSerial) {

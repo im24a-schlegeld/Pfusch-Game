@@ -19,12 +19,38 @@ function surfaces(root: THREE.Object3D) {
     if (!(object instanceof THREE.Mesh)) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     result.push({ geometry: object.geometry, materials, colors: materials.map((material) =>
-      material instanceof THREE.MeshStandardMaterial ? material.color.getHexString() : '') });
+      material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial ? material.color.getHexString() : '') });
   });
   return result;
 }
 
 describe('immediate preview palette updates', () => {
+  it('keeps Supermoto hoop brightness uniform while allowing immediate rim color changes', () => {
+    const player = { ...newPlayer(), bike: '450', rims: '#d5252b' };
+    const bike = makeBike(player, []);
+    const hoops = [...new Set(surfaces(bike.body).flatMap(surface => surface.materials))]
+      .filter((material): material is THREE.MeshBasicMaterial => material instanceof THREE.MeshBasicMaterial && material.name === 'fs450_rim_hoop');
+    expect(hoops).toHaveLength(1);
+    expect(hoops[0].color.getHexString()).toBe('d5252b');
+    expect(hoops[0].map).toBeNull();
+    createPreviewColorUpdater(bike.body, bike.rider, player)({ ...player, rims: '#e7e7df' });
+    expect(hoops[0].color.getHexString()).toBe('e7e7df');
+  });
+
+  it('keeps Moped spokes silver when choosing a different rim finish', () => {
+    const player = { ...newPlayer(), bike: 'moped', rims: '#d5252b' };
+    const bike = makeBike(player, []);
+    const materials = [...new Set(surfaces(bike.body).flatMap(surface => surface.materials))]
+      .filter((material): material is THREE.MeshStandardMaterial => material instanceof THREE.MeshStandardMaterial);
+    const spokes = materials.filter(material => material.name === 'moped_spokes');
+    expect(spokes.length).toBeGreaterThan(0);
+    const original = spokes.map(material => material.color.getHexString());
+    expect(original.every(color => color !== 'd5252b')).toBe(true);
+    createPreviewColorUpdater(bike.body, bike.rider, player)({ ...player, rims: '#181818' });
+    expect(spokes.map(material => material.color.getHexString())).toEqual(original);
+    expect(materials.find(material => material.name === 'moped_rim')?.color.getHexString()).toBe('181818');
+  });
+
   it('does not rewrite unchanged palette colors on every rendered frame', () => {
     const player = newPlayer();
     const bike = makeBike(player, []);

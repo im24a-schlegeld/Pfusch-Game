@@ -14,10 +14,14 @@ const materials = {
   livery: material('livery', '#e5e5e5', .08, .44),
   tyre: material('tyre', '#171717', 0, .95),
   rim: material('rim', '#bababa', .78, .31),
-  mechanics: material('mechanics', '#999999', .64, .43),
+  spokes: material('spokes', '#c6cbd0', .85, .26),
+  chrome: material('chrome', '#c9cdd0', .88, .23),
+  mechanics: material('mechanics', isCiao ? '#999999' : '#aeb3b8', isCiao ? .64 : .72, isCiao ? .43 : .34),
   dark: material('dark', '#303030', .08, .73),
+  gaiters: material('gaiters', '#181a1c', 0, .88),
   seat: material('seat', '#222222', 0, .88),
-  light: material('light', '#ededed', .20, .24),
+  light: material('light', isCiao ? '#ededed' : '#edf3ec', isCiao ? .20 : .10, isCiao ? .24 : .19),
+  indicator: material('indicator', '#e68a16', .08, .24),
   tail_light: material('tail_light', '#701d1d', .10, .38),
 };
 const ciaoFrontWheel = new Set(['wheels_front_and_back003', 'Circle013', 'Circle014', 'Circle015', 'Circle016', 'Circle017', 'Circle025']);
@@ -26,7 +30,7 @@ const ciaoSteering = new Set(['Cylinder014', 'Cylinder013', 'Cylinder015', 'Cyli
 const ciaoFork = new Set(['Circle023', 'Cube012', 'Bolts008', 'Bolts012']);
 const mopedFrontWheel = new Set(['Donut1', 'felnapr', 'zicenp', 'dobos', 'sraftock', 'Duplica2']);
 const mopedRearWheel = new Set(['gumanaza', 'felnanaz', 'zicenz', 'Duplica1', 'sraftoc0', 'ventZad']);
-const mopedSteering = new Set(['far', 'Cylinde0', 'Regroup1', 'levaRuck', 'Duplica0', 'Cylinde1', 'Box01', 'migavcin', 'nosacVol', 'volan', 'ogledala', 'rucke', 'nosacFar', 'sajlaPrK', 'sajlakv']);
+const mopedSteering = new Set(['far', 'Cylinde0', 'Regroup1', 'levaRuck', 'Duplica0', 'Cylinde1', 'Box01', 'migavcin', 'nosacVol', 'volan', 'rucke', 'nosacFar', 'sajlaPrK', 'sajlakv']);
 const mopedFork = new Set(['Regroup0', 'Duplicat', 'nosbbran', 'nosbrani', 'prbranik', 'polugaKo']);
 const mopedSwingarm = new Set(['7', '8', '9', 'oslonac', 'stitnikL', 'Duplica3', 'Regroup6']);
 
@@ -70,7 +74,7 @@ function rigFor(mesh, vertex) {
   if (!isCiao && mopedSwingarm.has(n)) return 'swingarm';
   return 'body';
 }
-function materialFor(mesh) {
+function materialFor(mesh, vertex) {
   const n = mesh.name;
   if (isCiao) {
     if (n.startsWith('wheels_front_and_back')) return materials.tyre;
@@ -82,10 +86,28 @@ function materialFor(mesh) {
     return materials.mechanics;
   }
   if (['Donut1', 'gumanaza'].includes(n)) return materials.tyre;
-  if (['felnapr', 'felnanaz', 'zicenp', 'zicenz'].includes(n)) return materials.rim;
+  if (['felnapr', 'felnanaz'].includes(n)) return materials.rim;
+  // Wire spokes retain their silver finish independently of the configurable rim hoops.
+  if (['zicenp', 'zicenz'].includes(n)) return materials.spokes;
   if (['SEDEZ', 'torbe', 'kais'].includes(n)) return materials.seat;
-  if (['far', 'migavcin'].includes(n)) return materials.light;
-  if (['zfar', 'migavciN'].includes(n)) return materials.tail_light;
+  const positions = sourcePositions.get(n);
+  const center = axis => (positions[vertex * 3 + axis] + positions[(vertex + 1) * 3 + axis] + positions[(vertex + 2) * 3 + axis]) / 3;
+  // The supplied lamp is one mesh: its shallow front dome ends at X=-30.48,
+  // while the outer bezel and deep housing remain polished metal.
+  if (n === 'far') return center(0) < -30.47 ? materials.light : materials.chrome;
+  if (n === 'migavcin' || n === 'migavciN') {
+    const front = n === 'migavcin';
+    if (front ? center(0) < -28.68 : center(0) > 48.86) return materials.indicator;
+    return Math.abs(center(1)) < (front ? 8.0 : 6.0) ? materials.chrome : materials.dark;
+  }
+  if (n === 'zfar') return materials.tail_light;
+  if (['Regroup0', 'Duplicat'].includes(n)) {
+    // Classify along the supplied 30-degree fork axis so the material boundary
+    // follows the real rib rings, rather than cutting diagonally across them.
+    const alongFork = .5 * center(0) + Math.sqrt(.75) * center(2);
+    return alongFork > 12.09 && alongFork < 25.15 ? materials.gaiters : materials.chrome;
+  }
+  if (['zamortiz', 'zamorti0', 'auspuh', 'volan', 'nosacVol', 'cep'].includes(n)) return materials.chrome;
   if (['kutija', 'zbranik', 'rezervoa', 'prbranik', 'Regroup2', '5'].includes(n)) return materials.livery;
   if (['crevo', 'sajlaPrK', 'sajlakv', 'kabl', 'rucke', 'levaRuck', 'Duplica0', 'drzacNog', 'drzNoguZ', 'sirena'].includes(n)) return materials.dark;
   return materials.mechanics;
@@ -93,7 +115,7 @@ function materialFor(mesh) {
 
 await buildMotorcycleAsset({
   id, name: isCiao ? 'City Moped' : 'Classic Moped', source: filename, loadSource: loadPortableMotorcycleSource,
-  includeMesh: mesh => isCiao ? !['Text001', 'Curve001', 'Plane004'].includes(mesh.name) : !['torbe', 'nosacTor'].includes(mesh.name),
+  includeMesh: mesh => isCiao ? !['Text001', 'Curve001', 'Plane004', 'Plane003'].includes(mesh.name) : !['torbe', 'nosacTor', 'ogledala'].includes(mesh.name),
   analyze(source) {
     const { meshBox } = source;
     sourcePositions = source.worldPositions;
@@ -146,6 +168,7 @@ await buildMotorcycleAsset({
   rigFor, materialFor,
   materialBudgets: isCiao ? {
     ciao_livery: 4000, ciao_tyre: 6000, ciao_rim: 2800, ciao_dark: 2600, ciao_seat: 900, ciao_mechanics: 4200, ciao_light: 204,
-  } : { moped_livery: 1100, moped_tyre: 960, moped_rim: 800, moped_dark: 750, moped_seat: 160, moped_mechanics: 3300, moped_light: 400, moped_tail_light: 252 },
+  } : { moped_livery: 1100, moped_tyre: 960, moped_rim: 640, moped_spokes: 432, moped_chrome: 1500,
+    moped_gaiters: 700, moped_dark: 900, moped_seat: 160, moped_mechanics: 2500, moped_light: 144, moped_indicator: 192, moped_tail_light: 48 },
   simplification: bucket => ({ error: bucket.material.endsWith('_tyre') ? .035 : .015, weights: [.03, .03, .03, 0, 0], flags: ['Permissive'] }),
 });

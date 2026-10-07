@@ -14,7 +14,7 @@ function cape() {
   return { bike, torso, texture, loader, ...controller };
 }
 describe('original PFUSCH flag as a neck cape', () => {
-  it('uses the untouched catalog artwork and exact interior UV crop on both sides', () => {
+  it('turns the untouched flag a quarter-turn so its original left eyelet edge is the collar', () => {
     const { mesh, texture, loader } = cape();
     expect(loader).toHaveBeenCalledWith(product.preview!.artwork!.localImage);
     expect(texture.offset.toArray()).toEqual([.0775, .24]);
@@ -24,27 +24,63 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(mesh.material.color.getHexString()).toBe('ffffff');
     expect(mesh.geometry.getAttribute('position').count).toBe(525);
     expect(mesh.geometry.index!.count / 3).toBe(960);
+    const uv = mesh.geometry.getAttribute('uv');
+    expect([uv.getX(0), uv.getY(0)]).toEqual([0, 0]);
+    expect([uv.getX(FLAG_CAPE.columns), uv.getY(FLAG_CAPE.columns)]).toEqual([0, 1]);
+    const hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1);
+    expect([uv.getX(hem), uv.getY(hem)]).toEqual([1, 0]);
+    expect([uv.getX(uv.count - 1), uv.getY(uv.count - 1)]).toEqual([1, 1]);
+    expect(FLAG_CAPE.length / FLAG_CAPE.width).toBeCloseTo(1.04 / .626);
     expect(flagCapeUv({ ...product.preview!.artwork!, crop: { x: 0, y: 0, width: 3000, height: 1 } })).toBeNull();
+  });
+  it('brings both original eyelet corners together at a visible front-side knot and drapes beyond the back', () => {
+    const { mesh } = cape();
+    const positions = mesh.geometry.getAttribute('position');
+    const last = FLAG_CAPE.columns;
+    expect(positions.getX(0)).toBeGreaterThan(.045);
+    expect(positions.getX(last)).toBeGreaterThan(.045);
+    expect(positions.getZ(0)).toBeLessThan(0);
+    expect(positions.getZ(last)).toBeLessThan(0);
+    expect(Math.hypot(positions.getX(0) - positions.getX(last), positions.getY(0) - positions.getY(last),
+      positions.getZ(0) - positions.getZ(last))).toBeLessThan(.03);
+    const firstEye = mesh.getObjectByName('flag-original-bottom-left-eyelet')!;
+    const lastEye = mesh.getObjectByName('flag-original-top-left-eyelet')!;
+    expect(firstEye.position.x).toBeGreaterThan(positions.getX(0));
+    expect(lastEye.position.x).toBeGreaterThan(positions.getX(last));
+    expect(firstEye.position.x - positions.getX(0)).toBeLessThan(.005);
+    expect(lastEye.position.x - positions.getX(last)).toBeLessThan(.005);
+    expect(mesh.getObjectByName('flag-cape-knot')).toBeDefined();
+    expect(mesh.getObjectByName('flag-eyelet-connecting-tie')).toBeDefined();
+    const center = Math.floor(FLAG_CAPE.columns / 2), hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1) + center;
+    const previous = hem - (FLAG_CAPE.columns + 1);
+    // The extra length curls rearward over the seat, with a continuing sloped hem.
+    expect(positions.getZ(hem)).toBeGreaterThan(.3);
+    expect(positions.getY(hem)).toBeLessThan(.09);
+    expect(Math.abs(positions.getY(hem) - positions.getY(previous))).toBeGreaterThan(.001);
+    expect(positions.getZ(hem)).toBeGreaterThan(positions.getZ(previous));
   });
   it('keeps every neck attachment fixed through wind, steering, wheelies and landings', () => {
     const { bike, torso, mesh, update } = cape();
     const attribute = mesh.geometry.getAttribute('position');
     const positions = attribute.array as Float32Array;
     const attachment = Array.from(positions.slice(0, (FLAG_CAPE.columns + 1) * 3));
+    const knot = mesh.getObjectByName('flag-cape-knot')!;
+    const knotPosition = knot.position.toArray();
     const skeletonPosition = torso.position.toArray();
     for (let frame = 0; frame < 240; frame++) {
       bike.rotation.x = Math.sin(frame / 60) * 1.1; bike.rotation.z = Math.sin(frame / 30) * .2;
       update({ speed: 55, lateralAcceleration: Math.sin(frame / 18) * 18, landing: frame === 80 ? 1 : 0 }, 1 / 60);
       expect(Array.from(positions.slice(0, attachment.length))).toEqual(attachment);
       expect(torso.position.toArray()).toEqual(skeletonPosition);
+      expect(knot.position.toArray()).toEqual(knotPosition);
     }
     expect(attribute.array).toBe(positions);
     for (let vertex = 0; vertex < attribute.count; vertex++) {
       const x = attribute.getX(vertex), y = attribute.getY(vertex), z = attribute.getZ(vertex);
       expect(Number.isFinite(x + y + z)).toBe(true);
       expect(Math.abs(x)).toBeLessThanOrEqual(.700001);
-      expect(y).toBeGreaterThanOrEqual(-.065001); expect(y).toBeLessThanOrEqual(1.350001);
-      expect(z).toBeGreaterThan(.10); expect(z).toBeLessThanOrEqual(1.150001);
+      expect(y).toBeGreaterThanOrEqual(-.460001); expect(y).toBeLessThanOrEqual(1.650001);
+      expect(z).toBeGreaterThan(-.17); expect(z).toBeLessThanOrEqual(1.280001);
       const normal = mesh.geometry.getAttribute('normal');
       expect(Math.hypot(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex))).toBeCloseTo(1, 5);
     }

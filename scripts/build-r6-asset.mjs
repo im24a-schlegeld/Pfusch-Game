@@ -1,7 +1,8 @@
 /** Offline Yamaha R6 conversion: node scripts/build-r6-asset.mjs <source.usdz> */
-import { buildMotorcycleAsset } from './build-motorcycle-asset.mjs';
+import { buildMotorcycleAsset, readSourceAtlas } from './build-motorcycle-asset.mjs';
 import { connectedComponents } from './motorcycle-components.mjs';
 import { drilledRotor } from './motorcycle-brake-rotor.mjs';
+import { perforatedSprocket } from './motorcycle-sprocket.mjs';
 
 let positions;
 const rotors = [];
@@ -40,6 +41,7 @@ const carrier = { name: 'r6_brake_carrier', color: '#30363b', metalness: .72, ro
 const caliper = { name: 'r6_brake_caliper', color: '#777263', metalness: .6, roughness: .38 };
 const engine = { name: 'r6_engine_detail', color: '#626669', metalness: .48, roughness: .54 };
 const metal = { name: 'r6_metal', color: '#aeb3b6', metalness: .72, roughness: .42 };
+const sprocket = { ...metal, name: 'r6_sprocket_metal' };
 const rubber = { name: 'r6_tyre', color: '#121314', metalness: 0, roughness: 1 };
 const glass = { name: 'r6_clear_glass', color: '#b3c2c9', metalness: 0, roughness: .14, transparent: true, opacity: .22 };
 const windscreen = { name: 'r6_windscreen_glass', color: '#293139', metalness: 0, roughness: .16, opacity: .58 };
@@ -49,7 +51,8 @@ await buildMotorcycleAsset({
   source: process.argv[2], id: 'r6', name: 'Sport Bike',
   // Object 4 and 8 duplicate the transparent surfaces already in Object 3.
   includeMesh: mesh => !['Object_0', 'Object_4', 'Object_8', 'Object_14', 'Object_15'].includes(mesh.name),
-  analyze({ meshes, meshBox, worldPositions, worldNormals, THREE }) {
+  async analyze(context) {
+    const { meshes, meshBox, worldPositions, worldNormals, THREE } = context;
     positions = worldPositions;
     for (const mesh of meshes) if (['Object_1', 'Object_3', 'Object_5', 'Object_6'].includes(mesh.name))
       components.set(mesh.name, connectedComponents(mesh, worldPositions.get(mesh.name), THREE));
@@ -112,6 +115,19 @@ await buildMotorcycleAsset({
     const rearBox = meshBox('Object_17'), frontBox = meshBox('Object_18');
     const rear = rearBox.getCenter(new THREE.Vector3());
     const front = frontBox.getCenter(new THREE.Vector3());
+    // The original sprocket's two solid faces rely on native PNG alpha. Bake
+    // that exact mask into real openings, retaining its finish and thickness.
+    const gear = meshes.find(mesh => mesh.name === 'Object_2');
+    const gearPositions = worldPositions.get(gear.name), aligned = new Float32Array(gearPositions.length);
+    for (let i = 0; i < aligned.length; i += 3)
+      aligned.set([gearPositions[i + 2], gearPositions[i + 1], -gearPositions[i]], i);
+    const perforated = perforatedSprocket(THREE, gear, aligned,
+      await readSourceAtlas(context, /mat_gear624_baseColor\.png$/), { maskChannel: 'alpha', expectedOpenings: 12 });
+    gear.geometry = perforated.geometry.applyMatrix4(new THREE.Matrix4().makeRotationY(-Math.PI / 2));
+    gear.userData.exportMaterial = sprocket;
+    worldPositions.set(gear.name, gear.geometry.attributes.position.array);
+    worldNormals.set(gear.name, gear.geometry.attributes.normal.array);
+    console.log('R6 native-alpha sprocket openings:', perforated.openings);
     const brake = meshes.find(mesh => mesh.name === 'Object_12');
     const geometry = new THREE.BufferGeometry();
     const rotorGeometry = [
@@ -202,6 +218,7 @@ await buildMotorcycleAsset({
     return 'body';
   },
   materialFor(mesh, vertex) {
+    if (mesh.name === 'Object_2') return sprocket;
     if (mesh.name === 'Object_6') {
       const id = components.get(mesh.name).byVertex[vertex].index;
       if ([8, 10, 13].includes(id)) return seat;
@@ -226,7 +243,7 @@ await buildMotorcycleAsset({
     if (mesh.name === 'Object_5') return components.get(mesh.name).byVertex[vertex].center.x < 0 ? rearLamp : reflector;
     if (mesh.name === 'Object_9') return { name: 'r6_gauge', color: '#19262c', metalness: .05, roughness: .25 };
     if (mesh.name === 'Object_10') return trim;
-    if (mesh.name === 'Object_2' || mesh.name === 'Object_7') return metal;
+    if (mesh.name === 'Object_7') return metal;
     if (mesh.name === 'Object_13') return { name: 'r6_headers', color: '#766e60', metalness: .72, roughness: .5 };
     if (mesh.name === 'Object_11') return { name: 'r6_rim', color: '#a6acb0', metalness: .76, roughness: .32, rim: true };
     if (mesh.name === 'Object_12') {
@@ -241,7 +258,9 @@ await buildMotorcycleAsset({
   },
   materialBudgets: {
     r6_plain_paint: 8000, r6_trim: 3200, r6_seat: 900,
-    r6_engine_detail: 10000, r6_metal: 3800, r6_rim: 2600, r6_exhaust: 650,
+    // Preserve all existing hardware quotas after the 68 source sprocket
+    // triangles leave the 24,276-triangle shared metal allocation.
+    r6_engine_detail: 10000, r6_metal: 3800 * (24276 - 68) / 24276, r6_rim: 2600, r6_exhaust: 650,
     r6_tyre: 3000, r6_windscreen_glass: 500, r6_clear_glass: 250, r6_reflector: 650, r6_rear_lamp: 200,
     r6_brake_caliper: 1000, r6_headers: 650,
   },

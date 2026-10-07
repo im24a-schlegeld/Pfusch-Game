@@ -580,24 +580,24 @@
       }
     },
     {
-      "name": "r6_metal:rearWheel",
+      "name": "r6_sprocket_metal:rearWheel",
       "rig": "rearWheel",
-      "material": "r6_metal",
+      "material": "r6_sprocket_metal",
       "position": {
         "offset": 1330804,
-        "count": 52
+        "count": 3228
       },
       "normal": {
-        "offset": 1331428,
-        "count": 52
+        "offset": 1369540,
+        "count": 3228
       },
       "uv": {
-        "offset": 1332052,
-        "count": 52
+        "offset": 1408276,
+        "count": 3228
       },
       "index": {
-        "offset": 1332468,
-        "count": 144
+        "offset": 1434100,
+        "count": 6564
       }
     },
     {
@@ -605,19 +605,19 @@
       "rig": "body",
       "material": "r6_clear_glass",
       "position": {
-        "offset": 1332756,
+        "offset": 1447228,
         "count": 289
       },
       "normal": {
-        "offset": 1336224,
+        "offset": 1450696,
         "count": 289
       },
       "uv": {
-        "offset": 1339692,
+        "offset": 1454164,
         "count": 289
       },
       "index": {
-        "offset": 1342004,
+        "offset": 1456476,
         "count": 747
       }
     },
@@ -626,19 +626,19 @@
       "rig": "body",
       "material": "r6_windscreen_glass",
       "position": {
-        "offset": 1343500,
+        "offset": 1457972,
         "count": 345
       },
       "normal": {
-        "offset": 1347640,
+        "offset": 1462112,
         "count": 345
       },
       "uv": {
-        "offset": 1351780,
+        "offset": 1466252,
         "count": 345
       },
       "index": {
-        "offset": 1354540,
+        "offset": 1469012,
         "count": 1500
       }
     },
@@ -647,19 +647,19 @@
       "rig": "body",
       "material": "r6_rear_lamp",
       "position": {
-        "offset": 1357540,
+        "offset": 1472012,
         "count": 173
       },
       "normal": {
-        "offset": 1359616,
+        "offset": 1474088,
         "count": 173
       },
       "uv": {
-        "offset": 1361692,
+        "offset": 1476164,
         "count": 173
       },
       "index": {
-        "offset": 1363076,
+        "offset": 1477548,
         "count": 600
       }
     },
@@ -668,19 +668,19 @@
       "rig": "body",
       "material": "r6_reflector",
       "position": {
-        "offset": 1364276,
+        "offset": 1478748,
         "count": 553
       },
       "normal": {
-        "offset": 1370912,
+        "offset": 1485384,
         "count": 553
       },
       "uv": {
-        "offset": 1377548,
+        "offset": 1492020,
         "count": 553
       },
       "index": {
-        "offset": 1381972,
+        "offset": 1496444,
         "count": 1947
       }
     },
@@ -689,19 +689,19 @@
       "rig": "body",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 1385868,
+        "offset": 1500340,
         "count": 5487
       },
       "normal": {
-        "offset": 1451712,
+        "offset": 1566184,
         "count": 5487
       },
       "uv": {
-        "offset": 1517556,
+        "offset": 1632028,
         "count": 5487
       },
       "index": {
-        "offset": 1561452,
+        "offset": 1675924,
         "count": 22002
       }
     },
@@ -710,19 +710,19 @@
       "rig": "fork",
       "material": "r6_plain_paint",
       "position": {
-        "offset": 1605456,
+        "offset": 1719928,
         "count": 470
       },
       "normal": {
-        "offset": 1611096,
+        "offset": 1725568,
         "count": 470
       },
       "uv": {
-        "offset": 1616736,
+        "offset": 1731208,
         "count": 470
       },
       "index": {
-        "offset": 1620496,
+        "offset": 1734968,
         "count": 1992
       }
     },
@@ -731,19 +731,19 @@
       "rig": "body",
       "material": "r6_seat",
       "position": {
-        "offset": 1624480,
+        "offset": 1738952,
         "count": 629
       },
       "normal": {
-        "offset": 1632028,
+        "offset": 1746500,
         "count": 629
       },
       "uv": {
-        "offset": 1639576,
+        "offset": 1754048,
         "count": 629
       },
       "index": {
-        "offset": 1644608,
+        "offset": 1759080,
         "count": 2700
       }
     },
@@ -752,19 +752,19 @@
       "rig": "body",
       "material": "r6_gauge",
       "position": {
-        "offset": 1650008,
+        "offset": 1764480,
         "count": 308
       },
       "normal": {
-        "offset": 1653704,
+        "offset": 1768176,
         "count": 308
       },
       "uv": {
-        "offset": 1657400,
+        "offset": 1771872,
         "count": 308
       },
       "index": {
-        "offset": 1659864,
+        "offset": 1774336,
         "count": 795
       }
     }
@@ -832,6 +832,12 @@
       "roughness": 1
     },
     {
+      "name": "r6_sprocket_metal",
+      "color": "#aeb3b6",
+      "metalness": 0.72,
+      "roughness": 0.42
+    },
+    {
       "name": "r6_clear_glass",
       "color": "#b3c2c9",
       "metalness": 0,
@@ -879,10 +885,10 @@
     }
   ],
   "statistics": {
-    "sourceTriangles": 199493,
-    "triangles": 42633,
-    "vertices": 43926,
-    "geometryBytes": 1661454,
+    "sourceTriangles": 201613,
+    "triangles": 44773,
+    "vertices": 47102,
+    "geometryBytes": 1775926,
     "meshes": 32
   }
 }

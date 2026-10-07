@@ -5,7 +5,7 @@ export const BIKE_MODEL_SCALES: Readonly<Record<BikeModelId, number>> =
   Object.freeze({
     '125': 1,
     scooter: 1.24,
-    moped: 1,
-    '450': 1.18,
+    moped: 1.25,
+    '450': 1.14,
     '701': 1.18,
   });

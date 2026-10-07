@@ -4,10 +4,12 @@ import { connectedComponents } from './motorcycle-components.mjs';
 import { drilledRotor } from './motorcycle-brake-rotor.mjs';
 import { importHeadlightMask } from './motorcycle-headlight-mask.mjs';
 import { recomputeWeldedNormals } from './motorcycle-tire-normals.mjs';
+import { perforatedSprocket } from './motorcycle-sprocket.mjs';
 import path from 'node:path';
 
 let liveryComponents;
 const mechanicalComponents = new Map();
+const wheelComponents = new Map();
 const rotors = new Map();
 const componentPalette = new Map();
 let cockpitComponents;
@@ -27,6 +29,9 @@ const darkHardware = { name: 'fs450_dark_hardware', color: '#26292b', metalness:
 const cockpitDark = { ...darkHardware, name: 'fs450_cockpit_dark' };
 const cockpitMetal = { ...hardware, name: 'fs450_cockpit_metal' };
 const muffler = { name: 'fs450_muffler_unbranded', color: '#858a8d', metalness: .5, roughness: .4 };
+const sprocket = { name: 'fs450_sprocket_metal', color: '#343a3e', metalness: .65, roughness: .43 };
+const rimHoop = { name: 'fs450_rim_hoop', color: '#ffffff', metalness: 0, roughness: 1, rim: true };
+const wheelHardware = { name: 'mat_rim277_001', color: '#c6cbd0', metalness: .85, roughness: .26, rim: false };
 
 function smoothWeight(value, low, high) {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
@@ -81,6 +86,16 @@ for (const vertex of [4, 5, 15, 16].flatMap(index => liveryComponents.components
 // source's inconsistent skin normals caused alternating bright/dark patches.
 for (const name of ['Object_2', 'Object_3'])
   worldNormals.set(name, recomputeWeldedNormals(worldPositions.get(name)));
+// Each supplied wheel has one separate 1,024-triangle rim hoop. Keep hub,
+// spokes and valve hardware on the existing lit material; only hoops receive
+// the runtime's uniformly bright, configurable rim finish.
+for (const name of ['Object_4', 'Object_5']) {
+  const mesh = meshes.find(mesh => mesh.name === name);
+  const parts = connectedComponents(mesh, worldPositions.get(name), THREE);
+  if (parts.components[1].vertices.length !== 1024 * 3) throw new Error('Unexpected source rim hoop: ' + name);
+  mesh.userData.exportMaterial = wheelHardware;
+  wheelComponents.set(name, parts);
+}
 for (const name of ['Object_8', 'Object_9'])
   mechanicalComponents.set(name, connectedComponents(meshes.find(mesh => mesh.name === name), worldPositions.get(name), THREE));
 cockpitComponents = connectedComponents(meshes.find(mesh => mesh.name === 'Object_13'), worldPositions.get('Object_13'), THREE);
@@ -90,6 +105,15 @@ await classifyComponents(context, 'Object_13', cockpitComponents, /cockpit.*base
 const rearBox = meshBox('Object_3'), frontBox = meshBox('Object_2');
 const rearCenter = rearBox.getCenter(new THREE.Vector3());
 const frontCenter = frontBox.getCenter(new THREE.Vector3());
+// The original gear has two solid faces; its JPEG paints the openings gray.
+// Turn that exact mask into a metal contour with real through holes and walls.
+const gear = meshes.find(part => part.name === 'Object_10');
+const perforated = perforatedSprocket(THREE, gear, worldPositions.get(gear.name),
+  await readSourceAtlas(context, /mat_gear277_COLOR_0_baseColor\.jpg$/));
+gear.geometry = perforated.geometry;
+gear.userData.exportMaterial = sprocket;
+worldPositions.set(gear.name, gear.geometry.attributes.position.array);
+worldNormals.set(gear.name, gear.geometry.attributes.normal.array);
 for (const [name, axle, rear] of [['Object_0', frontCenter, false], ['Object_1', rearCenter, true]]) {
   const mesh = meshes.find(part => part.name === name);
   const bounds = meshBox(name);
@@ -173,6 +197,8 @@ rigFor(mesh, vertex) {
   return 'body';
 },
 materialFor(mesh, vertex) {
+  if (wheelComponents.get(mesh.name)?.byVertex[vertex].index === 1) return rimHoop;
+  if (mesh.name === 'Object_10') return sprocket;
   if (['Object_2', 'Object_3'].includes(mesh.name)) return tire;
   if (mesh.name === 'Object_6') return muffler;
   if (mesh.name === 'Object_13') return componentPalette.get(cockpitComponents.byVertex[vertex]) === 'metal' ? cockpitMetal : cockpitDark;
@@ -224,6 +250,9 @@ materialBudgets: {
   fs450_fork_steel: 1800,
   mat_exmanifold277: 1200,
   fs450_muffler_unbranded: 900,
-  mat_rim277_001: 3500,
+  // Preserve the original rim/spoke reduction ratio for the remaining
+  // hardware. Hoops retain every source face and their exact round silhouette.
+  mat_rim277_001: 3500 * (10238 - 2048) / 10238,
+  fs450_rim_hoop: 2048,
 }
 });

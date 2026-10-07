@@ -18,7 +18,7 @@ interface ImportedRiderController {
 }
 type RiderFactory = (parent: THREE.Object3D, pose: RiderPose, player: Player, products: Product[]) => ImportedRiderController;
 const xAxis = new THREE.Vector3(1, 0, 0);
-const nominalLean: Record<ImportedBikeId, number> = { '125': 0.16, moped: 0.25, '450': 0.42, '701': 0.74, scooter: 0.25 };
+const nominalLean: Record<ImportedBikeId, number> = { '125': 0.16, moped: 0.25, '450': 0.42, '701': 0.88, scooter: 0.25 };
 
 /** Source meshes retain their shape; only one uniform vehicle-size conversion is applied. */
 export function makeImportedBike(player: Player, products: Product[], makeRider: RiderFactory) {
@@ -63,6 +63,10 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     if (paintable) color.set(player.paint);
     if (rimMaterial) color.set(player.rims);
     if (tireMaterial) color.set(id === '450' ? '#090909' : '#16181a');
+    // Only the rim hoops use a flat finish; spokes and hubs retain their metal shading.
+    if (id === '450' && definition.name === 'fs450_rim_hoop')
+      return new THREE.MeshBasicMaterial({ name: definition.name, color, toneMapped: false,
+        side: definition.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
     const material = new THREE.MeshStandardMaterial({
       name: definition.name, color,
       metalness: tireMaterial ? 0 : definition.metalness,
@@ -75,6 +79,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
       transparent: (definition.opacity ?? 1) < 1,
       side: definition.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
     });
+    material.userData.rimPalette = rimMaterial;
     return material;
   });
   const materialByName = new Map(manifest.materials.map((definition, index) => [definition.name, materials[index]]));

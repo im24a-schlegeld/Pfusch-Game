@@ -1,4 +1,4 @@
-import { Vector3, type Object3D, type SpotLight } from 'three';
+import { Mesh, MeshStandardMaterial, Vector3, type Object3D, type SpotLight } from 'three';
 import type { BikeModelId } from './vehicleScale';
 import { SPORT_LENS_FACES } from './sportDesign';
 import { SUPERMOTO_LENS_FACE } from './supermotoBodywork';
@@ -19,6 +19,36 @@ const LENS_FACES: Readonly<Record<BikeModelId, readonly Point[]>> = {
 // This is a direction in the bike frame, so wheelies raise both source and aim.
 const AIM_DISTANCE = 20;
 const AIM_DROP = (AIM_DISTANCE * (1.25 - 0.03)) / 23;
+
+// Only the imported forward optics emit. Rear lamps, bodywork and shared
+// metallic trim must retain their authored materials and colours.
+const HEADLIGHT_MATERIALS = new Set([
+  'ciao_light', 'moped_light', 'nitro_light',
+  'fs450_headlight_glass', 'fs450_headlight_reflector', 'r6_reflector',
+]);
+
+/** Cache once per assembled bike; the existing road lights supply its darkness. */
+export function createBikeHeadlightGlowUpdater(body: Object3D) {
+  const optics = new Set<MeshStandardMaterial>();
+  body.traverse(object => {
+    if (!(object instanceof Mesh)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!(material instanceof MeshStandardMaterial) || !HEADLIGHT_MATERIALS.has(material.name)) continue;
+      material.emissive.set('#e2eced');
+      material.emissiveIntensity = 0;
+      optics.add(material);
+    }
+  });
+  const materials = [...optics];
+  let previous = -1;
+  return (darkAmount: number) => {
+    const darkness = Number.isFinite(darkAmount) ? Math.max(0, Math.min(1, darkAmount)) : 0;
+    if (darkness === previous) return;
+    previous = darkness;
+    for (const material of materials) material.emissiveIntensity = darkness * 3.2;
+  };
+}
 
 export interface BikeHeadlightRig {
   readonly count: 1 | 2;

@@ -16,7 +16,7 @@ import {
   Vector3,
 } from 'three';
 import { newPlayer } from '../app/domain/progression';
-import { createBikeHeadlightRig } from '../app/game/bikeHeadlight';
+import { createBikeHeadlightGlowUpdater, createBikeHeadlightRig } from '../app/game/bikeHeadlight';
 import { makeBike } from '../app/game/vehicle';
 import type { BikeModelId } from '../app/game/vehicleScale';
 import {
@@ -78,6 +78,34 @@ function controlledWorld() {
     },
   };
 }
+
+it('lights each imported headlamp with the existing tunnel exposure and leaves rear lamps and paint unchanged', () => {
+  const { lighting } = lightingFixture();
+  const route = controlledWorld();
+  for (const model of ['125', 'moped', 'scooter', '450', '701'] as const) {
+    const bike = makeBike({ ...newPlayer(), bike: model }, []);
+    const update = createBikeHeadlightGlowUpdater(bike.body);
+    const optics = new Set<MeshStandardMaterial>();
+    const rest = new Map<MeshStandardMaterial, [number, number]>();
+    bike.body.traverse(object => {
+      if (!(object instanceof Mesh)) return;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        if (!(material instanceof MeshStandardMaterial)) continue;
+        if (material.emissive.getHexString() === 'e2eced') optics.add(material);
+        else rest.set(material, [material.emissive.getHex(), material.emissiveIntensity]);
+      }
+    });
+    expect(optics.size, `visible forward optics on ${model}`).toBeGreaterThan(0);
+    route.set('day', 1);
+    update(lighting.update(route.world, 100, 0, createBikeHeadlightRig(model).count));
+    for (const material of optics) expect(material.emissiveIntensity).toBe(3.2);
+    route.set('day', 0);
+    update(lighting.update(route.world, 100, 0, createBikeHeadlightRig(model).count));
+    for (const material of optics) expect(material.emissiveIntensity).toBe(0);
+    for (const [material, original] of rest)
+      expect([material.emissive.getHex(), material.emissiveIntensity]).toEqual(original);
+  }
+});
 
 function expectVector(actual: Vector3, expected: Vector3) {
   expect(actual.x).toBeCloseTo(expected.x, 10);

@@ -307,19 +307,19 @@
       "material": "ciao_dark",
       "position": {
         "offset": 459928,
-        "count": 447
+        "count": 438
       },
       "normal": {
-        "offset": 465292,
-        "count": 447
+        "offset": 465184,
+        "count": 438
       },
       "uv": {
-        "offset": 470656,
-        "count": 447
+        "offset": 470440,
+        "count": 438
       },
       "index": {
-        "offset": 474232,
-        "count": 1236
+        "offset": 473944,
+        "count": 1197
       }
     },
     {
@@ -327,20 +327,20 @@
       "rig": "steering",
       "material": "ciao_dark",
       "position": {
-        "offset": 476704,
-        "count": 1658
+        "offset": 476340,
+        "count": 1672
       },
       "normal": {
-        "offset": 496600,
-        "count": 1658
+        "offset": 496404,
+        "count": 1672
       },
       "uv": {
-        "offset": 516496,
-        "count": 1658
+        "offset": 516468,
+        "count": 1672
       },
       "index": {
-        "offset": 529760,
-        "count": 6561
+        "offset": 529844,
+        "count": 6597
       }
     },
     {
@@ -348,19 +348,19 @@
       "rig": "frontWheel",
       "material": "ciao_tyre",
       "position": {
-        "offset": 542884,
+        "offset": 543040,
         "count": 1466
       },
       "normal": {
-        "offset": 560476,
+        "offset": 560632,
         "count": 1466
       },
       "uv": {
-        "offset": 578068,
+        "offset": 578224,
         "count": 1466
       },
       "index": {
-        "offset": 589796,
+        "offset": 589952,
         "count": 8997
       }
     }
@@ -410,10 +410,10 @@
     }
   ],
   "statistics": {
-    "sourceTriangles": 1357978,
-    "triangles": 20700,
-    "vertices": 15112,
-    "geometryBytes": 607790,
+    "sourceTriangles": 1357790,
+    "triangles": 20699,
+    "vertices": 15117,
+    "geometryBytes": 607946,
     "meshes": 13
   }
 }

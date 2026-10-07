@@ -171,11 +171,11 @@ export const RIDER_TARGETS: Readonly<Record<BikeModelId, RiderTarget>> =
   Object.freeze({
     '125': BIKE_CONTACTS['125'],
     scooter: BIKE_CONTACTS.scooter,
-    moped: BIKE_CONTACTS.moped,
+    moped: scaledContacts('moped', 0.35),
     '450': scaledContacts('450', 0.42),
     // The larger sport chassis needs a little more torso lean to retain the
     // same fixed arm reach. Imported models resolve their own source contacts.
-    '701': scaledContacts('701', 0.84),
+    '701': scaledContacts('701', 0.88),
   });
 export const POSES = {
   '125': resolveRiderPose(RIDER_TARGETS['125']),

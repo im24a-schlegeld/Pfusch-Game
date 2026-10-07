@@ -118,19 +118,19 @@
       "material": "moped_mechanics",
       "position": {
         "offset": 21496,
-        "count": 1168
+        "count": 1327
       },
       "normal": {
-        "offset": 35512,
-        "count": 1168
+        "offset": 37420,
+        "count": 1327
       },
       "uv": {
-        "offset": 49528,
-        "count": 1168
+        "offset": 53344,
+        "count": 1327
       },
       "index": {
-        "offset": 58872,
-        "count": 2634
+        "offset": 63960,
+        "count": 2790
       }
     },
     {
@@ -138,20 +138,41 @@
       "rig": "body",
       "material": "moped_dark",
       "position": {
-        "offset": 64140,
-        "count": 383
+        "offset": 69540,
+        "count": 457
       },
       "normal": {
-        "offset": 68736,
-        "count": 383
+        "offset": 75024,
+        "count": 457
       },
       "uv": {
-        "offset": 73332,
-        "count": 383
+        "offset": 80508,
+        "count": 457
       },
       "index": {
-        "offset": 76396,
-        "count": 1290
+        "offset": 84164,
+        "count": 1506
+      }
+    },
+    {
+      "name": "moped_chrome:body",
+      "rig": "body",
+      "material": "moped_chrome",
+      "position": {
+        "offset": 87176,
+        "count": 149
+      },
+      "normal": {
+        "offset": 88964,
+        "count": 149
+      },
+      "uv": {
+        "offset": 90752,
+        "count": 149
+      },
+      "index": {
+        "offset": 91944,
+        "count": 576
       }
     },
     {
@@ -159,62 +180,104 @@
       "rig": "frontWheel",
       "material": "moped_rim",
       "position": {
-        "offset": 78976,
-        "count": 392
+        "offset": 93096,
+        "count": 240
       },
       "normal": {
-        "offset": 83680,
-        "count": 392
+        "offset": 95976,
+        "count": 240
       },
       "uv": {
-        "offset": 88384,
-        "count": 392
+        "offset": 98856,
+        "count": 240
       },
       "index": {
-        "offset": 91520,
-        "count": 1200
+        "offset": 100776,
+        "count": 960
       }
     },
     {
-      "name": "moped_mechanics:fork",
+      "name": "moped_chrome:fork",
       "rig": "fork",
-      "material": "moped_mechanics",
+      "material": "moped_chrome",
       "position": {
-        "offset": 93920,
-        "count": 257
+        "offset": 102696,
+        "count": 102
       },
       "normal": {
-        "offset": 97004,
-        "count": 257
+        "offset": 103920,
+        "count": 102
       },
       "uv": {
-        "offset": 100088,
-        "count": 257
+        "offset": 105144,
+        "count": 102
       },
       "index": {
-        "offset": 102144,
-        "count": 1080
+        "offset": 105960,
+        "count": 528
       }
     },
     {
-      "name": "moped_mechanics:steering",
+      "name": "moped_gaiters:steering",
       "rig": "steering",
-      "material": "moped_mechanics",
+      "material": "moped_gaiters",
       "position": {
-        "offset": 104304,
-        "count": 741
+        "offset": 107016,
+        "count": 306
       },
       "normal": {
-        "offset": 113196,
-        "count": 741
+        "offset": 110688,
+        "count": 306
       },
       "uv": {
-        "offset": 122088,
-        "count": 741
+        "offset": 114360,
+        "count": 306
       },
       "index": {
-        "offset": 128016,
-        "count": 3390
+        "offset": 116808,
+        "count": 1740
+      }
+    },
+    {
+      "name": "moped_gaiters:fork",
+      "rig": "fork",
+      "material": "moped_gaiters",
+      "position": {
+        "offset": 120288,
+        "count": 76
+      },
+      "normal": {
+        "offset": 121200,
+        "count": 76
+      },
+      "uv": {
+        "offset": 122112,
+        "count": 76
+      },
+      "index": {
+        "offset": 122720,
+        "count": 324
+      }
+    },
+    {
+      "name": "moped_chrome:steering",
+      "rig": "steering",
+      "material": "moped_chrome",
+      "position": {
+        "offset": 123368,
+        "count": 379
+      },
+      "normal": {
+        "offset": 127916,
+        "count": 379
+      },
+      "uv": {
+        "offset": 132464,
+        "count": 379
+      },
+      "index": {
+        "offset": 135496,
+        "count": 1674
       }
     },
     {
@@ -222,19 +285,19 @@
       "rig": "body",
       "material": "moped_seat",
       "position": {
-        "offset": 134796,
+        "offset": 138844,
         "count": 99
       },
       "normal": {
-        "offset": 135984,
+        "offset": 140032,
         "count": 99
       },
       "uv": {
-        "offset": 137172,
+        "offset": 141220,
         "count": 99
       },
       "index": {
-        "offset": 137964,
+        "offset": 142012,
         "count": 462
       }
     },
@@ -243,20 +306,20 @@
       "rig": "swingarm",
       "material": "moped_mechanics",
       "position": {
-        "offset": 138888,
-        "count": 274
+        "offset": 142936,
+        "count": 325
       },
       "normal": {
-        "offset": 142176,
-        "count": 274
+        "offset": 146836,
+        "count": 325
       },
       "uv": {
-        "offset": 145464,
-        "count": 274
+        "offset": 150736,
+        "count": 325
       },
       "index": {
-        "offset": 147656,
-        "count": 816
+        "offset": 153336,
+        "count": 1014
       }
     },
     {
@@ -264,20 +327,20 @@
       "rig": "steering",
       "material": "moped_light",
       "position": {
-        "offset": 149288,
-        "count": 324
+        "offset": 155364,
+        "count": 55
       },
       "normal": {
-        "offset": 153176,
-        "count": 324
+        "offset": 156024,
+        "count": 55
       },
       "uv": {
-        "offset": 157064,
-        "count": 324
+        "offset": 156684,
+        "count": 55
       },
       "index": {
-        "offset": 159656,
-        "count": 1200
+        "offset": 157124,
+        "count": 270
       }
     },
     {
@@ -285,19 +348,19 @@
       "rig": "frontWheel",
       "material": "moped_tyre",
       "position": {
-        "offset": 162056,
+        "offset": 157664,
         "count": 404
       },
       "normal": {
-        "offset": 166904,
+        "offset": 162512,
         "count": 404
       },
       "uv": {
-        "offset": 171752,
+        "offset": 167360,
         "count": 404
       },
       "index": {
-        "offset": 174984,
+        "offset": 170592,
         "count": 1440
       }
     },
@@ -306,20 +369,20 @@
       "rig": "rearWheel",
       "material": "moped_rim",
       "position": {
-        "offset": 177864,
-        "count": 392
+        "offset": 173472,
+        "count": 240
       },
       "normal": {
-        "offset": 182568,
-        "count": 392
+        "offset": 176352,
+        "count": 240
       },
       "uv": {
-        "offset": 187272,
-        "count": 392
+        "offset": 179232,
+        "count": 240
       },
       "index": {
-        "offset": 190408,
-        "count": 1200
+        "offset": 181152,
+        "count": 960
       }
     },
     {
@@ -327,61 +390,82 @@
       "rig": "rearWheel",
       "material": "moped_tyre",
       "position": {
-        "offset": 192808,
+        "offset": 183072,
         "count": 404
       },
       "normal": {
-        "offset": 197656,
+        "offset": 187920,
         "count": 404
       },
       "uv": {
-        "offset": 202504,
+        "offset": 192768,
         "count": 404
       },
       "index": {
-        "offset": 205736,
+        "offset": 196000,
         "count": 1440
       }
     },
     {
-      "name": "moped_mechanics:shockLower",
-      "rig": "shockLower",
+      "name": "moped_mechanics:steering",
+      "rig": "steering",
       "material": "moped_mechanics",
       "position": {
-        "offset": 208616,
-        "count": 111
+        "offset": 198880,
+        "count": 305
       },
       "normal": {
-        "offset": 209948,
-        "count": 111
+        "offset": 202540,
+        "count": 305
       },
       "uv": {
-        "offset": 211280,
-        "count": 111
+        "offset": 206200,
+        "count": 305
       },
       "index": {
-        "offset": 212168,
-        "count": 318
+        "offset": 208640,
+        "count": 1182
       }
     },
     {
-      "name": "moped_mechanics:shockUpper",
-      "rig": "shockUpper",
-      "material": "moped_mechanics",
+      "name": "moped_chrome:shockLower",
+      "rig": "shockLower",
+      "material": "moped_chrome",
       "position": {
-        "offset": 212804,
+        "offset": 211004,
+        "count": 138
+      },
+      "normal": {
+        "offset": 212660,
+        "count": 138
+      },
+      "uv": {
+        "offset": 214316,
+        "count": 138
+      },
+      "index": {
+        "offset": 215420,
+        "count": 432
+      }
+    },
+    {
+      "name": "moped_chrome:shockUpper",
+      "rig": "shockUpper",
+      "material": "moped_chrome",
+      "position": {
+        "offset": 216284,
         "count": 62
       },
       "normal": {
-        "offset": 213548,
+        "offset": 217028,
         "count": 62
       },
       "uv": {
-        "offset": 214292,
+        "offset": 217772,
         "count": 62
       },
       "index": {
-        "offset": 214788,
+        "offset": 218268,
         "count": 144
       }
     },
@@ -390,20 +474,20 @@
       "rig": "steering",
       "material": "moped_dark",
       "position": {
-        "offset": 215076,
-        "count": 195
+        "offset": 218556,
+        "count": 272
       },
       "normal": {
-        "offset": 217416,
-        "count": 195
+        "offset": 221820,
+        "count": 272
       },
       "uv": {
-        "offset": 219756,
-        "count": 195
+        "offset": 225084,
+        "count": 272
       },
       "index": {
-        "offset": 221316,
-        "count": 948
+        "offset": 227260,
+        "count": 1182
       }
     },
     {
@@ -411,20 +495,125 @@
       "rig": "body",
       "material": "moped_tail_light",
       "position": {
-        "offset": 223212,
-        "count": 200
+        "offset": 229624,
+        "count": 38
       },
       "normal": {
-        "offset": 225612,
-        "count": 200
+        "offset": 230080,
+        "count": 38
       },
       "uv": {
-        "offset": 228012,
-        "count": 200
+        "offset": 230536,
+        "count": 38
       },
       "index": {
-        "offset": 229612,
-        "count": 756
+        "offset": 230840,
+        "count": 144
+      }
+    },
+    {
+      "name": "moped_spokes:frontWheel",
+      "rig": "frontWheel",
+      "material": "moped_spokes",
+      "position": {
+        "offset": 231128,
+        "count": 288
+      },
+      "normal": {
+        "offset": 234584,
+        "count": 288
+      },
+      "uv": {
+        "offset": 238040,
+        "count": 288
+      },
+      "index": {
+        "offset": 240344,
+        "count": 648
+      }
+    },
+    {
+      "name": "moped_spokes:rearWheel",
+      "rig": "rearWheel",
+      "material": "moped_spokes",
+      "position": {
+        "offset": 241640,
+        "count": 288
+      },
+      "normal": {
+        "offset": 245096,
+        "count": 288
+      },
+      "uv": {
+        "offset": 248552,
+        "count": 288
+      },
+      "index": {
+        "offset": 250856,
+        "count": 648
+      }
+    },
+    {
+      "name": "moped_indicator:steering",
+      "rig": "steering",
+      "material": "moped_indicator",
+      "position": {
+        "offset": 252152,
+        "count": 50
+      },
+      "normal": {
+        "offset": 252752,
+        "count": 50
+      },
+      "uv": {
+        "offset": 253352,
+        "count": 50
+      },
+      "index": {
+        "offset": 253752,
+        "count": 216
+      }
+    },
+    {
+      "name": "moped_indicator:body",
+      "rig": "body",
+      "material": "moped_indicator",
+      "position": {
+        "offset": 254184,
+        "count": 50
+      },
+      "normal": {
+        "offset": 254784,
+        "count": 50
+      },
+      "uv": {
+        "offset": 255384,
+        "count": 50
+      },
+      "index": {
+        "offset": 255784,
+        "count": 216
+      }
+    },
+    {
+      "name": "moped_mechanics:fork",
+      "rig": "fork",
+      "material": "moped_mechanics",
+      "position": {
+        "offset": 256216,
+        "count": 174
+      },
+      "normal": {
+        "offset": 258304,
+        "count": 174
+      },
+      "uv": {
+        "offset": 260392,
+        "count": 174
+      },
+      "index": {
+        "offset": 261784,
+        "count": 564
       }
     },
     {
@@ -432,20 +621,20 @@
       "rig": "frontWheel",
       "material": "moped_mechanics",
       "position": {
-        "offset": 231124,
-        "count": 270
+        "offset": 262912,
+        "count": 315
       },
       "normal": {
-        "offset": 234364,
-        "count": 270
+        "offset": 266692,
+        "count": 315
       },
       "uv": {
-        "offset": 237604,
-        "count": 270
+        "offset": 270472,
+        "count": 315
       },
       "index": {
-        "offset": 239764,
-        "count": 777
+        "offset": 272992,
+        "count": 969
       }
     },
     {
@@ -453,20 +642,20 @@
       "rig": "rearWheel",
       "material": "moped_mechanics",
       "position": {
-        "offset": 241320,
-        "count": 270
+        "offset": 274932,
+        "count": 315
       },
       "normal": {
-        "offset": 244560,
-        "count": 270
+        "offset": 278712,
+        "count": 315
       },
       "uv": {
-        "offset": 247800,
-        "count": 270
+        "offset": 282492,
+        "count": 315
       },
       "index": {
-        "offset": 249960,
-        "count": 777
+        "offset": 285012,
+        "count": 969
       }
     },
     {
@@ -474,19 +663,19 @@
       "rig": "fork",
       "material": "moped_livery",
       "position": {
-        "offset": 251516,
+        "offset": 286952,
         "count": 129
       },
       "normal": {
-        "offset": 253064,
+        "offset": 288500,
         "count": 129
       },
       "uv": {
-        "offset": 254612,
+        "offset": 290048,
         "count": 129
       },
       "index": {
-        "offset": 255644,
+        "offset": 291080,
         "count": 594
       }
     }
@@ -500,9 +689,9 @@
     },
     {
       "name": "moped_mechanics",
-      "color": "#999999",
-      "metalness": 0.64,
-      "roughness": 0.43
+      "color": "#aeb3b8",
+      "metalness": 0.72,
+      "roughness": 0.34
     },
     {
       "name": "moped_dark",
@@ -511,10 +700,22 @@
       "roughness": 0.73
     },
     {
+      "name": "moped_chrome",
+      "color": "#c9cdd0",
+      "metalness": 0.88,
+      "roughness": 0.23
+    },
+    {
       "name": "moped_rim",
       "color": "#bababa",
       "metalness": 0.78,
       "roughness": 0.31
+    },
+    {
+      "name": "moped_gaiters",
+      "color": "#181a1c",
+      "metalness": 0,
+      "roughness": 0.88
     },
     {
       "name": "moped_seat",
@@ -524,9 +725,9 @@
     },
     {
       "name": "moped_light",
-      "color": "#ededed",
-      "metalness": 0.2,
-      "roughness": 0.24
+      "color": "#edf3ec",
+      "metalness": 0.1,
+      "roughness": 0.19
     },
     {
       "name": "moped_tyre",
@@ -539,13 +740,25 @@
       "color": "#701d1d",
       "metalness": 0.1,
       "roughness": 0.38
+    },
+    {
+      "name": "moped_spokes",
+      "color": "#c6cbd0",
+      "metalness": 0.85,
+      "roughness": 0.26
+    },
+    {
+      "name": "moped_indicator",
+      "color": "#e68a16",
+      "metalness": 0.08,
+      "roughness": 0.24
     }
   ],
   "statistics": {
-    "sourceTriangles": 10228,
-    "triangles": 7722,
-    "vertices": 6578,
-    "geometryBytes": 256832,
-    "meshes": 19
+    "sourceTriangles": 10012,
+    "triangles": 8764,
+    "vertices": 7490,
+    "geometryBytes": 292268,
+    "meshes": 28
   }
 }
