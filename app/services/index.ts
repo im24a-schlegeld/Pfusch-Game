@@ -17,6 +17,7 @@ import { BIKES, REWARDS } from '../domain/config';
 import { isHelmet, isHelmetColor, isVisorColor } from '../domain/helmet';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../domain/stickers';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
+import { sanitizeSavedSetups } from '../domain/setups';
 import catalog from '../../public/catalog/products.json';
 import { SHOPIFY_BRIDGE_VERSION, ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
 import { ShopifyCloudRepository } from './shopifyCloud';
@@ -224,6 +225,8 @@ export function decodePlayer(raw: string): Player {
       )
       .slice(-200);
   p.level = levelForXp(p.xp);
+  // Additive v1 migration: a setup library is optional in existing local/account saves.
+  p.savedSetups = sanitizeSavedSetups(v.savedSetups, p);
   return refreshDaily(p);
 }
 export class LocalPlayerRepository implements PlayerRepository {

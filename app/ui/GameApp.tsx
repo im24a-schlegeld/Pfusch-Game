@@ -5,6 +5,7 @@ import {
   Gift,
   Settings as SettingsIcon,
   Trophy,
+  UserRound,
   Volume2,
   VolumeX,
   Wrench,
@@ -30,6 +31,7 @@ import RideResult from './RideResult';
 import LoadingScreen from './LoadingScreen';
 import FirstRideTutorial from './FirstRideTutorial';
 import SaveAccessGate from './SaveAccessGate';
+import './account-header.css';
 type Screen =
   | 'ride'
   | 'results'
@@ -52,6 +54,9 @@ export default function GameApp() {
   const getAccessStatus = useCallback(() => services.players.getAccess?.(), [services]);
   const accessStatus = useSyncExternalStore(subscribeSave, getAccessStatus, getAccessStatus);
   const [player, setPlayer] = useState<Player | null>(null);
+  const [accountKind, setAccountKind] = useState<'guest' | 'customer'>('guest');
+  const [openingLogin, setOpeningLogin] = useState(false);
+  const loginPending = useRef(false);
   const current = useRef<Player | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [screen, setScreen] = useState<Screen>('garage');
@@ -80,8 +85,9 @@ export default function GameApp() {
   useEffect(() => {
     let alive = true;
     void Promise.all([services.auth.getUser(), services.players.load()])
-      .then(([, p]) => {
+      .then(([user, p]) => {
         if (alive) {
+          setAccountKind(user.kind);
           current.current = p;
           setPlayer(p);
           services.analytics.track('game_started');
@@ -114,6 +120,21 @@ export default function GameApp() {
     },
     [services],
   );
+  const beginLogin = useCallback(async () => {
+    if (!services.auth.login || loginPending.current) return;
+    loginPending.current = true;
+    setOpeningLogin(true);
+    try {
+      // Finish any queued progress before top-level OAuth leaves the game.
+      await services.players.flush?.();
+      services.auth.login();
+    } catch {
+      setNotice('Anmeldung konnte nicht geöffnet werden. Bitte erneut versuchen.');
+    } finally {
+      loginPending.current = false;
+      setOpeningLogin(false);
+    }
+  }, [services]);
   useEffect(() => {
     const onFocus = () => {
       if (current.current) {
@@ -305,10 +326,18 @@ export default function GameApp() {
   const newsletterOrigin = parentOrigin;
   const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET'
     : screen === 'garage' && garageLoading ? 'GARAGE WIRD GELADEN' : null;
+  const hasAccountAction = !!services.auth.login || accountKind === 'customer';
+  const accountAction = hasAccountAction ? <button type="button" className="account-header-button"
+    disabled={openingLogin} aria-label={accountKind === 'customer' ? 'Konto öffnen' : 'Anmelden'}
+    onClick={accountKind === 'customer' ? () => navigate('settings') : () => { void beginLogin(); }}>
+    <UserRound size={16} aria-hidden="true" />
+    <span>{openingLogin ? 'ÖFFNET …' : accountKind === 'customer' ? 'KONTO' : 'ANMELDEN'}</span>
+  </button> : null;
   return (
     <>
-    <div className={`app-shell${embedded ? ' app-shell-embedded' : ''}`} data-screen={screen} inert={loadingLabel ? true : undefined}>
+    <div className={`app-shell${embedded ? ' app-shell-embedded' : ''}${hasAccountAction ? ' has-account-header' : ''}`} data-screen={screen} inert={loadingLabel ? true : undefined}>
       {!embedded && screen !== 'results' && <header className="topbar">
+        {accountAction}
         <button className="brand" aria-label="PFUSCH-Shop öffnen" onClick={goToShop}>
           <img className="brand-logo" src="/branding/pfusch-logo.webp" alt="Pfusch" />
           <span className="brand-sub">WHEELIE ESCAPE</span>
@@ -340,6 +369,10 @@ export default function GameApp() {
             <SettingsIcon size={19} />
           </button>
         </div>
+      </header>}
+      {embedded && hasAccountAction && screen !== 'results' && <header className="account-header-embedded">
+        <span>WHEELIE ESCAPE</span>
+        {accountAction}
       </header>}
       {screen === 'garage' && (
         <Garage
@@ -377,7 +410,7 @@ export default function GameApp() {
         <Leaderboard player={player} services={services} update={update} back={back} />
       )}
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
-        onLogin={services.auth.login}
+        onLogin={services.auth.login ? () => { void beginLogin(); } : undefined}
         message={accessError} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
           setAccessOpen(false);

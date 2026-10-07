@@ -1,0 +1,40 @@
+.garage-controls .setup-launch {
+  width: 100%; min-height: 44px; display: flex; align-items: center;
+  gap: 9px; padding: 12px 14px; margin: 0 0 12px;
+  background: transparent; color: #eee; border: 1px solid #5a5a5a; font-size: 11px;
+}
+.setup-launch > span { margin-left: auto; color: #b8b8b3; font-size: 10px; }
+.saved-setups-dialog.game-dialog[data-slot='dialog-content'] {
+  z-index: 151 !important; width: min(600px, calc(100vw - 28px)) !important;
+  max-width: calc(100vw - 28px) !important; max-height: calc(100dvh - 28px) !important;
+  overflow-y: auto; overscroll-behavior: contain; gap: 16px !important;
+  padding: clamp(18px, 4vw, 28px) !important;
+}
+body:has(.saved-setups-dialog) [data-slot='dialog-overlay'] { z-index: 150 !important; }
+.saved-setups-dialog [data-slot='dialog-title'] { outline: none; padding-right: 28px; }
+.saved-setups-dialog [data-slot='dialog-description'] { font-size: 13px !important; line-height: 1.5; }
+.setup-save-form { border-block: 1px solid #525252; padding: 18px 0; }
+.setup-save-form label { display: block; font-size: 10px; letter-spacing: .08em; margin-bottom: 10px; }
+.setup-save-form > div { display: flex; gap: 8px; }
+.setup-save-form input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #777; padding: 10px; background: #272727; color: #f4f4f0; font-size: 14px; }
+.setup-save-form .button { flex: 0 0 auto; min-height: 44px; font-size: 10px; padding: 10px 12px; }
+.saved-setups-dialog .setup-save-form p, .saved-setups-dialog .setup-empty { color: #bcbcb8; font-size: 12px; line-height: 1.5; margin: 10px 0 0; }
+.saved-setup-list { display: grid; }
+.saved-setup-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid #525252; }
+.saved-setup-description { min-width: 0; }
+.saved-setup-description strong { display: block; overflow-wrap: anywhere; font-size: 15px; }
+.saved-setups-dialog .saved-setup-description p { margin: 4px 0 0; font-size: 11px; color: #bcbcb8; overflow-wrap: anywhere; }
+.setup-colors { display: flex; gap: 5px; margin-top: 9px; }
+.setup-colors i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #999; }
+.saved-setup-actions { display: flex; flex-direction: column; align-items: stretch; flex: 0 0 130px; }
+.saved-setup-actions .button { min-height: 44px; font-size: 10px; padding: 10px; }
+.setup-delete, .setup-delete-confirm button { min-height: 44px; background: transparent; color: #c8c8c3; border: 0; font-size: 10px; display: flex; justify-content: center; align-items: center; gap: 7px; }
+.setup-delete-confirm { display: grid; }
+.setup-delete-confirm button:first-child { color: #eee; text-decoration: underline; text-underline-offset: 3px; }
+.setup-message { font-size: 12px; line-height: 1.5; color: #deded8; }
+.setup-message:empty { display: none; }
+@media (max-width: 380px) {
+  .setup-save-form > div { flex-direction: column; }
+  .saved-setup-row { align-items: flex-start; gap: 10px; }
+  .saved-setup-actions { flex-basis: 110px; }
+}

@@ -54,6 +54,7 @@ export function newPlayer(): Player {
     helmetColor: DEFAULT_HELMET_COLOR,
     helmetVisor: '#34454d',
     stickers: {},
+    savedSetups: [],
     challenges: { date: dayKey(), values: {}, claimed: [] },
     redeemedRewards: [],
     processedRuns: [],

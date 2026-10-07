@@ -2,6 +2,7 @@ import type { Player, Slot, StickerPlacement } from '../../app/domain/types.js';
 import { levelForXp, newPlayer, normalizeLeaderboardName } from '../../app/domain/progression.js';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
 import { REWARDS } from '../../app/domain/config.js';
+import { MAX_SAVED_SETUPS, MAX_SAVED_SETUPS_BYTES, sanitizeSavedSetups } from '../../app/domain/setups.js';
 import { ApiError } from './auth.js';
 
 export const MAX_BODY_BYTES = 131072;
@@ -39,7 +40,7 @@ const digitalRewards = new Set<string>(REWARDS.filter(reward => reward.kind === 
  * purchase, a prize entitlement, or a verified competitive score. Reconstruct
  * every field rather than persisting arbitrary client properties. */
 export function sanitizeDigitalPlayer(value: unknown, customerId: string): Player {
-  const input = record(value, 32), player = newPlayer();
+  const input = record(value, 33), player = newPlayer();
   if (input.version !== 1 || Object.keys(input).some(key => !Object.prototype.hasOwnProperty.call(player, key))) invalid();
   player.id = `shopify:${customerId}`;
   if (input.leaderboardName !== undefined) {
@@ -123,5 +124,12 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
     const entry = record(value, 2);
     return { score: numeric(entry.score), date: date(entry.date) };
   });
+  // Additive v1 migration: absent libraries stay empty. Bound nested cosmetics,
+  // then reconstruct them without trusting embedded inventory or progress.
+  if (input.savedSetups !== undefined) {
+    if (!Array.isArray(input.savedSetups) || input.savedSetups.length > MAX_SAVED_SETUPS ||
+      new TextEncoder().encode(JSON.stringify(input.savedSetups)).length > MAX_SAVED_SETUPS_BYTES) invalid();
+    player.savedSetups = sanitizeSavedSetups(input.savedSetups, player);
+  }
   return player;
 }

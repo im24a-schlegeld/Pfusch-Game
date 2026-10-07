@@ -108,6 +108,24 @@ export interface StickerPlacement {
   size: number;
   rotation: number;
 }
+/** A cosmetic snapshot only; never contains inventory, balances or progress. */
+export interface PlayerAppearance {
+  equipped: Partial<Record<Slot, string>>;
+  variants: Record<string, string>;
+  customizations: Record<string, { customNumber?: string; hoodEnabled?: boolean }>;
+  bike: string;
+  paint: string;
+  rims: string;
+  helmet: Helmet;
+  helmetColor: string;
+  helmetVisor: string;
+  stickers: Record<string, StickerPlacement[]>;
+}
+export interface SavedSetup {
+  id: string;
+  name: string;
+  appearance: PlayerAppearance;
+}
 export interface Player {
   version: 1;
   id: string;
@@ -136,6 +154,8 @@ export interface Player {
   helmetVisor: string;
   /** Bike IDs plus additive v1 keys helmet:fullface and helmet:motocross. */
   stickers: Record<string, StickerPlacement[]>;
+  /** Additive v1 field; older saves migrate to an empty setup library. */
+  savedSetups: SavedSetup[];
   challenges: ChallengeProgress;
   redeemedRewards: string[];
   processedRuns: string[];

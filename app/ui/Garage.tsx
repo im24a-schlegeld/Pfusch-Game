@@ -24,6 +24,7 @@ import {
 } from './shared';
 import { ProgressContent } from './Screens';
 import ColorSection from './ColorSection';
+import SavedSetups from './SavedSetups';
 import { colorName, visiblePalette } from '../domain/paletteView';
 const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
 
@@ -216,6 +217,7 @@ export default function Garage({
     });
     if (!next) return;
     update(next);
+    flushSave();
     setDraft(null);
     notify('Helm ausgerüstet.');
   }
@@ -682,6 +684,8 @@ export default function Garage({
           </div>
         </section>
         <section className="garage-controls">
+          <SavedSetups player={player} products={products} services={services} update={update} notify={notify}
+            previewing={draft !== null} onEquip={() => { setDraft(null); setSelected(null); setConfiguration(null); }} />
           <Tabs
             value={tab}
             onValueChange={(v) => {
@@ -697,33 +701,6 @@ export default function Garage({
             <TabsContent value="rider">
               <div className="section-intro">
                 <h2>KLEIDUNG</h2>
-              </div>
-              <div className="equipped-slots">
-                {(['upper', 'head', 'accessory'] as const).map((slot) => (
-                  <div key={slot}>
-                    <span className="eyebrow">
-                      {slot === 'upper'
-                        ? 'OBERTEIL'
-                        : slot === 'head' ? 'KOPFBEDECKUNG' : 'ACCESSOIRE'}
-                    </span>
-                    <b>
-                      {products.find((p) => p.id === player.equipped[slot])
-                        ?.title ?? 'Standard-Outfit'}
-                    </b>
-                    {player.equipped[slot] && (
-                      <button
-                        onClick={() => {
-                          const equipped = { ...player.equipped };
-                          delete equipped[slot];
-                          update({ ...player, equipped });
-                          setDraft(null);
-                        }}
-                      >
-                        ENTFERNEN
-                      </button>
-                    )}
-                  </div>
-                ))}
               </div>
               <section aria-label="Helmoptionen">
                 <h3 className="custom-label">HELM</h3>
