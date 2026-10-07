@@ -334,7 +334,9 @@ export default function GameApp() {
   const newsletterOrigin = parentOrigin;
   const oxygenLoginHref = (() => {
     const login = new URL('/auth/login', SHOPIFY_OXYGEN_ORIGIN);
-    let returnTo = window.location.href;
+    let returnTo = SHOPIFY_STOREFRONT_ORIGIN + '/';
+    if (window.location.origin === SHOPIFY_OXYGEN_ORIGIN || window.location.hostname.endsWith('.myshopify.dev'))
+      returnTo = window.location.href;
     if (parentOrigin) {
       try {
         const candidate = new URL(document.referrer);
@@ -433,6 +435,7 @@ export default function GameApp() {
         <Leaderboard player={player} services={services} update={update} back={back} />
       )}
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
+        loginHref={oxygenLoginHref}
         onLogin={services.auth.login || oxygenRuntime ? () => { void beginLogin(); } : undefined}
         message={accessError} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
@@ -445,6 +448,7 @@ export default function GameApp() {
           services={services}
           update={update}
           back={back}
+          loginHref={oxygenLoginHref}
           onTutorial={() => {
             update({ ...player, settings: { ...player.settings, tutorialHintsSeen: [] } });
             start();
