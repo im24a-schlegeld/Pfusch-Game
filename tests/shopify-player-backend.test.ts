@@ -93,7 +93,7 @@ describe('Customer-scoped cloud save', () => {
     expect(url).toBe(`https://${config.shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`);
     expect(JSON.parse(options!.body as string).variables).toEqual({ id: gid, namespace: PLAYER_NAMESPACE, key: PLAYER_KEY });
     expect(JSON.parse(options!.body as string).query).toContain('emailMarketingConsent { marketingState }');
-    expect(options!.redirect).toBe('error');
+    expect(options!.redirect).toBe('manual');
   });
   it('never serves a different customer object returned upstream', async () => {
     const deps = dependencies(vi.fn(async () => response({ customer: { id: 'gid://shopify/Customer/999', metafield: null } })));

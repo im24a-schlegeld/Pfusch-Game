@@ -34,7 +34,7 @@ describe('Dev Dashboard server authentication', () => {
     expect(await getToken(config, request)).toBe('first-token');
     const [url, options] = request.mock.calls[0];
     expect(url).toBe(`https://${config.shop}/admin/oauth/access_token`);
-    expect(options).toMatchObject({ method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    expect(options).toMatchObject({ method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
     expect(Object.fromEntries(new URLSearchParams(options!.body as string))).toEqual({
       grant_type: 'client_credentials', client_id: config.clientId, client_secret: config.secret,
     });

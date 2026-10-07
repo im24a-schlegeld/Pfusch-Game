@@ -19,7 +19,9 @@ export async function shopifyGraphql(config: ShopifyConfig, query: string, varia
   try {
     const adminToken = await shopifyAdminToken(config, request);
     const response = await request(`https://${config.shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
+      // workerd supports manual redirects; !ok below rejects them without
+      // forwarding the Admin token or customer data to another destination.
+      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(8000),
       headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
       body: JSON.stringify({ query, variables }),
     });

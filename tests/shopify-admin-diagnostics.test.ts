@@ -110,4 +110,52 @@ describe('Safe Shopify Admin diagnostics', () => {
     expect(JSON.stringify(result)).not.toContain(config.secret);
     expect(request).toHaveBeenCalledTimes(2);
   });
+
+  it('loads the player on a worker that rejects the error redirect mode', async () => {
+    const config = configuration();
+    const request = vi.fn<typeof fetch>(async (url, options) => {
+      if (options?.redirect === 'error') throw new TypeError('Unsupported redirect mode: error');
+      if (String(url).endsWith('/admin/oauth/access_token')) return token();
+      return json({ data: { customer: { id: 'gid://shopify/Customer/123',
+        emailMarketingConsent: { marketingState: 'SUBSCRIBED' }, metafield: null } } });
+    });
+    const result = await handlePlayerRequest(input(), authenticated(config, request));
+    expect(result.status).toBe(200);
+    expect(result.body.customer).toEqual({ id: '123' });
+    expect(request).toHaveBeenCalledTimes(2);
+    for (const [, options] of request.mock.calls) expect(options?.redirect).toBe('manual');
+  });
+
+  it.each([302, 307])('rejects a token HTTP %s redirect without forwarding credentials or exposing its body', async status => {
+    const config = configuration();
+    const redirectTarget = 'https://untrusted.example.invalid/capture';
+    const request = vi.fn<typeof fetch>(async () => new Response(privateDetails, {
+      status, headers: { Location: redirectTarget },
+    }));
+    const result = await handlePlayerRequest(input(), authenticated(config, request));
+    expect(result).toEqual({ status: 503, body: { error: `shopify_token_http_${status}` } });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0][0]).toBe(`https://${config.shop}/admin/oauth/access_token`);
+    expect(request.mock.calls[0][1]?.redirect).toBe('manual');
+    expect(JSON.stringify(result)).not.toContain(redirectTarget);
+  });
+
+  it.each([302, 307])('rejects an Admin HTTP %s redirect without forwarding the token or exposing its body', async status => {
+    const config = configuration();
+    const redirectTarget = 'https://untrusted.example.invalid/capture';
+    const request = vi.fn<typeof fetch>()
+      .mockImplementationOnce(async () => token())
+      .mockImplementationOnce(async () => new Response(privateDetails, {
+        status, headers: { Location: redirectTarget },
+      }));
+    const result = await handlePlayerRequest(input(), authenticated(config, request));
+    expect(result).toEqual({ status: 503, body: { error: `shopify_admin_http_${status}` } });
+    expect(request).toHaveBeenCalledTimes(2);
+    for (const [url, options] of request.mock.calls) {
+      expect(new URL(String(url)).hostname).toBe(config.shop);
+      expect(options?.redirect).toBe('manual');
+    }
+    expect(String(request.mock.calls[1][0])).toContain('/graphql.json');
+    expect(JSON.stringify(result)).not.toContain(redirectTarget);
+  });
 });

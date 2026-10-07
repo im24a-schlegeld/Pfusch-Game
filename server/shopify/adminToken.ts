@@ -28,7 +28,9 @@ export function createShopifyAdminTokenProvider(now: () => number = Date.now) {
     const exchange = async () => {
       try {
         const response = await request(`https://${config.shop}/admin/oauth/access_token`, {
-          method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
+          // Oxygen/workerd rejects redirect:'error'. Manual keeps credentials on
+          // this shop; the status check below rejects every redirect response.
+          method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({ grant_type: 'client_credentials', client_id: config.clientId!, client_secret: config.secret }).toString(),
         });
