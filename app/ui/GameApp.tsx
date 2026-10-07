@@ -16,6 +16,7 @@ import { markTutorialsSeen } from '../domain/tutorial';
 import { createServices, type Services } from '../services';
 import { unavailableAccess } from '../services/playerAccess';
 import { shopifyParentOrigin, SHOPIFY_STOREFRONT_ORIGIN } from '../services/shopifyBridge';
+import { startOxygenLogin } from '../services/oxygenRuntime';
 import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/shopifyViewport';
 import { GameAudio } from '../game/audio';
 import type { VerifiedRunChallenge, VerifiedRunSubmission } from '../game/verifiedRun';
@@ -125,13 +126,15 @@ export default function GameApp() {
     [services],
   );
   const beginLogin = useCallback(async () => {
-    if (!services.auth.login || loginPending.current) return;
+    if ((!services.auth.login && !oxygenRuntime) || loginPending.current) return;
     loginPending.current = true;
     setOpeningLogin(true);
     try {
       // Start OAuth while the click is still active. A slow or unavailable
-      // player API must never make the login button appear inert.
-      services.auth.login();
+      // player API must never make the login button appear inert. Oxygen can
+      // navigate directly even when its runtime API has not loaded yet.
+      if (oxygenRuntime) startOxygenLogin(window, parentOrigin, document.referrer);
+      else services.auth.login?.();
       // Finish queued progress on a best-effort basis after starting login.
       void services.players.flush?.().catch(() => {});
     } catch {
@@ -140,7 +143,7 @@ export default function GameApp() {
       loginPending.current = false;
       setOpeningLogin(false);
     }
-  }, [services]);
+  }, [oxygenRuntime, parentOrigin, services]);
   useEffect(() => {
     const onFocus = () => {
       if (current.current) {
@@ -331,7 +334,7 @@ export default function GameApp() {
   const newsletterOrigin = parentOrigin;
   // Asset loading belongs to the preview. Keep garage navigation and edits usable.
   const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET' : null;
-  const hasAccountAction = !!services.auth.login || accountKind === 'customer';
+  const hasAccountAction = !!services.auth.login || oxygenRuntime || accountKind === 'customer';
   const accountAction = hasAccountAction ? <button type="button" className="account-header-button"
     disabled={openingLogin} aria-label={accountKind === 'customer' ? 'Konto öffnen' : 'Anmelden'}
     onClick={accountKind === 'customer' ? () => navigate('settings') : () => { void beginLogin(); }}>
@@ -415,7 +418,7 @@ export default function GameApp() {
         <Leaderboard player={player} services={services} update={update} back={back} />
       )}
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
-        onLogin={services.auth.login ? () => { void beginLogin(); } : undefined}
+        onLogin={services.auth.login || oxygenRuntime ? () => { void beginLogin(); } : undefined}
         message={accessError} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
           setAccessOpen(false);
