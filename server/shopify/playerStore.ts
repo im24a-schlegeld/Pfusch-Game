@@ -23,17 +23,25 @@ export async function shopifyGraphql(config: ShopifyConfig, query: string, varia
       headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
       body: JSON.stringify({ query, variables }),
     });
-    if (!response.ok) throw new ApiError(503, 'shopify_unavailable');
+    if (!response.ok) throw new ApiError(503, `shopify_admin_http_${response.status}`);
     const raw = await response.text();
     if (byteLength(raw) > MAX_BODY_BYTES * 4) throw new ApiError(502, 'invalid_shopify_response');
-    const result: unknown = JSON.parse(raw);
-    if (!isRecord(result) || (Array.isArray(result.errors) && result.errors.length) || !isRecord(result.data))
-      throw new ApiError(503, 'shopify_unavailable');
+    let result: unknown;
+    try { result = JSON.parse(raw); } catch { throw new ApiError(502, 'invalid_shopify_response'); }
+    if (!isRecord(result)) throw new ApiError(502, 'invalid_shopify_response');
+    if (Array.isArray(result.errors) && result.errors.length) {
+      // GraphQL messages can include customer data; expose fixed classifications only.
+      const codes = result.errors.map(error => isRecord(error) && isRecord(error.extensions) ? error.extensions.code : null);
+      throw new ApiError(503, codes.includes('ACCESS_DENIED') ? 'shopify_admin_access_denied'
+        : codes.includes('THROTTLED') ? 'shopify_admin_throttled' : 'shopify_admin_query_failed');
+    }
+    if (!isRecord(result.data)) throw new ApiError(502, 'invalid_shopify_response');
     return result.data;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     // Never expose upstream error payloads, API tokens, or customer details.
-    throw new ApiError(503, 'shopify_unavailable');
+    throw new ApiError(503, error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name)
+      ? 'shopify_admin_timeout' : 'shopify_admin_request_failed');
   }
 }
 
@@ -66,7 +74,7 @@ export async function saveCustomerPlayer(config: ShopifyConfig, customerId: stri
   if (!isRecord(result) || !Array.isArray(result.userErrors)) throw new ApiError(502, 'invalid_shopify_response');
   if (result.userErrors.some(value => isRecord(value) && ['STALE_OBJECT', 'INVALID_COMPARE_DIGEST'].includes(String(value.code))))
     throw new ApiError(409, 'conflict');
-  if (result.userErrors.length) throw new ApiError(503, 'shopify_unavailable');
+  if (result.userErrors.length) throw new ApiError(503, 'shopify_admin_save_rejected');
   const fields = result.metafields;
   if (!Array.isArray(fields) || fields.length !== 1 || !isRecord(fields[0]) || !digest(fields[0].compareDigest))
     throw new ApiError(502, 'invalid_shopify_response');

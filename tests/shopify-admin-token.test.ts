@@ -72,7 +72,7 @@ describe('Dev Dashboard server authentication', () => {
       .mockImplementationOnce(async () => tokenResponse('replacement-token'));
     await getToken(config, request);
     now = 86_399_000;
-    await expect(getToken(config, request)).rejects.toMatchObject({ status: 503, message: 'shopify_unavailable' });
+    await expect(getToken(config, request)).rejects.toMatchObject({ status: 503, message: 'shopify_token_http_401' });
     expect(await getToken(config, request)).toBe('replacement-token');
     expect(request).toHaveBeenCalledTimes(3);
   });
@@ -82,21 +82,26 @@ describe('Dev Dashboard server authentication', () => {
     { access_token: 'token', expires_in: 86401, scope: 'write_customers' },
     { access_token: 'token', expires_in: '86399', scope: 'write_customers' },
     { access_token: 'header\rinjection', expires_in: 86399, scope: 'write_customers' },
-    { access_token: 'token', expires_in: 86399, scope: 'read_customers' },
     { access_token: 'token', expires_in: 86399 },
     { access_token: 'x'.repeat(17000), expires_in: 86399, scope: 'write_customers' },
   ])('rejects malformed, expired or insufficiently scoped token responses', async value => {
     await expect(createShopifyAdminTokenProvider()(config, vi.fn(async () => json(value))))
-      .rejects.toMatchObject({ status: 503, message: 'shopify_unavailable' });
+      .rejects.toMatchObject({ status: 503, message: 'shopify_token_invalid_response' });
+  });
+  it('identifies a granted token without the required customer write scope', async () => {
+    await expect(createShopifyAdminTokenProvider()(config, vi.fn(async () => json({ access_token: 'token', expires_in: 86399, scope: 'read_customers' }))))
+      .rejects.toMatchObject({ status: 503, message: 'shopify_token_scope_missing' });
   });
   it('fails closed for network failures and malformed JSON', async () => {
-    for (const request of [vi.fn(async () => { throw new Error(config.secret); }), vi.fn(async () => new Response('invalid'))])
-      await expect(createShopifyAdminTokenProvider()(config, request)).rejects.toMatchObject({ status: 503, message: 'shopify_unavailable' });
+    await expect(createShopifyAdminTokenProvider()(config, vi.fn(async () => { throw new Error(config.secret); })))
+      .rejects.toMatchObject({ status: 503, message: 'shopify_token_request_failed' });
+    await expect(createShopifyAdminTokenProvider()(config, vi.fn(async () => new Response('invalid'))))
+      .rejects.toMatchObject({ status: 503, message: 'shopify_token_invalid_response' });
   });
   it('rejects a token already within its refresh margin when the response finally arrives', async () => {
     let now = 0;
     const request = vi.fn<typeof fetch>(async () => { now = 86_399_000; return tokenResponse(); });
-    await expect(createShopifyAdminTokenProvider(() => now)(config, request)).rejects.toThrow('shopify_unavailable');
+    await expect(createShopifyAdminTokenProvider(() => now)(config, request)).rejects.toThrow('shopify_token_expired_response');
   });
   it('authenticates customer reads, customer saves and ranking with the same server token provider', async () => {
     const requests: string[] = [];

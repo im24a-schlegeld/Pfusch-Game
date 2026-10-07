@@ -163,7 +163,7 @@ describe('Customer-scoped cloud save', () => {
   });
   it('returns safe error codes without upstream credentials or error text', async () => {
     const deps = dependencies(vi.fn(async () => new Response(JSON.stringify({ errors: [{ message: config.adminToken }] }), { status: 200 })));
-    expect(await handlePlayerRequest(input(), deps)).toEqual({ status: 503, body: { error: 'shopify_unavailable' } });
+    expect(await handlePlayerRequest(input(), deps)).toEqual({ status: 503, body: { error: 'shopify_admin_query_failed' } });
   });
 });
 

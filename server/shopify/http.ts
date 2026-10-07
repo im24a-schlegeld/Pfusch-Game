@@ -9,12 +9,32 @@ export interface NodeRequest extends AsyncIterable<Uint8Array | string> {
   headers: Record<string, string | string[] | undefined> & { 'content-type'?: string };
   body?: unknown;
 }
+/** Older worker runtimes expose timeout() before they expose any(). Keep the
+ * fallback listeners until cancellation so response bodies are covered too.
+ * The shared deadline always fires and releases the remaining listeners. */
+function combineSignals(signals: AbortSignal[]): AbortSignal {
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any(signals);
+  const controller = new AbortController();
+  const listeners: Array<[AbortSignal, () => void]> = [];
+  const abort = (signal: AbortSignal) => {
+    for (const [source, listener] of listeners) source.removeEventListener('abort', listener);
+    listeners.length = 0;
+    controller.abort(signal.reason);
+  };
+  for (const signal of signals) {
+    if (signal.aborted) { abort(signal); break; }
+    const listener = () => abort(signal);
+    listeners.push([signal, listener]);
+    signal.addEventListener('abort', listener, { once: true });
+  }
+  return controller.signal;
+}
 /** One deadline shared by every request in a secondary operation, including
  * CAS retries. Real fetch cancellation is awaited before the function exits. */
 export function withFetchDeadline(request: typeof fetch, milliseconds: number): typeof fetch {
   const deadline = AbortSignal.timeout(milliseconds);
   return (input, init) => request(input, { ...init,
-    signal: init?.signal ? AbortSignal.any([init.signal, deadline]) : deadline });
+    signal: init?.signal ? combineSignals([init.signal, deadline]) : deadline });
 }
 function checkLength(length: string | string[] | undefined | null) {
   if (length === null) return;
