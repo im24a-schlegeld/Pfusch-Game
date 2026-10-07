@@ -1,7 +1,7 @@
 import { BIKES, PAINTS, RIMS } from './config';
 import { equipHelmet } from './helmet';
 import { equipConfiguration, equipmentSlot, equippable, previewLoadout, validConfiguration } from './preview';
-import { digitalPrice, unlock } from './progression';
+import { digitalLevel, digitalPrice, unlock } from './progression';
 import { colorName } from './paletteView';
 import { isSticker, saveStickerTargets } from './stickers';
 import type { Player, Product, ProductConfiguration, Slot, StickerPlacement } from './types';
@@ -61,6 +61,7 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
   else if (edit.kind === 'product') {
     const product = products.find(p => p.id === edit.productId);
     id = edit.productId; name = product?.title ?? 'Artikel'; price = product ? digitalPrice(product) : 0;
+    requiredLevel = product ? digitalLevel(product) : 1;
     valid = !!product && validConfiguration(product, edit.configuration);
     collectible = !!product && !equippable(product);
     if (product?.preview?.numberCustomization && !/^\d{1,2}$/.test(edit.configuration.customNumber ?? '')) {
@@ -68,7 +69,7 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
     }
   }
   const owned = !id || player.ownedItems.includes(id) || player.irlItems.includes(id);
-  const blocked = !valid ? 'Diese Auswahl ist nicht verfügbar' : player.level < requiredLevel ? `Ab Level ${requiredLevel} verfügbar`
+  const blocked = !valid ? 'Diese Auswahl ist nicht verfügbar' : player.level < requiredLevel && (!owned || edit.kind === 'model') ? `Ab Level ${requiredLevel} verfügbar`
     : !owned && player.coins < price ? `Dir fehlen ${price - player.coins} Coins` : null;
   return { name, price, owned, requiredLevel, blocked, collectible };
 }

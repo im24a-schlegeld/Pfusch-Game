@@ -31,7 +31,7 @@ describe('authentic, chassis-attached keychain', () => {
     expect(artwork.front.localImage).not.toBe(artwork.back.localImage);
   });
 
-  it.each(['125', '450', '701', 'scooter'])('%s joins the ignition to the real chassis and retains a bounded hanging attachment', (model) => {
+  it.each(['125', 'moped', '450', '701', 'scooter'])('%s joins the ignition to the real chassis and retains a bounded hanging attachment', (model) => {
     const player = newPlayer();
     player.bike = model;
     player.equipped.keychain = keychain.id;

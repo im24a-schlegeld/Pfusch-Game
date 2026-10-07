@@ -129,7 +129,7 @@ export function createRideParticles(scene: THREE.Scene, low: boolean) {
       const step = Math.min(dt, 0.05);
       if (emitting && !reducedMotion) {
         smokeCarry +=
-          step * (model === '125' ? 10 : model === 'scooter' ? 8 : 3);
+          step * (model === '125' || model === 'moped' ? 10 : model === 'scooter' ? 8 : 3);
         while (smokeCarry >= 1) {
           spawn(exhaust, 0, paintColor);
           smokeCarry--;

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { ImportedBikeManifest, ImportedBikePart } from '../app/game/importedBikeAsset';
 
-const models = ['fs450', 'nitro', 'r6'] as const;
+const models = ['ciao', 'moped', 'fs450', 'nitro', 'r6'] as const;
 const allowedRigs = new Set(['body', 'steering', 'fork', 'frontWheel', 'rearWheel', 'swingarm', 'shockUpper', 'shockLower']);
 const assetRoot = fileURLToPath(new URL('../public/models/', import.meta.url));
 type Statistics = { triangles: number; vertices: number; geometryBytes: number; meshes: number };

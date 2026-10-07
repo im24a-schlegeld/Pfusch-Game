@@ -25,7 +25,7 @@ const closeMatrix = (a: Matrix4, b: Matrix4) =>
   ).toBeLessThan(1e-10);
 
 describe('active fork and rear suspension', () => {
-  it.each(['125', 'scooter', '450', '701'] as const)(
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s visibly compresses and returns without moving tire contacts or changing the rider',
     (model) => {
       const bike = makeBike({ ...newPlayer(), bike: model }, []);
@@ -40,7 +40,7 @@ describe('active fork and rear suspension', () => {
       bike.rider.traverse((part) => {
         if (part.type === 'Bone') boneScales.push(part.scale.toArray());
       });
-      const fork = bike.body.getObjectByName(model === '125' ? 'telescopic-fork-slider' : 'front-suspension-axle')!;
+      const fork = bike.body.getObjectByName('front-suspension-axle')!;
       expect(fork).toBeDefined();
       for (const pitch of [0, 0.68, 1.1]) {
         bike.animateSuspension(pitch, 0);
@@ -48,7 +48,6 @@ describe('active fork and rear suspension', () => {
         const wheels = bike.wheels.map((wheel) =>
           wheel.getWorldPosition(new Vector3()),
         );
-        const neutralFork = fork.scale.y;
         const neutralBody = bike.body.position.clone();
         for (const travel of [-0.025, 0.12, 0.05, 0]) {
           bike.animateSuspension(pitch, travel);
@@ -71,8 +70,7 @@ describe('active fork and rear suspension', () => {
             true,
           );
           if (travel > 0.1 && pitch === 0) {
-            if (model === '125') expect(fork.scale.y).toBeLessThan(neutralFork - 0.04);
-            else expect(bike.body.position.distanceTo(neutralBody)).toBeGreaterThan(.03);
+            expect(bike.body.position.distanceTo(neutralBody)).toBeGreaterThan(.03);
           }
         }
       }
@@ -82,7 +80,7 @@ describe('active fork and rear suspension', () => {
     },
   );
 
-  it.each(['scooter', '450', '701'] as const)(
+  it.each(['scooter', 'moped', '450', '701'] as const)(
     '%s coil compresses between its real frame and moving arm mounts',
     (model) => {
       const bike = makeBike({ ...newPlayer(), bike: model }, []);
@@ -121,7 +119,7 @@ describe('active fork and rear suspension', () => {
   );
 
   it('uses small wheelie squat and bounded landing travel, retaining the hardtail rear', () => {
-    for (const model of ['125', 'scooter', '450', '701']) {
+    for (const model of ['125', 'scooter', 'moped', '450', '701']) {
       const wheelie = activeSuspensionPose(
         model,
         0.8,
@@ -196,7 +194,7 @@ describe('active fork and rear suspension', () => {
     expect(bike.body.position.y).toBeCloseTo(0, 12);
   });
 
-  it.each(['450', '701', 'scooter'] as const)('%s carries fixed brake hardware with the lower fork, never the rotating wheel', model => {
+  it.each(['125', 'moped', '450', '701', 'scooter'] as const)('%s carries fixed brake hardware with the lower fork, never the rotating wheel', model => {
     const bike = makeBike({ ...newPlayer(), bike: model }, []);
     const fork = bike.body.getObjectByName('front-suspension-axle')!;
     const metal: Mesh[] = [];

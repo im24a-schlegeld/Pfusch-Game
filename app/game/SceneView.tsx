@@ -29,15 +29,16 @@ import { importedBikeReady, preloadImportedBike } from './importedBikeAsset';
 import LoadingScreen, { PreviewLoading } from '../ui/LoadingScreen';
 import SceneFallback from '../ui/SceneFallback';
 import { createPreviewColorUpdater, previewGeometryKey } from './previewAppearance';
+import { createSceneInvalidation } from './sceneInvalidation';
 import { selectTutorialCue, visibleTutorialProjection, type TutorialCue, type TutorialTarget } from './tutorialCues';
 
-export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'accessory' | 'keychain';
+export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'accessory' | 'cape' | 'keychain';
 
 export const preloadBikeAsset = preloadImportedBike;
 
 // Match makeBike's body selection, including its default Supermoto geometry.
 const headlightModel = (id: string) =>
-  id === '125' || id === 'scooter' || id === '701' ? id : '450';
+  id === '125' || id === 'scooter' || id === 'moped' || id === '701' ? id : '450';
 
 /** A stale sticker placement must never prevent the motorcycle from rendering. */
 function applyStickersSafely(
@@ -214,6 +215,8 @@ export default function SceneView({
       return;
     }
     applyStickersSafely(bike, player);
+    const invalidation = createSceneInvalidation();
+    invalidation.track(bike.root);
     bike.root.name = 'player-bike';
     let vehicleKey = appearance.current.key,
       vehicleProducts = products;
@@ -250,26 +253,30 @@ export default function SceneView({
         upper: [2, portrait ? 3.2 : 2.7, 0.28],
         head: [2.65, portrait ? 2.1 : 1.7, 0.12],
         accessory: [1.65, portrait ? 3.7 : 3, 0.28],
+        cape: [2, portrait ? 4.2 : 3.5, 0.18],
         keychain: [1.1, portrait ? 2.7 : 2.3, 0.45],
       } satisfies Record<InspectionFocus, number[]>;
       const [y, distance, elevation] = defaults[focus];
       const look = new THREE.Vector3(0, y, 0);
       const name = focus === 'upper' ? 'tailored-garment'
         : focus === 'head' ? (appearance.current.player.helmet === 'fullface' ? 'full-face-helmet' : 'motocross-helmet')
-          : focus === 'accessory' ? 'carried-crossbody-bag' : focus === 'keychain' ? 'keychain-fabric-tag' : '';
-      const target = name ? bike.root.getObjectByName(name) : undefined;
+          : focus === 'cape' ? 'pfusch-flag-cape' : focus === 'accessory' ? 'carried-crossbody-bag' : focus === 'keychain' ? 'keychain-fabric-tag' : '';
+      const target = focus === 'model' ? bike.root : name ? bike.root.getObjectByName(name) : undefined;
       if (target) {
         const priorRotation = bike.root.rotation.y;
         bike.root.rotation.y = angle;
         bike.root.updateMatrixWorld(true);
-        new THREE.Box3().setFromObject(target).getCenter(look);
+        // Whole-model framing follows the actual adult rider and motorcycle,
+        // so shorter Ciao and taller Supermoto share a vertically centred view.
+        new THREE.Box3().setFromObject(target, focus === 'cape' || focus === 'model').getCenter(look);
         bike.root.rotation.y = priorRotation;
         bike.root.updateMatrixWorld(true);
       }
       return { look, position: look.clone().add(new THREE.Vector3(0, elevation, distance * zoom)) };
     };
-    const focusAngles: Record<InspectionFocus, number> = { model: 2.35, paint: 1.65, rims: 1.55, upper: 2.45, head: 2.6, accessory: 3.75, keychain: 1.65 };
+    const focusAngles: Record<InspectionFocus, number> = { model: 2.35, paint: 1.65, rims: 1.55, upper: 2.45, head: 2.6, accessory: 3.75, cape: 0.3, keychain: 1.65 };
     const transitionPreview = (now: number, focus: InspectionFocus, angle = rotation) => {
+      invalidation.invalidate();
       const target = previewTargets(focus, angle);
       const delta = Math.atan2(Math.sin(angle - rotation), Math.cos(angle - rotation));
       cameraTransition = {
@@ -311,11 +318,10 @@ export default function SceneView({
     let crashNotified = false;
     let crashReported = false;
     let shadowFloor: THREE.Mesh | undefined;
-    const fitPreviewGround = (model: Player['bike']) => {
+    const fitPreviewGround = (_model: Player['bike']) => {
       if (!shadowFloor) return;
       shadowFloor.position.y = -0.015;
       sunlight.shadow.normalBias = 0.015;
-      if (model === '125') return;
       // Fit the receiving plane to the actual tires, independently of the
       // mechanical geometry. A large shadow bias made the preview float.
       bike.root.updateMatrixWorld(true);
@@ -361,12 +367,12 @@ export default function SceneView({
       const w = el.clientWidth,
         h = el.clientHeight;
       if (!w || !h) return;
+      invalidation.invalidate();
       renderer.setSize(w, h, false);
       particles?.setViewport(h, renderer.getPixelRatio());
-      const wasPortrait = camera.aspect < 0.8;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      if (mode === 'garage' && wasPortrait !== (camera.aspect < 0.8))
+      if (mode === 'garage')
         transitionPreview(performance.now(), appliedFocus);
     };
     const observer = new ResizeObserver(resize);
@@ -380,6 +386,7 @@ export default function SceneView({
     }
     const manualZoom = (factor: number) => {
       if (mode === 'ride') return;
+      invalidation.invalidate();
       cameraTransition = undefined;
       const next = THREE.MathUtils.clamp(zoom * factor, 0.55, 1.65);
       camera.position.sub(previewLook).multiplyScalar(next / zoom).add(previewLook);
@@ -395,6 +402,7 @@ export default function SceneView({
     };
     const move = (e: PointerEvent) => {
       if (dragging) {
+        invalidation.invalidate();
         rotation += (e.clientX - previousX) * 0.009;
         previousX = e.clientX;
       }
@@ -411,6 +419,7 @@ export default function SceneView({
       if (mode === 'ride' || e.target !== el) return;
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
+        invalidation.invalidate();
         cameraTransition = undefined;
         rotation += e.key === 'ArrowLeft' ? -0.16 : 0.16;
       } else if (e.key === '+' || e.key === '-' || e.key === '=') {
@@ -464,29 +473,59 @@ export default function SceneView({
       visible = !document.hidden;
     const visualBlur = () => {
       focused = false;
+      invalidation.invalidate();
     };
     const visualFocus = () => {
       focused = true;
+      invalidation.invalidate();
       last = performance.now();
     };
     const visualVisibility = () => {
       visible = !document.hidden;
+      invalidation.invalidate();
       last = performance.now();
     };
     window.addEventListener('blur', visualBlur);
     window.addEventListener('focus', visualFocus);
     document.addEventListener('visibilitychange', visualVisibility);
+    let drawnPlayer = player;
+    let drawnProducts = products;
+    let drawnPhase = engine?.phase;
+    let drawnHints = tutorial.current.seen;
+    let drawnReducedMotion = reducedMotion();
     const animate = (now: number) => {
       raf = requestAnimationFrame(animate);
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       if (!graphicsAvailable) return;
-      clock += dt;
       let crashComplete = false;
       const nextAppearance = appearance.current;
+      const command = inspection.current;
+      const reduceMotion = reducedMotion();
+      const latestAssetReady = importedBikeReady(nextAppearance.player.bike);
+      if (nextAppearance.player !== drawnPlayer || nextAppearance.products !== drawnProducts ||
+          (latestAssetReady && nextAppearance.key !== vehicleKey) ||
+          engine?.phase !== drawnPhase || tutorial.current.seen !== drawnHints ||
+          reduceMotion !== drawnReducedMotion || command.inspectionFocus !== appliedFocus ||
+          command.inspectionAngle !== appliedAngle || command.inspectionRevision !== appliedRevision) {
+        invalidation.invalidate();
+      }
+      const continuous = mode === 'ride'
+        ? engine?.phase === 'playing' || (engine?.resumeRemaining ?? 0) > 0 ||
+          (engine?.phase === 'crashed' && !crashNotified && focused && visible)
+        : !!cameraTransition || (mode === 'menu' && !dragging && !reduceMotion && appliedAngle === undefined);
+      // Keep the last complete image while idle. Resume countdowns, crashes and
+      // riding still advance every frame; controls and late artwork invalidate.
+      const changed = continuous || invalidation.consume();
+      if (callbackReady && !continuous && !changed) return;
+      drawnPlayer = nextAppearance.player;
+      drawnProducts = nextAppearance.products;
+      drawnPhase = engine?.phase;
+      drawnHints = tutorial.current.seen;
+      drawnReducedMotion = reduceMotion;
+      clock += dt;
       // An asset request can finish out of order. Only the current appearance
       // can enter this scene; the previous preview stays visible while loading.
-      const latestAssetReady = importedBikeReady(nextAppearance.player.bike);
       if (!latestAssetReady && mode === 'ride') return;
       if (
         latestAssetReady && (nextAppearance.key !== vehicleKey ||
@@ -511,6 +550,7 @@ export default function SceneView({
         collisionTraffic.clear();
         anchors = particleAnchors(bike.body, nextAppearance.player.bike);
         scene.add(bike.root);
+        invalidation.track(bike.root);
         fitPreviewGround(nextAppearance.player.bike);
         updateGlow = createGarmentGlowUpdater(bike.root);
         updateColors = createPreviewColorUpdater(bike.body, bike.rider, nextAppearance.player);
@@ -519,9 +559,9 @@ export default function SceneView({
         );
         vehicleKey = nextAppearance.key;
         vehicleProducts = nextAppearance.products;
+        if (mode === 'garage') transitionPreview(now, appliedFocus);
       }
       if (latestAssetReady) updateColors(nextAppearance.player);
-      const command = inspection.current;
       if (mode === 'garage' && command.inspectionFocus !== appliedFocus) {
         appliedFocus = command.inspectionFocus;
         transitionPreview(now, appliedFocus, focusAngles[appliedFocus]);
@@ -837,6 +877,7 @@ export default function SceneView({
         // consume these same transforms before the scene is rendered.
         bike.animateAccessories(
           {
+            speed: crashTravel?.speed ?? engine.speed,
             longitudinalAcceleration,
             lateralAcceleration,
             landing,
@@ -920,7 +961,8 @@ export default function SceneView({
         // Observe already-rendered encounter models at most seven times per
         // second. React receives only changed viewport anchors, never frames.
         // An instructional pause retains its cue and does not discover another.
-        if (tutorial.current.callback && callbackReady && now - tutorialAt >= 150) {
+        if (tutorial.current.callback && callbackReady &&
+            (now - tutorialAt >= 150 || (engine.phase === 'paused' && !continuous && changed))) {
           tutorialAt = now;
           camera.updateMatrixWorld(true);
           if (engine.phase === 'paused' && tutorialTarget) {
@@ -974,7 +1016,7 @@ export default function SceneView({
           previewLook.set(0, 1.3, 0);
         }
         camera.lookAt(previewLook);
-        bike.animateAccessories({ reducedMotion: true }, dt);
+        bike.animateAccessories({ speed: 0, reducedMotion: true }, dt);
       }
       try {
         renderer.render(scene, camera);

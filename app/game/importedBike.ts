@@ -18,7 +18,7 @@ interface ImportedRiderController {
 }
 type RiderFactory = (parent: THREE.Object3D, pose: RiderPose, player: Player, products: Product[]) => ImportedRiderController;
 const xAxis = new THREE.Vector3(1, 0, 0);
-const nominalLean: Record<ImportedBikeId, number> = { '450': 0.42, '701': 0.74, scooter: 0.25 };
+const nominalLean: Record<ImportedBikeId, number> = { '125': 0.16, moped: 0.25, '450': 0.42, '701': 0.74, scooter: 0.25 };
 
 /** Source meshes retain their shape; only one uniform vehicle-size conversion is applied. */
 export function makeImportedBike(player: Player, products: Product[], makeRider: RiderFactory) {
@@ -68,9 +68,9 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
       metalness: tireMaterial ? 0 : definition.metalness,
       roughness: tireMaterial ? 1 : definition.roughness,
       envMapIntensity: tireMaterial && id === '450' ? 0 : 1,
-      map: !paintable && !rimMaterial && !tireMaterial && definition.map ? textures.get(definition.map) : undefined,
-      normalMap: definition.normalMap ? textures.get(definition.normalMap) : undefined,
-      alphaMap: definition.alphaMap ? textures.get(definition.alphaMap) : undefined,
+      map: !paintable && !rimMaterial && !tireMaterial && definition.map ? textures.get(definition.map) ?? null : null,
+      normalMap: definition.normalMap ? textures.get(definition.normalMap) ?? null : null,
+      alphaMap: definition.alphaMap ? textures.get(definition.alphaMap) ?? null : null,
       opacity: definition.opacity ?? 1,
       transparent: (definition.opacity ?? 1) < 1,
       side: definition.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
@@ -119,8 +119,8 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     anchor.name = `imported-headlight-anchor-${index}`;
     anchor.position.copy(point(position));
     if (!source.headlight && !source.headlights) { anchor.position.y -= 0.15; anchor.position.z -= 0.07; }
-    // The sport/scooter fairing is chassis-mounted; only the off-road plate steers.
-    (id === '450' ? steering : body).add(anchor);
+    // Fairing lamps stay on the chassis; exposed fork/headset lamps steer.
+    (id === '450' || id === '125' || id === 'moped' ? steering : body).add(anchor);
     return anchor;
   });
   const hip = point(source.hip).multiplyScalar(modelScale).toArray() as Point;
@@ -225,8 +225,9 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   const shockRotation = new THREE.Quaternion(), rotationMatrix = new THREE.Matrix4(), stretch = new THREE.Matrix4();
   shock.matrixAutoUpdate = false;
   const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0) => {
-    const frontTravel = THREE.MathUtils.clamp(travel / modelScale - wheelieLoad * 0.009, -0.025, id === '450' ? 0.125 : 0.085);
-    const rearTravel = THREE.MathUtils.clamp(travel / modelScale * 0.7 + wheelieLoad * 0.012, -0.025, 0.065);
+    const frontTravel = THREE.MathUtils.clamp(travel / modelScale - wheelieLoad * 0.009, -0.025, id === '450' ? 0.125 : id === '125' ? 0.065 : 0.085);
+    // The Ciao is a hardtail: its rear axle and frame remain one rigid assembly.
+    const rearTravel = id === '125' ? 0 : THREE.MathUtils.clamp(travel / modelScale * 0.7 + wheelieLoad * 0.012, -0.025, 0.065);
     const movedY = THREE.MathUtils.clamp(arm.y + rearTravel, -armLength + 0.000001, armLength - 0.000001);
     const rearAngle = Math.atan2(Math.sqrt(armLength ** 2 - movedY ** 2), movedY) - Math.atan2(arm.z, arm.y);
     rearPosition.copy(pivot).sub(movedRear.copy(pivot).applyAxisAngle(xAxis, rearAngle));

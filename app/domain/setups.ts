@@ -8,7 +8,7 @@ export const MAX_SAVED_SETUPS = 8;
 export const SETUP_NAME_MAX_LENGTH = 32;
 /** Leave space in the 128 KiB cloud request for inventory, history and live decals. */
 export const MAX_SAVED_SETUPS_BYTES = 49152;
-const slots: Slot[] = ['upper', 'lower', 'head', 'accessory', 'keychain', 'collectible', 'bike'];
+const slots: Slot[] = ['upper', 'lower', 'head', 'accessory', 'keychain', 'cape', 'collectible', 'bike'];
 const appearanceKeys = ['equipped', 'variants', 'customizations', 'bike', 'paint', 'rims', 'helmet', 'helmetColor', 'helmetVisor', 'stickers'];
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

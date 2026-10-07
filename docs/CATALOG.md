@@ -1,31 +1,33 @@
-# Pfusch public catalog audit
+# PFUSCH public catalog audit
 
-Fetched 2026-09-08 from the live storefront. This directory is independent of the Site checkout.
+Refreshed 2026-10-07 from the live public storefront. Run `node scripts/sync-public-catalog.mjs` from the repository root to repeat the read-only audit. No Admin token or shop changes are involved.
 
 ## Coverage
 
-- https://pfusch-clothing.ch/products.json?limit=250&page=1 returned **16 unique products**, **186 variants**, and **112 image records**.
-- https://pfusch-clothing.ch/products.json?limit=250&page=2 returned `{"products":[]}`. Pagination is exhausted.
-- https://pfusch-clothing.ch/collections/all contains exactly the same 16 product handles.
-- https://pfusch-clothing.ch/sitemap.xml links to one base-language product sitemap. https://pfusch-clothing.ch/sitemap_products_1.xml?from=9464572805449&to=10237102096713 contains the same 16 product URLs, plus the homepage. Other language sitemaps are localized mirrors.
-- All 16 individual product pages were fetched successfully. Each canonical URL matches its feed handle; each page includes InStock offers and no OutOfStock offers.
-- The four native collections were also fetched. T-Shirts: 3; Hoodies: 5; Accessoires: 7; Jacken/Windbreaker: 1. Their union is the same 16 products.
-- No inventory availability filtering was applied. All discovered products and all variants were retained. All 186 current variants report available=true; there were no sold-out products at fetch time. No trousers or bikes are currently discoverable products.
-- Search/web cache for `/collections/all` was two months old and showed only 12 products, missing the three Keep up releases and P ZERO Cap. The saved catalog uses the live HTTP feed and fresh collection/sitemap, avoiding stale cache omissions.
+- [Feed page 1](https://pfusch-clothing.ch/products.json?limit=250&page=1): 16 published products, 186 variants and 112 source image records.
+- [Feed page 2](https://pfusch-clothing.ch/products.json?limit=250&page=2): empty; pagination exhausted. The script continues until the first empty response, rather than assuming one page.
+- [Sitemap index](https://pfusch-clothing.ch/sitemap.xml): all 12 product sitemaps, including every language/market mirror, were fetched. Their union contains the same 16 handles. No missing products. Future sitemap-only products are fetched individually and retained.
+- No availability filter is applied. All currently published variants report available. The former flag listing is absent from the feed/sitemaps; its historical ID remains with product and variant availability false.
+- Stored total: **17 product identities and 187 variants**, including the retired flag. Variant IDs remain strings. `public/catalog/coverage.json` records the timestamp, pagination, all sitemap URLs/handles and published/retired IDs.
+- Source responses remain in local `outputs/catalog-refresh-YYYY-MM-DD/` (ignored audit evidence). The September audit contained the former flag, not its replacement; identity is never reassigned.
 
-## Deliverables
+## Central data and images
 
-- `catalog.json`: normalized product array with string id, original title/handle, canonical shop link, CHF numeric minimum price, all source images, local primary-image path, inferred game category/type, estimated baseColor, concise German description, sourceDescription, complete options and variants including availability and variant image/color.
-- `images/`: all 16 primary product images at the Shopify CDN's 640px rendition, and `pfusch-logo.png` at 600px. These are actual storefront assets, with no AI-generated or substituted imagery.
-- `contact-sheet.png`: visual inspection sheet only, not a product replacement asset.
-- `products-page-1.json`, `products-page-2.json`, XML sitemaps, homepage/collection HTML, and `product-pages/` preserve source evidence.
-- `product-page-verification.json` and `collection-verification.json`: automated cross-check evidence.
+`public/catalog/products.json` is the application's central normalized catalog. Original titles, handles, descriptions (text and HTML), Shopify product type, timestamps, options, variants and image URLs remain alongside game metadata. `public/catalog/product-overrides.json` contains reviewed classification and artwork metadata; components do not duplicate catalog rows.
 
-## Normalization notes
+Existing audited color/front/back previews remain intact while their exact source images remain published. Changed primary images are downloaded from Shopify's 640px rendition; unchanged assets retain their real PNG/JPG paths. No artwork is invented, recolored or AI-generated. If the cape source changes, the script stops so its crop can be visually reviewed before updating the override.
 
-Shopify product_type is blank for all items; `type` and game `category` are inferred from the original titles and use. Upper: 9; head: 3; accessory: 2; collectible: 2. Flag and sticker are collectibles; crossbody bag and keychain are accessories. Color hex values are representative estimates based on source color options and visually inspected source imagery, not official material swatches. All original options are retained. Original descriptions are retained as sourceDescription; description is concise adaptation. The Racing Zipper's number is a shop customization, not a numeric Shopify variant; its source description explains 1–2 digits.
+## Updated flag / cape
 
-## Brand cues from the source
+- Current [Logo Flagge](https://pfusch-clothing.ch/products/logo-flagge-1): product ID `10442786799945`, variant `55543055515977`, CHF 24.90. Source identity/type remains `Flag`; requested game category is `cape`.
+- Historical ID `9464572805449` stays a retired `collectible`. Existing ownership is preserved and does not grant the new cape.
+- Untouched [Shopify original](https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925): `public/images/catalog-source/logo-flagge-1-original.jpg`, 2000×2000. Cards/details retain the complete photo; `public/images/logo-flagge-1.jpg` is the 640px rendition.
+- Dark waves and gray PFUSCH cable-tie wordmark match the supplied reference. No separate flat print image was published. The photo includes white margins, curved cloth edges and grommets. Safe interior `preview.artwork.crop`: x=155, y=485, width=1720, height=1035. Pixel inspection found no white-background pixels there (maximum channel value 160).
+- Sample the rectangle without modifying the bitmap. Three.js `flipY=true`: offset=(0.0775,0.24), repeat=(0.86,0.5175). Preserve logo orientation on the reverse side; no separate reverse artwork was published.
+- Additive schema 1 `cape` slot permits simultaneous bag, keychain and hip cap. Garage → Fahrer → Accessoires offers free temporary preview. Explicit digital purchase/equip requires level 8 and 5000 game Coins; owned items can be re-equipped without another charge. Removing the cape preserves other equipment.
 
-Dark gray #323232 and white storefront; additional #232323 and gray gradient sections. Source CSS specifies Quantico italic for body and Germania One for headings. The actual logo is a metallic-gray cable tie forming a loop around the Pfusch. wordmark on transparent background. Motorcycle, night-ride and workshop culture; washed dark apparel, signs, ziptie logo, reflective/chrome details. The game uses neutral PFUSCH branding; clothing slogans remain on their actual products. The navy Cord Cap and keychain carry a yellow workshop-spray-inspired label. The main source logo is https://pfusch-clothing.ch/cdn/shop/files/Pfusch_logo_V2.png?v=1753659004.
+## Normalization and source branding
 
+Shopify product type is blank, so categories use titles/use and reviewed metadata. Current upper: 9, head: 3, accessory: 2, cape: 1, collectible: 1; the historical flag adds a second collectible. Shop availability never removes existing digital items. Colors are estimates based on original options/images, not official fabric swatches. Racing Zipper's one- or two-digit number is customization, not a Shopify variant.
+
+The actual logo uses a gray cable tie around the PFUSCH wordmark. Caps attach at the hip while the helmet remains on. The new cape is the explicit user-requested exception to the earlier flag-as-collectible treatment; the sticker and historical flag retain their existing behavior.

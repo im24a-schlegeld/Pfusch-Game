@@ -18,6 +18,7 @@ import { unavailableAccess } from '../services/playerAccess';
 import { shopifyParentOrigin, SHOPIFY_STOREFRONT_ORIGIN } from '../services/shopifyBridge';
 import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/shopifyViewport';
 import { GameAudio } from '../game/audio';
+import type { VerifiedRunChallenge, VerifiedRunSubmission } from '../game/verifiedRun';
 import { Coin } from './shared';
 import Ride from './Ride';
 import Garage from './Garage';
@@ -30,6 +31,7 @@ import {
 } from './Screens';
 import RideResult from './RideResult';
 import LoadingScreen from './LoadingScreen';
+import GameBrand from './GameBrand';
 import SaveAccessGate from './SaveAccessGate';
 import './account-header.css';
 type Screen =
@@ -73,11 +75,16 @@ export default function GameApp() {
     reward: RunReward;
   } | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const [verifiedChallenge, setVerifiedChallenge] = useState<VerifiedRunChallenge | null>(null);
   const activeRun = useRef(0);
   const pendingResult = useRef<{ run: RunStats; reward: RunReward } | null>(
     null,
   );
   const rideViewport = !error && !!player && (screen === 'ride' || screen === 'results');
+  useEffect(() => {
+    if (accountKind === 'customer' && player?.bike && (screen === 'garage' || screen === 'results'))
+      void services.rewards.real?.prepare(player.bike);
+  }, [accountKind, player?.bike, screen, services]);
   useEffect(() => syncShopifyRideViewport(window, viewportOrigin, rideViewport), [viewportOrigin, rideViewport]);
   useEffect(() => {
     let alive = true;
@@ -190,6 +197,7 @@ export default function GameApp() {
         activeRun.current += 1;
         pendingResult.current = null;
         setResult(null);
+        setVerifiedChallenge(null);
         setRunKey(activeRun.current);
         setScreen('ride');
         enteredRide = true;
@@ -208,6 +216,7 @@ export default function GameApp() {
       activeRun.current += 1;
       pendingResult.current = null;
       setResult(null);
+      setVerifiedChallenge(services.rewards.real?.takeChallenge(current.current.bike) ?? null);
       setRunKey(activeRun.current);
       setScreen('ride');
       enteredRide = true;
@@ -228,7 +237,7 @@ export default function GameApp() {
     }
   }
   const start = () => { void checkAccess(true); };
-  function finish(run: RunStats, generation: number) {
+  function finish(run: RunStats, generation: number, verified?: VerifiedRunSubmission) {
     if (
       !current.current ||
       generation !== activeRun.current ||
@@ -240,6 +249,7 @@ export default function GameApp() {
     update(outcome.player);
     pendingResult.current = { run, reward: outcome.reward };
     setResult(pendingResult.current);
+    if (verified) void services.rewards.real?.finish(verified).catch(() => {});
     services.analytics.track('run_finished', {
       score: run.score,
       distance: run.distance,
@@ -295,7 +305,8 @@ export default function GameApp() {
           player={player}
           products={products}
           audio={audio}
-          onFinish={(run) => finish(run, runKey)}
+          onFinish={(run, verified) => finish(run, runKey, verified)}
+          verifiedChallenge={verifiedChallenge}
           onResultsReady={(runId) => revealResults(runId, runKey)}
           onExit={() => navigate('garage')}
           onMute={mute}
@@ -331,7 +342,7 @@ export default function GameApp() {
       {!embedded && screen !== 'results' && <header className="topbar">
         {accountAction}
         <button className="brand" aria-label="PFUSCH-Shop öffnen" onClick={goToShop}>
-          <img className="brand-logo" src="/images/artwork/signs.png" alt="PFUSCH Signs" />
+          <GameBrand className="brand-logo" />
           <span className="brand-sub">WHEELIE ESCAPE</span>
         </button>
         <span className="top-status">
@@ -364,7 +375,7 @@ export default function GameApp() {
       </header>}
       {embedded && hasAccountAction && screen !== 'results' && <header className="account-header-embedded">
         <button className="game-signs-home" aria-label="PFUSCH-Shop öffnen" onClick={goToShop}>
-          <img src="/images/artwork/signs.png" alt="PFUSCH Signs" />
+          <GameBrand />
         </button>
         {accountAction}
       </header>}

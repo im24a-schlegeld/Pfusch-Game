@@ -9,7 +9,7 @@ import {
 import { TRAFFIC_SHAPES, TOW_RAMP } from '../app/game/trafficDomain';
 
 function engine() {
-  return new Engine(BIKES[2], 531);
+  return new Engine(BIKES.find(bike => bike.id === '450')!, 531);
 }
 
 describe('police physical traffic contacts', () => {

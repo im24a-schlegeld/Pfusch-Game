@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadSignArtwork, type SignArtwork } from '../game/signArtwork';
+import { COMPLETE_SIGN_MASK } from '../game/signSet';
+import StopSign from './StopSign';
 export default function SignProgress({ mask }: { mask: number }) {
   const ref = useRef<HTMLCanvasElement>(null),
     [art, setArt] = useState<SignArtwork | null>(null),
@@ -41,16 +43,19 @@ export default function SignProgress({ mask }: { mask: number }) {
   const count = Array.from({ length: 6 }, (_, i) =>
     Number(!!(mask & (1 << i))),
   ).reduce((a, b) => a + b, 0);
+  const complete = mask === COMPLETE_SIGN_MASK;
   return (
     <figure
       className="sign-set-v38 v42-signs"
       data-testid="sign-progress"
       data-mask={mask}
+      data-complete={complete}
       data-ready={!!art}
       data-fallbacks={art?.fallbacks ?? 0}
       aria-label={`${count} von 6 Schildern gesammelt${failed ? '. Bild nicht verfügbar' : ''}`}
     >
       <canvas ref={ref} width={660} height={205} aria-hidden="true" />
+      <StopSign active={complete} className="v42-sign-stop" />
     </figure>
   );
 }

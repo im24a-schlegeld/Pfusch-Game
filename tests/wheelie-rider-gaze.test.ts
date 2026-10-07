@@ -34,7 +34,7 @@ describe('rider gaze follows the horizon', () => {
     expect(Math.abs(up.x)).toBeLessThan(0.035);
   });
 
-  it.each(['125', 'scooter', '450', '701'] as const)('%s damps its actual helmet without resizing bones or moving contacts', model => {
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)('%s damps its actual helmet without resizing bones or moving contacts', model => {
     const bike = makeBike({ ...newPlayer(), bike: model }, []);
     const helmet = bike.rider.getObjectByName('full-face-helmet')!;
     const scale = helmet.scale.clone();
@@ -57,6 +57,8 @@ describe('rider gaze follows the horizon', () => {
     expect(Math.abs(new Vector3(0, 1, 0).applyQuaternion(world).x)).toBeLessThan(0.035);
     expect(helmet.scale.toArray()).toEqual(scale.toArray());
     const current = bike.captureRagdollPose();
+    expect(distance(current.shoulder, current.head)).toBeCloseTo(distance(rest.shoulder, rest.head), 9);
+    expect(current.head[2] - current.shoulder[2]).toBeLessThan(rest.head[2] - rest.shoulder[2] - .015);
     expect(distance(current.hip, current.shoulder)).toBeCloseTo(d.torsoLength, 9);
     current.limbs.forEach(({ arm, leg }, index) => {
       expect(distance(arm.start, arm.joint)).toBeCloseTo(d.upperArm, 9);

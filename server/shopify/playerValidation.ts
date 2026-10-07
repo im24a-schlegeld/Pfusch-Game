@@ -1,7 +1,7 @@
 import type { Player, Slot, StickerPlacement } from '../../app/domain/types.js';
 import { levelForXp, newPlayer, normalizeLeaderboardName } from '../../app/domain/progression.js';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
-import { REWARDS } from '../../app/domain/config.js';
+import { BIKES, REWARDS } from '../../app/domain/config.js';
 import { MAX_SAVED_SETUPS, MAX_SAVED_SETUPS_BYTES, sanitizeSavedSetups } from '../../app/domain/setups.js';
 import { isTutorialHint, normalizeTutorialHints, TUTORIAL_HINTS } from '../../app/domain/tutorial.js';
 import { ApiError } from './auth.js';
@@ -33,8 +33,7 @@ function date(value: unknown) {
     new Date(result).toISOString().slice(0, 10) !== result) invalid();
   return result;
 }
-const bikes = ['125', 'scooter', '450', '701'];
-const slots: Slot[] = ['upper', 'lower', 'head', 'accessory', 'keychain', 'collectible', 'bike'];
+const slots: Slot[] = ['upper', 'lower', 'head', 'accessory', 'keychain', 'cape', 'collectible', 'bike'];
 const digitalRewards = new Set<string>(REWARDS.filter(reward => reward.kind === 'coins' || reward.kind === 'cosmetic').map(reward => reward.id));
 
 /** This is a backup of untrusted digital game progress, never proof of a
@@ -61,8 +60,9 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   player.irlItems = []; player.tickets = 0;
   player.redeemedRewards = stringList(input.redeemedRewards, 100).filter(id => digitalRewards.has(id));
   player.processedRuns = stringList(input.processedRuns, 100);
-  if (!bikes.includes(text(input.bike))) invalid();
-  player.bike = input.bike as string;
+  const bikeId = text(input.bike);
+  if (!BIKES.some(bike => bike.id === bikeId)) invalid();
+  player.bike = bikeId;
   for (const field of ['paint', 'rims', 'helmetColor', 'helmetVisor'] as const) {
     if (input[field] === undefined && ['helmetColor', 'helmetVisor'].includes(field)) continue;
     const color = text(input[field], 7);
@@ -113,14 +113,19 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   const values: Record<string, number> = {};
   for (const [key, value] of Object.entries(record(challenges.values, 40))) values[key] = numeric(value);
   player.challenges = { date: date(challenges.date), values, claimed: stringList(challenges.claimed, 40) };
-  const settings = record(input.settings, 5);
-  if (Object.keys(settings).some(key => !['muted', 'reducedMotion', 'tutorialSeen', 'quality', 'tutorialHintsSeen'].includes(key))) invalid();
+  const settings = record(input.settings, 6);
+  if (Object.keys(settings).some(key => !['muted', 'reducedMotion', 'tutorialSeen', 'quality', 'tutorialHintsSeen', 'touchControls'].includes(key))) invalid();
   for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const) {
     if (typeof settings[field] !== 'boolean') invalid();
     player.settings[field] = settings[field] as boolean;
   }
   if (settings.quality !== 'auto' && settings.quality !== 'low') invalid();
   player.settings.quality = settings.quality as Player['settings']['quality'];
+  // Optional only for older schema-1 snapshots; explicit values must be supported touch modes.
+  if (settings.touchControls !== undefined) {
+    if (settings.touchControls !== 'swipe' && settings.touchControls !== 'buttons') invalid();
+    player.settings.touchControls = settings.touchControls as Player['settings']['touchControls'];
+  }
   // Optional only for older schema-1 snapshots; server writes accept exactly the shipped lesson IDs.
   if (settings.tutorialHintsSeen !== undefined) {
     if (!Array.isArray(settings.tutorialHintsSeen) || settings.tutorialHintsSeen.length > TUTORIAL_HINTS.length ||

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TRAFFIC_SHAPES, TOW_RAMP, towRampHeight } from './trafficDomain';
+import { CAR_BODY_PROFILE, CAR_CABIN_PROFILE } from './carClearance';
 
 type Point = readonly [number, number, number];
 type Ring = readonly [
@@ -353,15 +354,7 @@ export function makeDetailedTraffic(
     // Bumper, shoulder and roof are separate curved profiles. Wheel openings
     // stay open under the upper shoulder instead of painting circles on a box.
     mesh(
-      loft([
-        [-2.9, 0.9, 0.43, 0.76],
-        [-2.68, 1.11, 0.43, 0.94],
-        [-1.95, half, 0.94, 1.05],
-        [0, half, 0.98, 1.12],
-        [1.85, half, 0.94, 1.09],
-        [2.62, 1.1, 0.46, 1],
-        [2.9, 0.94, 0.46, 0.91],
-      ]),
+      loft(CAR_BODY_PROFILE),
       paint,
       'sculpted-body',
     );
@@ -374,12 +367,7 @@ export function makeDetailedTraffic(
       'underbody',
     );
     mesh(
-      loft([
-        [-1.34, 1.04, 1.03, 1.19],
-        [-0.59, 0.91, 1.1, 1.94],
-        [0.66, 0.91, 1.1, 1.98],
-        [1.5, 1.035, 1.04, 1.3],
-      ]),
+      loft(CAR_CABIN_PROFILE),
       paint,
       'raked-cabin',
     );

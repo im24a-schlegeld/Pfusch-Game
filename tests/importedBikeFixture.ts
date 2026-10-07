@@ -7,11 +7,11 @@ import {
   type ImportedBikeManifest,
 } from '../app/game/importedBikeAsset';
 
-const directories: Record<ImportedBikeId, string> = { '450': 'fs450', '701': 'r6', scooter: 'nitro' };
+const directories: Record<ImportedBikeId, string> = { '125': 'ciao', moped: 'moped', '450': 'fs450', '701': 'r6', scooter: 'nitro' };
 const installed = new Set<ImportedBikeId>();
 
 /** Use the shipped models in Node tests; only GPU image decoding is replaced. */
-export function installImportedBikeFixtures(ids: readonly ImportedBikeId[] = ['450', '701', 'scooter']) {
+export function installImportedBikeFixtures(ids: readonly ImportedBikeId[] = ['125', 'moped', '450', '701', 'scooter']) {
   for (const id of ids) {
     if (installed.has(id)) continue;
     const manifestUrl = new URL(`../public/models/${directories[id]}/model.json`, import.meta.url);

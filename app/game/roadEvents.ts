@@ -58,6 +58,14 @@ export const SURFACE_PROFILES: Readonly<Record<string, SurfaceProfile>> = {
     wetSafeAngle: 0.52,
     gravelSafeAngle: 0.42,
   },
+  moped: {
+    potholeClearance: 0.19,
+    roughness: 0.48,
+    wetGrip: 0.72,
+    gravelGrip: 0.67,
+    wetSafeAngle: 0.54,
+    gravelSafeAngle: 0.46,
+  },
   '450': {
     potholeClearance: 0.12,
     roughness: 0.3,

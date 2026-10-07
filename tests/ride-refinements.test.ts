@@ -106,7 +106,7 @@ describe('readable traffic, early jumps and tipping-point recovery', () => {
   );
 
   it('requires regular adjacent lane changes and keeps a bounded reachable traffic route', () => {
-    const engine = new Engine(BIKES[2], 743);
+    const engine = new Engine(BIKES.find(bike => bike.id === '450')!, 743);
     engine.start();
     let lastSpawn = -Infinity;
     const waveLanes: number[][] = [];

@@ -1,4 +1,5 @@
 import { Bike } from 'lucide-react';
+import GameBrand from './GameBrand';
 import '../loading-screen.css';
 
 /** Asset changes inside the garage keep its controls visible and do not restart the game artwork. */
@@ -22,8 +23,7 @@ export default function LoadingScreen({
         <img className="ride-loading-art" src="/branding/loading-trailer.webp" alt="" fetchPriority="high" />
       </picture>
       <div className="ride-loading-brand">
-        <img src="/images/artwork/signs.png" alt="PFUSCH Signs" />
-        <span>WHEELIE ESCAPE</span>
+        <GameBrand wordmark />
       </div>
       <div className="ride-loading-caption">
         <div className="ride-loading-line"><Bike size={19} aria-hidden="true" /><span>{label}</span></div>

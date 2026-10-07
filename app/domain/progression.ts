@@ -1,4 +1,5 @@
-import { DAILY_CHALLENGES, LEVELS } from './config.js';
+import { LEVELS } from './config.js';
+import { dailyChallengesForDate, normalizeDailyProgress } from './dailyChallenges.js';
 import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet.js';
 import { equipmentSlot } from './preview.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
@@ -63,6 +64,7 @@ export function newPlayer(): Player {
       muted: true,
       reducedMotion: false,
       quality: 'auto',
+      touchControls: 'swipe',
       tutorialSeen: false,
       tutorialHintsSeen: [],
     },
@@ -70,9 +72,8 @@ export function newPlayer(): Player {
   };
 }
 export function refreshDaily(p: Player, date = dayKey()): Player {
-  return p.challenges.date === date
-    ? p
-    : { ...p, challenges: { date, values: {}, claimed: [] } };
+  const challenges = normalizeDailyProgress(p.challenges, date);
+  return challenges === p.challenges ? p : { ...p, challenges };
 }
 export function finishRun(
   player: Player,
@@ -93,8 +94,8 @@ export function finishRun(
     Math.floor(run.distance / 9 + run.nearMisses * 8 + run.jumps * 3),
   );
   const coins = Math.max(
-    5,
-    Math.floor(run.distance / 22 + run.nearMisses * 3 + run.jumps * 2),
+    4,
+    Math.floor((run.distance / 22 + run.nearMisses * 3 + run.jumps * 2) * 0.75),
   );
   const values = { ...p.challenges.values };
   const metrics = {
@@ -105,9 +106,10 @@ export function finishRun(
     score: run.score,
     jumps: run.jumps,
   };
-  for (const c of DAILY_CHALLENGES)
+  const challenges = dailyChallengesForDate(date);
+  for (const c of challenges)
     values[c.id] = Math.min(c.target, (values[c.id] ?? 0) + metrics[c.stat]);
-  const completed = DAILY_CHALLENGES.filter(
+  const completed = challenges.filter(
     (c) => values[c.id] >= c.target && !p.challenges.claimed.includes(c.id),
   );
   const reward = {
@@ -147,7 +149,8 @@ export function ownership(p: Player, product: Product): Ownership {
   return p.ownedItems.includes(product.id) ? 'UNLOCKED_DIGITAL' : 'LOCKED';
 }
 export const digitalPrice = (p: Product) =>
-  p.category === 'upper' ? 150 : p.category === 'head' ? 90 : 75;
+  p.category === 'cape' ? 5000 : p.category === 'upper' ? 150 : p.category === 'head' ? 90 : 75;
+export const digitalLevel = (p: Product) => p.category === 'cape' ? 8 : 1;
 export function unlock(
   p: Player,
   id: string,

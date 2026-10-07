@@ -33,6 +33,16 @@ export const BALANCE: Record<string, BalanceProfile> = {
     damping: 1.65,
     crashAngle: TAIL_CONTACT.scooter.angle + TAIL_RECOVERY_ANGLE,
   },
+  moped: {
+    balancePoint: 0.77,
+    balanceWidth: 0.21,
+    throttleTorque: 3.05,
+    launchTorque: 5,
+    forwardWeightTorque: 3.9,
+    gravity: 3.15,
+    damping: 1.6,
+    crashAngle: TAIL_CONTACT.moped.angle + TAIL_RECOVERY_ANGLE,
+  },
   '450': {
     balancePoint: 0.8,
     balanceWidth: 0.24,

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import type { Player, Product, RunStats, TutorialHint } from '../domain/types';
 import { BIKES } from '../domain/config';
 import { TUTORIAL_HINTS } from '../domain/tutorial';
 import { Engine } from '../game/engine';
+import { VerifiedRunRecorder, type VerifiedRunChallenge, type VerifiedRunSubmission } from '../game/verifiedRun';
 import type { TutorialCue } from '../game/tutorialCues';
 import { GameAudio } from '../game/audio';
 import { Preview, gameText } from './shared';
@@ -13,12 +14,16 @@ import { updateGestureIndicator, type GestureBounds } from './rideGestureIndicat
 import RidePause from './RidePause';
 import RideHud from './RideHud';
 import RideTutorialOverlay from './RideTutorialOverlay';
+import RideTouchButtons from './RideTouchButtons';
+import { RideHeldInput, type RideHoldAction } from './rideHeldInput';
+import { useTouchInput } from './useTouchInput';
 import './ride-guidance.css';
 interface Props {
   player: Player;
   products: Product[];
   audio: GameAudio;
-  onFinish: (r: RunStats) => void;
+  onFinish: (r: RunStats, verified?: VerifiedRunSubmission) => void;
+  verifiedChallenge?: VerifiedRunChallenge | null;
   onResultsReady: (runId: string) => void;
   onExit: () => void;
   onMute: () => void;
@@ -38,15 +43,17 @@ export default function Ride({
   onReady,
   onLoadError,
   onTutorialSeen,
+  verifiedChallenge,
 }: Props) {
   const engine = useMemo(
     () =>
       new Engine(
         BIKES.find((b) => b.id === player.bike) ?? BIKES[0],
-        Math.floor(Math.random() * 0xffffffff),
+        verifiedChallenge?.seed ?? Math.floor(Math.random() * 0xffffffff),
       ),
-    [player.bike],
+    [player.bike, verifiedChallenge],
   );
+  const verifier = useMemo(() => verifiedChallenge ? new VerifiedRunRecorder(engine) : null, [engine, verifiedChallenge]);
   const [tick, setTick] = useState(0),
     [ready, setReady] = useState(false),
     [countdown, setCountdown] = useState(3),
@@ -71,12 +78,19 @@ export default function Ride({
   const gestureIndicator = useRef<SVGSVGElement>(null);
   const gestureBounds = useRef<GestureBounds | undefined>(undefined);
   const touchFeedback = useRef(false);
+  const { touchActive } = useTouchInput();
+  const buttonMode = player.settings.touchControls === 'buttons';
+  const heldInput = useMemo(() => new RideHeldInput((action, held) => {
+    if (action === 'wheelie') engine.hold(held);
+    else engine.forward(held);
+  }), [engine]);
   const gestures = useMemo(
     () =>
       new RideGestures({
-        weight: (v) => engine.weight(v),
+        weight: (v) => engine.weight(buttonMode ? 0 : v),
         move: (d) => engine.move(d),
         togglePause: () => {
+          heldInput.clear();
           if (engine.phase === 'playing') engine.pause();
           else if (engine.phase === 'paused') {
             if (engine.resumeRemaining > 0) engine.pause();
@@ -87,12 +101,16 @@ export default function Ride({
           setTick((n) => n + 1);
         },
       }),
-    [engine, audio],
+    [engine, audio, buttonMode, heldInput],
   );
   const clearGestures = useCallback(() => {
     gestures.cancel();
+    heldInput.clear();
     updateGestureIndicator(gestureIndicator.current, null);
-  }, [gestures]);
+  }, [gestures, heldInput]);
+  useEffect(() => {
+    if (!touchActive) heldInput.clearPointers();
+  }, [touchActive, heldInput]);
   const dismissTutorial = useCallback((skipAll = false) => {
     const active = tutorialRef.current;
     if (!active || document.hidden) return false;
@@ -126,7 +144,7 @@ export default function Ride({
     if (!cue || tutorialRef.current || seenTutorials.current.has(cue.id) ||
       !seenTutorials.current.has('controls') ||
       engine.phase !== 'playing' || engine.elapsed - lastTutorialElapsed.current < 8 ||
-      gestures.feedback() || document.hidden) return;
+      gestures.feedback() || heldInput.hasPointers() || document.hidden) return;
     clearGestures();
     engine.pause();
     const next = { id: cue.id, target: { x: cue.x, y: cue.y } };
@@ -134,7 +152,7 @@ export default function Ride({
     setTutorial(next);
     audio.update(0, false, false);
     setTick(n => n + 1);
-  }, [audio, clearGestures, engine, gestures]);
+  }, [audio, clearGestures, engine, gestures, heldInput]);
   const showControls = useCallback(() => {
     if (tutorialRef.current || seenTutorials.current.has('controls') ||
       engine.phase !== 'playing' || document.hidden || !document.hasFocus()) return;
@@ -165,7 +183,7 @@ export default function Ride({
   }, [engine, ready, showControls]);
   useEffect(() => {
     const showGesture = () => updateGestureIndicator(gestureIndicator.current,
-      touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
+      !buttonMode && touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
     const down = (event: PointerEvent) => {
       if (engine.resumeRemaining > 0) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -209,7 +227,7 @@ export default function Ride({
       if (tutorialRef.current) {
         const start = tutorialPointer.current;
         if (!start || start.id !== event.pointerId ||
-          !tutorialGestureIntent(event.clientX - start.x, event.clientY - start.y)) return;
+          !tutorialGestureIntent(event.clientX - start.x, event.clientY - start.y, !buttonMode)) return;
         if (!dismissTutorial()) return;
         gestures.down(start.id, start.x, start.y, start.time);
       }
@@ -217,11 +235,13 @@ export default function Ride({
       showGesture();
     };
     const up = (event: PointerEvent) => {
+      heldInput.release(event.pointerId);
       if (tutorialPointer.current?.id === event.pointerId) tutorialPointer.current = null;
       gestures.up(event.pointerId, event.timeStamp);
       showGesture();
     };
     const cancel = (event: PointerEvent) => {
+      heldInput.release(event.pointerId);
       if (tutorialPointer.current?.id === event.pointerId) tutorialPointer.current = null;
       gestures.cancel(event.pointerId);
       showGesture();
@@ -252,13 +272,14 @@ export default function Ride({
       window.removeEventListener('click', click, true);
       window.removeEventListener('resize', clearGestures);
     };
-  }, [engine, gestures, clearGestures, dismissTutorial]);
+  }, [engine, gestures, clearGestures, dismissTutorial, buttonMode, heldInput]);
   useEffect(() => {
     if (engine.phase !== 'playing') clearGestures();
   }, [engine.phase, clearGestures]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      if (!['shift', 'control', 'alt', 'meta'].includes(k)) heldInput.clearPointers();
       const activeTutorial = tutorialRef.current;
       const button = e.target instanceof Element && !!e.target.closest('button');
       if (activeTutorial && button && (k === ' ' || k === 'enter')) return;
@@ -295,13 +316,13 @@ export default function Ride({
       }
       if (k === 'arrowleft' || k === 'a') engine.move(-1);
       if (k === 'arrowright' || k === 'd') engine.move(1);
-      if (k === 'arrowup' || k === 'w') engine.forward(true);
-      if (k === 'arrowdown' || k === 's') engine.hold(true);
+      if (k === 'arrowup' || k === 'w') heldInput.key(k, 'brake', true);
+      if (k === 'arrowdown' || k === 's') heldInput.key(k, 'wheelie', true);
     };
     const keyup = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === 'arrowup' || k === 'w') engine.forward(false);
-      if (k === 'arrowdown' || k === 's') engine.hold(false);
+      if (k === 'arrowup' || k === 'w') heldInput.key(k, 'brake', false);
+      if (k === 'arrowdown' || k === 's') heldInput.key(k, 'wheelie', false);
     };
     const blur = () => {
       tutorialPointer.current = null;
@@ -322,12 +343,25 @@ export default function Ride({
       document.removeEventListener('visibilitychange', blur);
       audio.update(0, false, false);
     };
-  }, [audio, clearGestures, dismissTutorial, engine]);
+  }, [audio, clearGestures, dismissTutorial, engine, heldInput]);
+  function pressTouchButton(action: RideHoldAction, event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!buttonMode || !['touch', 'pen'].includes(event.pointerType) || engine.resumeRemaining > 0) return;
+    event.preventDefault();
+    // Capture on the permanent ride surface so the initiating finger keeps its
+    // hold when the tutorial card is removed on this very pointerdown.
+    gestureSurface.current?.setPointerCapture(event.pointerId);
+    if (tutorialRef.current && !dismissTutorial()) return;
+    if (engine.phase !== 'playing') return;
+    heldInput.press(event.pointerId, action);
+    audio.unlock();
+    setTick(n => n + 1);
+  }
   function settle(e: Engine) {
     if (e.phase !== 'crashed' || settled.current) return;
     const run = e.stats();
     settled.current = run;
-    finish.current(run);
+    const proof = verifier?.proof();
+    finish.current(run, proof && verifiedChallenge ? { token: verifiedChallenge.token, proof } : undefined);
   }
   function revealResults() {
     settle(engine);
@@ -405,6 +439,8 @@ export default function Ride({
       data-frame={tick}
       data-resume-countdown={Math.ceil(engine.resumeRemaining)}
       data-tutorial={tutorial?.id ?? ''}
+      data-touch-controls={buttonMode ? 'buttons' : 'swipe'}
+      data-touch-active={touchActive}
     >
       <Preview
         player={player}
@@ -427,12 +463,15 @@ export default function Ride({
         onTutorialCue={showTutorialCue}
       />
       <RideTutorialOverlay hint={tutorial?.id ?? null} target={tutorial?.target}
+        touchButtons={buttonMode && touchActive} onTouchPress={pressTouchButton}
         reducedMotion={player.settings.reducedMotion} onContinue={() => { dismissTutorial(); }}
         onSkip={() => { dismissTutorial(true); }} />
       <div
         className="gesture-zone"
         ref={gestureSurface}
-        aria-label="Steuerung: seitlich wischen für Spurwechsel; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren"
+        aria-label={buttonMode
+          ? 'Steuerung: seitlich wischen für Spurwechsel; Wheelie und Bremse gedrückt halten; zwei Finger zum Pausieren'
+          : 'Steuerung: seitlich wischen für Spurwechsel; nach unten ziehen zum Anheben, nach oben zum Korrigieren; zwei Finger zum Pausieren'}
         onContextMenu={(e) => e.preventDefault()}
       />
       <svg ref={gestureIndicator} className="ride-gesture-indicator" data-testid="ride-gesture-indicator" data-active="false" aria-hidden="true">
@@ -450,6 +489,8 @@ export default function Ride({
         </g>
       </svg>
       <RideHud engine={engine} best={player.highScore} pause={pause} />
+      {buttonMode && touchActive && engine.phase === 'playing' && !tutorial &&
+        <RideTouchButtons onPress={pressTouchButton} wheelieHeld={engine.wheelieHeld} brakeHeld={engine.forwardHeld} />}
       {engine.phase === 'playing' && (
         <div className="ride-feedback" aria-label="Punktegewinne">
           {eventVisible &&
@@ -506,6 +547,7 @@ export default function Ride({
         }}
       >
         <RidePause
+          touchButtons={buttonMode}
           muted={player.settings.muted}
           onMute={onMute}
           resume={resume}

@@ -1,0 +1,31 @@
+{
+  "10442786799945": {
+    "type": "Flag",
+    "category": "cape",
+    "baseColor": "#3b3b3b",
+    "description": "Aktuelle PFUSCH Logo-Flagge mit Wellenmuster. Im Spiel als Cape tragbar; 154.94 × 96.52 cm im Shop.",
+    "preview": {
+      "colors": [{
+        "id": "original",
+        "label": "Original",
+        "optionValue": null,
+        "variantIds": ["55543055515977"],
+        "baseColor": "#3b3b3b",
+        "front": {
+          "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925",
+          "localImage": "/images/catalog-source/logo-flagge-1-original.jpg",
+          "evidence": "Unmodified current Shopify image; printed face visually verified against supplied reference. No reverse image published."
+        },
+        "back": null
+      }],
+      "numberCustomization": false,
+      "artwork": {
+        "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925",
+        "localImage": "/images/catalog-source/logo-flagge-1-original.jpg",
+        "width": 2000,
+        "height": 2000,
+        "crop": { "x": 155, "y": 485, "width": 1720, "height": 1035 }
+      }
+    }
+  }
+}

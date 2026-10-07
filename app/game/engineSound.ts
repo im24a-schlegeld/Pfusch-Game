@@ -27,6 +27,20 @@ export const ENGINE_SOUNDS = {
     noiseBand: 1550,
     mechanicalRatio: 1.52,
   },
+  moped: {
+    name: 'Classic 50cc two-stroke',
+    firingPerRevolution: 1,
+    harmonicFalloff: 0.68,
+    cutoff: 2200,
+    noise: 0.011,
+    level: 0.066,
+    harmonicDecay: 0.018,
+    phaseOffset: 0.42,
+    mechanicalWave: 'sine',
+    resonance: 1.45,
+    noiseBand: 1750,
+    mechanicalRatio: 2.01,
+  },
   '450': {
     name: 'Four-stroke single',
     firingPerRevolution: 0.5,
@@ -67,7 +81,7 @@ export function engineRPM(
   forward = false,
 ) {
   const load = throttle ? 1 : forward ? -0.35 : 0;
-  if (id === '125')
+  if (id === '125' || id === 'moped')
     return Math.max(1600, Math.min(10800, 2800 + speed * 165 + load * 900));
   if (id === 'scooter') {
     // The centrifugal clutch takes up first, then the CVT holds the power band

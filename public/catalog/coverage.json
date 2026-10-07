@@ -1,0 +1,313 @@
+{
+  "fetchedAt": "2026-10-07T12:48:52.172Z",
+  "shop": "https://pfusch-clothing.ch",
+  "pages": [
+    {
+      "url": "https://pfusch-clothing.ch/products.json?limit=250&page=1",
+      "count": 16
+    },
+    {
+      "url": "https://pfusch-clothing.ch/products.json?limit=250&page=2",
+      "count": 0
+    }
+  ],
+  "paginationExhausted": true,
+  "productSitemaps": [
+    {
+      "url": "https://pfusch-clothing.ch/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/it/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/fr/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/it-it/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/de-it/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/de-de/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/fr-fr/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/de-fr/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/fr-lu/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/de-lu/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/de-at/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    },
+    {
+      "url": "https://pfusch-clothing.ch/de-eu/sitemap_products_1.xml?from=9478176145737&to=10442786799945",
+      "handles": [
+        "chrome-sticker",
+        "keep-up-hoodie",
+        "keep-up-t-shirt",
+        "keep-up-zipper",
+        "logo-cap-1",
+        "logo-crossbody-tasche",
+        "logo-flagge-1",
+        "p-zero-cap",
+        "pfusch-logo-cap",
+        "racing-zipper",
+        "schlusselanhanger",
+        "signs-hoodie",
+        "signs-t-shirt",
+        "streetphotographer-grey-logo",
+        "streetphotographer-t-shirt-1",
+        "unisex-windbreaker"
+      ]
+    }
+  ],
+  "publishedProductIds": [
+    "10442786799945",
+    "10237102096713",
+    "10237099737417",
+    "10237061759305",
+    "10224345416009",
+    "9923161751881",
+    "9874912248137",
+    "9861079990601",
+    "9844509737289",
+    "9844482703689",
+    "9844437909833",
+    "9844411924809",
+    "9791913918793",
+    "9805150912841",
+    "9736532197705",
+    "9478176145737"
+  ],
+  "retiredProductIds": [
+    "9464572805449"
+  ],
+  "sitemapHandles": [
+    "chrome-sticker",
+    "keep-up-hoodie",
+    "keep-up-t-shirt",
+    "keep-up-zipper",
+    "logo-cap-1",
+    "logo-crossbody-tasche",
+    "logo-flagge-1",
+    "p-zero-cap",
+    "pfusch-logo-cap",
+    "racing-zipper",
+    "schlusselanhanger",
+    "signs-hoodie",
+    "signs-t-shirt",
+    "streetphotographer-grey-logo",
+    "streetphotographer-t-shirt-1",
+    "unisex-windbreaker"
+  ],
+  "missingSitemapHandles": [],
+  "publishedProducts": 16,
+  "publishedVariants": 186,
+  "sourceImages": 112,
+  "imageDownloads": 1
+}

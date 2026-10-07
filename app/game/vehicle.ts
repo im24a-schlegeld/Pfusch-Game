@@ -18,6 +18,7 @@ import {
 } from './riderSkeleton';
 import { BIKE_MODEL_SCALES } from './vehicleScale';
 import { riderHeadPose, riderMotionPose, type RiderMotion } from './riderMotion';
+import { addFlagCape } from './flagCape';
 import type { RagdollPose } from './ragdoll';
 import { skinLimb } from './limbSkin';
 import { torsoDrape, sleeveFolds } from './clothShape';
@@ -3093,6 +3094,8 @@ function makeRider(
     player.helmetVisor,
   );
   const accessory = products.find((p) => p.id === player.equipped.accessory);
+  const cape = products.find((p) => p.id === player.equipped.cape);
+  const capeMotion = cape ? addFlagCape(torsoGroup, cape) : undefined;
   if (accessory?.handle === 'logo-crossbody-tasche') {
     addCleanCrossbody(torsoGroup);
   }
@@ -3232,6 +3235,9 @@ function makeRider(
     crash: 0,
     crashSide: 1,
   };
+  const neckRestDirection = V(pose.head).sub(V(pose.shoulder)).normalize();
+  const neckDirection = new THREE.Vector3();
+  const neckShoulder = new THREE.Vector3();
   const animate = (target: RiderMotion, dt: number) => {
     for (const key of [
       'wheelie',
@@ -3248,7 +3254,7 @@ function makeRider(
     ] as const) {
       const response = key === 'launch'
         ? (target.launch ?? 0) > motion.launch ? 38 : 18
-        : key === 'bikePitch' || key === 'bikeRoll' ? 26
+        : key === 'bikePitch' || key === 'bikeRoll' ? 17
         : key === 'landing' ? 20 : 12;
       const blend = 1 - Math.exp(-response * dt);
       motion[key] += ((target[key] ?? 0) - motion[key]) * blend;
@@ -3268,12 +3274,11 @@ function makeRider(
       current.hip[1] - pose.hip[1],
       current.hip[2] - pose.hip[2],
     );
-    neck.quaternion.identity();
-    neck.position.set(
-      current.shoulder[0] - pose.shoulder[0],
-      current.shoulder[1] - pose.shoulder[1],
-      current.shoulder[2] - pose.shoulder[2],
+    neck.quaternion.setFromUnitVectors(
+      neckRestDirection,
+      neckDirection.set(...current.head).sub(neckShoulder.set(...current.shoulder)).normalize(),
     );
+    neck.position.copy(neckShoulder).sub(neckDirection.set(...pose.shoulder).applyQuaternion(neck.quaternion));
     helmet.position.set(...current.head);
     const gaze = riderHeadPose(motion);
     helmet.rotation.set(gaze.pitch, gaze.yaw, gaze.roll);
@@ -3293,7 +3298,9 @@ function makeRider(
         transformExtremity(extremities[i].glove, limb.arm, rest.limbs[i].arm);
     });
   };
-  const animateAccessories = (input: CarriedCapMotionInput, dt: number) =>
+  const animateAccessories = (input: CarriedCapMotionInput, dt: number) => {
     capMotion?.update(input, dt);
+    capeMotion?.update(input, dt);
+  };
   return { group: rider, animate, animateAccessories, captureRagdollPose, applyRagdollPose };
 }

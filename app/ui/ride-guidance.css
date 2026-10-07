@@ -14,31 +14,31 @@ body:has(.first-ride-dialog) [data-slot="dialog-overlay"] { z-index: 150 !import
 .first-ride-dialog .first-ride-intro [data-slot="dialog-description"] { font-size: 13px !important; line-height: 1.5; margin-top: 10px; }
 .first-ride-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .first-ride-controls > div { min-width: 0; padding: 8px 12px 12px; border: 1px solid #ffffff20; background: #ffffff05; }
-.first-ride-picture { width: 65px; height: 43px; fill: none; stroke: #f5f6ee; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.first-ride-picture .first-ride-origin { stroke: #8b947b; }
-.first-ride-picture .first-ride-strength { stroke: #c1a0ff; stroke-width: 5; }
+.first-ride-picture { width: 65px; height: 43px; fill: none; stroke: #f5f5f5; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.first-ride-picture .first-ride-origin { stroke: #8b8b8b; }
+.first-ride-picture .first-ride-strength { stroke: #ffffff; stroke-width: 5; }
 .first-ride-controls b { display: block; font-size: 13px; }
-.first-ride-controls p { margin: 5px 0 0; color: #b7bbb4; font-size: 12px; line-height: 1.45; }
-.first-ride-goal { padding-left: 12px; border-left: 2px solid #c1a0ff; }
+.first-ride-controls p { margin: 5px 0 0; color: #b7b7b7; font-size: 12px; line-height: 1.45; }
+.first-ride-goal { padding-left: 12px; border-left: 2px solid #ffffff; }
 .first-ride-goal > b { font-size: 11px; letter-spacing: .08em; }
-.first-ride-goal p { margin: 5px 0 0; font-size: 12px; line-height: 1.5; color: #bec3ba; }
-.first-ride-goal strong { color: #f4f5ed; white-space: nowrap; }
-.first-ride-keyboard { margin: 0; color: #92998d; font-size: 10px; line-height: 1.5; }
+.first-ride-goal p { margin: 5px 0 0; font-size: 12px; line-height: 1.5; color: #bebebe; }
+.first-ride-goal strong { color: #f4f4f4; white-space: nowrap; }
+.first-ride-keyboard { margin: 0; color: #929292; font-size: 10px; line-height: 1.5; }
 .first-ride-actions { display: grid; gap: 8px; }
 .first-ride-actions .button { width: 100%; min-height: 48px; justify-content: center; font-size: 12px; }
-.first-ride-later { min-height: 36px; background: none; border: 0; color: #afb5a7; font-size: 11px; cursor: pointer; }
-.first-ride-later:focus-visible { outline: 2px solid #c1a0ff; outline-offset: 2px; }
+.first-ride-later { min-height: 36px; background: none; border: 0; color: #afafaf; font-size: 11px; cursor: pointer; }
+.first-ride-later:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 .first-ride-dialog[data-reduced-motion="true"] { animation: none !important; transition: none !important; }
 .ride-gesture-indicator { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; overflow: hidden; opacity: 0; }
 .ride-gesture-indicator[data-active="true"] { opacity: 1; }
 .ride-gesture-range { stroke: #ffffff65; stroke-width: 1.5; stroke-dasharray: 3 7; }
-.ride-gesture-shadow { stroke: #131811b0; stroke-width: 8; stroke-linecap: round; }
-.ride-gesture-vector { stroke: #d8c3ff; stroke-width: 3; stroke-linecap: round; }
-.ride-gesture-origin { fill: #172014b0; stroke: #f5f7ec; stroke-width: 2; }
-.ride-gesture-finger { fill: #11190d66; stroke: #ffffff8c; stroke-width: 1.5; }
-.ride-gesture-strength { fill: none; stroke: #c1a0ff; stroke-width: 4; stroke-linecap: round; transform: rotate(-90deg); }
-.ride-gesture-label rect { fill: #10180ee8; stroke: #d8c3ff70; stroke-width: 1; }
-.ride-gesture-label text { fill: #f4f0ff; font: 700 10px Arial, sans-serif; letter-spacing: .5px; text-anchor: middle; dominant-baseline: middle; }
+.ride-gesture-shadow { stroke: #131313b0; stroke-width: 8; stroke-linecap: round; }
+.ride-gesture-vector { stroke: #eeeeee; stroke-width: 3; stroke-linecap: round; }
+.ride-gesture-origin { fill: #171717b0; stroke: #f5f5f5; stroke-width: 2; }
+.ride-gesture-finger { fill: #11111166; stroke: #ffffff8c; stroke-width: 1.5; }
+.ride-gesture-strength { fill: none; stroke: #ffffff; stroke-width: 4; stroke-linecap: round; transform: rotate(-90deg); }
+.ride-gesture-label rect { fill: #101010e8; stroke: #eeeeee70; stroke-width: 1; }
+.ride-gesture-label text { fill: #f4f4f4; font: 700 10px Arial, sans-serif; letter-spacing: .5px; text-anchor: middle; dominant-baseline: middle; }
 .ride-tutorial-overlay {
   position: absolute;
   inset: 0;
@@ -46,7 +46,7 @@ body:has(.first-ride-dialog) [data-slot="dialog-overlay"] { z-index: 150 !import
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(180deg, #080a0dcc, #080a0dba);
+  background: linear-gradient(180deg, #0a0a0acc, #0a0a0aba);
   touch-action: none;
   user-select: none;
 }
@@ -55,17 +55,17 @@ body:has(.first-ride-dialog) [data-slot="dialog-overlay"] { z-index: 150 !import
   padding: clamp(22px, 6vw, 34px);
   border: 1px solid #ffffff24;
   border-radius: 18px;
-  background: #12151beF;
+  background: #151515eF;
   box-shadow: 0 22px 70px #00000080;
   text-align: center;
 }
-.ride-tutorial-card .eyebrow { margin: 0 0 10px; color: #c1a0ff; }
+.ride-tutorial-card .eyebrow { margin: 0 0 10px; color: #ffffff; }
 .ride-tutorial-card h2 { margin: 0; font-size: clamp(26px, 7vw, 40px); line-height: .96; letter-spacing: -.03em; }
-.ride-tutorial-copy { max-width: 32ch; margin: 14px auto 20px; color: #c8ccc9; font-size: 13px; line-height: 1.5; }
+.ride-tutorial-copy { max-width: 32ch; margin: 14px auto 20px; color: #c8c8c8; font-size: 13px; line-height: 1.5; }
 .ride-tutorial-arrows { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 4vw, 22px); margin: 4px 0 12px; }
-.ride-tutorial-arrow { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #c1a0ff66; border-radius: 50%; color: #f4f0ff; background: #c1a0ff16; font-size: 27px; line-height: 1; }
-.ride-tutorial-arrow-down, .ride-tutorial-arrow-up { color: #c1a0ff; }
-.ride-tutorial-help { margin: 0; color: #f4f0ff; font-size: 11px; letter-spacing: .04em; }
-.ride-tutorial-hint { margin: 18px 0 0; color: #8f9693; font-size: 11px; }
+.ride-tutorial-arrow { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #ffffff66; border-radius: 50%; color: #f4f4f4; background: #ffffff16; font-size: 27px; line-height: 1; }
+.ride-tutorial-arrow-down, .ride-tutorial-arrow-up { color: #ffffff; }
+.ride-tutorial-help { margin: 0; color: #f4f4f4; font-size: 11px; letter-spacing: .04em; }
+.ride-tutorial-hint { margin: 18px 0 0; color: #8f8f8f; font-size: 11px; }
 @media (max-height: 680px) { .first-ride-dialog.game-dialog[data-slot="dialog-content"] { padding: 18px !important; gap: 11px !important; } .first-ride-picture { height: 32px; } }
 @media (prefers-reduced-motion: reduce) { .first-ride-dialog { animation: none !important; transition: none !important; } }

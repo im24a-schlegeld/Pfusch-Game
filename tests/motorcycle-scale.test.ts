@@ -12,7 +12,7 @@ vi.mock('../app/game/garmentTexture', () => ({
   sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
 }));
 describe('imported motorcycle dimensions with one unchanged adult', () => {
-  it.each(['450', '701', 'scooter'] as const)('%s keeps the source proportions, circular tyres and canonical wheelbase', id => {
+  it.each(['125', 'moped', '450', '701', 'scooter'] as const)('%s keeps the source proportions, circular tyres and canonical wheelbase', id => {
     const source = getImportedBikeAsset(id).manifest.anchors;
     const size = IMPORTED_BIKE_WHEELBASE[id] / (source.rearAxle[2] - source.frontAxle[2]);
     const bike = makeBike({ ...newPlayer(), bike: id }, []);
@@ -36,7 +36,7 @@ describe('imported motorcycle dimensions with one unchanged adult', () => {
       }
     }
   });
-  it.each(['125', 'scooter', '450', '701'] as const)(
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s retains world anatomy and grounded rear contact through suspension/wheelie',
     (id) => {
       const bike = makeBike({ ...newPlayer(), bike: id }, []);

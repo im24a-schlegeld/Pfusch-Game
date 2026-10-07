@@ -1,6 +1,7 @@
 import { ApiError, readShopifyConfig } from '../shopify/auth.js';
 import { handlePlayerRequest } from '../shopify/playerEndpoint.js';
 import { handleRankingRequest, updateRanking } from '../shopify/leaderboard.js';
+import { handleRewardRequest, MAX_REWARD_FINISH_BODY_BYTES, type RewardAction } from '../shopify/rewardEndpoint.js';
 import { readBoundedWebJson, withFetchDeadline } from '../shopify/http.js';
 import { authenticateOxygen, finishLogin, readOxygenAuth, sessionCookie, SHOP_ORIGINS, startLogin } from './auth.js';
 
@@ -22,12 +23,15 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       if (!html.includes('</head>')) throw new ApiError(503, 'shell_unavailable');
       return harden(new Response(request.method === 'HEAD' ? null : html.replace('</head>', `${config}</head>`), { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
     }
-    if (!['/auth/login', '/auth/callback', '/auth/logout', '/api/player', '/api/leaderboard'].includes(path)) return harden(json(404, { error: 'not_found' }));
+    const rewardRoutes: Record<string, RewardAction> = { '/api/rewards/status': 'status', '/api/rewards/run/start': 'run/start',
+      '/api/rewards/run/finish': 'run/finish', '/api/rewards/claim': 'claim' };
+    const rewardAction = rewardRoutes[path];
+    if (!rewardAction && !['/auth/login', '/auth/callback', '/auth/logout', '/api/player', '/api/leaderboard'].includes(path)) return harden(json(404, { error: 'not_found' }));
     const config = readOxygenAuth(env);
     if (!config) throw new ApiError(503, 'not_configured');
     if (url.origin !== config.origin) throw new ApiError(403, 'invalid_origin');
     if (request.method === 'POST' && request.headers.get('origin') !== config.origin) throw new ApiError(403, 'invalid_origin');
-    const boundedFetch = withFetchDeadline(fetcher, 10000);
+    const boundedFetch = withFetchDeadline(fetcher, rewardAction ? 15000 : 10000);
     if (path === '/auth/login' || path === '/auth/callback') {
       if (request.method !== 'GET') throw new ApiError(405, 'method_not_allowed');
       return harden(await (path === '/auth/login' ? startLogin : finishLogin)(request, config, boundedFetch));
@@ -39,7 +43,10 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
     // Capture identity only in this server closure; request headers/query/body cannot supply it.
     const authenticate = () => authenticateOxygen(request, config, boundedFetch);
     const shopify = readShopifyConfig(env);
-    const result = path === '/api/player'
+    const result = rewardAction
+      ? await handleRewardRequest(rewardAction, { method: request.method, url: request.url, contentType: request.headers.get('content-type') ?? undefined,
+        readBody: () => readBoundedWebJson(request, rewardAction === 'run/finish' ? MAX_REWARD_FINISH_BODY_BYTES : undefined) }, { config: shopify, request: boundedFetch, authenticate, enabled: env.SHOPIFY_GAME_REWARDS_ENABLED === 'true' })
+      : path === '/api/player'
       ? await handlePlayerRequest({ method: request.method, url: request.url, contentType: request.headers.get('content-type') ?? undefined,
         readBody: () => readBoundedWebJson(request) }, { config: shopify, request: boundedFetch, authenticate,
         afterSave: shopify ? (customerId, player) => updateRanking(shopify, customerId, player, withFetchDeadline(fetcher, 1500)) : undefined })

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { BIKES, DAILY_CHALLENGES, LEVELS } from '../app/domain/config';
+import { BIKES, DAILY_CHALLENGE_POOL, LEVELS } from '../app/domain/config';
+import { dailyChallengesForDate } from '../app/domain/dailyChallenges';
 import {
   dayKey,
   finishRun,
@@ -32,6 +33,7 @@ describe('progression and storage', () => {
     expect(BIKES.map((bike) => bike.id)).toEqual([
       '125',
       'scooter',
+      'moped',
       '450',
       '701',
     ]);
@@ -47,7 +49,11 @@ describe('progression and storage', () => {
       expect(scooter[stat]).toBeGreaterThan(moped[stat]);
       expect(scooter[stat]).toBeLessThan(sumo[stat]);
     }
-    for (const bike of BIKES) expect(bike.maxSpeed * 3.6).toBeCloseTo(140, 10);
+    expect(BIKES.at(-1)!.maxSpeed * 3.6).toBeCloseTo(140, 10);
+    for (let i = 1; i < BIKES.length; i++) {
+      expect(BIKES[i].maxSpeed).toBeGreaterThan(BIKES[i - 1].maxSpeed);
+      expect((BIKES[i].maxSpeed - BIKES[i - 1].maxSpeed) * 3.6).toBeLessThanOrEqual(7);
+    }
   });
   it('checks Roller price and level and never equips as a side effect of purchase', async () => {
     const bike = BIKES.find((entry) => entry.id === 'scooter')!;
@@ -109,9 +115,11 @@ describe('progression and storage', () => {
   );
   it('settles a run and completed challenges once', () => {
     const p = newPlayer();
+    const challenges = dailyChallengesForDate(p.challenges.date);
+    p.challenges.values = Object.fromEntries(challenges.map(challenge => [challenge.id, challenge.target - 1]));
     const result = finishRun(p, run)!;
     expect(result.player.runsPlayed).toBe(1);
-    expect(result.reward.challengeIds).toHaveLength(3);
+    expect(result.reward.challengeIds).toHaveLength(4);
     expect(result.player.coins).toBe(p.coins + result.reward.coins);
     expect(finishRun(result.player, run)).toBeNull();
     const next = finishRun(result.player, { ...run, id: 'second' })!;
@@ -131,7 +139,7 @@ describe('progression and storage', () => {
       '2026-09-08',
     )!.player;
     expect(next.challenges.claimed).toHaveLength(0);
-    expect(next.challenges.values['three-rides']).toBe(1);
+    expect(next.challenges.values['daily-rides']).toBe(1);
   });
   it('prevents overspending, level bypass and duplicate rewards', () => {
     const p = newPlayer();
@@ -183,8 +191,8 @@ describe('progression and storage', () => {
     expect(blocked.warning).toBeTruthy();
   });
   it('challenge definitions have unique IDs and positive rewards', () => {
-    expect(new Set(DAILY_CHALLENGES.map((c) => c.id)).size).toBe(
-      DAILY_CHALLENGES.length,
+    expect(new Set(DAILY_CHALLENGE_POOL.map((c) => c.id)).size).toBe(
+      DAILY_CHALLENGE_POOL.length,
     );
     expect(dayKey(new Date('2026-09-08T22:00:00Z'))).toBe('2026-09-08');
   });
@@ -288,10 +296,10 @@ describe('complete PFUSCH catalog', () => {
   const products = JSON.parse(
     readFileSync('public/catalog/products.json', 'utf8'),
   ) as Product[];
-  it('contains all 16 audited products and 186 variants', () => {
-    expect(products).toHaveLength(16);
-    expect(products.reduce((n, p) => n + p.variants.length, 0)).toBe(186);
-    expect(new Set(products.map((p) => p.id)).size).toBe(16);
+  it('contains all 16 live products plus the retired flag, retaining 187 variants', () => {
+    expect(products).toHaveLength(17);
+    expect(products.reduce((n, p) => n + p.variants.length, 0)).toBe(187);
+    expect(new Set(products.map((p) => p.id)).size).toBe(17);
   });
   it('has valid real links, prices, images and slots for every item', () =>
     products.forEach((p) => {
@@ -303,6 +311,7 @@ describe('complete PFUSCH catalog', () => {
         'upper',
         'head',
         'accessory',
+        'cape',
         'collectible',
         'lower',
         'bike',

@@ -10,6 +10,7 @@ type Point = readonly [number, number, number];
 const LENS_FACES: Readonly<Record<BikeModelId, readonly Point[]>> = {
   '125': [[0, 0.967, -0.604]],
   scooter: [[0, 0.611, -0.785]],
+  moped: [[0, 0.7779473, -0.3741487]],
   '450': [SUPERMOTO_LENS_FACE],
   '701': SPORT_LENS_FACES,
 };

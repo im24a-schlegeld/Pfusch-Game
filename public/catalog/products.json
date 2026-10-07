@@ -1,5 +1,83 @@
 [
   {
+    "type": "Flag",
+    "category": "cape",
+    "baseColor": "#3b3b3b",
+    "description": "Aktuelle PFUSCH Logo-Flagge mit Wellenmuster. Im Spiel als Cape tragbar; 154.94 × 96.52 cm im Shop.",
+    "preview": {
+      "colors": [
+        {
+          "id": "original",
+          "label": "Original",
+          "optionValue": null,
+          "variantIds": [
+            "55543055515977"
+          ],
+          "baseColor": "#3b3b3b",
+          "front": {
+            "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925",
+            "localImage": "/images/catalog-source/logo-flagge-1-original.jpg",
+            "evidence": "Unmodified current Shopify image; printed face visually verified against supplied reference. No reverse image published."
+          },
+          "back": null
+        }
+      ],
+      "numberCustomization": false,
+      "artwork": {
+        "source": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925",
+        "localImage": "/images/catalog-source/logo-flagge-1-original.jpg",
+        "width": 2000,
+        "height": 2000,
+        "crop": {
+          "x": 155,
+          "y": 485,
+          "width": 1720,
+          "height": 1035
+        }
+      }
+    },
+    "id": "10442786799945",
+    "title": "Logo Flagge",
+    "handle": "logo-flagge-1",
+    "url": "https://pfusch-clothing.ch/products/logo-flagge-1",
+    "price": 24.9,
+    "currency": "CHF",
+    "images": [
+      "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925"
+    ],
+    "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925",
+    "localImage": "images/logo-flagge-1.jpg",
+    "shopifyProductType": "CUT-SEW",
+    "options": [
+      {
+        "name": "Title",
+        "values": [
+          "Default Title"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "55543055515977",
+        "title": "Default Title",
+        "available": true,
+        "price": 24.9,
+        "options": [
+          "Default Title"
+        ],
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/all-over-print-flag-white-front-6ac63a22a7f1e.jpg?v=1791375925",
+        "baseColor": "#3b3b3b"
+      }
+    ],
+    "available": true,
+    "tags": [],
+    "publishedAt": "2026-10-07T14:25:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
+    "sourceDescription": "Eine Flagge mit dem Logo von Pfusch-Clothing Masse sind: 154.94 × 96.52 cm",
+    "sourceDescriptionHtml": "Eine Flagge mit dem Logo von Pfusch-Clothing<br>\n<br>\nMasse sind: 154.94 × 96.52 cm",
+    "sourceStatus": "published"
+  },
+  {
     "id": "10237102096713",
     "title": "Keep up Zipper",
     "handle": "keep-up-zipper",
@@ -109,7 +187,7 @@
       "Washed"
     ],
     "publishedAt": "2026-07-24T10:41:15+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht.",
     "preview": {
       "colors": [
@@ -139,7 +217,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>'Catch me if you can' Leuchtet in der Nacht.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "10237099737417",
@@ -376,7 +456,7 @@
       "Washed"
     ],
     "publishedAt": "2026-07-24T10:41:14+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht.",
     "preview": {
       "colors": [
@@ -451,7 +531,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>'Catch me if you can' Leuchtet in der Nacht.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "10237061759305",
@@ -817,7 +899,7 @@
       "Unisex"
     ],
     "publishedAt": "2026-07-24T10:41:14+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "'Catch me if you can' Leuchtet in der Nacht.",
     "preview": {
       "colors": [
@@ -938,7 +1020,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>'Catch me if you can' Leuchtet in der Nacht.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "10224345416009",
@@ -1017,7 +1101,7 @@
     "available": true,
     "tags": [],
     "publishedAt": "2026-07-24T10:29:14+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Verwaschene Cap mit P ZERO Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
     "preview": {
       "colors": [
@@ -1080,7 +1164,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Verwaschene Cap mit P ZERO Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.<br></p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9923161751881",
@@ -1181,7 +1267,7 @@
       "Washed"
     ],
     "publishedAt": "2025-12-02T22:47:37+01:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Racing Zipper mit selber wählbarer Nummer. Sponsoren von Revsticks und LP Carbon . Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt.",
     "preview": {
       "colors": [
@@ -1218,7 +1304,9 @@
         "evidence": "Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt.",
         "notes": "Keep the input as text. The shop states the digit count only; treatment of leading zeroes is unspecified. Public photos show example number 23 on the back."
       }
-    }
+    },
+    "sourceDescriptionHtml": "<p>Racing Zipper mit selber wählbarer Nummer.</p>\n<p>Sponsoren von <a rel=\"noopener\" href=\"https://www.instagram.com/rev.sticks/\" target=\"_blank\">Revsticks</a> und <a rel=\"noopener\" href=\"https://www.instagram.com/lp.carbon/\" target=\"_blank\">LP Carbon</a>. </p>\n<p>Bei der Nummernwahl sind nur 1- oder 2-stellige Zahlen möglich, alles andere wird nicht akzeptiert und die Bestellung abgelehnt.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9874912248137",
@@ -1453,7 +1541,7 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-10-17T15:37:18+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Sobald es ein wenig kühler wird, nützt es auch nichts mehr bei Nightrides mehrere Hoodies anzuziehen. Aber ein Windbreaker über 1-2 Pullover und man ist vor der Kälte viel geschützter, da der Windbreaker die Luft blockiert und somit auch ein Teil der Kälte. Langsam regnet es auch immer mehr, auch da hilft unser Windbreaker denn er ist Wasserabweisend. Er hat eine Kapuze die man ein oder ausklappen und mit einem Reissverschluss verstauen kann. Und wenn man ihn nicht mehr braucht kann man ihn einfach in eine kleine Umhängetasche verwandeln.",
     "preview": {
       "colors": [
@@ -1528,14 +1616,16 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Sobald es ein wenig kühler wird, nützt es auch nichts mehr bei Nightrides mehrere Hoodies anzuziehen. Aber ein Windbreaker über 1-2 Pullover und man ist vor der Kälte viel geschützter, da der Windbreaker die Luft blockiert und somit auch ein Teil der Kälte. Langsam regnet es auch immer mehr, auch da hilft unser Windbreaker denn er ist Wasserabweisend.  Er hat eine Kapuze die man ein oder ausklappen und mit einem Reissverschluss verstauen kann. Und wenn man ihn nicht mehr braucht kann man ihn einfach in eine kleine Umhängetasche verwandeln.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9861079990601",
     "title": "Chrome Sticker",
     "handle": "chrome-sticker",
     "url": "https://pfusch-clothing.ch/products/chrome-sticker",
-    "price": 3.0,
+    "price": 3,
     "currency": "CHF",
     "images": [
       "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/sticker.png?v=1760199543"
@@ -1560,18 +1650,18 @@
         "id": "53104990323017",
         "title": "Default Title",
         "available": true,
-        "price": 3.0,
+        "price": 3,
         "options": [
           "Default Title"
         ],
-        "image": null,
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/sticker.png?v=1760199543",
         "baseColor": "#252b2d"
       }
     ],
     "available": true,
     "tags": [],
     "publishedAt": "2025-10-11T18:19:34+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Chrome Sticker in der Qualität von Motorrad Dekoren, dank Unique Designs Switzerland . Es sind 4 Sticker enthalten. 6x6cm",
     "preview": {
       "colors": [
@@ -1592,7 +1682,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Chrome Sticker in der Qualität von Motorrad Dekoren, dank <a href=\"https://uniquedesignsswitzerland.ch/\">Unique Designs Switzerland</a>. Es sind 4 Sticker enthalten.</p>\n<p>6x6cm</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9844509737289",
@@ -2019,7 +2111,7 @@
       "Washed"
     ],
     "publishedAt": "2025-09-29T15:25:27+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht.",
     "preview": {
       "colors": [
@@ -2163,7 +2255,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht.</p><p><br></p><p><br></p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9844482703689",
@@ -2593,7 +2687,7 @@
       "Unisex"
     ],
     "publishedAt": "2025-09-29T15:08:18+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist.",
     "preview": {
       "colors": [
@@ -2737,7 +2831,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Niemand mag sie: die Fotografen, die uns ohne Einwilligung fotografieren, wenn wir zu schnell fahren. Nach einiger Zeit kommt ein Brief nach Hause, in dem nicht einmal ein Bild, sondern tragischerweise eine Rechnung enthalten ist.</p><p><br></p><p><br></p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9844437909833",
@@ -3227,7 +3323,7 @@
       "Washed"
     ],
     "publishedAt": "2025-09-29T14:19:38+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht.",
     "preview": {
       "colors": [
@@ -3394,7 +3490,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Der 'PFUSCH.' Schriftzug in Form von Strassenschildern. Es besteht aus 100 % gekämmter Baumwolle, ist weich, hautfreundlich, feuchtigkeitsabsorbierend und atmungsaktiv. Der Stoff mit dem verwaschenen Look liegt gut in der Hand und sorgt dafür das es gut aussieht.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9844411924809",
@@ -3636,7 +3734,7 @@
       "Unisex"
     ],
     "publishedAt": "2025-09-29T13:44:59+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Der 'PFUSCH.' Schriftzug in Form von Strassenschildern auf einem Verwaschen aussehendem Hoodie.",
     "preview": {
       "colors": [
@@ -3711,14 +3809,16 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Der 'PFUSCH.' Schriftzug in Form von Strassenschildern auf einem Verwaschen aussehendem Hoodie.</p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9791913918793",
     "title": "Schlüsselanhänger",
     "handle": "schlusselanhanger",
     "url": "https://pfusch-clothing.ch/products/schlusselanhanger",
-    "price": 3.0,
+    "price": 3,
     "currency": "CHF",
     "images": [
       "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
@@ -3745,18 +3845,18 @@
         "id": "52846553989449",
         "title": "Default Title",
         "available": true,
-        "price": 3.0,
+        "price": 3,
         "options": [
           "Default Title"
         ],
-        "image": null,
+        "image": "https://cdn.shopify.com/s/files/1/0921/5918/1129/files/Schluesselanhaenger-muckup.png?v=1758817514",
         "baseColor": "#28292c"
       }
     ],
     "available": true,
     "tags": [],
     "publishedAt": "2025-09-25T18:26:28+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Schlüsselanhänger mit Pfusch Logo auf der Vorderseite, und einer Rückseite die an einen Multifunktionsspray erinnert. *Pro Artikel 1 Anhänger",
     "preview": {
       "colors": [
@@ -3781,7 +3881,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Schlüsselanhänger mit Pfusch Logo auf der Vorderseite, und einer Rückseite die an einen Multifunktionsspray erinnert.</p>\n<h6>*Pro Artikel 1 Anhänger</h6>",
+    "sourceStatus": "published"
   },
   {
     "id": "9805150912841",
@@ -3841,7 +3943,7 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-09-04T16:53:44+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Verwaschene Cap mit Pfusch Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
     "preview": {
       "colors": [
@@ -3885,7 +3987,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "Verwaschene Cap mit Pfusch Logo. Mit schnellem Verschluss, damit man die Cap schnell z.B. an einer Gürtelschlaufe befestigen kann. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
+    "sourceStatus": "published"
   },
   {
     "id": "9736532197705",
@@ -3930,7 +4034,7 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-07-10T13:41:51+02:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Man möchte fahren, aber nicht die Hosentaschen mit Handy, Portemonnaie, Schlüssel, ect. vollstopfen. Mit einer solchen Tasche ist das kein Problem: Sie ist nicht zu gross und nicht zu klein. Die Innentasche erinnert wie die Cap an einen gewissen Multifunktionsspray.",
     "preview": {
       "colors": [
@@ -3955,7 +4059,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Man möchte fahren, aber nicht die Hosentaschen mit Handy, Portemonnaie, Schlüssel, ect. vollstopfen. Mit einer solchen Tasche ist das kein Problem: Sie ist nicht zu gross und nicht zu klein. Die Innentasche erinnert wie die Cap an einen gewissen Multifunktionsspray.<br></p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9478176145737",
@@ -4000,7 +4106,7 @@
     "available": true,
     "tags": [],
     "publishedAt": "2025-01-02T14:21:09+01:00",
-    "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
+    "sourceUpdatedAt": "2026-10-07T14:48:50+02:00",
     "sourceDescription": "Diese Cap die evtl. an einen Multifunktionsspray erinnert der bei uns allen zu Hause liegt, ist ein muss. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.",
     "preview": {
       "colors": [
@@ -4021,7 +4127,9 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceDescriptionHtml": "<p>Diese Cap die evtl. an einen Multifunktionsspray erinnert der bei uns allen zu Hause liegt, ist ein muss. Das Schweißband aus Baumwollköper sorgt für einen bequemen Sitz.<br></p>",
+    "sourceStatus": "published"
   },
   {
     "id": "9464572805449",
@@ -4052,7 +4160,7 @@
       {
         "id": "51409369792841",
         "title": "Default Title",
-        "available": true,
+        "available": false,
         "price": 25.9,
         "options": [
           "Default Title"
@@ -4061,7 +4169,7 @@
         "baseColor": "#111111"
       }
     ],
-    "available": true,
+    "available": false,
     "tags": [],
     "publishedAt": "2024-12-23T18:21:37+01:00",
     "sourceUpdatedAt": "2026-09-08T20:13:27+02:00",
@@ -4085,6 +4193,7 @@
         }
       ],
       "numberCustomization": false
-    }
+    },
+    "sourceStatus": "retired"
   }
 ]

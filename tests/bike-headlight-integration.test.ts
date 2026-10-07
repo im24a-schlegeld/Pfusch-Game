@@ -40,6 +40,7 @@ type Bike = ReturnType<typeof makeBike>;
 const lensFaces: Readonly<Record<BikeModelId, readonly Point[]>> = {
   '125': [[0, 0.967, -0.604]],
   scooter: [[0, 0.611, -0.785]],
+  moped: [[0, 0.7779473, -0.3741487]],
   '450': [SUPERMOTO_LENS_FACE],
   // Shared S1 optical faces; the assertions below also verify the actual mesh vertices.
   '701': SPORT_LENS_FACES,
@@ -103,17 +104,17 @@ function expectSourceAndAim(
 
 function expectAnchorsOnVisibleLenses(bike: Bike, model: BikeModelId) {
   bike.root.updateMatrixWorld(true);
-  if (model !== '125') {
+  if (bike.body.userData.headlightAnchors) {
     const anchors = bike.body.userData.headlightAnchors as Object3D[];
     expect(anchors).toHaveLength(lensFaces[model].length);
     const toBody = bike.body.matrixWorld.clone().invert();
     const optics: Mesh[] = [];
     bike.body.traverse(part => {
-      if (part instanceof Mesh && part.userData.importedPart && /headlight|reflector|nitro_light/.test(part.name)) optics.push(part);
+      if (part instanceof Mesh && part.userData.importedPart && /headlight|reflector|nitro_light|ciao_light|moped_light/.test(part.name)) optics.push(part);
     });
     expect(optics.length).toBeGreaterThan(0);
     for (const anchor of anchors) {
-      expect(anchor.parent).toBe(model === '450' ? bike.body.getObjectByName('imported-steering') : bike.body);
+      expect(anchor.parent).toBe(model === '450' || model === '125' || model === 'moped' ? bike.body.getObjectByName('imported-steering') : bike.body);
       expect(anchor.getWorldPosition(new Vector3()).toArray().every(Number.isFinite)).toBe(true);
       const source = anchor.getWorldPosition(new Vector3()).applyMatrix4(toBody);
       let nearest = Infinity;
@@ -164,7 +165,7 @@ function expectAnchorsOnVisibleLenses(bike: Bike, model: BikeModelId) {
 }
 
 describe('assembled motorcycle headlights and the world light pool', () => {
-  it.each(['125', 'scooter', '450', '701'] as const)(
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s follows the real lens geometry through suspension, wheelies, jumps and lean',
     (model) => {
       const { scene, lighting } = lightingFixture();

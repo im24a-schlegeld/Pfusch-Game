@@ -10,7 +10,7 @@ import {
 import { POLICE, firstPoliceHit } from '../app/game/policePursuit';
 
 function ride() {
-  const engine = new Engine(BIKES[2], 539);
+  const engine = new Engine(BIKES.find(bike => bike.id === '450')!, 539);
   engine.start();
   return engine;
 }

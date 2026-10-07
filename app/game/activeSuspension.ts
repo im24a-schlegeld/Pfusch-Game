@@ -9,6 +9,7 @@ const profiles: Record<
   { front: number; rebound: number; rear: number; pivot: Point }
 > = {
   '125': { front: 0.065, rebound: 0.015, rear: 0, pivot: [0, 0.5, 0.04] },
+  moped: { front: 0.085, rebound: 0.025, rear: 0.64, pivot: [0, 0.2675711, 0.1366221] },
   scooter: {
     front: 0.08,
     rebound: 0.022,

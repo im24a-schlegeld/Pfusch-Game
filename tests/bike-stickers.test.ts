@@ -81,20 +81,21 @@ describe('bike sticker geometry', () => {
   });
 
   it.each([
-    ['125', 'moped-main-frame'],
+    ['125', 'ciao_livery:body'],
+    ['moped', 'moped_livery:body'],
     ['450', 'radiator-shroud'],
     ['701', 'sport-paint-surfaces'],
     ['scooter', 'scooter-tail-side-panel'],
   ] as const)(
     'renders saved stickers from both outside views of the actual %s bodywork',
-    (model, name) => {
+    (model, _name) => {
       const player = { ...newPlayer(), bike: model, paint };
       const bike = makeBike(player, []);
       bike.root.updateMatrixWorld(true);
       const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
       for (const side of [-1, 1]) {
         const candidates = [...surfaces].filter(
-          ([, mesh]) => model === '125' ? mesh.name === name : mesh.userData.bikePaintSurface === true && mesh.userData.importedRig === 'body',
+          ([, mesh]) => mesh.userData.bikePaintSurface === true && mesh.userData.importedRig === 'body',
         );
         candidates.sort(
           (a, b) =>

@@ -24,14 +24,17 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Player } from '../domain/types';
 import type { LeaderboardSnapshot, Services } from '../services';
+import RealRewardCard from './RealRewardCard';
 import {
-  DAILY_CHALLENGES,
   LEVELS,
   LEVEL_NAMES,
   REWARDS,
 } from '../domain/config';
 import { Coin, ScreenHeading, XpBar, fmt } from './shared';
-import { normalizeLeaderboardName, refreshDaily } from '../domain/progression';
+import { dayKey, normalizeLeaderboardName, refreshDaily } from '../domain/progression';
+import { dailyChallengesForDate } from '../domain/dailyChallenges';
+import { useTouchInput } from './useTouchInput';
+import './ride-touch-controls.css';
 interface Base {
   player: Player;
   back: () => void;
@@ -41,9 +44,16 @@ export function Challenges({
   back,
   start,
 }: Base & { start: () => void }) {
-  const daily = refreshDaily(player).challenges;
-  const completed = DAILY_CHALLENGES.filter((challenge) => daily.claimed.includes(challenge.id)).length;
-  const remaining = DAILY_CHALLENGES.filter((challenge) => !daily.claimed.includes(challenge.id));
+  const [date, setDate] = useState(dayKey);
+  useEffect(() => {
+    const midnight = Date.parse(`${date}T00:00:00Z`) + 86_400_000;
+    const timer = window.setTimeout(() => setDate(dayKey()), Math.max(1, midnight - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [date]);
+  const daily = refreshDaily(player, date).challenges;
+  const challenges = dailyChallengesForDate(date);
+  const completed = challenges.filter((challenge) => daily.claimed.includes(challenge.id)).length;
+  const remaining = challenges.filter((challenge) => !daily.claimed.includes(challenge.id));
   return (
     <main className="standard-page">
       <ScreenHeading
@@ -53,17 +63,17 @@ export function Challenges({
       />
       <div className="page-intro">
         <div className="page-feature"><Target aria-hidden="true" /><p>
-          Kurze Aufgaben. Direkte Belohnungen. Fortschritt zählt über alle Fahrten.
+          Jeden Tag neue Ziele und andere Coins-/XP-Belohnungen. Fortschritt zählt über alle Fahrten.
         </p></div>
         <span className="tag">NEU AB 00:00 UTC</span>
       </div>
       <div className="progress-overview" aria-label="Tagesübersicht">
-        <div><CircleCheck aria-hidden="true" /><b>{completed} / {DAILY_CHALLENGES.length}</b><span>ERLEDIGT</span></div>
+        <div><CircleCheck aria-hidden="true" /><b>{completed} / {challenges.length}</b><span>ERLEDIGT</span></div>
         <div><Coins aria-hidden="true" /><b>+{remaining.reduce((sum, entry) => sum + entry.coins, 0)}</b><span>COINS OFFEN</span></div>
         <div><Sparkles aria-hidden="true" /><b>+{remaining.reduce((sum, entry) => sum + entry.xp, 0)}</b><span>XP OFFEN</span></div>
       </div>
       <div className="challenge-grid">
-        {DAILY_CHALLENGES.map((c, i) => {
+        {challenges.map((c, i) => {
           const value = Math.max(0, Math.min(c.target, daily.values[c.id] ?? 0));
           const complete = daily.claimed.includes(c.id);
           const Icon = c.stat === 'runs' ? Repeat2 : c.stat === 'distance' ? Route : c.stat === 'nearMisses' ? Zap : Target;
@@ -246,8 +256,9 @@ export function Rewards({
         })}
       </div>
       <p className="catalog-note">
-        Alle Belohnungen sind digitale Spielgegenstände. Neue Looks kannst du in der Garage ansehen und ausrüsten.
+        Diese Level-Belohnungen sind digitale Spielgegenstände. Neue Looks kannst du in der Garage ansehen und ausrüsten.
       </p>
+      <RealRewardCard service={services.rewards.real} />
       <button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button>
     </main>
   );
@@ -313,6 +324,8 @@ export function Leaderboard({
           type="text"
           value={draftName}
           maxLength={24}
+          // Valid HTML autofill token; retained for the player's public display name.
+          // eslint-disable-next-line jsx-a11y/autocomplete-valid
           autoComplete="nickname"
           placeholder="z. B. Dario"
           onChange={(event) => setDraftName(event.target.value)}
@@ -361,6 +374,8 @@ export function SettingsScreen({
   onTutorial,
   onAccess,
 }: Base & { services: Services; update: (p: Player) => void; onTutorial?: () => void; onAccess?: () => void }) {
+  const { touchCapable } = useTouchInput();
+  const buttonMode = player.settings.touchControls === 'buttons';
   const syncStatus = services.players.syncStatus;
   const access = services.players.getAccess?.();
   const change = (
@@ -444,22 +459,31 @@ export function SettingsScreen({
             <Repeat2 size={18} aria-hidden="true" /> SPIELHINWEISE ERNEUT STARTEN
           </button>}
         </div>
+        {touchCapable && <fieldset className="touch-control-options">
+          <legend>Touch-Steuerung</legend>
+          <label aria-label="Wischen"><input type="radio" name="touch-controls" value="swipe" checked={!buttonMode}
+            onChange={() => update({ ...player, settings: { ...player.settings, touchControls: 'swipe' } })} />
+            <span><b>Wischen</b><small>Zum Anheben und Senken ziehen.</small></span></label>
+          <label aria-label="Tasten"><input type="radio" name="touch-controls" value="buttons" checked={buttonMode}
+            onChange={() => update({ ...player, settings: { ...player.settings, touchControls: 'buttons' } })} />
+            <span><b>Tasten</b><small>Wheelie und Bremse gedrückt halten.</small></span></label>
+        </fieldset>}
         <div className="control-guide">
           <span>
             WISCHEN ← → / A D <b>Ausweichen</b>
           </span>
           <span>
-            NACH OBEN / W / ↑ <b>Gewicht vor / korrigieren</b>
+            {buttonMode ? 'BREMSE HALTEN' : 'NACH OBEN'} / W / ↑ <b>Vorderrad senken</b>
           </span>
           <span>
-            NACH UNTEN / S / ↓ <b>Gas / Gewicht zurück</b>
+            {buttonMode ? 'WHEELIE HALTEN' : 'NACH UNTEN'} / S / ↓ <b>Vorderrad anheben</b>
           </span>
           <span>
             ZWEI FINGER / ESC / P <b>Pause</b>
           </span>
         </div>
         <p>
-          Touch: nach unten ziehen = Gewicht zurück, nach oben = korrigieren, seitlich = ausweichen. Zwei Finger pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ zurück, W/↑ vor. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. P F U S C H komplett sammeln gibt einen Set-Bonus.
+          {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. P F U S C H komplett sammeln gibt einen Set-Bonus.
         </p>
       </section>
       <footer className="settings-section">

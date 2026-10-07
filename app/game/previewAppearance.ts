@@ -79,11 +79,19 @@ export function createPreviewColorUpdater(
       if (material instanceof THREE.MeshStandardMaterial) slots.helmetVisor.add(material);
     }
   });
+  const previous: Record<ColorSlot, string> = {
+    paint: player.paint, rims: player.rims,
+    helmetColor: player.helmetColor, helmetVisor: player.helmetVisor,
+  };
+  const colorSlots = Object.keys(slots) as ColorSlot[];
   return (appearance: Pick<Player, ColorSlot>) => {
-    for (const slot of Object.keys(slots) as ColorSlot[])
+    for (const slot of colorSlots) {
+      if (appearance[slot] === previous[slot]) continue;
+      previous[slot] = appearance[slot];
       for (const material of slots[slot]) {
         material.color.set(appearance[slot]);
         if (slot === 'helmetColor') material.color.multiplyScalar(helmetShade.get(material) ?? 1);
       }
+    }
   };
 }

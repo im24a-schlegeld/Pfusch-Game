@@ -36,43 +36,43 @@ export function withFetchDeadline(request: typeof fetch, milliseconds: number): 
   return (input, init) => request(input, { ...init,
     signal: init?.signal ? combineSignals([init.signal, deadline]) : deadline });
 }
-function checkLength(length: string | string[] | undefined | null) {
+function checkLength(length: string | string[] | undefined | null, maxBytes: number) {
   if (length === null) return;
-  if (Array.isArray(length) || (length !== undefined && (!/^\d+$/.test(length) || Number(length) > MAX_BODY_BYTES)))
+  if (Array.isArray(length) || (length !== undefined && (!/^\d+$/.test(length) || Number(length) > maxBytes)))
     throw new ApiError(413, 'body_too_large');
 }
-function parseJson(raw: string) {
-  if (byteLength(raw) > MAX_BODY_BYTES) throw new ApiError(413, 'body_too_large');
+function parseJson(raw: string, maxBytes: number) {
+  if (byteLength(raw) > maxBytes) throw new ApiError(413, 'body_too_large');
   try { return JSON.parse(raw); } catch { throw new ApiError(400, 'invalid_json'); }
 }
-async function readChunks(chunks: AsyncIterable<Uint8Array | string>) {
+async function readChunks(chunks: AsyncIterable<Uint8Array | string>, maxBytes: number) {
   const decoder = new TextDecoder();
   let bytes = 0, text = '';
   for await (const value of chunks) {
     const chunk = typeof value === 'string' ? utf8(value) : value;
     bytes += chunk.byteLength;
-    if (bytes > MAX_BODY_BYTES) throw new ApiError(413, 'body_too_large');
+    if (bytes > maxBytes) throw new ApiError(413, 'body_too_large');
     text += decoder.decode(chunk, { stream: true });
   }
-  return parseJson(text + decoder.decode());
+  return parseJson(text + decoder.decode(), maxBytes);
 }
-export async function readBoundedJson(request: NodeRequest): Promise<unknown> {
-  checkLength(request.headers['content-length']);
+export async function readBoundedJson(request: NodeRequest, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
+  checkLength(request.headers['content-length'], maxBytes);
   let raw: string;
   if (request.body !== undefined) {
     try { raw = request.body instanceof Uint8Array ? new TextDecoder().decode(request.body)
       : typeof request.body === 'string' ? request.body : JSON.stringify(request.body); }
     catch { throw new ApiError(400, 'invalid_json'); }
   } else {
-    return readChunks(request);
+    return readChunks(request, maxBytes);
   }
   if (typeof raw !== 'string') throw new ApiError(400, 'invalid_json');
-  return parseJson(raw);
+  return parseJson(raw, maxBytes);
 }
 
 /** Worker fetch Request adapter with the same streamed byte cap as the legacy API. */
-export async function readBoundedWebJson(request: Request): Promise<unknown> {
-  checkLength(request.headers.get('content-length'));
+export async function readBoundedWebJson(request: Request, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
+  checkLength(request.headers.get('content-length'), maxBytes);
   if (!request.body) throw new ApiError(400, 'invalid_json');
   const reader = request.body.getReader();
   async function* chunks() {
@@ -87,5 +87,5 @@ export async function readBoundedWebJson(request: Request): Promise<unknown> {
       reader.releaseLock();
     }
   }
-  return readChunks(chunks());
+  return readChunks(chunks(), maxBytes);
 }

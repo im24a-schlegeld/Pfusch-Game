@@ -9,9 +9,9 @@
     'pnum' 1;
 }
 .garage-product-panel {
-  background: #f2f1ed;
-  color: #202a24;
-  border: 1px solid #39423c;
+  background: #ffffff;
+  color: #272727;
+  border: 1px solid #404040;
   margin-top: 20px;
 }
 .product-preview-header {
@@ -20,21 +20,21 @@
   justify-content: space-between;
   gap: 12px;
   padding: 16px 20px;
-  border-bottom: 1px solid #cbd0c7;
+  border-bottom: 1px solid #cecece;
 }
 .product-paging {
   display: flex;
   gap: 8px;
 }
 .product-paging .icon-button {
-  color: #273824;
-  border-color: #aab5a5;
+  color: #333333;
+  border-color: #b2b2b2;
 }
 .product-detail {
   padding: 24px;
 }
 .product-detail > .eyebrow {
-  color: #52614d;
+  color: #5c5c5c;
 }
 .product-detail h2 {
   font-size: 36px;
@@ -54,7 +54,7 @@
 .product-view-controls {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #c8cbc4;
+  border-bottom: 1px solid #cacaca;
   gap: 20px;
   margin-bottom: 10px;
 }
@@ -64,13 +64,13 @@
   padding: 8px 0;
   font-size: 10px;
   font-weight: 750;
-  color: #606762;
+  color: #656565;
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
 .product-view-controls button[aria-pressed='true'] {
-  color: #16201a;
-  border-color: #16201a;
+  color: #1d1d1d;
+  border-color: #1d1d1d;
 }
 .product-view-controls > span {
   font-size: 8px;
@@ -92,13 +92,13 @@
   position: absolute;
   bottom: 8px;
   left: 12px;
-  color: #62665f;
+  color: #656565;
   font-size: 8px;
   letter-spacing: 0.12em;
 }
 .preview-source-note {
   font-size: 11px;
-  color: #697066;
+  color: #6e6e6e;
   line-height: 1.5;
   margin: 9px 0 22px;
 }
@@ -125,20 +125,20 @@
   align-items: center;
   gap: 7px;
   background: transparent;
-  border: 1px solid #b9c1b3;
+  border: 1px solid #bebebe;
   padding: 9px 10px;
   font-size: 11px;
   cursor: pointer;
 }
 .preview-colors button[aria-pressed='true'] {
-  border-color: #203026;
-  box-shadow: inset 0 0 0 1px #203026;
+  border-color: #2c2c2c;
+  box-shadow: inset 0 0 0 1px #2c2c2c;
 }
 .preview-colors i {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1px solid #9a9f94;
+  border: 1px solid #9d9d9d;
 }
 .hood-options {
   min-width: 0;
@@ -160,26 +160,26 @@
   padding: 6px;
   border: 1px solid #666;
   background: transparent;
-  color: #b2b2ae;
+  color: #b2b2b2;
   font-size: 9px;
   cursor: pointer;
 }
 .inline-hood-picker button[aria-pressed='true'] {
-  border-color: #f4f4f2;
-  color: #f4f4f2;
+  border-color: #ffffff;
+  color: #ffffff;
 }
 .garage-product-panel .variant-select {
   width: 100%;
   background: white;
-  color: #202a24;
-  border-color: #a4ad9e;
+  color: #272727;
+  border-color: #aaaaaa;
 }
 .number-customization {
   display: grid;
   grid-template-columns: 80px 1fr;
   gap: 12px;
   margin: 22px 0;
-  border-top: 1px solid #c8cbc4;
+  border-top: 1px solid #cacaca;
   padding-top: 18px;
 }
 .number-customization label {
@@ -196,8 +196,8 @@
   width: 80px;
   min-height: 60px;
   background: white;
-  color: #202a24;
-  border: 1px solid #a4ad9e;
+  color: #272727;
+  border: 1px solid #aaaaaa;
   text-align: center;
   font:
     700 34px Merriweather,
@@ -205,8 +205,8 @@
   color-scheme: light;
 }
 .number-proof {
-  background: #242728;
-  color: #b8b8b6;
+  background: #262626;
+  color: #b8b8b8;
   display: grid;
   place-items: center;
   min-height: 75px;
@@ -226,19 +226,19 @@
 .number-customization > p {
   grid-column: 1/-1;
   font-size: 10px;
-  color: #697066;
+  color: #6e6e6e;
 }
 .detail-description {
   font-size: 12px;
   line-height: 1.7;
-  color: #4c574c;
+  color: #545454;
   white-space: pre-line;
 }
 .preview-actions {
   display: grid;
   gap: 10px;
   margin-top: 24px;
-  border-top: 1px solid #c8cbc4;
+  border-top: 1px solid #cacaca;
   padding-top: 20px;
 }
 .preview-actions .product-link {
@@ -276,7 +276,7 @@
   font-size: 9px;
   font-weight: 700;
   cursor: pointer;
-  border-bottom: 1px solid #889687;
+  border-bottom: 1px solid #929292;
 }
 .product-open {
   border: 0;

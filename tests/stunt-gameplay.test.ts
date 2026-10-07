@@ -109,7 +109,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     },
   );
   it('can merge onto the rear ramp before swiping again to leave', () => {
-    const engine = ride(BIKES[2]);
+    const engine = ride(BIKES.find(bike => bike.id === '450')!);
     engine.elapsed = 25;
     engine.spawn('towtruck', 1, 10, 0, 6)!;
     engine.move(1);
@@ -177,7 +177,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     expect(engine.jumps).toBe(1);
   });
   it('accepts the last timely swipe but rejects a swipe after the deck deadline', () => {
-    const missed = ride(BIKES[2]);
+    const missed = ride(BIKES.find(bike => bike.id === '450')!);
     missed.elapsed = 10000;
     board(missed);
     let deadline = 0;
@@ -187,7 +187,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
     }
     expect(missed.phase).toBe('crashed');
     for (const delay of [deadline - 1, deadline]) {
-      const engine = ride(BIKES[2]);
+      const engine = ride(BIKES.find(bike => bike.id === '450')!);
       engine.elapsed = 10000;
       board(engine);
       steps(engine, delay);

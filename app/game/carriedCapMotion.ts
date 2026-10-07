@@ -1,6 +1,8 @@
 import { Matrix4, Object3D, Quaternion, Vector3 } from 'three';
 
 export interface CarriedCapMotionInput {
+  /** Forward ground speed in m/s, used by wind-driven clothing. */
+  speed?: number;
   /** Signed m/s². Forward travel is world -Z; right is world +X. */
   longitudinalAcceleration?: number;
   lateralAcceleration?: number;

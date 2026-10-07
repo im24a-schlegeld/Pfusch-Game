@@ -41,7 +41,6 @@ export default function ProductPreview({
   configuration,
   onConfiguration,
   onClose,
-  onKeep,
   onEquip,
   onUnlock,
   onLink,

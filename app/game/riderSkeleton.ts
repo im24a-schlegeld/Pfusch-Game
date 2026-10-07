@@ -130,6 +130,12 @@ export const BIKE_CONTACTS: Readonly<Record<BikeModelId, RiderTarget>> =
       peg: [0.2, 0.3, -0.13],
       torsoLean: 0.34,
     },
+    moped: {
+      hip: [0, 0.855, 0.232],
+      grip: [0.262, 0.907, -0.229],
+      peg: [0.205, 0.208, 0.05],
+      torsoLean: 0.25,
+    },
     '450': {
       hip: [0, 1.0, 0.18],
       grip: SUPERMOTO_GRIP,
@@ -165,6 +171,7 @@ export const RIDER_TARGETS: Readonly<Record<BikeModelId, RiderTarget>> =
   Object.freeze({
     '125': BIKE_CONTACTS['125'],
     scooter: BIKE_CONTACTS.scooter,
+    moped: BIKE_CONTACTS.moped,
     '450': scaledContacts('450', 0.42),
     // The larger sport chassis needs a little more torso lean to retain the
     // same fixed arm reach. Imported models resolve their own source contacts.
@@ -173,6 +180,7 @@ export const RIDER_TARGETS: Readonly<Record<BikeModelId, RiderTarget>> =
 export const POSES = {
   '125': resolveRiderPose(RIDER_TARGETS['125']),
   scooter: resolveRiderPose(RIDER_TARGETS.scooter),
+  moped: resolveRiderPose(RIDER_TARGETS.moped),
   '450': resolveRiderPose(RIDER_TARGETS['450']),
   '701': resolveRiderPose(RIDER_TARGETS['701']),
 };

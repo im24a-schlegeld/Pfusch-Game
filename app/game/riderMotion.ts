@@ -50,7 +50,8 @@ export function riderHeadPose(motion: RiderMotion) {
   const wheelie = bounded(motion.wheelie);
   const balance = bounded(motion.balance, -1);
   return {
-    pitch: -0.06 - pitch * (0.84 - wheelie * 0.025) + balance * 0.018,
+    pitch: Math.max(-1.1, -0.06 - pitch * (0.847 - wheelie * 0.025))
+      + balance * 0.008 + bounded(motion.landing) * 0.022 - bounded(motion.launch) * 0.016,
     yaw: -steer * 0.035,
     roll: -roll * 0.8 + steer * 0.008 + balance * wheelie * 0.012,
   };
@@ -148,11 +149,12 @@ export function riderMotionPose(base: RiderPose, motion: RiderMotion) {
     orientation.setFromEuler(new Euler(-lean, 0, roll));
   }
   const shoulder = onTorso([0, d.torsoLength, 0]);
-  const head: Point = [
-    shoulder[0],
-    shoulder[1] + d.neckToHelmetCenter,
-    shoulder[2] - 0.035,
-  ];
+  // Flex around the base of the neck, rather than spinning the helmet in place.
+  // This rotates a fixed-length offset; it cannot lengthen the neck or skeleton.
+  const neckFlex = -radians(motion.bikePitch, 0, 1.3) * .24;
+  const headOffset = new Vector3(0, d.neckToHelmetCenter, -.035)
+    .applyAxisAngle(new Vector3(1, 0, 0), neckFlex);
+  const head: Point = point(headOffset.add(vector(shoulder)));
   const limbs = [-1, 1].map((side) => {
     const start = onTorso([side * d.shoulderHalf, d.torsoLength, 0]);
     const end = crashWrist(side);

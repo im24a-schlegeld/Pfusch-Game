@@ -7,8 +7,8 @@
     <meta name="description" content="Wheelie Escape von PFUSCH. Fahre Wheelies, weiche dem Verkehr aus und baue deine Garage auf." />
     <title>Wheelie Escape</title>
     <link rel="icon" href="/favicon.svg" />
-    <link rel="preload" as="image" href="/branding/loading-wheelie.webp" media="(min-aspect-ratio: 3/4)" fetchpriority="high" />
-    <link rel="preload" as="image" href="/branding/loading-wheelie-portrait.webp" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/branding/loading-trailer.webp" media="(aspect-ratio > 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/branding/loading-trailer-portrait.webp" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
     <style>
       /* Keep a useful recovery surface visible if the app bundle or WebGL boot
          fails before React can render its own loading/error screen. React
@@ -17,42 +17,49 @@
         position: fixed;
         inset: 0;
         z-index: 2147483647;
+        isolation: isolate;
+        overflow: hidden;
         display: grid;
         align-content: end;
-        justify-items: center;
-        gap: 18px;
-        padding: 24px;
-        background: linear-gradient(0deg,#15111fea,transparent 50%),url('/branding/loading-wheelie.webp') center / contain no-repeat #24212e;
-        color: #f4f4f2;
+        justify-items: start;
+        gap: 14px;
+        padding: max(env(safe-area-inset-bottom),clamp(22px,5vh,50px)) max(env(safe-area-inset-left),clamp(20px,4vw,52px));
+        background: #232323;
+        color: #f4f4f4;
         font: 600 12px/1.4 Arial, Helvetica, sans-serif;
         letter-spacing: .1em;
-        text-align: center;
+        text-align: left;
       }
-      #boot-fallback strong {
-        font-size: clamp(38px, 8vw, 72px);
-        letter-spacing: -.06em;
-      }
-      #boot-fallback span { color: #bdbdb9; }
-      #boot-fallback .boot-logo { width: 112px; position: absolute; top: 28px; left: 28px; }
+      #boot-fallback picture { position: absolute; inset: 0; z-index: -2; }
+      #boot-fallback .boot-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
+      #boot-fallback::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg,#0b0b0b29,transparent 30%,transparent 61%,#0b0b0be6); }
+      #boot-fallback .boot-status { display: flex; align-items: center; gap: 10px; color: #ddd; font-size: 9px; letter-spacing: .12em; }
+      #boot-fallback .boot-brand { position: absolute; left: max(env(safe-area-inset-left),clamp(20px,4vw,52px)); top: max(env(safe-area-inset-top),clamp(18px,4vh,42px)); display: inline-flex; width: 240px; max-width: calc(100% - 40px); flex-direction: column; align-items: center; }
+      #boot-fallback .boot-brand-signs { position: relative; display: block; width: 100%; aspect-ratio: 2.85; }
+      #boot-fallback .boot-brand-signs > img { position: absolute; inset: 0 5% 0 0; width: 95%; max-width: none; height: 100%; object-fit: contain; transform: rotate(6deg); }
+      #boot-fallback .boot-brand-stop { position: absolute; width: 6.2%; height: auto; right: 0; bottom: 8%; }
+      #boot-fallback .boot-brand-title { display: block; width: 57%; height: auto; margin-top: -6%; object-fit: contain; }
       #boot-fallback .boot-spinner {
-        width: 24px;
-        height: 24px;
+        width: 18px;
+        height: 18px;
         border: 2px solid #5e5e5e;
-        border-top-color: #f0f0ed;
+        border-top-color: #f0f0f0;
         border-radius: 50%;
         animation: boot-spin .72s linear infinite;
       }
       #boot-fallback button {
         min-height: 42px;
         padding: 10px 16px;
-        border: 1px solid #f0f0ed;
-        background: #f0f0ed;
+        border: 1px solid #f0f0f0;
+        background: #f0f0f0;
         color: #323232;
         font: inherit;
         letter-spacing: .08em;
         cursor: pointer;
       }
-      @media(max-aspect-ratio:3/4){#boot-fallback{background:linear-gradient(0deg,#15111fea,transparent 50%),url('/branding/loading-wheelie-portrait.webp') center / cover no-repeat #24212e}}
+      @media(max-aspect-ratio:3/4){#boot-fallback .boot-art{object-position:center}}
+      @media(max-width:600px){#boot-fallback .boot-brand{width:180px}}
+      @media(max-height:420px){#boot-fallback{padding-bottom:15px}#boot-fallback .boot-brand{top:14px;width:180px}}
       @keyframes boot-spin { to { transform: rotate(360deg); } }
       @media(prefers-reduced-motion:reduce){#boot-fallback .boot-spinner{animation:none}}
     </style>
@@ -60,10 +67,21 @@
   <body>
     <div id="root">
       <main id="boot-fallback" aria-live="polite">
-        <img class="boot-logo" src="/branding/pfusch-logo.webp" alt="PFUSCH" />
-        <strong>WHEELIE ESCAPE</strong>
-        <span>GARAGE WIRD GELADEN</span>
-        <i class="boot-spinner" aria-hidden="true"></i>
+        <picture>
+          <source media="(max-aspect-ratio: 3/4)" srcset="/branding/loading-trailer-portrait.webp" />
+          <img class="boot-art" src="/branding/loading-trailer.webp" alt="" fetchpriority="high" />
+        </picture>
+        <span class="boot-brand" role="img" aria-label="PFUSCH Wheelie Escape">
+          <span class="boot-brand-signs">
+            <img src="/images/artwork/signs.png" alt="" />
+            <svg class="boot-brand-stop" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M30 3H70L97 30V70L70 97H30L3 70V30Z" fill="#d5252b" stroke="#fff" stroke-width="3" />
+              <text x="50" y="51" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="900" font-size="27" letter-spacing="-1">STOP</text>
+            </svg>
+          </span>
+          <img class="boot-brand-title" src="/branding/wheelie-escape-wordmark-a.png" alt="" />
+        </span>
+        <span class="boot-status"><i class="boot-spinner" aria-hidden="true"></i>GARAGE WIRD GELADEN</span>
         <button type="button" onclick="window.location.reload()">NEU LADEN</button>
       </main>
     </div>

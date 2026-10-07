@@ -1,4 +1,5 @@
 import type { Engine } from '../game/engine';
+import { speedometerKmh } from '../domain/speedometer';
 import { Pause } from 'lucide-react';
 import SignProgress from './SignProgress';
 const number = (n: number) => Math.floor(n).toLocaleString('de-CH');
@@ -47,7 +48,7 @@ export default function RideHud({
             {number(engine.distance)} <small>M</small>
           </b>
           <b>
-            {Math.round(engine.speed * 3.6)} <small>KM/H</small>
+            {speedometerKmh(engine.speed)} <small>KM/H</small>
           </b>
         </div>
         <div className="v42-top-actions">

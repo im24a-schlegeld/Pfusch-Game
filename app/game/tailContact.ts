@@ -30,21 +30,12 @@ function contact(
 // The extended steel mudguard wraps just behind the rear axle height. Share
 // its tip with the renderer so sparks and loop-out follow actual contact.
 export const MOPED_REAR_FENDER_ANGLE = 1.68;
-const mopedGuardRadius = 0.305 + 0.038 + 0.008 + 0.005;
 /** Raw chassis coordinates, before the shared vehicle/world scale. */
 export const TAIL_CONTACT: Readonly<Record<string, TailContact>> = {
   // Earliest rendered rear vertices, including the Ciao's steel mudguard and
   // the scooter's lower plastic mudflap rather than their higher saddle tails.
-  '125': contact(
-    [
-      0,
-      0.305 + Math.cos(MOPED_REAR_FENDER_ANGLE) * mopedGuardRadius,
-      0.55 + Math.sin(MOPED_REAR_FENDER_ANGLE) * mopedGuardRadius,
-    ],
-    0.55,
-    0.305,
-    'metal',
-  ),
+  '125': contact(IMPORTED_BIKE_TAIL['125'].tail, IMPORTED_BIKE_TAIL['125'].rearAxle, IMPORTED_BIKE_TAIL['125'].rearRadius, IMPORTED_BIKE_TAIL['125'].material),
+  moped: contact(IMPORTED_BIKE_TAIL.moped.tail, IMPORTED_BIKE_TAIL.moped.rearAxle, IMPORTED_BIKE_TAIL.moped.rearRadius, IMPORTED_BIKE_TAIL.moped.material),
   scooter: contact(IMPORTED_BIKE_TAIL.scooter.tail, IMPORTED_BIKE_TAIL.scooter.rearAxle, IMPORTED_BIKE_TAIL.scooter.rearRadius, IMPORTED_BIKE_TAIL.scooter.material),
   '450': contact(
     IMPORTED_BIKE_TAIL['450'].tail,

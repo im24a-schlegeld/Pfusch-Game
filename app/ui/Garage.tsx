@@ -4,7 +4,7 @@ import type { Player, Product, ProductConfiguration, Slot } from '../domain/type
 import type { Services } from '../services';
 import { confirmPlayerSave } from '../services/saveConfirmation';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
-import { digitalPrice, ownership } from '../domain/progression';
+import { digitalLevel, digitalPrice, ownership } from '../domain/progression';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS } from '../domain/helmet';
 import { isSticker } from '../domain/stickers';
 import { equipmentSlot, equippable, imagePath, initialConfiguration, productColors, supportsHood } from '../domain/preview';
@@ -88,7 +88,7 @@ export default function Garage({ player, products, update, services, notify, sta
     const slot = equipmentSlot(product);
     if (part === 'upper') return slot === 'upper';
     if (part === 'head') return slot === 'head';
-    if (part === 'accessory') return slot === 'accessory' || slot === 'lower';
+    if (part === 'accessory') return slot === 'accessory' || slot === 'lower' || slot === 'cape';
     if (part === 'extras') return slot === 'keychain' || slot === 'bike' || isSticker(product);
     if (part === 'collection') return !equippable(product) && !isSticker(product);
     return false;
@@ -101,12 +101,10 @@ export default function Garage({ player, products, update, services, notify, sta
   const selectedColor = colors.find(color => color.variantIds.includes(configuration?.variantId ?? '')) ?? colors[0];
   const placingSticker = Boolean(selectedProduct && isSticker(selectedProduct));
   const mockup = productView === 'back' ? selectedColor?.back ?? selectedColor?.front : selectedColor?.front ?? selectedColor?.back;
-  const referenceProduct = selectedProduct ?? products.find(product => product.id === appearance.equipped.upper)
-    ?? products.find(product => product.category === 'upper');
-  const referenceImage = selectedProduct ? mockup?.localImage ?? selectedProduct.localImage ?? selectedProduct.image : referenceProduct?.localImage ?? referenceProduct?.image;
   const focus = part === 'model' || part === 'paint' || part === 'rims' || part === 'upper' ? part
     : part === 'helmet' || part === 'head' ? 'head' : part === 'extras' && selectedProduct?.handle === 'schlusselanhanger' ? 'keychain'
-      : part === 'extras' || part === 'collection' ? 'model' : 'accessory';
+      : part === 'extras' || part === 'collection' ? 'model'
+        : selectedProduct && equipmentSlot(selectedProduct) === 'cape' ? 'cape' : 'accessory';
   const helmetEdit = previewEdit?.kind === 'helmet' ? previewEdit : { kind: 'helmet' as const, helmet: player.helmet, helmetColor: player.helmetColor, helmetVisor: player.helmetVisor };
 
   function selectPart(next: Part) {
@@ -164,7 +162,7 @@ export default function Garage({ player, products, update, services, notify, sta
   }
   const productStatus = (product: Product) => {
     const state = ownership(player, product);
-    return state === 'EQUIPPED' ? 'Ausgerüstet' : state === 'OWNED_IRL' ? 'Dein PFUSCH-Artikel' : state === 'UNLOCKED_DIGITAL' ? 'In deinem Besitz' : `${digitalPrice(product)} Coins`;
+    return state === 'EQUIPPED' ? 'Ausgerüstet' : state === 'OWNED_IRL' ? 'Dein PFUSCH-Artikel' : state === 'UNLOCKED_DIGITAL' ? 'In deinem Besitz' : `${digitalPrice(product)} Coins${digitalLevel(product) > 1 ? ` · Level ${digitalLevel(product)}` : ''}`;
   };
   const removeSlot = (slot: Slot) => setEdit({ kind: 'remove', slot });
   const openWorkshop = (target: 'bike' | 'helmet') => { setStickerTarget(target); setStickerBike(player); };
@@ -206,9 +204,7 @@ export default function Garage({ player, products, update, services, notify, sta
         <Preview player={appearance} products={products} mode="garage" onReady={onReady} onLoadError={onLoadError}
           inspectionFocus={focus} inspectionAngle={angle} inspectionRevision={inspectionRevision} />
       </div>
-      <div className="gc-preview-footer"><div><h2>{bike.name}</h2><p>{products.find(product => product.id === appearance.equipped.upper)?.title ?? 'Standard-Outfit'}</p></div>
-        {referenceImage && <a className="gc-reference" href={referenceProduct?.url} target="_blank" rel="noreferrer" aria-label={`Originalprodukt im PFUSCH-Shop: ${referenceProduct?.title}`}><img src={imagePath(referenceImage)} alt={referenceProduct?.title ?? 'PFUSCH-Original'} /><span>ORIGINAL</span></a>}
-      </div>
+      <div className="gc-preview-footer"><h2>{bike.name}</h2><p>{products.find(product => product.id === appearance.equipped.upper)?.title ?? 'Standard-Outfit'}</p></div>
       <div className="gc-angles" aria-label="Kameraansicht"><RotateCw size={14} aria-hidden="true" />
         {[{ name: 'Vorne ¾', value: 2.35 }, { name: 'Seite', value: 1.57 }, { name: 'Hinten ¾', value: .55 }].map(view => <button key={view.name} onClick={() => { setAngle(view.value); setInspectionRevision(revision => revision + 1); }}>{view.name}</button>)}
         <span>Ziehen · Zoomen</span>
@@ -234,7 +230,7 @@ export default function Garage({ player, products, update, services, notify, sta
           {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}
         </div>}
         {part === 'head' && <p className="gc-help">Caps hängen am Hüftclip. Dein Fahrhelm bleibt auf.</p>}
-        {part === 'accessory' && <p className="gc-help">Taschen werden am Fahrer getragen und lassen sich mit Caps kombinieren.</p>}
+        {part === 'accessory' && <p className="gc-help">Tasche, Cape und Cap lassen sich gemeinsam tragen. Alles kostenlos anprobieren; erst Ausrüsten speichert deine Auswahl.</p>}
         {part === 'extras' && <p className="gc-help">Passend für {bike.name}: Sticker auf gültigen Flächen, Schlüsselanhänger am Befestigungspunkt.</p>}
         {part === 'collection' && <p className="gc-help">Diese Artikel sammelst du im Spiel; sie werden nicht am Fahrer ausgerüstet.</p>}
         {['upper', 'head', 'accessory', 'extras', 'collection'].includes(part) && <>
@@ -247,7 +243,7 @@ export default function Garage({ player, products, update, services, notify, sta
               <span className="gc-product-image"><img src={imagePath(color?.front?.localImage ?? product.localImage ?? product.image)} alt={product.title} loading="lazy" />{active && <Check size={16} aria-hidden="true" />}</span><strong>{product.title}</strong><span>{productStatus(product)}</span>
             </button>;
           })}</div>
-          {part !== 'collection' && <div className="gc-remove-options">{([...new Set(activeProducts.filter(equippable).map(equipmentSlot))]).map(slot => player.equipped[slot] && <button key={slot} className="gc-text-button" onClick={() => removeSlot(slot)}>{slot === 'upper' ? 'Standard-Outfit' : `Ohne ${slot === 'head' ? 'Cap' : slot === 'keychain' ? 'Schlüsselanhänger' : 'Accessoire'}`}</button>)}</div>}
+          {part !== 'collection' && <div className="gc-remove-options">{([...new Set(activeProducts.filter(equippable).map(equipmentSlot))]).map(slot => player.equipped[slot] && <button key={slot} className="gc-text-button" onClick={() => removeSlot(slot)}>{slot === 'upper' ? 'Standard-Outfit' : `Ohne ${slot === 'head' ? 'Cap' : slot === 'cape' ? 'Cape' : slot === 'keychain' ? 'Schlüsselanhänger' : 'Accessoire'}`}</button>)}</div>}
         </>}
         {selectedProduct && configuration && <section className="gc-product-options" aria-label={`${selectedProduct.title} konfigurieren`}>
           <div className="gc-selected-heading"><h3>{selectedProduct.title}</h3><span>{productStatus(selectedProduct)}</span></div>

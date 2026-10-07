@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { BikeModelId } from './vehicleScale';
 
-export type ImportedBikeId = Exclude<BikeModelId, '125'>;
+export type ImportedBikeId = BikeModelId;
 export type ImportedPoint = [number, number, number];
 export interface ImportedBikeAttribute { offset: number; count: number }
 export interface ImportedBikePart {
@@ -59,6 +59,8 @@ export interface ImportedBikeAsset {
 }
 
 const urls: Record<ImportedBikeId, string> = {
+  '125': '/models/ciao/model.json',
+  moped: '/models/moped/model.json',
   '450': '/models/fs450/model.json',
   '701': '/models/r6/model.json',
   scooter: '/models/nitro/model.json',
@@ -67,7 +69,7 @@ const assets = new Map<ImportedBikeId, ImportedBikeAsset>();
 const pending = new Map<ImportedBikeId, Promise<void>>();
 
 export function isImportedBike(id: string): id is ImportedBikeId {
-  return id === '450' || id === '701' || id === 'scooter';
+  return Object.hasOwn(urls, id);
 }
 export function importedBikeReady(id: string) {
   return !isImportedBike(id) || assets.has(id);

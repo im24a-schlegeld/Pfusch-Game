@@ -19,7 +19,7 @@ export function connectedComponents(mesh, positions, THREE) {
     component.box.expandByPoint(new THREE.Vector3().fromArray(positions, i * 3));
   }
   const components = [...groups.values()].sort((a, b) => b.vertices.length - a.vertices.length);
-  const byVertex = new Array(count);
+  const byVertex = Array.from({ length: count });
   components.forEach((part, index) => {
     part.index = index;
     part.center = part.box.getCenter(new THREE.Vector3());

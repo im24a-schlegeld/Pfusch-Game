@@ -26,6 +26,7 @@ import { ShopifyLeaderboardService } from './shopifyLeaderboard';
 import { readOxygenRuntime, startOxygenLogin } from './oxygenRuntime';
 import { OxygenTransport } from './oxygenTransport';
 import { trialAccess, type PlayerAccess } from './playerAccess';
+import { OxygenVerifiedRewards, type VerifiedRewardsService } from './verifiedRewards';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
@@ -51,6 +52,7 @@ export interface ProductProvider {
   list(): Promise<Product[]>;
 }
 export interface RewardService {
+  readonly real?: VerifiedRewardsService;
   settle(
     player: Player,
     run: RunStats,
@@ -160,6 +162,8 @@ export function decodePlayer(raw: string): Player {
       'head',
       'accessory',
       'keychain',
+      // Additive schema-1 slot; legacy saves have no cape until explicitly equipped.
+      'cape',
       'collectible',
       'bike',
     ] as const)
@@ -198,6 +202,9 @@ export function decodePlayer(raw: string): Player {
       if (typeof v.settings[field] === 'boolean')
         p.settings[field] = v.settings[field];
     if (v.settings.quality === 'low') p.settings.quality = 'low';
+    // Additive v1 migration: missing/invalid preferences keep the original swipe controls.
+    if (v.settings.touchControls === 'swipe' || v.settings.touchControls === 'buttons')
+      p.settings.touchControls = v.settings.touchControls;
     // v1 saves from before contextual onboarding have no lesson acknowledgements.
     // Do not infer these from tutorialSeen: the old static guide did not teach these encounters.
     p.settings.tutorialHintsSeen = normalizeTutorialHints(v.settings.tutorialHintsSeen);
@@ -301,6 +308,7 @@ export class LocalProductProvider implements ProductProvider {
   }
 }
 export class MockRewardService implements RewardService {
+  constructor(readonly real?: VerifiedRewardsService) {}
   settle = finishRun;
   redeem(p: Player, id: string) {
     const r = REWARDS.find((x) => x.id === id);
@@ -380,7 +388,7 @@ export function createServices(): Services {
         : new GuestAuthService(),
     players: cloud ?? local,
     products: new LocalProductProvider(),
-    rewards: new MockRewardService(),
+    rewards: new MockRewardService(oxygen ? new OxygenVerifiedRewards(window.fetch.bind(window)) : undefined),
     leaderboard: transport ? new ShopifyLeaderboardService(transport, new LocalLeaderboardService()) : new LocalLeaderboardService(),
     analytics: new LocalAnalyticsService(),
   };

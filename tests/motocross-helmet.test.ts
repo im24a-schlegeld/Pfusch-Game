@@ -18,7 +18,7 @@ const ray = (x: number, y: number) =>
   new Raycaster(new Vector3(x, y, -1), new Vector3(0, 0, 1));
 
 describe('independent motocross equipment geometry', () => {
-  it.each(['125', 'scooter', '450', '701'] as const)(
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s mounts and animates both helmet styles on the same unchanged head',
     (bike) => {
       const player = { ...newPlayer(), bike, helmetColor: '#b8ce47' };

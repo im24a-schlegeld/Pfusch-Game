@@ -33,7 +33,7 @@ it.each(BIKES)(
     // Imported tyres retain the source's slight non-circular contour. Compare
     // within 1 mm; every actual tyre vertex is checked against the ramp below.
     expect(Math.abs((bounds.max.y - bounds.min.y) / 2 - RAMP_FRONT_CONTACT[config.id].radius))
-      .toBeLessThan(config.id === '125' ? 0.000001 : 0.001);
+      .toBeLessThan(0.001);
     const tires = bike.wheels.map(
       (wheel) => wheel.getObjectByName('tire') as Mesh,
     );

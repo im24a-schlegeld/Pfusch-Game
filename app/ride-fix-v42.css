@@ -28,16 +28,10 @@
   flex-direction: column;
   justify-content: center;
   gap: 3px;
-  background: #f5f6ee;
-  color: #0b0d0f;
-  border-top: 4px solid #f5f6ee;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - 9px),
-    calc(100% - 9px) 100%,
-    0 100%
-  );
+  background: #ffffff;
+  color: #0d0d0d;
+  border-top: 4px solid #ffffff;
+  clip-path: none;
 }
 .v42-score > span,
 .v42-score > small {
@@ -47,7 +41,7 @@
   letter-spacing: 0.075em;
 }
 .v42-score > small {
-  color: #515650;
+  color: #555555;
   font-weight: 600 !important;
   letter-spacing: 0.02em;
 }
@@ -90,6 +84,8 @@
   inset: auto !important;
   transform: none !important;
   display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  gap: 2px;
   place-items: center;
   filter: drop-shadow(0 1px 1px #0008);
 }
@@ -100,6 +96,11 @@
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;
+}
+.ride-screen .v42-sign-stop {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 .ride-screen .v42-pause {
   width: 44px !important;
@@ -131,9 +132,9 @@
   justify-content: space-between;
   padding: 7px 11px;
   gap: 8px;
-  background: #0c0f11;
+  background: #0f0f0f;
   color: #fff;
-  border-left: 3px solid #f5f6ee;
+  border-left: 0;
   font:
     800 15px/1.2 Arial,
     sans-serif;
@@ -268,8 +269,8 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 16px;
-  background: #101315b8;
-  color: #f5f6ee;
+  background: #131313b8;
+  color: #ffffff;
   pointer-events: auto;
   touch-action: none;
 }
@@ -296,7 +297,7 @@
   font-size: 10px !important;
   bottom: max(18px, env(safe-area-inset-bottom)) !important;
   background: transparent !important;
-  color: #f5f6ee !important;
+  color: #ffffff !important;
 }
 .ride-screen .police-alert {
   position: absolute;
@@ -334,13 +335,13 @@
   letter-spacing: 0.1em;
 }
 .police-instruction {
-  color: #f5f6ee;
+  color: #ffffff;
   font-size: clamp(11px, 1.25vw, 16px);
   letter-spacing: 0.13em;
 }
 .police-countdown {
   display: block;
-  color: #ffe36b;
+  color: #e0e0e0;
   font-size: clamp(14px, 1.6vw, 21px);
   letter-spacing: 0.14em;
 }
@@ -363,8 +364,8 @@
   animation: police-red 1.1s ease-in-out infinite alternate;
   background: radial-gradient(
     ellipse at 15% 100%,
-    #f4434dc7 0%,
-    #f4434d61 24%,
+    #696969c7 0%,
+    #69696961 24%,
     transparent 72%
   );
 }
@@ -372,8 +373,8 @@
   animation-name: police-blue;
   background: radial-gradient(
     ellipse at 85% 100%,
-    #3f83ffc7 0%,
-    #3f83ff61 24%,
+    #7d7d7dc7 0%,
+    #7d7d7d61 24%,
     transparent 72%
   );
 }
@@ -448,7 +449,7 @@
     justify-self: end;
     height: 72px;
     padding: 3px 5px;
-    background: #10131580;
+    background: #13131380;
     border: 1px solid #ffffff44;
   }
   .ride-screen .v42-signs canvas {
@@ -463,7 +464,7 @@
     height: 42px !important;
     min-width: 42px !important;
     min-height: 42px !important;
-    background: #10131580 !important;
+    background: #13131380 !important;
     border: 1px solid #ffffff66 !important;
   }
   .ride-screen .ride-balance {
@@ -476,7 +477,7 @@
     max-width: calc(100% - 24px) !important;
     padding: 7px 10px !important;
     border: 1px solid #ffffff80;
-    background: #10131590 !important;
+    background: #13131390 !important;
     font-size: 9px !important;
     text-shadow: 0 1px 2px #000;
   }

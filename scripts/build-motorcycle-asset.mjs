@@ -77,7 +77,7 @@ export async function buildMotorcycleAsset(config) {
 const output = path.join(root, 'public/models', config.id);
 fs.mkdirSync(output, { recursive: true });
 fs.mkdirSync(path.join(output, 'textures'), { recursive: true });
-const source = loadMotorcycleSource(config.source, config.includeMesh);
+const source = config.loadSource ? await config.loadSource(config.source, config.includeMesh) : loadMotorcycleSource(config.source, config.includeMesh);
 const { meshes, worldPositions, worldNormals, zip, data } = source;
 const specs = data.specsByPath;
 const { normalize, anchors, sourceTransform } = await config.analyze(source);

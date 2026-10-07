@@ -1,11 +1,15 @@
-import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import type { TutorialHint } from '../domain/types';
+import RideTouchButtons from './RideTouchButtons';
+import type { RideHoldAction } from './rideHeldInput';
 import './ride-context-tutorial.css';
 
 interface Props {
   hint: TutorialHint | null;
   target?: { x: number; y: number };
   reducedMotion?: boolean;
+  touchButtons?: boolean;
+  onTouchPress(action: RideHoldAction, event: PointerEvent<HTMLButtonElement>): void;
   onContinue(): void;
   onSkip(): void;
 }
@@ -27,12 +31,17 @@ function SwipeArrow({ direction }: { direction: 'side' | 'up' | 'down' }) {
 }
 
 /** The ride owns gestures, so continuing a swipe never loses the finger's input. */
-export default function RideTutorialOverlay({ hint, target, reducedMotion, onContinue, onSkip }: Props) {
+export default function RideTutorialOverlay({ hint, target, reducedMotion, touchButtons = false, onTouchPress, onContinue, onSkip }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { if (hint) heading.current?.focus({ preventScroll: true }); }, [hint]);
   if (!hint) return null;
   const lesson = lessons[hint];
+  const copy = touchButtons && hint === 'controls'
+    ? 'Dein Bike gibt automatisch Gas. Halte Wheelie zum Anheben oder Bremse zum Senken. Probier eine Taste aus, um loszufahren.'
+    : touchButtons && hint === 'radar'
+      ? 'Wheelie oder Sprung am Blitzer? Dann folgt die Polizei. Halte Bremse, um das Vorderrad zu senken.'
+      : lesson.copy;
   const trapFocus = (event: KeyboardEvent<HTMLDialogElement>) => {
     if (event.key !== 'Tab') return;
     const buttons = dialog.current?.querySelectorAll<HTMLButtonElement>('button');
@@ -49,8 +58,8 @@ export default function RideTutorialOverlay({ hint, target, reducedMotion, onCon
     aria-modal="true" aria-labelledby="ride-tutorial-title" aria-describedby="ride-tutorial-copy"
     ref={dialog} onKeyDown={trapFocus}>
     <span className="ride-coach-pause">Fahrt angehalten</span>
-    {hint === 'controls' && <svg className="ride-coach-stage-gesture" viewBox="0 0 220 130" fill="none" aria-hidden="true">
-      <path d="M30 65h160M45 50 30 65l15 15M175 50l15 15-15 15M110 15v100M96 29l14-14 14 14M96 101l14 14 14-14" />
+    {hint === 'controls' && <svg className="ride-coach-stage-gesture" data-buttons={touchButtons} viewBox="0 0 220 130" fill="none" aria-hidden="true">
+      <path d={touchButtons ? 'M30 65h160M45 50 30 65l15 15M175 50l15 15-15 15' : 'M30 65h160M45 50 30 65l15 15M175 50l15 15-15 15M110 15v100M96 29l14-14 14 14M96 101l14 14 14-14'} />
       <circle className="ride-coach-stage-finger" cx="110" cy="65" r="13" /><circle className="ride-coach-stage-finger-inner" cx="110" cy="65" r="5" />
     </svg>}
     {target && <div className="ride-coach-target" aria-hidden="true" data-testid="tutorial-target"
@@ -59,14 +68,19 @@ export default function RideTutorialOverlay({ hint, target, reducedMotion, onCon
     </div>}
     <section className="ride-coach-card">
       <h2 id="ride-tutorial-title" ref={heading} tabIndex={-1}>{lesson.title}</h2>
-      <p id="ride-tutorial-copy">{lesson.copy}</p>
-      {hint === 'controls' ? <div className="ride-coach-controls" aria-label="Wischgesten">
+      <p id="ride-tutorial-copy">{copy}</p>
+      {hint === 'controls' && touchButtons ? <>
+        <div className="ride-coach-single"><SwipeArrow direction="side" /><span>Seitlich wischen · Spur wechseln</span></div>
+        <RideTouchButtons tutorial onPress={onTouchPress} />
+        <p className="ride-coach-hold-help">Gedrückt halten · Loslassen ist neutral</p>
+      </> : hint === 'controls' ? <div className="ride-coach-controls" aria-label="Wischgesten">
         <div><SwipeArrow direction="side" /><span>Spur wechseln</span></div>
         <div><SwipeArrow direction="down" /><span>Wheelie anheben</span></div>
         <div><SwipeArrow direction="up" /><span>Vorderrad senken</span></div>
         <small>Ziehen und halten · Loslassen ist neutral</small>
       </div> : ['traffic', 'ramp', 'signs'].includes(hint) ? <div className="ride-coach-single"><SwipeArrow direction="side" /><span>Seitlich wischen</span></div>
-        : hint === 'radar' ? <div className="ride-coach-single"><SwipeArrow direction="up" /><span>Nach oben ziehen</span></div> : null}
+        : hint === 'radar' && touchButtons ? <div className="ride-coach-single"><span>BREMSE halten · Vorderrad senken</span></div>
+          : hint === 'radar' ? <div className="ride-coach-single"><SwipeArrow direction="up" /><span>Nach oben ziehen</span></div> : null}
       <p className="ride-coach-keyboard">{hint === 'controls' ? 'Tastatur: A/D ausweichen · S anheben · W senken' : 'Pfeiltasten oder A/D · Enter weiter'}</p>
       <div className="ride-coach-actions"><button type="button" onClick={onContinue} data-testid="tutorial-continue">Weiter</button><button type="button" onClick={onSkip}>Hinweise überspringen</button></div>
     </section>

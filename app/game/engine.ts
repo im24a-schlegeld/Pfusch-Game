@@ -1,4 +1,5 @@
 import { TOW_TRANSFER, transferX } from './towTransfer';
+import { carContactPitch, carFrontReach, carJumpClearance, carRearReach } from './carClearance';
 import type { Bike, RunStats } from '../domain/types';
 import { World, distanceAtTime, speedAtTime } from './world';
 import {
@@ -52,6 +53,11 @@ import {
 } from './policePursuit';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
+export type EngineInput =
+  | { type: 'hold' | 'forward'; value: boolean }
+  | { type: 'weight'; value: number }
+  | { type: 'move'; value: -1 | 1 }
+  | { type: 'clear' | 'end' };
 export type ObstacleKind = TrafficKind | RoadEventKind;
 export interface Obstacle {
   spawnId: number;
@@ -99,6 +105,9 @@ export interface SignPickup {
   z: number;
 }
 export class Engine {
+  /** Active fixed steps only; paused/countdown wall time never advances this clock. */
+  fixedTicks = 0;
+  onInput?: (input: EngineInput, tick: number) => void;
   phase: 'ready' | 'playing' | 'paused' | 'crashed' = 'ready';
   elapsed = 0;
   distance = 0;
@@ -254,6 +263,7 @@ export class Engine {
       !this.onTowTruck && (this.height > 0 || this.velocityY !== 0);
     const next = Math.max(-1, Math.min(1, this.lane + Math.sign(direction)));
     if (next === this.lane || (airborne && this.airLaneChangeUsed)) return;
+    if (scoreWheelieLaneSwitch) this.onInput?.({ type: 'move', value: direction < 0 ? -1 : 1 }, this.fixedTicks);
     if (this.towCarrier && this.cabContact(this.towCarrier.z)) {
       this.crash('Missed the side jump', this.towCarrier);
       return;
@@ -323,16 +333,22 @@ export class Engine {
     return distanceDifficulty(this.distance);
   }
   hold(value: boolean) {
-    this.wheelieHeld = value && this.phase === 'playing';
+    const held = value && this.phase === 'playing';
+    if (held !== this.wheelieHeld) this.onInput?.({ type: 'hold', value: held }, this.fixedTicks);
+    this.wheelieHeld = held;
   }
   forward(value: boolean) {
-    this.forwardHeld = value && this.phase === 'playing';
+    const held = value && this.phase === 'playing';
+    if (held !== this.forwardHeld) this.onInput?.({ type: 'forward', value: held }, this.fixedTicks);
+    this.forwardHeld = held;
   }
   weight(value: number) {
-    this.touchWeight =
+    const weight =
       this.phase === 'playing' && Number.isFinite(value)
         ? Math.max(-1, Math.min(1, value))
         : 0;
+    if (weight !== this.touchWeight) this.onInput?.({ type: 'weight', value: weight }, this.fixedTicks);
+    this.touchWeight = weight;
   }
   get throttleInput() {
     return Math.max(this.wheelieHeld ? 1 : 0, this.touchWeight);
@@ -366,11 +382,14 @@ export class Engine {
   /** Ending a paused run is explicit; it does not resume gameplay or a timer. */
   endRide() {
     if (this.phase === 'crashed') return;
+    this.onInput?.({ type: 'end' }, this.fixedTicks);
     this.resumeRemaining = 0;
     this.phase = 'playing';
     this.crash('Ride ended');
   }
   clearInput() {
+    if (this.wheelieHeld || this.forwardHeld || this.touchWeight)
+      this.onInput?.({ type: 'clear' }, this.fixedTicks);
     this.wheelieHeld = false;
     this.forwardHeld = false;
     this.touchWeight = 0;
@@ -1110,6 +1129,7 @@ export class Engine {
       this.wheelieAngularVelocity = 0;
   }
   private tick(dt: number) {
+    this.fixedTicks++;
     const previousElapsed = this.elapsed;
     this.elapsed += dt;
     this.speed = speedAtTime(this.elapsed, this.bike);
@@ -1320,14 +1340,20 @@ export class Engine {
         }
         continue;
       }
+      const contactPitch = o.kind === 'car'
+        ? carContactPitch(this.bike.id, this.wheelieAngle, this.towPitch)
+        : Math.max(this.towPitch, this.wheelieAngle);
       const rearContact = traffic
         ? traffic.rearZ +
-          trafficFrontReach(
-            this.bike.id,
-            Math.max(this.towPitch, this.wheelieAngle),
-          )
+          (o.kind === 'car'
+            ? carFrontReach(this.bike.id, contactPitch)
+            : trafficFrontReach(this.bike.id, contactPitch))
         : length;
-      const frontContact = traffic ? traffic.frontZ - 1 : -length;
+      const frontContact = traffic
+        ? traffic.frontZ - (o.kind === 'car'
+          ? carRearReach(this.bike.id, contactPitch)
+          : 1)
+        : -length;
       const overlap = o.z < rearContact && prev > frontContact;
       const contactWidth = road?.contactHalfWidth ?? traffic!.contactHalfWidth;
       // An early queued swipe can launch before the truck's rear collision
@@ -1340,20 +1366,23 @@ export class Engine {
             ? towRampHeight(o.z)
             : TOW_RAMP.frontHeight
           : (road?.height ?? traffic!.height);
+      const airborneCar = o.kind === 'car' && this.height > 0.12;
+      const tireClearance = airborneCar
+        ? carJumpClearance(this.bike.id, this.height, contactPitch, o.z, dx, o.police)
+        : -Infinity;
       if (
         this.towJumpActive &&
         o.kind === 'car' &&
         overlap &&
         dx < contactWidth
       ) {
-        const needed = top + 0.04;
-        if (this.height >= needed) {
+        if (Number.isFinite(tireClearance) && tireClearance >= -0.015) {
           o.cleared = true;
           o.rewardPoints = STUNT_POINTS.carJump;
           o.rewardText = 'AUTO ÜBERSPRUNGEN';
         }
       }
-      if (overlap && this.height < top && !this.towSafeObstacles.has(o)) {
+      if (overlap && (airborneCar ? tireClearance < -0.015 : this.height < top) && !this.towSafeObstacles.has(o)) {
         const gap = dx - contactWidth;
         if (gap < 0) {
           if (isRoadEvent(o.kind)) {

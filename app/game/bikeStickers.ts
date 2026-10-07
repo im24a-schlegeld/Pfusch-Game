@@ -237,12 +237,13 @@ function projectedStickerGeometry(
   return geometry;
 }
 
-/** These Supermoto panels were reshaped without changing save schema 1.
+/** These panels and imported model revisions retain save schema 1.
  * Recover an empty old projection on the same real skin, only for rendering;
  * a valid current placement and the persisted point/normal stay untouched. */
 function reshapedSurfacePoint(source: THREE.Mesh, point: THREE.Vector3, normal: THREE.Vector3) {
   if (!['radiator-shroud', 'supermoto-front-fender', 'supermoto-headlight-mask', 'supermoto-fuel-tank',
-    'supermoto-side-cover', 'supermoto-tail-fender', 'open-back-fork-guard'].includes(source.name))
+    'supermoto-side-cover', 'supermoto-tail-fender', 'open-back-fork-guard'].includes(source.name) &&
+    !(source.userData.importedPart && source.userData.bikePaintSurface))
     return undefined;
   const positions = source.geometry.getAttribute('position'), index = source.geometry.getIndex();
   const triangle = new THREE.Triangle(), candidate = new THREE.Vector3(), faceNormal = new THREE.Vector3();

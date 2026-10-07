@@ -50,7 +50,8 @@ export const TOW_RAMP = Object.freeze({
 export const RAMP_FRONT_CONTACT: Readonly<
   Record<string, { axle: number; radius: number }>
 > = {
-  '125': { axle: -0.7 * 1.45, radius: 0.305 * 1.45 },
+  '125': { axle: IMPORTED_BIKE_TAIL['125'].frontAxle * 1.45, radius: IMPORTED_BIKE_TAIL['125'].frontRadius * 1.45 },
+  moped: { axle: IMPORTED_BIKE_TAIL.moped.frontAxle * BIKE_MODEL_SCALES.moped * 1.45, radius: IMPORTED_BIKE_TAIL.moped.frontRadius * BIKE_MODEL_SCALES.moped * 1.45 },
   scooter: { axle: IMPORTED_BIKE_TAIL.scooter.frontAxle * BIKE_MODEL_SCALES.scooter * 1.45, radius: IMPORTED_BIKE_TAIL.scooter.frontRadius * BIKE_MODEL_SCALES.scooter * 1.45 },
   '450': {
     axle: IMPORTED_BIKE_TAIL['450'].frontAxle * BIKE_MODEL_SCALES['450'] * 1.45,
@@ -72,10 +73,11 @@ export function trafficFrontReach(bikeId: string, pitch = 0) {
   );
 }
 
-const RAMP_REAR_CONTACT: Readonly<
+export const RAMP_REAR_CONTACT: Readonly<
   Record<string, { axle: number; radius: number }>
 > = {
-  '125': { axle: 0.55 * 1.45, radius: 0.305 * 1.45 },
+  '125': { axle: IMPORTED_BIKE_TAIL['125'].rearAxle * 1.45, radius: IMPORTED_BIKE_TAIL['125'].rearRadius * 1.45 },
+  moped: { axle: IMPORTED_BIKE_TAIL.moped.rearAxle * BIKE_MODEL_SCALES.moped * 1.45, radius: IMPORTED_BIKE_TAIL.moped.rearRadius * BIKE_MODEL_SCALES.moped * 1.45 },
   scooter: { axle: IMPORTED_BIKE_TAIL.scooter.rearAxle * BIKE_MODEL_SCALES.scooter * 1.45, radius: IMPORTED_BIKE_TAIL.scooter.rearRadius * BIKE_MODEL_SCALES.scooter * 1.45 },
   '450': {
     axle: IMPORTED_BIKE_TAIL['450'].rearAxle * BIKE_MODEL_SCALES['450'] * 1.45,

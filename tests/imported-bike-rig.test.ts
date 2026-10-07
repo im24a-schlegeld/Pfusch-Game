@@ -9,7 +9,7 @@ import { RIDER_DIMENSIONS, type RiderPose } from '../app/game/riderSkeleton';
 import { riderMotionPose, type RiderMotion } from '../app/game/riderMotion';
 import type { RagdollPose } from '../app/game/ragdoll';
 
-const folders = { '450': 'fs450', '701': 'r6', scooter: 'nitro' };
+const folders = { '125': 'ciao', moped: 'moped', '450': 'fs450', '701': 'r6', scooter: 'nitro' };
 const fixtures = Object.fromEntries(Object.entries(folders).map(([id, folder]) => {
   const manifest = JSON.parse(readFileSync(`public/models/${folder}/model.json`, 'utf8')) as ImportedBikeManifest;
   const buffer = readFileSync(`public/models/${folder}/model.bin`);
@@ -33,7 +33,7 @@ function makeTestBike(id: ImportedBikeId) {
   return { ...result, pose, motion: () => motion };
 }
 
-describe.each(['450', '701', 'scooter'] as const)('Imported %s animation contract', (id) => {
+describe.each(['125', 'moped', '450', '701', 'scooter'] as const)('Imported %s animation contract', (id) => {
   const { manifest, buffer } = fixtures[id];
   const size = IMPORTED_BIKE_WHEELBASE[id] / (manifest.anchors.rearAxle[2] - manifest.anchors.frontAxle[2]);
   const bike = () => makeTestBike(id);

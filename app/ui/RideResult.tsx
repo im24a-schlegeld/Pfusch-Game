@@ -1,4 +1,5 @@
 import { ArrowRight, Wrench } from 'lucide-react';
+import { speedometerKmh } from '../domain/speedometer';
 import type { Player, RunReward, RunStats } from '../domain/types';
 import { fmt, gameText } from './shared';
 export default function RideResult({
@@ -49,7 +50,7 @@ export default function RideResult({
             <div>
               <dt>Höchsttempo</dt>
               <dd>
-                {run.maxSpeed} <small>km/h</small>
+                {speedometerKmh(run.maxSpeed / 3.6)} <small>km/h</small>
               </dd>
             </div>
           </dl>

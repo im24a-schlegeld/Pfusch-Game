@@ -1,0 +1,14 @@
+.real-reward { margin: 22px 0; padding: 22px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); }
+.real-reward-heading { display: flex; align-items: center; gap: 12px; }
+.real-reward h2 { margin: 4px 0 0; font-size: 24px; }
+.real-reward p,.real-reward output { max-width: 68ch; font-size: 13px; line-height: 1.6; }
+.real-reward output { display:block; margin-block:13px; }
+.real-reward-progress { display: flex; flex-wrap: wrap; gap: 9px; font-size: 12px; margin-top: 22px; }
+.real-reward-progress strong { margin-left: auto; }
+.real-reward-progress progress { width: 100%; height: 9px; accent-color: var(--foreground); }
+.real-reward .real-reward-help { color: var(--muted-foreground); font-size: 11px; }
+.real-reward-code { display: grid; justify-items: start; gap: 12px; margin-top: 20px; }
+.real-reward-code span { font-size: 12px; }
+.real-reward-code code { display: block; max-width: 100%; padding: 12px; border: 1px solid var(--border); font-size: 19px; overflow-wrap: anywhere; user-select: all; }
+.real-reward button { min-height: 44px; }
+@media (max-width: 480px) { .real-reward { padding: 16px; }.real-reward .button { width: 100%; font-size: 10px; } }

@@ -25,7 +25,24 @@ function surfaces(root: THREE.Object3D) {
 }
 
 describe('immediate preview palette updates', () => {
-  it.each(['125', '450', '701', 'scooter'])('matches a fresh %s with the same material choices while preserving every mesh', (id) => {
+  it('does not rewrite unchanged palette colors on every rendered frame', () => {
+    const player = newPlayer();
+    const bike = makeBike(player, []);
+    const update = createPreviewColorUpdater(bike.body, bike.rider, player);
+    const materials = new Set(surfaces(bike.root).flatMap((surface) => surface.materials));
+    const writes = [...materials].flatMap((material) => material instanceof THREE.MeshStandardMaterial
+      ? [vi.spyOn(material.color, 'set')] : []);
+    for (let frame = 0; frame < 600; frame++) update(player);
+    expect(writes.reduce((count, spy) => count + spy.mock.calls.length, 0)).toBe(0);
+    update({ ...player, paint: '#627dac' });
+    const changedWrites = writes.reduce((count, spy) => count + spy.mock.calls.length, 0);
+    expect(changedWrites).toBeGreaterThan(0);
+    for (let frame = 0; frame < 600; frame++) update({ ...player, paint: '#627dac' });
+    expect(writes.reduce((count, spy) => count + spy.mock.calls.length, 0)).toBe(changedWrites);
+    writes.forEach((spy) => spy.mockRestore());
+  });
+
+  it.each(['125', 'moped', '450', '701', 'scooter'])('matches a fresh %s with the same material choices while preserving every mesh', (id) => {
     const player = { ...newPlayer(), bike: id, paint: '#181818', rims: '#181818' };
     const bike = makeBike(player, []);
     const before = surfaces(bike.root);

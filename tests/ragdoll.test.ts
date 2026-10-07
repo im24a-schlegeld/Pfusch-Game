@@ -43,7 +43,7 @@ describe('physical immutable ragdoll', () => {
       }
     }
   });
-  it.each(['125', 'scooter', '450', '701'] as const)(
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s releases riding contacts without changing human anatomy',
     (model) => {
       const start = initial(model);

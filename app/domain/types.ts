@@ -4,6 +4,7 @@ export type Slot =
   | 'head'
   | 'accessory'
   | 'keychain'
+  | 'cape'
   | 'collectible'
   | 'bike';
 export type Ownership =
@@ -38,6 +39,12 @@ export interface Product {
   options: { name: string; values: string[] }[];
   variants: ProductVariant[];
   preview?: {
+    /** Original shop image plus an interior UV rectangle; the bitmap is never repainted. */
+    artwork?: ProductImage & {
+      width: number;
+      height: number;
+      crop: { x: number; y: number; width: number; height: number };
+    };
     colors: {
       id: string;
       label: string;
@@ -79,6 +86,8 @@ export interface Settings {
   muted: boolean;
   reducedMotion: boolean;
   quality: 'auto' | 'low';
+  /** Additive schema-1 preference; older saves retain swipe controls. */
+  touchControls: 'swipe' | 'buttons';
   tutorialSeen: boolean;
   /** Additive schema-1 progress for first encounters; independent of the legacy intro flag. */
   tutorialHintsSeen: TutorialHint[];

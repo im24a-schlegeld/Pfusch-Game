@@ -1,0 +1,419 @@
+{
+  "version": 1,
+  "name": "City Moped",
+  "binary": "model.bin",
+  "axes": "+Y up; -Z forward; metres; axle midpoint Z=0; lowest point Y=0",
+  "sourceTransform": {
+    "axisMap": "-X,+Y,-Z",
+    "sourcePitch": -0.006906010756733876,
+    "scale": 0.014803505859775188,
+    "translateY": -0.907650423734413,
+    "sourceAxleMidpointZ": -3.7381048895224462,
+    "canonicalWheelbase": 1.04
+  },
+  "anchors": {
+    "pivot": [
+      0,
+      0.2717357,
+      0.163716
+    ],
+    "shockTop": [
+      0.059214,
+      0.5663675,
+      0.3730048
+    ],
+    "shockBottom": [
+      0.059214,
+      0.2692822,
+      0.5189917
+    ],
+    "steeringPivot": [
+      0,
+      0.777701,
+      -0.2176901
+    ],
+    "forkTop": [
+      0,
+      0.6744878,
+      -0.2776183
+    ],
+    "grip": [
+      0.2842273,
+      0.9296418,
+      -0.1396607
+    ],
+    "peg": [
+      0.1894849,
+      0.2315628,
+      0.1930463
+    ],
+    "hip": [
+      0,
+      0.8212885,
+      0.3303537
+    ],
+    "exhaust": [
+      0.1006638,
+      0.2083357,
+      0.3409245
+    ],
+    "tail": [
+      0.03618350997567177,
+      0.26203903555870056,
+      0.8053706884384155
+    ],
+    "headlight": [
+      0,
+      0.8595477,
+      -0.279301
+    ],
+    "frontAxle": [
+      -0.0007922,
+      0.276273,
+      -0.52
+    ],
+    "rearAxle": [
+      -0.0007922,
+      0.276273,
+      0.52
+    ],
+    "frontRadius": 0.27627300318079007,
+    "rearRadius": 0.27627300318079007,
+    "steeringAxis": [
+      0.0013530085232489092,
+      0.8563953014335446,
+      0.5163189489554727
+    ],
+    "forkBottom": [
+      -0.0007922,
+      0.276273,
+      -0.52
+    ]
+  },
+  "parts": [
+    {
+      "name": "ciao_mechanics:steering",
+      "rig": "steering",
+      "material": "ciao_mechanics",
+      "position": {
+        "offset": 0,
+        "count": 1260
+      },
+      "normal": {
+        "offset": 15120,
+        "count": 1260
+      },
+      "uv": {
+        "offset": 30240,
+        "count": 1260
+      },
+      "index": {
+        "offset": 40320,
+        "count": 4518
+      }
+    },
+    {
+      "name": "ciao_rim:frontWheel",
+      "rig": "frontWheel",
+      "material": "ciao_rim",
+      "position": {
+        "offset": 49356,
+        "count": 1689
+      },
+      "normal": {
+        "offset": 69624,
+        "count": 1689
+      },
+      "uv": {
+        "offset": 89892,
+        "count": 1689
+      },
+      "index": {
+        "offset": 103404,
+        "count": 4827
+      }
+    },
+    {
+      "name": "ciao_livery:fork",
+      "rig": "fork",
+      "material": "ciao_livery",
+      "position": {
+        "offset": 113060,
+        "count": 1749
+      },
+      "normal": {
+        "offset": 134048,
+        "count": 1749
+      },
+      "uv": {
+        "offset": 155036,
+        "count": 1749
+      },
+      "index": {
+        "offset": 169028,
+        "count": 8220
+      }
+    },
+    {
+      "name": "ciao_livery:body",
+      "rig": "body",
+      "material": "ciao_livery",
+      "position": {
+        "offset": 185468,
+        "count": 880
+      },
+      "normal": {
+        "offset": 196028,
+        "count": 880
+      },
+      "uv": {
+        "offset": 206588,
+        "count": 880
+      },
+      "index": {
+        "offset": 213628,
+        "count": 3780
+      }
+    },
+    {
+      "name": "ciao_rim:rearWheel",
+      "rig": "rearWheel",
+      "material": "ciao_rim",
+      "position": {
+        "offset": 221188,
+        "count": 1226
+      },
+      "normal": {
+        "offset": 235900,
+        "count": 1226
+      },
+      "uv": {
+        "offset": 250612,
+        "count": 1226
+      },
+      "index": {
+        "offset": 260420,
+        "count": 3570
+      }
+    },
+    {
+      "name": "ciao_mechanics:body",
+      "rig": "body",
+      "material": "ciao_mechanics",
+      "position": {
+        "offset": 267560,
+        "count": 2332
+      },
+      "normal": {
+        "offset": 295544,
+        "count": 2332
+      },
+      "uv": {
+        "offset": 323528,
+        "count": 2332
+      },
+      "index": {
+        "offset": 342184,
+        "count": 7377
+      }
+    },
+    {
+      "name": "ciao_seat:body",
+      "rig": "body",
+      "material": "ciao_seat",
+      "position": {
+        "offset": 356940,
+        "count": 518
+      },
+      "normal": {
+        "offset": 363156,
+        "count": 518
+      },
+      "uv": {
+        "offset": 369372,
+        "count": 518
+      },
+      "index": {
+        "offset": 373516,
+        "count": 2700
+      }
+    },
+    {
+      "name": "ciao_tyre:rearWheel",
+      "rig": "rearWheel",
+      "material": "ciao_tyre",
+      "position": {
+        "offset": 378916,
+        "count": 1466
+      },
+      "normal": {
+        "offset": 396508,
+        "count": 1466
+      },
+      "uv": {
+        "offset": 414100,
+        "count": 1466
+      },
+      "index": {
+        "offset": 425828,
+        "count": 9000
+      }
+    },
+    {
+      "name": "ciao_light:steering",
+      "rig": "steering",
+      "material": "ciao_light",
+      "position": {
+        "offset": 443828,
+        "count": 208
+      },
+      "normal": {
+        "offset": 446324,
+        "count": 208
+      },
+      "uv": {
+        "offset": 448820,
+        "count": 208
+      },
+      "index": {
+        "offset": 450484,
+        "count": 612
+      }
+    },
+    {
+      "name": "ciao_mechanics:fork",
+      "rig": "fork",
+      "material": "ciao_mechanics",
+      "position": {
+        "offset": 451708,
+        "count": 213
+      },
+      "normal": {
+        "offset": 454264,
+        "count": 213
+      },
+      "uv": {
+        "offset": 456820,
+        "count": 213
+      },
+      "index": {
+        "offset": 458524,
+        "count": 702
+      }
+    },
+    {
+      "name": "ciao_dark:body",
+      "rig": "body",
+      "material": "ciao_dark",
+      "position": {
+        "offset": 459928,
+        "count": 447
+      },
+      "normal": {
+        "offset": 465292,
+        "count": 447
+      },
+      "uv": {
+        "offset": 470656,
+        "count": 447
+      },
+      "index": {
+        "offset": 474232,
+        "count": 1236
+      }
+    },
+    {
+      "name": "ciao_dark:steering",
+      "rig": "steering",
+      "material": "ciao_dark",
+      "position": {
+        "offset": 476704,
+        "count": 1658
+      },
+      "normal": {
+        "offset": 496600,
+        "count": 1658
+      },
+      "uv": {
+        "offset": 516496,
+        "count": 1658
+      },
+      "index": {
+        "offset": 529760,
+        "count": 6561
+      }
+    },
+    {
+      "name": "ciao_tyre:frontWheel",
+      "rig": "frontWheel",
+      "material": "ciao_tyre",
+      "position": {
+        "offset": 542884,
+        "count": 1466
+      },
+      "normal": {
+        "offset": 560476,
+        "count": 1466
+      },
+      "uv": {
+        "offset": 578068,
+        "count": 1466
+      },
+      "index": {
+        "offset": 589796,
+        "count": 8997
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "ciao_mechanics",
+      "color": "#999999",
+      "metalness": 0.64,
+      "roughness": 0.43
+    },
+    {
+      "name": "ciao_rim",
+      "color": "#bababa",
+      "metalness": 0.78,
+      "roughness": 0.31
+    },
+    {
+      "name": "ciao_livery",
+      "color": "#e5e5e5",
+      "metalness": 0.08,
+      "roughness": 0.44
+    },
+    {
+      "name": "ciao_seat",
+      "color": "#222222",
+      "metalness": 0,
+      "roughness": 0.88
+    },
+    {
+      "name": "ciao_tyre",
+      "color": "#171717",
+      "metalness": 0,
+      "roughness": 0.95
+    },
+    {
+      "name": "ciao_light",
+      "color": "#ededed",
+      "metalness": 0.2,
+      "roughness": 0.24
+    },
+    {
+      "name": "ciao_dark",
+      "color": "#303030",
+      "metalness": 0.08,
+      "roughness": 0.73
+    }
+  ],
+  "statistics": {
+    "sourceTriangles": 1357978,
+    "triangles": 20700,
+    "vertices": 15112,
+    "geometryBytes": 607790,
+    "meshes": 13
+  }
+}

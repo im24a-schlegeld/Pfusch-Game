@@ -38,7 +38,7 @@ describe('traffic contact at the actual front tire', () => {
         // by up to 0.5 mm after display scale. Keep a 1 mm geometric tolerance;
         // the domain bumper test below still requires exact tick contact.
         const clearance = leadingZ + trafficFrontReach(config.id, pitch);
-        expect(clearance).toBeGreaterThanOrEqual(config.id === '125' ? -0.000001 : -0.001);
+        expect(clearance).toBeGreaterThanOrEqual(-0.001);
         expect(clearance).toBeLessThan(0.004);
       }
     },
@@ -67,14 +67,14 @@ describe('traffic contact at the actual front tire', () => {
   );
 
   it('preserves existing side contacts and full airborne traffic clearance', () => {
-    const side = new Engine(BIKES[2], 539);
+    const side = new Engine(BIKES.find(bike => bike.id === '450')!, 539);
     side.start();
     const overlapping = side.spawn('car', 0, 0)!;
     side.advance(STEP);
     expect(side.phase).toBe('crashed');
     expect(overlapping.z).toBeLessThan(0);
 
-    const airborne = new Engine(BIKES[2], 539);
+    const airborne = new Engine(BIKES.find(bike => bike.id === '450')!, 539);
     airborne.start();
     airborne.height = 3;
     const contact = TRAFFIC_SHAPES.car.rearZ + trafficFrontReach('450');

@@ -18,7 +18,7 @@ vi.mock('../app/game/garmentTexture', () => ({
 const cap = (catalog as Product[]).find((p) => p.handle === 'p-zero-cap')!;
 
 describe('hip cap attachment on the shared rider', () => {
-  it.each(['125', 'scooter', '450', '701'])(
+  it.each(['125', 'scooter', 'moped', '450', '701'])(
     '%s keeps the cap clipped and hanging below its strap through bike motion',
     (id) => {
       const player = newPlayer();
