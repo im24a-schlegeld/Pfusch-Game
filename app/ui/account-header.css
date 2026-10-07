@@ -17,6 +17,8 @@
   font-weight: 700;
   letter-spacing: .07em;
   white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
 }
 .app-shell.has-account-header .topbar > .account-header-button { margin-right: auto; }
 .app-shell.has-account-header .account-header-button:hover { background: #414141; }

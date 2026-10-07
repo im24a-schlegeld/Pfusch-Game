@@ -332,15 +332,30 @@ export default function GameApp() {
   const goToShop = () => window.location.assign(`${SHOPIFY_STOREFRONT_ORIGIN}/`);
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
   const newsletterOrigin = parentOrigin;
+  const oxygenLoginHref = (() => {
+    const login = new URL('/auth/login', window.location.origin);
+    let returnTo = window.location.href;
+    if (parentOrigin) {
+      try {
+        const candidate = new URL(document.referrer);
+        if (candidate.origin === parentOrigin) returnTo = candidate.href;
+      } catch { /* use the current Oxygen route */ }
+    }
+    login.searchParams.set('return_to', returnTo);
+    return login.href;
+  })();
   // Asset loading belongs to the preview. Keep garage navigation and edits usable.
   const loadingLabel = startingRide ? 'FAHRT WIRD VORBEREITET' : null;
   const hasAccountAction = !!services.auth.login || oxygenRuntime || accountKind === 'customer';
-  const accountAction = hasAccountAction ? <button type="button" className="account-header-button"
-    disabled={openingLogin} aria-label={accountKind === 'customer' ? 'Konto öffnen' : 'Anmelden'}
-    onClick={accountKind === 'customer' ? () => navigate('settings') : () => { void beginLogin(); }}>
+  const accountAction = hasAccountAction ? accountKind === 'customer' ? <button type="button" className="account-header-button"
+    aria-label="Konto öffnen" onClick={() => navigate('settings')}>
     <UserRound size={16} aria-hidden="true" />
-    <span>{openingLogin ? 'ÖFFNET …' : accountKind === 'customer' ? 'KONTO' : 'ANMELDEN'}</span>
-  </button> : null;
+    <span>KONTO</span>
+  </button> : <a className="account-header-button" aria-label="Anmelden" href={oxygenLoginHref}
+    target={embedded ? '_top' : undefined} rel={embedded ? 'noopener' : undefined}>
+    <UserRound size={16} aria-hidden="true" />
+    <span>ANMELDEN</span>
+  </a> : null;
   return (
     <>
     <div className={`app-shell${embedded ? ' app-shell-embedded' : ''}${hasAccountAction ? ' has-account-header' : ''}`} data-screen={screen} inert={loadingLabel ? true : undefined}>
