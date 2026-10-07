@@ -15,6 +15,12 @@
       try { gameUrl = new URL(this.frame.src); } catch { return; }
       if (gameUrl.protocol !== 'https:') return;
       this.gameOrigin = gameUrl.origin;
+      const configuredLoginOrigin = this.getAttribute('data-login-origin');
+      try {
+        const loginUrl = new URL(configuredLoginOrigin || gameUrl.origin);
+        this.loginOrigin = loginUrl.protocol === 'https:' && loginUrl.hostname.endsWith('.myshopify.dev')
+          ? loginUrl.origin : gameUrl.origin;
+      } catch { this.loginOrigin = gameUrl.origin; }
       this.guestPage = this.getAttribute('data-customer-state') === 'guest';
       this.setupGamePage();
       this.setupNewsletter();
@@ -110,7 +116,7 @@
         // Start the same Customer Account OAuth flow that the game server
         // uses. A parent-page /account/login only creates the Online Store
         // cookie; it cannot authenticate the cross-origin Oxygen API iframe.
-        const login = new URL('/auth/login', this.gameOrigin);
+        const login = new URL('/auth/login', this.loginOrigin);
         login.searchParams.set('return_to', location.href);
         window.location.assign(login.href);
         return;

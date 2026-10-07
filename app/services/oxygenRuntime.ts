@@ -21,6 +21,12 @@ export function readOxygenRuntime(document: Pick<Document, 'getElementById'>): O
 /** The parent supplies only its return route; identity is established by OAuth on the game server. */
 export function startOxygenLogin(host: Window, parentOrigin: string | null, parentReturnTo?: string): void {
   if (host.parent !== host && parentOrigin && SHOPIFY_PARENT_ORIGINS.has(parentOrigin)) {
+    // If the frame itself is not an Oxygen origin, let the trusted storefront
+    // bridge route the click to the configured Oxygen origin.
+    if (!host.location?.hostname?.endsWith('.myshopify.dev')) {
+      host.parent.postMessage({ type: 'pfusch:open-login', version: SHOPIFY_BRIDGE_VERSION }, parentOrigin);
+      return;
+    }
     // Navigate immediately from the user gesture. The parent bridge is a
     // useful fallback for older shop themes, but waiting for it makes a
     // missing or stale theme asset look like an inert login button.

@@ -1,5 +1,6 @@
 {% liquid
   assign game_url = section.settings.game_url | default: 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/'
+  assign game_login_origin = 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev'
   assign game_title = section.settings.heading | default: 'Wheelie Escape'
   assign game_return = request.path
   if template.suffix == 'wheelie-escape'
@@ -7,7 +8,7 @@
   endif
 %}
 
-<pfusch-game-bridge class="pfusch-game" id="PfuschGame-{{ section.id }}" data-customer-state="{% if customer %}customer{% else %}guest{% endif %}">
+<pfusch-game-bridge class="pfusch-game" id="PfuschGame-{{ section.id }}" data-customer-state="{% if customer %}customer{% else %}guest{% endif %}" data-login-origin="{{ game_login_origin }}">
   <iframe
     class="pfusch-game__frame"
     src="{{ game_url | escape }}"
