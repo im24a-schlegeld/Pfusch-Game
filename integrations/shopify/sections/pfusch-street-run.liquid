@@ -3,12 +3,15 @@
   assign game_url = game_login_origin | append: '/'
   assign game_title = section.settings.heading | default: 'Wheelie Escape'
   assign game_return = request.path
-  if template.suffix == 'wheelie-escape'
-    assign game_return = routes.root_url | append: '?view=wheelie-escape'
-  endif
   assign game_login_return = game_login_origin | append: '/' | url_encode
   assign game_login_url = game_login_origin | append: '/auth/login?return_to=' | append: game_login_return
 %}
+
+{% if template.suffix == 'wheelie-escape' %}
+  <style>html, body { visibility: hidden !important; }</style>
+  <script>window.location.replace('{{ game_url }}');</script>
+  <noscript><meta http-equiv="refresh" content="0;url={{ game_url }}"></noscript>
+{% endif %}
 
 <pfusch-game-bridge class="pfusch-game" id="PfuschGame-{{ section.id }}" data-customer-state="{% if customer %}customer{% else %}guest{% endif %}" data-login-origin="{{ game_login_origin }}">
   <iframe

@@ -22,10 +22,11 @@
           <nav class="menu-drawer__navigation">
             <ul class="menu-drawer__menu has-submenu list-menu" role="list">
               <li>
-                <a id="HeaderDrawer-wheelie-escape" href="{{ routes.root_url }}?view=wheelie-escape" class="menu-drawer__menu-item list-menu__item link link--text focus-inset{% if template.suffix == 'wheelie-escape' %} menu-drawer__menu-item--active{% endif %}"{% if template.suffix == 'wheelie-escape' %} aria-current="page"{% endif %}>Wheelie Escape</a>
+                <a id="HeaderDrawer-wheelie-escape" href="https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/" class="menu-drawer__menu-item list-menu__item link link--text focus-inset">Wheelie Escape</a>
               </li>
               {%- for link in section.settings.menu.links -%}
-                <li>
+                {%- unless link.handle == 'wheelie-escape' or link.url contains 'view=wheelie-escape' -%}
+                  <li>
                   {%- if link.links != blank -%}
                     <details id="Details-menu-drawer-menu-item-{{ forloop.index }}">
                       <summary
@@ -134,7 +135,8 @@
                       {{ link.title | escape }}
                     </a>
                   {%- endif -%}
-                </li>
+                  </li>
+                {%- endunless -%}
               {%- endfor -%}
             </ul>
           </nav>

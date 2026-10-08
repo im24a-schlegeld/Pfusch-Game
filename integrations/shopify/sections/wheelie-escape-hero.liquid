@@ -1,7 +1,7 @@
 {% liquid
-  assign draft_game_page = routes.root_url | append: '?view=wheelie-escape'
-  assign game_page = section.settings.game_page | default: draft_game_page
-  assign artwork_origin = section.settings.artwork_origin | default: 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev'
+  assign game_origin = 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev'
+  assign game_page = game_origin | append: '/'
+  assign artwork_origin = section.settings.artwork_origin | default: game_origin
   assign artwork_last_character = artwork_origin | slice: -1
   if artwork_last_character == '/'
     assign artwork_length = artwork_origin.size | minus: 1
@@ -159,12 +159,6 @@
   "class": "wheelie-escape-hero-section",
   "enabled_on": { "templates": ["index"] },
   "settings": [
-    {
-      "type": "url",
-      "id": "game_page",
-      "label": "Spielseite",
-      "info": "Leer lassen für die Spielansicht im Theme: /?view=wheelie-escape."
-    },
     {
       "type": "url",
       "id": "artwork_origin",

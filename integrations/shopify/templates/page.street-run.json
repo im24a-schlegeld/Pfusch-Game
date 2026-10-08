@@ -3,8 +3,7 @@
     "game": {
       "type": "pfusch-street-run",
       "settings": {
-        "heading": "Wheelie Escape",
-        "game_url": "https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/"
+        "heading": "Wheelie Escape"
       }
     }
   },
