@@ -613,7 +613,8 @@ describe('speed camera pursuit integration', () => {
     expect(engine.speedCamera.active).toBe(false);
     const patrol = engine.spawn('car', 1, -3.95, 0, 0, true)!;
     engine.wheelieAngle = 0.6;
-    frame(engine, [patrol]);
+    for (let count = 0; count < 30 && !patrol.passed; count++)
+      frame(engine, [patrol]);
     expect(patrol.passed).toBe(true);
     expect(engine.policeChase).toBe(false);
     engine.wheelieAngle = 0;

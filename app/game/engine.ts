@@ -1403,7 +1403,13 @@ export class Engine {
           o.rewardText = 'AUTO ÜBERSPRUNGEN';
         }
       }
-      if (overlap && (airborneCar ? tireClearance < -0.015 : this.height < top) && !this.towSafeObstacles.has(o)) {
+      // Tire clearance is infinite beside the car, where no surface lies
+      // underneath the rider. Use its height for lateral close passes so
+      // airborne evasions still count without widening the collision shape.
+      const belowObstacle = airborneCar && dx < contactWidth
+        ? tireClearance < -0.015
+        : this.height < top;
+      if (overlap && belowObstacle && !this.towSafeObstacles.has(o)) {
         const gap = dx - contactWidth;
         if (gap < 0) {
           if (isRoadEvent(o.kind)) {

@@ -58,7 +58,6 @@ export default function GameApp() {
   const accessStatus = useSyncExternalStore(subscribeSave, getAccessStatus, getAccessStatus);
   const [player, setPlayer] = useState<Player | null>(null);
   const [accountKind, setAccountKind] = useState<'guest' | 'customer'>('guest');
-  const [openingLogin, setOpeningLogin] = useState(false);
   const loginPending = useRef(false);
   const current = useRef<Player | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -137,7 +136,6 @@ export default function GameApp() {
   const beginLogin = useCallback(async () => {
     if ((!services.auth.login && !oxygenRuntime) || loginPending.current) return;
     loginPending.current = true;
-    setOpeningLogin(true);
     try {
       // Start OAuth while the click is still active. A slow or unavailable
       // player API must never make the login button appear inert. Oxygen can
@@ -151,7 +149,6 @@ export default function GameApp() {
       setNotice('Anmeldung konnte nicht geöffnet werden. Bitte erneut versuchen.');
     } finally {
       loginPending.current = false;
-      setOpeningLogin(false);
     }
   }, [oxygenRuntime, parentOrigin, services]);
   useEffect(() => {
@@ -342,6 +339,8 @@ export default function GameApp() {
           onResultsReady={(runId) => revealResults(runId, runKey)}
           onExit={() => navigate('garage')}
           onMute={mute}
+          renderSettings={back => <SettingsScreen player={player} services={services} update={update}
+            back={back} backLabel="Zurück zur Pause" duringRide />}
           onReady={() => setStartingRide(false)}
           onLoadError={() => setStartingRide(false)}
           onTutorialSeen={(ids) => {

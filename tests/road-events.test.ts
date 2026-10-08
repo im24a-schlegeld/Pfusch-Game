@@ -129,6 +129,7 @@ describe('bike-specific road contacts', () => {
     ).toEqual({
       '125': 0.2,
       scooter: 0.23,
+      moped: 0.19,
       '450': 0.12,
       '701': 0.18,
     });
@@ -167,6 +168,8 @@ describe('bike-specific road contacts', () => {
       slippery.environment.id,
     ]).toEqual(before);
     slippery.resume();
+    steps(slippery, 180);
+    expect(slippery.surfaceGrip).toBe(grip);
     steps(slippery, 180);
     expect(slippery.surfaceGrip).toBeGreaterThan(grip);
     expect(slippery.surfaceGrip).toBeGreaterThan(0.995);

@@ -150,17 +150,19 @@ export function ScreenHeading({
   kicker,
   title,
   back,
+  backLabel = 'Zurück zur Garage',
 }: {
   kicker: string;
   title: string;
   back: () => void;
+  backLabel?: string;
 }) {
   return (
     <div className="screen-heading">
       <button
         className="icon-button"
         onClick={back}
-        aria-label="Zurück zur Garage"
+        aria-label={backLabel}
       >
         <ChevronLeft />
       </button>

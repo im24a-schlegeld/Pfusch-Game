@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Dialog } from '@/components/ui/dialog';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { Player, Product, RunStats, TutorialHint } from '../domain/types';
 import { BIKES } from '../domain/config';
 import { TUTORIAL_HINTS } from '../domain/tutorial';
@@ -18,6 +18,7 @@ import RideTouchButtons from './RideTouchButtons';
 import { RideHeldInput, type RideHoldAction } from './rideHeldInput';
 import { useTouchInput } from './useTouchInput';
 import './ride-guidance.css';
+import './ride-settings.css';
 interface Props {
   player: Player;
   products: Product[];
@@ -27,6 +28,7 @@ interface Props {
   onResultsReady: (runId: string) => void;
   onExit: () => void;
   onMute: () => void;
+  renderSettings?: (back: () => void) => ReactNode;
   onReady?: () => void;
   onLoadError?: (message: string) => void;
   onTutorialSeen?: (ids: readonly TutorialHint[]) => void;
@@ -40,6 +42,7 @@ export default function Ride({
   onResultsReady,
   onExit,
   onMute,
+  renderSettings,
   onReady,
   onLoadError,
   onTutorialSeen,
@@ -58,6 +61,8 @@ export default function Ride({
     [ready, setReady] = useState(false),
     [countdown, setCountdown] = useState(3),
     [tutorial, setTutorial] = useState<ActiveTutorial | null>(null);
+  const [pauseSettingsOpen, setPauseSettingsOpen] = useState(false);
+  const settingsHeading = useRef<HTMLHeadingElement>(null);
   const tutorialRef = useRef<ActiveTutorial | null>(null);
   const seenTutorials = useRef(new Set(player.settings.tutorialHintsSeen ?? []));
   for (const hint of player.settings.tutorialHintsSeen ?? []) seenTutorials.current.add(hint);
@@ -164,6 +169,8 @@ export default function Ride({
     setTutorial(next);
     setTick(n => n + 1);
   }, [audio, clearGestures, engine]);
+  const showControlsRef = useRef(showControls);
+  showControlsRef.current = showControls;
   useEffect(() => {
     if (!ready) return;
     let remaining = 3;
@@ -176,16 +183,16 @@ export default function Ride({
         if (document.hidden || !document.hasFocus()) {
           engine.pause();
           setTick((n) => n + 1);
-        } else showControls();
+        } else showControlsRef.current();
       }
     }, 650);
     return () => clearInterval(timer);
-  }, [engine, ready, showControls]);
+  }, [engine, ready]);
   useEffect(() => {
     const showGesture = () => updateGestureIndicator(gestureIndicator.current,
       !buttonMode && touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
     const down = (event: PointerEvent) => {
-      if (engine.resumeRemaining > 0) return;
+      if (pauseSettingsOpen || engine.resumeRemaining > 0) return;
       const target = event.target instanceof Element ? event.target : null;
       if (tutorialRef.current) {
         if (target?.closest('button') || tutorialPointer.current ||
@@ -272,13 +279,16 @@ export default function Ride({
       window.removeEventListener('click', click, true);
       window.removeEventListener('resize', clearGestures);
     };
-  }, [engine, gestures, clearGestures, dismissTutorial, buttonMode, heldInput]);
+  }, [engine, gestures, clearGestures, dismissTutorial, buttonMode, heldInput, pauseSettingsOpen]);
   useEffect(() => {
     if (engine.phase !== 'playing') clearGestures();
   }, [engine.phase, clearGestures]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      if (pauseSettingsOpen) return;
+      // Escape belongs to the open pause dialog; avoid two competing resumes.
+      if (k === 'escape' && engine.phase === 'paused' && engine.resumeRemaining === 0 && !tutorialRef.current) return;
       if (!['shift', 'control', 'alt', 'meta'].includes(k)) heldInput.clearPointers();
       const activeTutorial = tutorialRef.current;
       const button = e.target instanceof Element && !!e.target.closest('button');
@@ -343,7 +353,7 @@ export default function Ride({
       document.removeEventListener('visibilitychange', blur);
       audio.update(0, false, false);
     };
-  }, [audio, clearGestures, dismissTutorial, engine, heldInput]);
+  }, [audio, clearGestures, dismissTutorial, engine, heldInput, pauseSettingsOpen]);
   function pressTouchButton(action: RideHoldAction, event: ReactPointerEvent<HTMLButtonElement>) {
     if (!buttonMode || !['touch', 'pen'].includes(event.pointerType) || engine.resumeRemaining > 0) return;
     event.preventDefault();
@@ -543,20 +553,28 @@ export default function Ride({
         open={engine.phase === 'paused' && !resuming && !tutorial}
         disablePointerDismissal
         onOpenChange={(open) => {
-          if (!open) resume();
+          if (!open) {
+            if (pauseSettingsOpen) setPauseSettingsOpen(false);
+            else resume();
+          }
         }}
       >
-        <RidePause
+        {pauseSettingsOpen && renderSettings ? <DialogContent className="game-dialog ride-settings-dialog" showCloseButton={false} initialFocus={settingsHeading}>
+          <DialogTitle ref={settingsHeading} tabIndex={-1} className="sr-only">Einstellungen während der Pause</DialogTitle>
+          <DialogDescription className="sr-only">Deine Fahrt bleibt angehalten. Zurück führt zum Pausenmenü.</DialogDescription>
+          {renderSettings(() => setPauseSettingsOpen(false))}
+        </DialogContent> : <RidePause
           touchButtons={buttonMode}
           muted={player.settings.muted}
           onMute={onMute}
           resume={resume}
+          settings={renderSettings ? () => { clearGestures(); setPauseSettingsOpen(true); } : undefined}
           garage={exitToGarage}
           end={() => {
             engine.endRide();
             setTick((n) => n + 1);
           }}
-        />
+        />}
       </Dialog>
     </main>
   );

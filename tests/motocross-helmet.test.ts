@@ -99,7 +99,9 @@ describe('independent motocross equipment geometry', () => {
       expect(hits[0]?.point.z).toBeLessThan(-0.08);
     }
     const chinVent = ray(0, -0.129).intersectObject(helmet, false);
-    expect(chinVent[0]?.point.z).toBeGreaterThan(0);
+    // This vent exits below the raised rear neck opening; a rear-shell hit
+    // would require the obsolete deep helmet bowl.
+    expect(chinVent).toHaveLength(0);
   });
 
   it('keeps the shell and projecting chin one connected thick surface', () => {
@@ -158,12 +160,15 @@ describe('independent motocross equipment geometry', () => {
       expect(bounds.intersectsBox(peakBounds)).toBe(true);
       expect(bounds.intersectsBox(helmet.geometry.boundingBox!)).toBe(true);
     }
-    const strap = new Box3().setFromObject(
-      helmet.getObjectByName('goggle-strap')!,
-      true,
-    );
-    expect(strap.max.y - strap.min.y).toBeCloseTo(0.046, 5);
-    expect(strap.max.z).toBeGreaterThan(0.158);
+    const strapMesh = helmet.getObjectByName('goggle-strap') as Mesh;
+    const strap = new Box3().setFromObject(strapMesh, true);
+    // A 37 mm band follows a 3.5 mm rise toward the back of the shell.
+    expect(strap.max.y - strap.min.y).toBeCloseTo(0.0405, 5);
+    const rearRay = new Raycaster(new Vector3(0, 0.0065, 1), new Vector3(0, 0, -1));
+    const shellBack = rearRay.intersectObject(helmet, false)[0].point.z;
+    const strapBack = rearRay.intersectObject(strapMesh, false)[0].point.z;
+    expect(strapBack - shellBack).toBeGreaterThan(0);
+    expect(strapBack - shellBack).toBeLessThan(0.003);
     const frame = new Box3().setFromObject(
       helmet.getObjectByName('motocross-goggle-frame')!,
       true,
@@ -180,7 +185,7 @@ describe('independent motocross equipment geometry', () => {
     }
   });
 
-  it('adds an angular rear trailing edge with both roots attached to the original shell', () => {
+  it('adds a subtle molded rear ridge with both roots attached to the shell', () => {
     const helmet = createMotocrossHelmet('#d7dbd7');
     helmet.updateMatrixWorld(true);
     const ridge = helmet.getObjectByName('motocross-rear-ridge') as Mesh;
@@ -189,15 +194,16 @@ describe('independent motocross equipment geometry', () => {
         new Vector3(0, y, 1),
         new Vector3(0, 0, -1),
       ).intersectObject(target, false)[0]?.point.z;
-    const crest = fromRear(0.113, ridge)!;
-    expect(crest - fromRear(0.113, helmet)!).toBeGreaterThan(0.014);
-    for (const y of [0.0995, 0.1235])
+    const projection = fromRear(0.109, ridge)! - fromRear(0.109, helmet)!;
+    expect(projection).toBeGreaterThan(0.004);
+    expect(projection).toBeLessThan(0.006);
+    for (const y of [0.1025, 0.1175])
       expect(Math.abs(fromRear(y, ridge)! - fromRear(y, helmet)!)).toBeLessThan(
-        0.004,
+        0.002,
       );
   });
 
-  it('leaves the rear crown exposed, opens the peak reliefs and turns the front lip down', () => {
+  it('leaves the rear crown exposed, opens the peak reliefs and keeps the peak rails linear', () => {
     const helmet = createMotocrossHelmet('#d7dbd7');
     helmet.updateMatrixWorld(true);
     const peak = helmet.getObjectByName('motocross-peak') as Mesh;
@@ -213,9 +219,11 @@ describe('independent motocross equipment geometry', () => {
       expect(down(side * 0.035, -0.132)).toHaveLength(0);
     }
     expect(down(0, -0.132).length).toBeGreaterThan(0);
-    expect(down(0, -0.26)[0].point.y).toBeLessThan(
-      down(0, -0.24)[0].point.y - 0.005,
-    );
+    const heights = [-0.20, -0.22, -0.24, -0.26].map(z => down(0, z)[0].point.y);
+    const drop = heights[0] - heights[1];
+    expect(drop).toBeGreaterThan(0);
+    for (let i = 1; i < heights.length - 1; i++)
+      expect(heights[i] - heights[i + 1]).toBeCloseTo(drop, 6);
     const root = down(0, -0.041)[0].point;
     const crown = down(0, -0.041, helmet)[0].point;
     expect(Math.abs(root.y - crown.y)).toBeLessThan(0.006);

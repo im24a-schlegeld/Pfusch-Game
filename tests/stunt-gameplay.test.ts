@@ -72,6 +72,7 @@ describe('ride onto the tow truck, then swipe to jump', () => {
               const before = engine.score;
               const departureZ = tow.z;
               const departureDistance = engine.distance;
+              const departureSpawnId = tow.spawnId;
               engine.move(direction);
               expect(tow.velocity).toBe(velocity);
               expect(engine.onTowTruck).toBe(false);
@@ -86,7 +87,12 @@ describe('ride onto the tow truck, then swipe to jump', () => {
                   velocity * STEP,
                 8,
               );
-              steps(engine, 89);
+              for (let frame = 0; frame < 89; frame++) {
+                steps(engine, 1);
+                // Retired traffic slots may be reused by a generated wave.
+                if (tow.spawnId === departureSpawnId)
+                  expect(tow.velocity).toBe(velocity);
+              }
               expect(
                 engine.phase,
                 `${bike.id}: ${engine.event.text}; x=${engine.x}, y=${engine.height}, tow=${tow.z}; source=${source}, elapsed=${elapsed}, velocity=${velocity}`,
@@ -101,7 +107,6 @@ describe('ride onto the tow truck, then swipe to jump', () => {
                   (gain) => gain.text === 'SPRUNG GELANDET',
                 )?.points,
               ).toBe(STUNT_POINTS.jump);
-              expect(tow.velocity).toBe(velocity);
               steps(engine, 15);
               expect(engine.jumps).toBe(1);
             }
@@ -375,7 +380,12 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
       }
       expect(difficulty[1]).toBeGreaterThan(difficulty[0]);
       expect(engine.difficulty).toBe(1);
-      expect(pairedWaves / waveSerial).toBeLessThan(0.1);
+      // Tow/car pairs are deliberately more frequent than ordinary doubles;
+      // allow finite-sample variation around the configured upper rate.
+      expect(pairedWaves).toBeGreaterThan(0);
+      expect(pairedWaves / waveSerial).toBeLessThan(
+        Math.max(TRAFFIC_FLOW.pairedTrafficChance, TRAFFIC_FLOW.towCarPairChance) + 0.05,
+      );
       expect(engine.obstacles).toHaveLength(32);
     }
     expect([sawMoving, sawConstruction, sawTow]).toEqual([true, true, true]);

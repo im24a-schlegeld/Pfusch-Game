@@ -9,24 +9,23 @@ export default function SceneFallback({ player, products }: { player: Player; pr
     const product = products.find((item) => item.id === player.equipped[slot as keyof Player['equipped']]);
     return product ? [product] : [];
   });
-  const shown = selected.length ? selected : products.slice(0, 1);
   const bike = BIKES.find((item) => item.id === player.bike);
   return <fieldset className="scene-fallback" aria-label="Bildvorschau deines Setups">
     <div className="scene-fallback-heading"><strong>{bike?.name ?? 'Dein Motorrad'}</strong><span>Bildvorschau · 3D nicht verfügbar</span></div>
-    <div className="scene-fallback-images">
-      {shown.map((product) => {
+    {selected.length > 0 && <div className="scene-fallback-images">
+      {selected.map((product) => {
         const color = product.preview?.colors.find((item) => item.variantIds.includes(player.variants[product.id]));
         const variant = product.variants.find((item) => item.id === player.variants[product.id]);
         const src = color?.front?.localImage || variant?.image || product.localImage || product.image;
         return <figure key={product.id}><img src={src} alt={`${product.title}${color ? ` · ${color.label}` : ''}`} /><figcaption>{product.title}{color && <span>{color.label}</span>}</figcaption></figure>;
       })}
-    </div>
+    </div>}
     <div className="scene-fallback-colors">
       <span><i style={{ background: player.paint }} />Lack: {PAINTS.find((item) => item.value === player.paint)?.name ?? player.paint}</span>
       <span><i style={{ background: player.rims }} />Felgen: {RIMS.find((item) => item.value === player.rims)?.name ?? player.rims}</span>
       <span><i style={{ background: player.helmetColor }} />{HELMETS.find((item) => item.id === player.helmet)?.name}: {HELMET_COLORS.find((item) => item.value === player.helmetColor)?.name ?? player.helmetColor}</span>
       <span><i style={{ background: player.helmetVisor }} />Visier: {VISOR_COLORS.find((item) => item.value === player.helmetVisor)?.name ?? player.helmetVisor}</span>
     </div>
-    <p>Du kannst weiter auswählen und ausrüsten. Die Bilder zeigen die echten Artikel; das Motorrad ist hier nicht in 3D dargestellt.</p>
+    <p>Die 3D-Vorschau ist gerade nicht verfügbar. Du kannst dein Setup weiter auswählen und ausrüsten.</p>
   </fieldset>;
 }

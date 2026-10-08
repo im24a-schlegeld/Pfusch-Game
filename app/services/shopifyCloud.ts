@@ -41,10 +41,12 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private refreshing: Promise<PlayerAccess> | null = null;
   private session: Snapshot | null = null;
   private guestMode = false;
+  private guestPlayer: Player | null = null;
   private access = unavailableAccess();
   private localCompletedRuns = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private pending: Player | null = null;
+  private outbox: Backup | null = null;
   private lastUnsaved: Player | null = null;
   private inFlight: Promise<void> | null = null;
   private blocked = false;
@@ -79,6 +81,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
   private deny(access: PlayerAccess, message = accessMessage(access)) {
     this.cancelPending();
+    if (access.reason === 'unsubscribed' || access.reason === 'newsletter_required') this.clearOutbox();
     this.setAccess(access);
     this.status('unavailable', message);
   }
@@ -86,7 +89,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
    * No account save is claimed here; a later successful login/bootstrap can
    * switch this repository to the server-backed session. */
   private async useLocalGuest(): Promise<Player> {
-    const local = await this.guest.load();
+    const local = this.guestPlayer ?? await this.guest.load();
     this.guestMode = true;
     const access = this.guest.getAccess?.() ?? trialAccess(local.runsPlayed);
     this.setAccess(access);
@@ -106,17 +109,39 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private backup(player: Player) {
     this.store(this.accountKey(), JSON.stringify({ player, compareDigest: this.session!.compareDigest, dirty: false } satisfies Backup));
   }
-  private readBackup(): Backup | null {
-    const raw = this.read(this.accountKey());
+  private storeOutbox(player: Player) {
+    this.outbox = { player, compareDigest: this.session!.compareDigest, dirty: true };
+    this.store(`${this.accountKey()}:pending`, JSON.stringify(this.outbox));
+  }
+  private clearOutbox() {
+    if (!this.outbox) return;
+    // StorageDriver deliberately needs no remove capability; empty means absent.
+    this.store(`${this.accountKey()}:pending`, '');
+    this.outbox = null;
+  }
+  private recoveryMessage() {
+    return this.outbox && this.backupWritable
+      ? 'Änderungen lokal zur Wiederherstellung behalten; noch nicht im Konto gespeichert.'
+      : 'Änderungen bleiben nur in dieser Sitzung; Status prüfen oder Spielstand exportieren.';
+  }
+  private readBackup(key = this.accountKey()): Backup | null {
+    const raw = this.read(key);
     if (!raw) return null;
     try {
       const value: unknown = JSON.parse(raw);
       if (!record(value) || !digest(value.compareDigest) || typeof value.dirty !== 'boolean') throw new Error('Backup');
       return { player: digitalPlayer(this.decode(JSON.stringify(value.player)), this.session!.customer.id), compareDigest: value.compareDigest, dirty: value.dirty };
-    } catch { this.store(`${this.accountKey()}:recovery`, raw); return null; }
+    } catch { this.store(`${key}:recovery`, raw); return null; }
   }
 
-  load(): Promise<Player> { return this.initial ??= this.bootstrap(); }
+  async load(): Promise<Player> {
+    const initial = await (this.initial ??= this.bootstrap());
+    // Bootstrap is shared by auth and startup only. Focus/ride rechecks must
+    // retain edits made since then, including changes still awaiting the server.
+    return this.session
+      ? this.lastUnsaved ?? this.session.player ?? initial
+      : this.guestPlayer ?? initial;
+  }
   async getUser() {
     await this.load();
     return this.session ? { id: this.session.customer.id, kind: 'customer' as const } : { id: 'guest-local', kind: 'guest' as const };
@@ -125,19 +150,27 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private async adoptSession(next: Snapshot): Promise<Player> {
     this.session = next;
     this.guestMode = false;
+    this.guestPlayer = null;
     this.localCompletedRuns = next.storage.completedRuns;
     this.setAccess(next.storage);
     if (!this.access.allowed) {
       this.deny(this.access);
       return next.player ?? digitalPlayer(newPlayer(), next.customer.id);
     }
-    const backup = this.readBackup();
+    const accepted = this.readBackup();
+    // Recovery is considered only after fresh consent and within this account.
+    // An outbox never grants ownership, permission, or authority over newer CAS.
+    const pending = this.readBackup(`${this.accountKey()}:pending`);
+    const backup = pending?.dirty ? pending : accepted;
     if (backup?.dirty && backup.compareDigest === next.compareDigest) {
       this.save(backup.player);
       return backup.player;
     }
     if (backup?.dirty) {
-      this.store(`${this.accountKey()}:conflict`, JSON.stringify(backup));
+      const archived = this.store(`${this.accountKey()}:conflict`, JSON.stringify(backup));
+      // Preserve the candidate before retiring it from automatic recovery.
+      // Otherwise every reload would rediscover the same CAS conflict forever.
+      if (archived && pending?.dirty) this.store(`${this.accountKey()}:pending`, '');
       this.recoveryPlayer = backup.player;
       this.blocked = true;
       this.setAccess(unavailableAccess(this.localCompletedRuns));
@@ -193,6 +226,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     if (!this.session) {
       if (!this.guestMode || !this.access.allowed) return;
       this.guest.save(player);
+      this.guestPlayer = player;
       this.setAccess(this.guest.getAccess?.() ?? trialAccess(player.runsPlayed));
       if (this.guest.warning) this.status('offline', this.guest.warning);
       else if (!this.access.allowed) this.status('unavailable', accessMessage(this.access));
@@ -213,6 +247,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
   private queue(player: Player) {
     this.pending = player;
+    this.storeOutbox(player);
     if (this.timer) clearTimeout(this.timer);
     this.status('saving', 'Spielstand und Newsletter-Freigabe werden im Shop geprüft …');
     this.timer = setTimeout(() => { void this.flush(); }, this.debounceMs);
@@ -246,7 +281,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       if (this.newsletterDenial(response)) return;
       if (response.status === 403 && record(response.data) && response.data.error === 'csrf') {
         const refresh = await this.transport.request('GET');
-        if (refresh.status !== 200) { this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Anmeldung prüfen und neu laden. Ungespeicherte Änderungen bleiben nur in dieser Sitzung.'); return; }
+        if (refresh.status !== 200) { this.deny(unavailableAccess(this.localCompletedRuns), `Shop-Anmeldung prüfen. ${this.recoveryMessage()}`); return; }
         const next = snapshot(refresh.data, this.decode);
         if (next.customer.id !== session.customer.id || next.compareDigest !== session.compareDigest) {
           this.blocked = true;
@@ -263,7 +298,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       if (response.status === 409) {
         this.blocked = true;
         this.setAccess(unavailableAccess(this.localCompletedRuns));
-        this.status('conflict', 'Auf einem anderen Gerät wurde gespeichert. Ungespeicherte Änderungen bleiben in dieser Sitzung; bitte exportieren und neu laden.');
+        this.status('conflict', `Auf einem anderen Gerät wurde gespeichert. ${this.recoveryMessage()} Bitte exportieren und neu laden.`);
         return;
       }
       if (response.status === 401 || response.status === 403) {
@@ -281,6 +316,10 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       // Persist only the exact snapshot the server just accepted. This includes
       // the fifth trial result, never later queued edits or a denied POST.
       this.backup(result.player);
+      // An older acknowledgement must not delete a newer queued edit. Rebase
+      // that edit onto the server's accepted digest for recovery after reload.
+      if (this.outbox?.player === player) this.clearOutbox();
+      else if (this.outbox) this.storeOutbox(this.outbox.player);
       if (this.lastUnsaved === player) this.lastUnsaved = null;
       this.setAccess(result.storage);
       if (!result.storage.allowed) { this.deny(result.storage); return; }
@@ -288,7 +327,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     } catch {
       this.cancelPending();
       this.setAccess(unavailableAccess(this.localCompletedRuns));
-      this.status('offline', 'Shop-Freigabe nicht bestätigt. Änderungen bleiben nur in dieser Sitzung; Status prüfen oder Spielstand exportieren.');
+      this.status('offline', `Shop-Freigabe nicht bestätigt. ${this.recoveryMessage()}`);
     }
   }
 
@@ -299,6 +338,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     await this.load();
     await this.flush();
     try {
+      const requestedDigest = this.session?.compareDigest;
       const response = await this.transport.request('GET');
       if (response.status === 401 && !this.session) {
         this.guestMode = true;
@@ -323,6 +363,9 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Anmeldung geändert. Bitte neu laden.');
         return this.access;
       }
+      // A save can finish while this GET is in flight. Its old digest is no
+      // evidence of another device changing progress; check the current base.
+      if (requestedDigest !== this.session.compareDigest) return this.checkAccess();
       if (next.compareDigest !== this.session.compareDigest || this.blocked) {
         this.blocked = true;
         this.deny(unavailableAccess(this.localCompletedRuns), 'Kontostand hat sich geändert. Vor weiteren Fahrten bitte neu laden.');

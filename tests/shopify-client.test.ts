@@ -53,6 +53,132 @@ describe('Shopify account saves', () => {
     expect(other.irlItems).toEqual([]);
   });
 
+  it('retains equipped items and progress through a save and account recheck', async () => {
+    vi.useFakeTimers();
+    const updated = { ...newPlayer(), coins: 321, xp: 500, equipped: { upper: 'shirt-123' }, helmetColor: '#202324' };
+    const { repo, transport } = repository([response(), response('123', updated, nextHash), response('123', updated, nextHash)]);
+    await repo.load();
+    repo.save(updated);
+    expect(await repo.load()).toMatchObject({ coins: 321, xp: 500, equipped: updated.equipped, helmetColor: '#202324' });
+    await repo.refreshAccess();
+    const [player, auth] = await Promise.all([repo.load(), repo.getUser()]);
+    expect(player).toMatchObject({ coins: 321, xp: 500, equipped: updated.equipped, helmetColor: '#202324' });
+    expect(auth).toEqual({ id: '123', kind: 'customer' });
+    expect(transport.request).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps the newest edit readable while an earlier cloud write completes', async () => {
+    vi.useFakeTimers();
+    const driver = storage();
+    const first = { ...newPlayer(), coins: 200 }, latest = { ...first, coins: 300, helmetColor: '#202324' };
+    let resolveWrite!: (value: CloudResponse) => void;
+    let resolveLatest!: (value: CloudResponse) => void;
+    const write = new Promise<CloudResponse>(resolve => { resolveWrite = resolve; });
+    const latestWrite = new Promise<CloudResponse>(resolve => { resolveLatest = resolve; });
+    const transport: CloudTransport = { request: vi.fn()
+      .mockResolvedValueOnce(response())
+      .mockReturnValueOnce(write)
+      .mockReturnValueOnce(latestWrite) };
+    const repo = new ShopifyCloudRepository(transport, driver, new LocalPlayerRepository(driver), decodePlayer, 20);
+    await repo.load();
+    repo.save(first);
+    const flushing = repo.flush();
+    repo.save(latest);
+    resolveWrite(response('123', first, nextHash));
+    expect(await repo.load()).toMatchObject({ coins: 300, helmetColor: '#202324' });
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123:pending')!)).toMatchObject({ player: { coins: 300 }, compareDigest: nextHash, dirty: true });
+    resolveLatest(response('123', latest, 'c'.repeat(64)));
+    await flushing;
+    expect(await repo.load()).toMatchObject({ coins: 300, helmetColor: '#202324' });
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123')!).player.coins).toBe(300);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
+  });
+
+  it.each(['before debounce', 'after network failure'])('recovers queued equipment on reload %s only after fresh consent and matching CAS', async (moment) => {
+    vi.useFakeTimers();
+    const driver = storage();
+    const first = repository([response(), new Error('offline')], driver);
+    const player = await first.repo.load();
+    const updated = { ...player, coins: 333, helmetColor: '#202324' };
+    first.repo.save(updated);
+    if (moment === 'after network failure') await first.repo.flush();
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123')!).player.coins).toBe(player.coins);
+    const restored = repository([response(), response('123', updated, nextHash)], driver);
+    expect(await restored.repo.load()).toMatchObject({ coins: 333, helmetColor: '#202324' });
+    expect(restored.repo.syncStatus.state).toBe('saving');
+    await restored.repo.flush();
+    expect(restored.transport.request).toHaveBeenLastCalledWith('POST', expect.objectContaining({ compareDigest: hash, player: expect.objectContaining({ coins: 333 }) }));
+    expect(restored.repo.syncStatus.state).toBe('synced');
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
+  });
+
+  it('isolates pending recovery by account and preserves a conflicting outbox without overwriting cloud progress', async () => {
+    vi.useFakeTimers();
+    const driver = storage(), first = repository([response()], driver);
+    first.repo.save({ ...(await first.repo.load()), coins: 333 });
+    const pending = driver.getItem('pfusch:player:v1:shopify:123:pending');
+    const other = repository([response('456')], driver);
+    expect((await other.repo.load()).coins).toBe(newPlayer().coins);
+    expect(other.transport.request).toHaveBeenCalledTimes(1);
+    const conflict = repository([response('123', { ...newPlayer(), coins: 222 }, nextHash)], driver);
+    expect((await conflict.repo.load()).coins).toBe(222);
+    expect(conflict.repo.syncStatus.state).toBe('conflict');
+    expect(JSON.parse(conflict.repo.export(await conflict.repo.load())).coins).toBe(333);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:conflict')).toBe(pending);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
+    expect(conflict.transport.request).toHaveBeenCalledTimes(1);
+    const reloaded = repository([response('123', { ...newPlayer(), coins: 222 }, nextHash)], driver);
+    expect((await reloaded.repo.load()).coins).toBe(222);
+    expect(reloaded.repo.syncStatus.state).toBe('synced');
+    expect(driver.getItem('pfusch:player:v1:shopify:123:conflict')).toBe(pending);
+  });
+
+  it('rechecks a stale access response when a concurrent save has advanced its digest', async () => {
+    vi.useFakeTimers();
+    const driver = storage(), updated = { ...newPlayer(), coins: 333 };
+    let resolveAccess!: (value: CloudResponse) => void, started!: () => void;
+    const accessStarted = new Promise<void>(resolve => { started = resolve; });
+    const oldAccess = new Promise<CloudResponse>(resolve => { resolveAccess = resolve; });
+    const transport: CloudTransport = { request: vi.fn().mockResolvedValueOnce(response())
+      .mockImplementationOnce(() => { started(); return oldAccess; })
+      .mockResolvedValueOnce(response('123', updated, nextHash))
+      .mockResolvedValueOnce(response('123', updated, nextHash)) };
+    const repo = new ShopifyCloudRepository(transport, driver, new LocalPlayerRepository(driver), decodePlayer, 20);
+    await repo.load();
+    const access = repo.refreshAccess();
+    await accessStarted;
+    repo.save(updated);
+    await repo.flush();
+    resolveAccess(response());
+    expect((await access).allowed).toBe(true);
+    expect(repo.syncStatus.state).toBe('synced');
+    expect((await repo.load()).coins).toBe(333);
+    expect(transport.request).toHaveBeenCalledTimes(4);
+  });
+
+  it('retains guest equipment and progress across focus checks and unavailable guest storage', async () => {
+    const driver: StorageDriver = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
+    const { repo } = repository([{ status: 401, data: {} }, new Error('offline')], driver);
+    const player = await repo.load();
+    const updated = { ...player, coins: 321, runsPlayed: 1, helmetColor: '#202324' };
+    repo.save(updated);
+    await repo.refreshAccess();
+    expect(await repo.load()).toMatchObject({ coins: 321, runsPlayed: 1, helmetColor: '#202324' });
+    expect(repo.syncStatus.state).toBe('offline');
+  });
+
+  it('keeps unsaved account equipment in the session after a failed write without replacing the accepted backup', async () => {
+    vi.useFakeTimers();
+    const driver = storage();
+    const { repo } = repository([response(), new Error('offline')], driver);
+    const player = await repo.load();
+    repo.save({ ...player, helmetColor: '#202324' });
+    await repo.flush();
+    expect((await repo.load()).helmetColor).toBe('#202324');
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123')!).player.helmetColor).toBe(player.helmetColor);
+    expect(repo.getAccess().allowed).toBe(false);
+  });
+
   it('falls back to guest on connection failure without opening another account backup', async () => {
     const driver = storage();
     driver.setItem('pfusch:player:v1:shopify:123', JSON.stringify({ player: { ...newPlayer(), coins: 9999 }, compareDigest: hash, dirty: true }));
@@ -194,10 +320,12 @@ describe('newsletter ride and persistence gate', () => {
   it('does not create or replace backups when the initial live consent is unsubscribed', async () => {
     const driver = storage();
     driver.setItem('pfusch:player:v1:shopify:123', 'existing-recovery');
+    driver.setItem('pfusch:player:v1:shopify:123:pending', JSON.stringify({ player: { ...newPlayer(), coins: 999 }, compareDigest: hash, dirty: true }));
     driver.setItem('pfusch:player:v1', JSON.stringify(newPlayer()));
     const original = [...driver.values];
     const { repo, transport } = repository([response('123', newPlayer(), hash, unsubscribed())], driver);
     const player = await repo.load();
+    expect(player.coins).toBe(newPlayer().coins);
     repo.save({ ...player, coins: 555 });
     await repo.flush();
     expect(repo.getAccess()).toEqual(unsubscribed());
@@ -210,13 +338,15 @@ describe('newsletter ride and persistence gate', () => {
     const driver = storage();
     const { repo, transport } = repository([response(), { status: 403, data: { error: 'newsletter_unsubscribed', storage: unsubscribed() } }], driver);
     const player = await repo.load();
-    const accepted = [...driver.values];
+    const accepted = driver.getItem('pfusch:player:v1:shopify:123');
     repo.save({ ...player, coins: 999 });
-    expect([...driver.values]).toEqual(accepted);
+    expect(driver.getItem('pfusch:player:v1:shopify:123')).toBe(accepted);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBeTruthy();
     await repo.flush();
     repo.save({ ...player, coins: 1000 });
     expect(repo.getAccess()).toEqual(unsubscribed());
-    expect([...driver.values]).toEqual(accepted);
+    expect(driver.getItem('pfusch:player:v1:shopify:123')).toBe(accepted);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
     expect(transport.request).toHaveBeenCalledTimes(2);
   });
 
@@ -232,12 +362,15 @@ describe('newsletter ride and persistence gate', () => {
     vi.useFakeTimers();
     const driver = storage();
     const { repo } = repository([response(), new Error('offline')], driver);
-    const player = await repo.load(), original = [...driver.values];
+    const player = await repo.load(), original = driver.getItem('pfusch:player:v1:shopify:123');
     repo.save({ ...player, coins: 200 });
     await repo.flush();
+    const pending = driver.getItem('pfusch:player:v1:shopify:123:pending');
     repo.save({ ...player, coins: 300 });
     expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
-    expect([...driver.values]).toEqual(original);
+    expect(driver.getItem('pfusch:player:v1:shopify:123')).toBe(original);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe(pending);
+    expect(JSON.parse(pending!).player.coins).toBe(200);
   });
 
   it('does not retry a CSRF-expired save after the live refresh shows unsubscribe', async () => {

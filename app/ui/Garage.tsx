@@ -142,12 +142,13 @@ export default function Garage({ player, products, update, services, notify, sta
       // Ownership, exact variant, options and coins are committed in one synchronous update.
       update(next); account.current = next;
       if (editRef.current === snapshot) { editRef.current = null; setPreviewEdit(null); }
-      await services.players.flush?.();
-      const warning = services.players.warning;
-      setNotice(warning ? `Lokal übernommen. ${warning}` : `${confirmation.name} ${confirmation.collectible ? 'zur Sammlung hinzugefügt' : 'ausgerüstet'}.`);
+      const saved = await confirmPlayerSave(services.players);
+      setNotice(saved.confirmed
+        ? `${confirmation.name} ${confirmation.collectible ? 'zur Sammlung hinzugefügt' : 'ausgerüstet und gespeichert'}.`
+        : `In dieser Sitzung übernommen. Speicherung noch nicht bestätigt. ${saved.detail}`);
     } catch {
       // Retain the complete local transaction; a persistence retry cannot charge the owned item again.
-      setNotice('Lokal übernommen. Die Kontospeicherung ist noch nicht bestätigt.');
+      setNotice('In dieser Sitzung übernommen. Die Kontospeicherung ist noch nicht bestätigt.');
     } finally { pending.current = false; setPurchase(null); }
   }
   function colorPalette(kind: 'paint' | 'rims') {

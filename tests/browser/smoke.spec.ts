@@ -92,6 +92,10 @@ test('desktop complete ride, reward, save, garage and all screens', async ({
   await page.screenshot({ path: 'outputs/ride-desktop.png' });
   await page.keyboard.press('Escape');
   await expect(page.getByText('PAUSE.')).toBeVisible();
+  await page.getByRole('button', { name: 'EINSTELLUNGEN', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'EINSTELLUNGEN.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Zurück zur Pause', exact: true }).click();
+  await expect(page.getByText('PAUSE.')).toBeVisible();
   await page.getByRole('button', { name: 'WEITERFAHREN' }).click();
   await page.keyboard.press('p');
   await page.getByRole('button', { name: 'FAHRT BEENDEN' }).click();

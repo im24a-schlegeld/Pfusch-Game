@@ -3,6 +3,7 @@ import { BIKES } from '../app/domain/config';
 import { finishRun, newPlayer } from '../app/domain/progression';
 import { Engine, STEP, STUNT_POINTS } from '../app/game/engine';
 import { speedAtTime } from '../app/game/world';
+import { TAIL_RECOVERY_ANGLE } from '../app/game/tailContact';
 
 function ride(index = 2) {
   const engine = new Engine(BIKES[index], 841);
@@ -44,7 +45,7 @@ describe('direct stunt points without a combo multiplier', () => {
 
   it('awards risky wheelies and scrapes immediately without waiting for a chain', () => {
     const engine = ride();
-    engine.wheelieAngle = engine.balanceProfile.crashAngle - 0.12;
+    engine.wheelieAngle = engine.balanceProfile.crashAngle - TAIL_RECOVERY_ANGLE / 2;
     steps(engine, 6);
     expect(
       engine.scoreGains.find((gain) => gain.text === 'SCRAPE')?.points,
@@ -78,6 +79,16 @@ describe('direct stunt points without a combo multiplier', () => {
       expect(engine.nearMisses).toBe(1);
     },
   );
+
+  it('does not count a lateral close pass above the car as an airborne evasion', () => {
+    const engine = ride();
+    engine.height = 3;
+    engine.velocityY = 1;
+    engine.spawn('car', 1, 0.4, -1);
+    steps(engine, 30);
+    expect(engine.phase).toBe('playing');
+    expect(engine.nearMisses).toBe(0);
+  });
 
   it.each(BIKES.map((bike, index) => ({ ...bike, index })))(
     '$name keeps exactly the same lateral arc and speed beside a car, with a larger clear-car bonus',

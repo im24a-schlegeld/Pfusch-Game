@@ -1,0 +1,25 @@
+.game-dialog.ride-settings-dialog {
+  box-sizing: border-box !important;
+  width: min(680px, calc(100vw - 20px)) !important;
+  max-width: 680px !important;
+  max-height: calc(100dvh - 20px) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  background: #292929 !important;
+  color: #f4f4f4;
+}
+.ride-settings-dialog .standard-page {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding: 16px !important;
+}
+.ride-settings-dialog .screen-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #292929;
+  padding-block: 8px;
+}

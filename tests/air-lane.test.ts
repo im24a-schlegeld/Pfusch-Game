@@ -22,6 +22,12 @@ describe('one accepted lane change per flight', () => {
       e.resume();
       e.move(-1);
       expect(e.lane).toBe(1);
+      expect(e.phase).toBe('paused');
+      for (let i = 0; i < 180; i++) e.advance(STEP);
+      expect(e.phase).toBe('playing');
+      expect(e.airLaneChangeUsed).toBe(true);
+      e.move(-1);
+      expect(e.lane).toBe(1);
       e.forward(true);
       e.hold(true);
       e.advance(STEP);

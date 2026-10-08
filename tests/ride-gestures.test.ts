@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RideGestures } from '../app/ui/rideGestures';
-import { Engine } from '../app/game/engine';
+import { Engine, STEP } from '../app/game/engine';
 import { BIKES } from '../app/domain/config';
 function fixture() {
   const engine = new Engine(BIKES[0]);
@@ -18,28 +18,31 @@ function fixture() {
   return { engine, gesture, pauses: () => pauses };
 }
 describe('gesture-only ride input', () => {
-  it('starts neutral, meters both weights and steers with the same captured finger', () => {
+  it('starts neutral, meters both weights and steers once per captured touch', () => {
     const { engine, gesture } = fixture();
     gesture.down(1, 100, 200, 0);
     expect(engine.touchWeight).toBe(0);
     gesture.move(1, 100, 207);
     expect(engine.touchWeight).toBe(0);
-    gesture.move(1, 100, 244);
+    gesture.move(1, 100, 248);
     expect(engine.touchWeight).toBe(0.5);
-    gesture.move(1, 145, 244);
+    gesture.move(1, 145, 248);
     expect([engine.lane, engine.touchWeight]).toEqual([1, 0.5]);
-    gesture.move(1, 100, 244);
-    expect([engine.lane, engine.touchWeight]).toEqual([0, 0.5]);
-    gesture.move(1, 100, 120);
+    gesture.move(1, 100, 248);
+    expect([engine.lane, engine.touchWeight]).toEqual([1, 0.5]);
+    gesture.move(1, 100, 114);
     expect(engine.touchWeight).toBe(-1);
     gesture.up(1, 500);
     expect(engine.touchWeight).toBe(0);
+    gesture.down(2, 100, 200, 600);
+    gesture.move(2, 55, 200);
+    expect(engine.lane).toBe(0);
   });
   it('never releases keyboard ownership when a pointer is cancelled', () => {
     const { engine, gesture } = fixture();
     engine.hold(true);
     gesture.down(1, 100, 200, 0);
-    gesture.move(1, 100, 120);
+    gesture.move(1, 100, 114);
     gesture.cancel(99);
     expect(engine.forwardInput).toBe(1);
     gesture.cancel(1);
@@ -50,7 +53,7 @@ describe('gesture-only ride input', () => {
   it('keeps the first finger as owner and ignores cancellation of an unrelated second finger', () => {
     const { engine, gesture } = fixture();
     gesture.down(1, 100, 200, 0);
-    gesture.move(1, 100, 280);
+    gesture.move(1, 100, 286);
     gesture.down(2, 200, 200, 400);
     gesture.move(2, 200, 120);
     gesture.cancel(2);
@@ -72,6 +75,8 @@ describe('gesture-only ride input', () => {
     gesture.up(4, 550);
     gesture.up(3, 580);
     expect(pauses()).toBe(2);
+    expect(engine.resumeRemaining).toBe(3);
+    for (let frame = 0; frame < 180; frame++) engine.advance(STEP);
     expect(engine.phase).toBe('playing');
   });
   it('does not confuse a long hold, moving pair or cancellation with pause', () => {

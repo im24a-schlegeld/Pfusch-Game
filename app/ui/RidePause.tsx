@@ -1,7 +1,7 @@
-import { ArrowRight, Volume2, VolumeX, Wrench } from 'lucide-react';
+import { ArrowRight, Settings, Volume2, VolumeX, Wrench } from 'lucide-react';
 import { DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-export default function RidePause({ muted, onMute, resume, end, garage, touchButtons = false }: {
-  muted: boolean; onMute: () => void; resume: () => void; end: () => void; garage: () => void; touchButtons?: boolean;
+export default function RidePause({ muted, onMute, resume, end, garage, settings, touchButtons = false }: {
+  muted: boolean; onMute: () => void; resume: () => void; end: () => void; garage: () => void; settings?: () => void; touchButtons?: boolean;
 }) {
   return <DialogContent className="game-dialog ride-pause-v38" showCloseButton={false}>
     <div className="pause-head-v38">
@@ -17,6 +17,7 @@ export default function RidePause({ muted, onMute, resume, end, garage, touchBut
       <div><b>Korrigieren</b><span className="keyboard-v38">↑ / W</span><span className="touch-v38">{touchButtons ? 'Bremse halten' : 'Nach oben ziehen'}</span></div>
     </div>
     <button className="button primary pause-continue-v38" onClick={resume}>WEITERFAHREN <ArrowRight size={18}/></button>
+    {settings && <button className="button pause-settings-v38" onClick={settings}>EINSTELLUNGEN <Settings size={18}/></button>}
     <button className="button pause-end-v38" onClick={end}>FAHRT BEENDEN</button>
     <button className="button pause-garage-v38" onClick={garage}>ZUR GARAGE <Wrench size={18}/></button>
   </DialogContent>;

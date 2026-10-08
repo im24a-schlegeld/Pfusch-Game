@@ -7,7 +7,7 @@ import { advanceBalance, BALANCE } from '../app/game/wheelie';
 
 describe('readable traffic, early jumps and tipping-point recovery', () => {
   it.each(BIKES)(
-    '$name queues an early ramp swipe and clears the adjacent car with one clean arc',
+    '$name immediately accepts an early ramp swipe beside a car with one clean arc',
     (bike) => {
       for (const offset of [-0.6, 0, 0.6]) {
         const engine = new Engine(bike, 907);
@@ -19,21 +19,19 @@ describe('readable traffic, early jumps and tipping-point recovery', () => {
         while (!engine.onTowTruck && engine.phase === 'playing')
           engine.advance(STEP);
         expect(engine.height).toBeLessThan(TOW_TRANSFER.minimumTakeoffHeight);
+        const takeoff = tow.z;
         engine.move(1);
-        expect(engine.onTowTruck).toBe(true);
-        expect(engine.launchSerial).toBe(0);
+        expect(engine.onTowTruck).toBe(false);
+        expect(engine.launchSerial).toBe(1);
         let airtime = 0,
           peak = 0,
-          previousX = engine.x,
-          takeoff = 0;
+          previousX = engine.x;
         for (
           let frame = 0;
           frame < 150 && engine.phase === 'playing';
           frame++
         ) {
-          const wasCarried = engine.onTowTruck;
           engine.advance(STEP);
-          if (wasCarried && !engine.onTowTruck) takeoff = tow.z;
           if (engine.towJumpActive) {
             peak = Math.max(peak, engine.height);
             airtime += STEP;
@@ -110,7 +108,7 @@ describe('readable traffic, early jumps and tipping-point recovery', () => {
     engine.start();
     let lastSpawn = -Infinity;
     const waveLanes: number[][] = [];
-    for (let frame = 0; frame < 7200; frame++) {
+    for (let frame = 0; frame < 9000; frame++) {
       engine.x = 100; // Observe generation without changing collision rules.
       engine.advance(STEP);
       const wave = engine.obstacles.filter(
