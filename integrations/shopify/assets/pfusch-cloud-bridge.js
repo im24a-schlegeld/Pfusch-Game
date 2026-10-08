@@ -117,7 +117,7 @@
         // uses. A parent-page /account/login only creates the Online Store
         // cookie; it cannot authenticate the cross-origin Oxygen API iframe.
         const login = new URL('/auth/login', this.loginOrigin);
-        login.searchParams.set('return_to', location.href);
+        login.searchParams.set('return_to', `${this.loginOrigin}/`);
         window.location.assign(login.href);
         return;
       }

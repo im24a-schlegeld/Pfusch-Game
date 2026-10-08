@@ -38,7 +38,11 @@ function harness(customerState: string | null = null) {
     querySelector(selector: string) { return selector === 'iframe' ? frame : dialog; }
     closest() { return { classList: mainClass }; }
     getBoundingClientRect() { return { top }; }
-    getAttribute(name: string) { return name === 'data-customer-state' ? customerState : null; }
+    getAttribute(name: string) {
+      if (name === 'data-customer-state') return customerState;
+      if (name === 'data-login-origin') return 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev';
+      return null;
+    }
   }
   runInNewContext(source, {
     URL, HTMLElement: Element, TextEncoder, AbortController, setTimeout, clearTimeout, fetch,
@@ -67,7 +71,7 @@ function harness(customerState: string | null = null) {
 
 const openMessage = { type: 'pfusch:open-newsletter', version: 1 };
 describe('newsletter navigation from the embedded game', () => {
-  it('starts server OAuth at the configured game origin and keeps the exact draft return route', async () => {
+  it('starts server OAuth at the configured Oxygen origin and returns to the game', async () => {
     const context = harness();
     const message = { type: 'pfusch:open-login', version: 1 };
     await context.bridge.handle({ origin: 'https://evil.example', source: context.frameWindow, data: message });
@@ -75,8 +79,8 @@ describe('newsletter navigation from the embedded game', () => {
     expect(context.navigate).not.toHaveBeenCalled();
     await context.bridge.handle({ origin: 'https://pfusch-game.vercel.app', source: context.frameWindow, data: message });
     const login = new URL(context.navigate.mock.calls[0][0]);
-    expect(login.origin + login.pathname).toBe('https://pfusch-game.vercel.app/auth/login');
-    expect(login.searchParams.get('return_to')).toBe('https://pfusch-clothing.ch/?preview_theme_id=189577920841&view=wheelie-escape');
+    expect(login.origin + login.pathname).toBe('https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/auth/login');
+    expect(login.searchParams.get('return_to')).toBe('https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/');
     expect(context.fetch).not.toHaveBeenCalled();
   });
   it('keeps the newsletter closed on load and opens the modal without subscribing or leaving the draft', async () => {

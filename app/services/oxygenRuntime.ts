@@ -31,11 +31,13 @@ export function startOxygenLogin(host: Window, parentOrigin: string | null, pare
     // useful fallback for older shop themes, but waiting for it makes a
     // missing or stale theme asset look like an inert login button.
     const fallback = new URL('/auth/login', SHOPIFY_OXYGEN_ORIGIN);
-    let returnTo = `${parentOrigin}/`;
+    // Finish on the Oxygen game itself. The session cookie is first-party
+    // there, so the customer is immediately recognized by the game.
+    let returnTo = `${SHOPIFY_OXYGEN_ORIGIN}/`;
     try {
       const candidate = new URL(parentReturnTo ?? '');
-      if (candidate.origin === parentOrigin) returnTo = candidate.href;
-    } catch { /* use the trusted shop root */ }
+      if (candidate.origin === SHOPIFY_OXYGEN_ORIGIN) returnTo = candidate.href;
+    } catch { /* use the Oxygen game root */ }
     fallback.searchParams.set('return_to', returnTo);
     try {
       host.top!.location.href = fallback.href;
@@ -48,7 +50,7 @@ export function startOxygenLogin(host: Window, parentOrigin: string | null, pare
   const current = new URL(host.location.href);
   const loginOrigin = current.hostname.endsWith('.vercel.app') ? SHOPIFY_OXYGEN_ORIGIN : current.origin;
   const login = new URL('/auth/login', loginOrigin);
-  login.searchParams.set('return_to', current.href);
+  login.searchParams.set('return_to', `${SHOPIFY_OXYGEN_ORIGIN}/`);
   // OAuth must run top-level, including when an unsupported parent embeds the game.
   if (host.top && host.top !== host) host.top.location.href = login.href;
   else host.location.assign(login.href);

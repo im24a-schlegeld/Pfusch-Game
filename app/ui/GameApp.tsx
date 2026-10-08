@@ -334,15 +334,9 @@ export default function GameApp() {
   const newsletterOrigin = parentOrigin;
   const oxygenLoginHref = (() => {
     const login = new URL('/auth/login', SHOPIFY_OXYGEN_ORIGIN);
-    let returnTo = SHOPIFY_STOREFRONT_ORIGIN + '/';
+    let returnTo = `${SHOPIFY_OXYGEN_ORIGIN}/`;
     if (window.location.origin === SHOPIFY_OXYGEN_ORIGIN || window.location.hostname.endsWith('.myshopify.dev'))
       returnTo = window.location.href;
-    if (parentOrigin) {
-      try {
-        const candidate = new URL(document.referrer);
-        if (candidate.origin === parentOrigin) returnTo = candidate.href;
-      } catch { /* use the current Oxygen route */ }
-    }
     login.searchParams.set('return_to', returnTo);
     return login.href;
   })();
