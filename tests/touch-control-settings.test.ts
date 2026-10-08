@@ -14,13 +14,13 @@ function storage() {
 }
 
 describe('additive schema-1 touch control preference', () => {
-  it('defaults to swipe and accepts old local/account saves without changing progress', () => {
+  it('defaults to buttons and accepts old local/account saves without changing progress', () => {
     const original = newPlayer();
-    expect(original.settings.touchControls).toBe('swipe');
+    expect(original.settings.touchControls).toBe('buttons');
     const legacy = { ...original, coins: 432, settings: { ...original.settings, touchControls: undefined } };
     for (const player of [decodePlayer(JSON.stringify(legacy)), sanitizeDigitalPlayer(legacy, '123')]) {
       expect(player.version).toBe(1);
-      expect(player.settings).toEqual(original.settings);
+      expect(player.settings).toEqual({ ...original.settings, touchControls: 'swipe' });
       expect(player.coins).toBe(432);
     }
   });
@@ -40,7 +40,7 @@ describe('additive schema-1 touch control preference', () => {
     const player = newPlayer();
     for (const touchControls of [null, true, 1, '', 'keyboard', 'BUTTONS', [], {}]) {
       const malformed = { ...player, settings: { ...player.settings, touchControls } };
-      expect(decodePlayer(JSON.stringify(malformed)).settings.touchControls).toBe('swipe');
+      expect(decodePlayer(JSON.stringify(malformed)).settings.touchControls).toBe('buttons');
       expect(() => sanitizeDigitalPlayer(malformed, '123')).toThrow();
     }
     expect(() => sanitizeDigitalPlayer({ ...player, settings: { ...player.settings, arbitrary: true } }, '123')).toThrow();

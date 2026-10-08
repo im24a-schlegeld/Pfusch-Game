@@ -202,9 +202,12 @@ export function decodePlayer(raw: string): Player {
       if (typeof v.settings[field] === 'boolean')
         p.settings[field] = v.settings[field];
     if (v.settings.quality === 'low') p.settings.quality = 'low';
-    // Additive v1 migration: missing/invalid preferences keep the original swipe controls.
+    // Additive v1 migration: old snapshots without this preference retain the
+    // original swipe behaviour. New snapshots created by newPlayer use buttons.
     if (v.settings.touchControls === 'swipe' || v.settings.touchControls === 'buttons')
       p.settings.touchControls = v.settings.touchControls;
+    else if (!Object.prototype.hasOwnProperty.call(v.settings, 'touchControls'))
+      p.settings.touchControls = 'swipe';
     // v1 saves from before contextual onboarding have no lesson acknowledgements.
     // Do not infer these from tutorialSeen: the old static guide did not teach these encounters.
     p.settings.tutorialHintsSeen = normalizeTutorialHints(v.settings.tutorialHintsSeen);

@@ -125,7 +125,7 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   if (settings.touchControls !== undefined) {
     if (settings.touchControls !== 'swipe' && settings.touchControls !== 'buttons') invalid();
     player.settings.touchControls = settings.touchControls as Player['settings']['touchControls'];
-  }
+  } else player.settings.touchControls = 'swipe';
   // Optional only for older schema-1 snapshots; server writes accept exactly the shipped lesson IDs.
   if (settings.tutorialHintsSeen !== undefined) {
     if (!Array.isArray(settings.tutorialHintsSeen) || settings.tutorialHintsSeen.length > TUTORIAL_HINTS.length ||

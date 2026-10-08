@@ -145,7 +145,8 @@ export default function GameApp() {
       if (oxygenRuntime) startOxygenLogin(window, parentOrigin, document.referrer);
       else services.auth.login?.();
       // Finish queued progress on a best-effort basis after starting login.
-      void services.players.flush?.().catch(() => {});
+      const pendingFlush = services.players.flush?.();
+      if (pendingFlush) void pendingFlush.catch(() => {});
     } catch {
       setNotice('Anmeldung konnte nicht geöffnet werden. Bitte erneut versuchen.');
     } finally {
@@ -179,6 +180,22 @@ export default function GameApp() {
       document.removeEventListener('visibilitychange', recheck);
     };
   }, [services, syncAccount]);
+  useEffect(() => {
+    // Flush debounced cloud writes before a tab is backgrounded or discarded.
+    // The local adapter remains synchronous, while the Shopify adapter keeps
+    // the accepted snapshot as its recovery backup when the request fails.
+    const flush = () => {
+      const pendingFlush = services.players.flush?.();
+      if (pendingFlush) void pendingFlush.catch(() => {});
+    };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [services]);
   useEffect(() => {
     audio.muted = player?.settings.muted ?? true;
   }, [audio, player?.settings.muted]);
@@ -441,7 +458,7 @@ export default function GameApp() {
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
         loginHref={oxygenLoginHref}
         onLogin={services.auth.login || oxygenRuntime ? () => { void beginLogin(); } : undefined}
-        message={accessError} onCheck={() => { void checkAccess(false); }} onStart={start} back={() => setAccessOpen(false)}
+        message={accessError} onStart={start} back={() => setAccessOpen(false)}
         onNewsletter={newsletterOrigin ? () => {
           setAccessOpen(false);
           window.parent.postMessage({ type: 'pfusch:open-newsletter', version: 1 }, newsletterOrigin);

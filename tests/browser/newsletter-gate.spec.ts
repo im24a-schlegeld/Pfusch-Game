@@ -23,8 +23,7 @@ test('fifth ride settles once and every later start stays gated after reload', a
   await page.getByRole('button', { name: 'WEITERFAHREN FREISCHALTEN', exact: true }).click();
   await expect(page.getByTestId('save-access-gate')).toBeVisible();
   await expect(page.getByTestId('ride-screen')).toHaveCount(0);
-  await page.getByRole('button', { name: 'STATUS PRÜFEN', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'STATUS PRÜFEN', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'STATUS PRÜFEN', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('save-access-gate')).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'FAHRT STARTEN', exact: true }).click();

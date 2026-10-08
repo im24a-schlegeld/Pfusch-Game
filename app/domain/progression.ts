@@ -64,7 +64,9 @@ export function newPlayer(): Player {
       muted: true,
       reducedMotion: false,
       quality: 'auto',
-      touchControls: 'swipe',
+      // Touch devices start with the explicit on-screen controls. Swiping
+      // remains available in Settings and still controls lateral lanes.
+      touchControls: 'buttons',
       tutorialSeen: false,
       tutorialHintsSeen: [],
     },

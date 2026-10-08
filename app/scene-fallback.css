@@ -1,16 +1,16 @@
-.scene-fallback { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; justify-content: safe center; gap: 12px; min-width: 0; margin: 0; border: 0; padding: 20px; color: #f3f3f3; background: #222; overflow: auto; }
+.scene-fallback { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; justify-content: flex-start; gap: 9px; min-width: 0; min-height: 0; box-sizing: border-box; margin: 0; border: 0; padding: 48px 16px 14px; color: #f3f3f3; background: #222; overflow: hidden; }
 .scene-fallback-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
 .scene-fallback-heading strong { font-size: 20px; }
 .scene-fallback-heading span, .scene-fallback p { font-size: 12px; color: #ccc; }
-.scene-fallback-images { display: flex; align-items: stretch; justify-content: center; gap: 10px; min-height: 0; }
+.scene-fallback-images { display: flex; align-items: stretch; justify-content: center; gap: 10px; min-height: 0; flex: 0 1 auto; }
 .scene-fallback-images figure { margin: 0; min-width: 0; flex: 1 1 0; max-width: 210px; }
 .scene-fallback-images img { display: block; width: 100%; height: clamp(72px, 16vh, 180px); object-fit: contain; border-radius: 6px; background: #eee; }
 .scene-fallback-images figcaption { margin-top: 5px; font-size: 11px; line-height: 1.3; }
 .scene-fallback-images figcaption span { display: block; color: #bbb; }
-.scene-fallback-colors { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; }
+.scene-fallback-colors { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11px; line-height: 1.25; }
 .scene-fallback-colors span { display: inline-flex; align-items: center; gap: 6px; }
 .scene-fallback-colors i { display: inline-block; width: 18px; height: 18px; border: 1px solid #aaa; border-radius: 50%; }
-.scene-fallback p { margin: 0; max-width: 54ch; }
+.scene-fallback p { margin: 0; max-width: 54ch; line-height: 1.35; }
 .scene-load-note { position: absolute; z-index: 4; left: 12px; right: 12px; top: 12px; width: fit-content; max-width: calc(100% - 24px); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 5px; color: #eee; background: #171717e8; font-size: 11px; pointer-events: none; }
 .scene-load-note .spinner { width: 14px; height: 14px; }
 .scene-zoom { position: absolute; right: 12px; bottom: 12px; z-index: 2; display: flex; gap: 6px; }
@@ -20,3 +20,14 @@
 .scene-zoom button:active { background: #555; }
 .scene:focus-visible { outline: 2px solid white; outline-offset: -3px; }
 @media (max-height: 620px) { .scene-fallback { padding: 10px; gap: 7px; } .scene-fallback p { font-size: 10px; } .scene-fallback-images img { height: 60px; } }
+@media (max-width: 760px) {
+  .scene-fallback { gap: 7px; padding: 40px 12px 10px; }
+  .scene-fallback-heading strong { font-size: 16px; }
+  .scene-fallback-heading span, .scene-fallback p { font-size: 10px; }
+  .scene-fallback-images { gap: 7px; }
+  .scene-fallback-images img { height: clamp(60px, 15vh, 128px); }
+  .scene-fallback-images figcaption { font-size: 10px; }
+  .scene-fallback-colors { gap: 4px 9px; font-size: 10px; }
+  .scene-fallback-colors span { max-width: calc(50% - 5px); }
+  .scene-fallback p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+}

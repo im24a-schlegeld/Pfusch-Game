@@ -73,6 +73,7 @@ export default function Garage({ player, products, update, services, notify, sta
   const [notice, setNotice] = useState('');
   const [angle, setAngle] = useState(2.35);
   const [inspectionRevision, setInspectionRevision] = useState(0);
+  const [previewReady, setPreviewReady] = useState(false);
   const [productView, setProductView] = useState<'front' | 'back'>('front');
   const [stickerBike, setStickerBike] = useState<Player | null>(null);
   const [stickerTarget, setStickerTarget] = useState<'bike' | 'helmet'>('bike');
@@ -200,14 +201,15 @@ export default function Garage({ player, products, update, services, notify, sta
         data-number={appearance.customizations[appearance.equipped.upper ?? '']?.customNumber ?? ''}
         data-hood={appearance.customizations[appearance.equipped.upper ?? '']?.hoodEnabled === true}
         data-helmet={appearance.helmet} data-helmet-color={appearance.helmetColor} data-helmet-visor={appearance.helmetVisor}>
-        <Preview player={appearance} products={products} mode="garage" onReady={onReady} onLoadError={onLoadError}
+        <Preview player={appearance} products={products} mode="garage" onReady={() => { setPreviewReady(true); onReady?.(); }}
+          onLoadError={message => { setPreviewReady(false); onLoadError?.(message); }}
           inspectionFocus={focus} inspectionAngle={angle} inspectionRevision={inspectionRevision} />
       </div>
-      <div className="gc-preview-footer"><h2>{bike.name}</h2><p>{products.find(product => product.id === appearance.equipped.upper)?.title ?? 'Standard-Outfit'}</p></div>
-      <div className="gc-angles" aria-label="Kameraansicht"><RotateCw size={14} aria-hidden="true" />
+      {previewReady && <div className="gc-preview-footer"><h2>{bike.name}</h2><p>{products.find(product => product.id === appearance.equipped.upper)?.title ?? 'Standard-Outfit'}</p></div>}
+      {previewReady && <div className="gc-angles" aria-label="Kameraansicht"><RotateCw size={14} aria-hidden="true" />
         {[{ name: 'Vorne ¾', value: 2.35 }, { name: 'Seite', value: 1.57 }, { name: 'Hinten ¾', value: .55 }].map(view => <button key={view.name} onClick={() => { setAngle(view.value); setInspectionRevision(revision => revision + 1); }}>{view.name}</button>)}
         <span>Ziehen · Zoomen</span>
-      </div>
+      </div>}
     </section>
     <section className="gc-controls" aria-label="Garage konfigurieren">
       <nav className="gc-areas" aria-label="Garage-Bereiche"><button aria-pressed={area === 'bike'} onClick={() => { if (area !== 'bike') selectPart('model'); }}>Motorrad</button><button aria-pressed={area === 'rider'} onClick={() => { if (area !== 'rider') selectPart('upper'); }}>Fahrer</button></nav>
