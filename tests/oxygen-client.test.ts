@@ -51,7 +51,7 @@ describe('Oxygen runtime selection and login', () => {
     startOxygenLogin(host, null);
     const url = new URL(location.assign.mock.calls[0][0]);
     expect(url.origin + url.pathname).toBe('https://game.pfusch-clothing.ch/auth/login');
-    expect(url.searchParams.get('return_to')).toBe('https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/');
+    expect(url.searchParams.get('return_to')).toBe('https://game.pfusch-clothing.ch/');
   });
 });
 

@@ -40,7 +40,7 @@ function harness(customerState: string | null = null) {
     getBoundingClientRect() { return { top }; }
     getAttribute(name: string) {
       if (name === 'data-customer-state') return customerState;
-      if (name === 'data-login-origin') return 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev';
+      if (name === 'data-login-origin') return 'https://game.pfusch-clothing.ch';
       return null;
     }
   }
@@ -79,8 +79,8 @@ describe('newsletter navigation from the embedded game', () => {
     expect(context.navigate).not.toHaveBeenCalled();
     await context.bridge.handle({ origin: 'https://pfusch-game.vercel.app', source: context.frameWindow, data: message });
     const login = new URL(context.navigate.mock.calls[0][0]);
-    expect(login.origin + login.pathname).toBe('https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/auth/login');
-    expect(login.searchParams.get('return_to')).toBe('https://wheelie-escape-77d79498580990584461.o2.myshopify.dev/');
+    expect(login.origin + login.pathname).toBe('https://game.pfusch-clothing.ch/auth/login');
+    expect(login.searchParams.get('return_to')).toBe('https://game.pfusch-clothing.ch/');
     expect(context.fetch).not.toHaveBeenCalled();
   });
   it('keeps the newsletter closed on load and opens the modal without subscribing or leaving the draft', async () => {

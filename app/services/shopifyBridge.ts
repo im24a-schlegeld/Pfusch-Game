@@ -3,7 +3,7 @@ export const SHOPIFY_PARENT_ORIGINS = new Set([
   'https://www.pfusch-clothing.ch',
 ]);
 export const SHOPIFY_STOREFRONT_ORIGIN = 'https://pfusch-clothing.ch';
-export const SHOPIFY_OXYGEN_ORIGIN = 'https://wheelie-escape-77d79498580990584461.o2.myshopify.dev';
+export const SHOPIFY_OXYGEN_ORIGIN = 'https://game.pfusch-clothing.ch';
 export const SHOPIFY_BRIDGE_VERSION = 1;
 export const SHOPIFY_PAYLOAD_LIMIT = 131072;
 

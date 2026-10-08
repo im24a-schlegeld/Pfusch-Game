@@ -15,11 +15,13 @@
       try { gameUrl = new URL(this.frame.src); } catch { return; }
       if (gameUrl.protocol !== 'https:') return;
       this.gameOrigin = gameUrl.origin;
-      const configuredLoginOrigin = this.getAttribute('data-login-origin');
-      try {
-        const loginUrl = new URL(configuredLoginOrigin || gameUrl.origin);
-        this.loginOrigin = loginUrl.protocol === 'https:' && loginUrl.hostname.endsWith('.myshopify.dev')
-          ? loginUrl.origin : gameUrl.origin;
+    const configuredLoginOrigin = this.getAttribute('data-login-origin');
+    try {
+      const loginUrl = new URL(configuredLoginOrigin || gameUrl.origin);
+      const isTrustedOxygenOrigin = loginUrl.hostname.endsWith('.myshopify.dev')
+        || loginUrl.hostname === 'game.pfusch-clothing.ch';
+      this.loginOrigin = loginUrl.protocol === 'https:' && isTrustedOxygenOrigin
+        ? loginUrl.origin : gameUrl.origin;
       } catch { this.loginOrigin = gameUrl.origin; }
       this.guestPage = this.getAttribute('data-customer-state') === 'guest';
       this.setupGamePage();
