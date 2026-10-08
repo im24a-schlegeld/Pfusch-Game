@@ -249,14 +249,14 @@ describe('newsletter ride and persistence gate', () => {
     expect(repo.getAccess()).toEqual(unsubscribed());
   });
 
-  it('requires a reload on guest-to-customer change instead of attaching the current player blindly', async () => {
+  it('adopts a customer that signs in after the page initially loaded as a guest', async () => {
     const driver = storage();
     const { repo } = repository([{ status: 401, data: {} }, response('456')], driver);
     await repo.load();
     expect(repo.getAccess().allowed).toBe(true);
-    expect(await repo.refreshAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
-    expect(repo.syncStatus.message).toContain('Bitte neu laden');
-    expect(driver.getItem('pfusch:player:v1:shopify:456')).toBeNull();
+    expect(await repo.refreshAccess()).toMatchObject({ allowed: true, reason: 'subscribed' });
+    expect(await repo.getUser()).toEqual({ id: '456', kind: 'customer' });
+    expect((await repo.load()).id).toBe('shopify:456');
   });
 
   it('never downgrades an established customer to a fresh guest trial on a later guest response', async () => {

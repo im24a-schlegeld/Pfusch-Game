@@ -125,6 +125,15 @@ export default function GameApp() {
     },
     [services],
   );
+  const syncAccount = useCallback(async () => {
+    const [latest, user] = await Promise.all([services.players.load(), services.auth.getUser()]);
+    if (latest !== current.current) {
+      current.current = latest;
+      setPlayer(latest);
+    }
+    setAccountKind(user.kind);
+    return latest;
+  }, [services]);
   const beginLogin = useCallback(async () => {
     if ((!services.auth.login && !oxygenRuntime) || loginPending.current) return;
     loginPending.current = true;
@@ -161,7 +170,7 @@ export default function GameApp() {
   useEffect(() => {
     const recheck = () => {
       if (current.current && document.visibilityState === 'visible')
-        void services.players.refreshAccess?.().catch(() => {});
+        void services.players.refreshAccess?.().then(() => syncAccount()).catch(() => {});
     };
     window.addEventListener('focus', recheck);
     document.addEventListener('visibilitychange', recheck);
@@ -169,7 +178,7 @@ export default function GameApp() {
       window.removeEventListener('focus', recheck);
       document.removeEventListener('visibilitychange', recheck);
     };
-  }, [services]);
+  }, [services, syncAccount]);
   useEffect(() => {
     audio.muted = player?.settings.muted ?? true;
   }, [audio, player?.settings.muted]);
@@ -211,6 +220,7 @@ export default function GameApp() {
       }
       const access = await services.players.refreshAccess?.()
         ?? services.players.getAccess?.() ?? unavailableAccess(current.current.runsPlayed);
+      await syncAccount();
       if (request !== accessRequest.current) return;
       if (!access.allowed) {
         setAccessOpen(true);

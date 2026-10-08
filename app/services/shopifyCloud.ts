@@ -121,6 +121,49 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     await this.load();
     return this.session ? { id: this.session.customer.id, kind: 'customer' as const } : { id: 'guest-local', kind: 'guest' as const };
   }
+  /** Adopt a server-authenticated customer after this page initially loaded as a guest. */
+  private async adoptSession(next: Snapshot): Promise<Player> {
+    this.session = next;
+    this.guestMode = false;
+    this.localCompletedRuns = next.storage.completedRuns;
+    this.setAccess(next.storage);
+    if (!this.access.allowed) {
+      this.deny(this.access);
+      return next.player ?? digitalPlayer(newPlayer(), next.customer.id);
+    }
+    const backup = this.readBackup();
+    if (backup?.dirty && backup.compareDigest === next.compareDigest) {
+      this.save(backup.player);
+      return backup.player;
+    }
+    if (backup?.dirty) {
+      this.store(`${this.accountKey()}:conflict`, JSON.stringify(backup));
+      this.recoveryPlayer = backup.player;
+      this.blocked = true;
+      this.setAccess(unavailableAccess(this.localCompletedRuns));
+      this.status('conflict', 'Konto und lokale Sicherung unterscheiden sich. Kontostand geladen; lokale Sicherung behalten. Bitte Spielstand exportieren und neu laden.');
+      return next.player ?? backup.player;
+    }
+    if (next.player) {
+      this.backup(next.player);
+      this.status('synced', this.backupWritable ? 'Im Kundenkonto gespeichert.' : 'Im Kundenkonto gespeichert; lokale Sicherung nicht verfügbar.');
+      return next.player;
+    }
+    // Import the local guest snapshot once, exactly as during a normal account bootstrap.
+    let player = newPlayer();
+    if (!this.read(importedGuestKey) && this.backupWritable) {
+      const guestRaw = this.read(guestKey);
+      if (guestRaw) {
+        try {
+          const candidate = this.decode(guestRaw);
+          if (this.store(`${guestKey}:before-account`, guestRaw) && this.store(importedGuestKey, this.session.customer.id)) player = candidate;
+        } catch { /* Preserve the existing guest save. */ }
+      }
+    }
+    player = digitalPlayer(player, this.session.customer.id);
+    this.save(player);
+    return player;
+  }
   private async bootstrap(): Promise<Player> {
     let response: CloudResponse;
     try { response = await this.transport.request('GET'); }
@@ -136,51 +179,14 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       }
       return this.useLocalGuest();
     }
-    try { this.session = snapshot(response.data, this.decode); }
+    let next: Snapshot;
+    try { next = snapshot(response.data, this.decode); }
     catch {
       const local = await this.guest.load();
       this.deny(unavailableAccess(local.runsPlayed), 'Konto-Freigabe konnte nicht sicher geladen werden. Status erneut prüfen.');
       return local;
     }
-    this.localCompletedRuns = this.session.storage.completedRuns;
-    this.setAccess(this.session.storage);
-    if (!this.access.allowed) {
-      this.deny(this.access);
-      return this.session.player ?? digitalPlayer(newPlayer(), this.session.customer.id);
-    }
-    const backup = this.readBackup();
-    if (backup?.dirty && backup.compareDigest === this.session.compareDigest) {
-      this.save(backup.player);
-      return backup.player;
-    }
-    if (backup?.dirty) {
-      this.store(`${this.accountKey()}:conflict`, JSON.stringify(backup));
-      this.recoveryPlayer = backup.player;
-      this.blocked = true;
-      this.setAccess(unavailableAccess(this.localCompletedRuns));
-      this.status('conflict', 'Konto und lokale Sicherung unterscheiden sich. Kontostand geladen; lokale Sicherung behalten. Bitte Spielstand exportieren und neu laden.');
-      return this.session.player ?? backup.player;
-    }
-    if (this.session.player) {
-      this.backup(this.session.player);
-      this.status('synced', this.backupWritable ? 'Im Kundenkonto gespeichert.' : 'Im Kundenkonto gespeichert; lokale Sicherung nicht verfügbar.');
-      return this.session.player;
-    }
-    // Never add balances or overwrite another customer's progress. Claim the
-    // original guest snapshot once; its untouched backup remains available.
-    let player = newPlayer();
-    if (!this.read(importedGuestKey) && this.backupWritable) {
-      const guestRaw = this.read(guestKey);
-      if (guestRaw) {
-        try {
-          const candidate = this.decode(guestRaw);
-          if (this.store(`${guestKey}:before-account`, guestRaw) && this.store(importedGuestKey, this.session.customer.id)) player = candidate;
-        } catch { /* Preserve the existing guest save. */ }
-      }
-    }
-    player = digitalPlayer(player, this.session.customer.id);
-    this.save(player);
-    return player;
+    return this.adoptSession(next);
   }
 
   save(player: Player): void {
@@ -308,7 +314,12 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         return this.access;
       }
       const next = snapshot(response.data, this.decode);
-      if (!this.session || next.customer.id !== this.session.customer.id) {
+      if (!this.session) {
+        const player = await this.adoptSession(next);
+        this.initial = Promise.resolve(player);
+        return this.access;
+      }
+      if (next.customer.id !== this.session.customer.id) {
         this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Anmeldung geändert. Bitte neu laden.');
         return this.access;
       }

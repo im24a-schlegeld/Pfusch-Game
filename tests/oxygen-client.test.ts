@@ -44,6 +44,19 @@ describe('Oxygen runtime selection and login', () => {
     expect(parent.postMessage).toHaveBeenCalledExactlyOnceWith({ type: 'pfusch:open-login', version: 1 }, 'https://pfusch-clothing.ch');
   });
 
+  it('navigates directly from the custom game domain when an older theme bridge is present', () => {
+    const parent = { postMessage: vi.fn() };
+    const top = { location: { href: 'https://pfusch-clothing.ch/?view=wheelie-escape' } };
+    const host = {
+      parent,
+      top,
+      location: { hostname: 'game.pfusch-clothing.ch', href: 'https://game.pfusch-clothing.ch/' },
+    } as unknown as Window;
+    startOxygenLogin(host, 'https://pfusch-clothing.ch');
+    expect(parent.postMessage).not.toHaveBeenCalled();
+    expect(top.location.href).toMatch(/^https:\/\/game\.pfusch-clothing\.ch\/auth\/login\?/);
+  });
+
   it('uses the same-origin login route in a standalone window', () => {
     const location = { href: 'https://game.pfusch-clothing.ch/?setup=garage#rider', assign: vi.fn() };
     const host = { location } as unknown as Window;

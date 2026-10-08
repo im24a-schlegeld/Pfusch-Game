@@ -23,7 +23,13 @@ export function startOxygenLogin(host: Window, parentOrigin: string | null, pare
   if (host.parent !== host && parentOrigin && SHOPIFY_PARENT_ORIGINS.has(parentOrigin)) {
     // If the frame itself is not an Oxygen origin, let the trusted storefront
     // bridge route the click to the configured Oxygen origin.
-    if (!host.location?.hostname?.endsWith('.myshopify.dev')) {
+    // The custom game domain is also a first-party Oxygen origin. It must be
+    // allowed to navigate directly so an older theme bridge cannot make the
+    // login button appear inert.
+    const configuredGameHostname = new URL(SHOPIFY_OXYGEN_ORIGIN).hostname;
+    const isKnownGameHost = host.location?.hostname?.endsWith('.myshopify.dev')
+      || host.location?.hostname === configuredGameHostname;
+    if (!isKnownGameHost) {
       host.parent.postMessage({ type: 'pfusch:open-login', version: SHOPIFY_BRIDGE_VERSION }, parentOrigin);
       return;
     }
