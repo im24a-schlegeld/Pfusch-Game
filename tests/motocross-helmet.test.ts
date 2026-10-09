@@ -178,7 +178,10 @@ describe('independent motocross equipment geometry', () => {
     const goggles = fitted.getObjectByName('motocross-goggles')!;
     const strap = fitted.getObjectByName('goggle-strap') as Mesh;
     expect(strap.userData.width).toBe(.048);
-    for (const angle of [1.8, 2.3, Math.PI, 4, 4.5]) for (const y of [-.011, .004, .019]) {
+    for (const angle of [1.8, 2.3, Math.PI, 4, 4.5]) for (const offset of [-.014, 0, .014]) {
+      const around = Math.abs(Math.atan2(Math.sin(angle), Math.cos(angle)));
+      const t = Math.max(0, Math.min(1, (around - 1.275) / (2.8 - 1.275)));
+      const y = .003 + .045 * t * t * (3 - 2 * t) + offset;
       const direction = new Vector3(Math.sin(angle), 0, -Math.cos(angle));
       const origin = goggles.localToWorld(new Vector3(0, y, 0).addScaledVector(direction, 1));
       const cast = new Raycaster(origin, direction.negate().transformDirection(goggles.matrixWorld));

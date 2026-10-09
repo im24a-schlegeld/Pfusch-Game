@@ -286,7 +286,7 @@ function addStrap(parent: THREE.Object3D, shellGeometry: THREE.BufferGeometry) {
   const across = [-1, -0.94, -0.78, -0.4, 0, 0.4, 0.78, 0.94, 1];
   const halfWidth = 0.024;
   const centerY = (a: number) => 0.003 +
-    0.0035 * smooth(Math.abs(wrappedAngle(a)), startAngle, 2.8);
+    0.045 * smooth(Math.abs(wrappedAngle(a)), startAngle, 2.8);
   const lift = (v: number) => Math.abs(v) > 0.94 ? 0.0010 :
     Math.abs(v) > 0.78 ? 0.0016 : 0.0019;
   const onShell = (a: number, v: number) => {
@@ -381,6 +381,7 @@ export function createMotocrossHelmet(color: string, visorColor = '#34454d'): He
   const eye = new THREE.Vector3(0, 0, -.152);
   goggles.position.copy(eye.clone().applyAxisAngle(new THREE.Vector3(1, 0, 0), shellTilt))
     .sub(eye.clone().applyAxisAngle(new THREE.Vector3(1, 0, 0), goggles.rotation.x));
+  goggles.position.y += .010;
   helmet.add(goggles);
   addGoggles(goggles, trim, foam, visorColor);
   goggles.updateMatrix();
