@@ -1,6 +1,7 @@
 import type { Helmet, Player } from './types';
 import { APPEARANCE_COLORS } from './appearanceColors.js';
 import { CARBON_FINISH, CARBON_PRICE, DARK_CARBON } from './carbon.js';
+import { colorName } from './paletteView.js';
 import { unlock } from './progression.js';
 
 export const HELMETS = [
@@ -9,9 +10,16 @@ export const HELMETS = [
 ] as const satisfies readonly { id: Helmet; name: string }[];
 
 export const HELMET_COLORS = [
-  { name: 'Kreide (Original)', value: '#d7dbd7' },
-  { name: 'Schwarz (Original)', value: '#202324' },
-  ...APPEARANCE_COLORS.filter((color) => !['#d7dbd7', '#202324'].includes(color.value)),
+  { name: 'Kreide', value: '#d7dbd7' },
+  { name: 'Nachtschwarz', value: '#202324' },
+  ...APPEARANCE_COLORS.filter((color) => !['#d7dbd7', '#202324'].includes(color.value))
+    .map(color => ({ ...color, name: colorName(color.value) })),
+  { name: 'Neongelb', value: '#f1ef25' },
+  { name: 'Neonlimette', value: '#98ee28' },
+  { name: 'Türkis', value: '#22cbd0' },
+  { name: 'Signalblau', value: '#2854ee' },
+  { name: 'Violett', value: '#ae37e5' },
+  { name: 'Signalpink', value: '#f23ca0' },
   CARBON_FINISH,
 ];
 

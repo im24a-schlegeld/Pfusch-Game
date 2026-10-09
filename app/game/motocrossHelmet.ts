@@ -276,8 +276,8 @@ function strapSurface(geometry: THREE.BufferGeometry) {
 }
 
 /** A 48 mm band fitted to the shell, with continuous textile frame transitions. */
-function addStrap(parent: HelmetMesh) {
-  const sample = strapSurface(parent.geometry);
+function addStrap(parent: THREE.Object3D, shellGeometry: THREE.BufferGeometry) {
+  const sample = strapSurface(shellGeometry);
   const fabric = material('#171b1e', 0, 0.96);
   const edging = material('#14181a', 0, 0.98);
   const startAngle = apertureAngle + 0.025;
@@ -369,15 +369,26 @@ export function createMotocrossHelmet(color: string, visorColor = '#34454d'): He
   helmet.userData.geometryRevision = 'thor-source-shell-v1';
   helmet.userData.sourceModel = 'RadekC Thor helmet, clean _1 source parts';
   helmet.castShadow = helmet.receiveShadow = true;
-  addMesh(helmet, importedGeometry(1), [shell, foam, trim], 'motocross-peak');
-  helmet.updateMatrixWorld(true);
-  addGoggles(helmet, trim, foam, visorColor);
-  addStrap(helmet);
-  // Match the Integral's authored tilt without altering the shared head joint.
-  // The caller animates this root; all equipment, including goggles, tilts together.
-  helmet.traverse(part => {
-    if (part instanceof THREE.Mesh) part.geometry.rotateX(-.36);
-  });
-  helmet.userData.sourceTilt = -.36;
+  // The authored peak is level at about -.115 radians including head posture.
+  const shellTilt = -.055;
+  helmet.geometry.rotateX(shellTilt);
+  addMesh(helmet, importedGeometry(1).rotateX(shellTilt), [shell, foam, trim], 'motocross-peak');
+  // Keep the goggles upright at the eye opening independently of shell pitch.
+  // The shared head animation still owns the complete equipment during riding.
+  const goggles = new THREE.Group();
+  goggles.name = 'motocross-goggles';
+  goggles.rotation.x = .06;
+  const eye = new THREE.Vector3(0, 0, -.152);
+  goggles.position.copy(eye.clone().applyAxisAngle(new THREE.Vector3(1, 0, 0), shellTilt))
+    .sub(eye.clone().applyAxisAngle(new THREE.Vector3(1, 0, 0), goggles.rotation.x));
+  helmet.add(goggles);
+  addGoggles(goggles, trim, foam, visorColor);
+  goggles.updateMatrix();
+  // Refit the elastic in the goggles' coordinates instead of rotating an old band
+  // through the newly positioned shell.
+  const strapShell = helmet.geometry.clone().applyMatrix4(goggles.matrix.clone().invert());
+  addStrap(goggles, strapShell);
+  strapShell.dispose();
+  helmet.userData.sourceTilt = shellTilt;
   return helmet;
 }

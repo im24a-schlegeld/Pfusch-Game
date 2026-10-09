@@ -22,7 +22,7 @@ Source: `motocross-helmet-by-radekc-model_files.zip`. Use the clean **thor_helme
 node scripts/build-thor-helmet.mjs '<extracted Thor directory>'
 ```
 
-Side lettering, the rear maker mark and the small printing hanger are removed; molded vents remain. The final export has 4,984 triangles and 60,168 packed bytes. The original goggle lens/frame retain their color controls. The fitted elastic band is 48 mm wide. Shell, peak, goggles and band share the integral helmet's −0.36-radian forward tilt. The `motocross-helmet` and `motocross-peak` surface names stay stable for decals.
+Side lettering, the rear maker mark and the small printing hanger are removed; molded vents remain. The final export has 4,984 triangles and 60,168 packed bytes. The original goggle lens/frame retain their color controls. Shell and peak use a −0.055-radian tilt, keeping the peak almost horizontal on the rider. The goggles use a separate +0.06-radian rotation around the eye opening so they remain upright in the neutral riding pose. The 48 mm elastic band is refitted against the shell in the goggles' coordinate system. The `motocross-helmet` and `motocross-peak` surface names stay stable for decals.
 
 ## Cap and keychains
 

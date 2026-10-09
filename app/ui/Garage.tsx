@@ -23,8 +23,9 @@ const riderParts = [{ id: 'upper', name: 'Oberteil' }, { id: 'helmet', name: 'Ko
 const partNames: Record<Part, string> = { model: 'Dein Motorrad', paint: 'Lack', rims: 'Felgen', extras: 'Motorrad-Extras', upper: 'Oberteil', helmet: 'Helm & Caps', head: 'Helm & Caps', accessory: 'Accessoires' };
 
 /** Collapsing never hides the selected or equipped value. Expanding includes every original ID. */
-function Palette({ title, colors, value, equipped, status, onChange }: {
+function Palette({ title, colors, value, equipped, status, onChange, compactCount = 12 }: {
   title: string; colors: readonly PaletteColor[]; value: string; equipped?: string;
+  compactCount?: number;
   status: (color: PaletteColor) => string; onChange: (value: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -36,7 +37,7 @@ function Palette({ title, colors, value, equipped, status, onChange }: {
   }, [colors]);
   const compact = useMemo(() => {
     const remaining = [...options], chosen = remaining.splice(0, 1);
-    while (chosen.length < 12 && remaining.length) {
+    while (chosen.length < compactCount && remaining.length) {
       let best = 0, distance = -1;
       remaining.forEach((color, index) => {
         const nearest = Math.min(...chosen.map(other => perceptualDistance(color.value, other.value)));
@@ -49,7 +50,7 @@ function Palette({ title, colors, value, equipped, status, onChange }: {
       if (current && !chosen.some(color => color.value === required)) chosen.push(current);
     }
     return chosen;
-  }, [options, value, equipped]);
+  }, [options, value, equipped, compactCount]);
   const selected = options.find(color => color.value === value);
   if (options.length === 1) return <div className="gc-single-color"><i style={{ background: options[0].value }} /><span>{title}: {options[0].name}</span></div>;
   return <fieldset className="gc-palette"><legend>{title}</legend>
@@ -58,7 +59,7 @@ function Palette({ title, colors, value, equipped, status, onChange }: {
       <input type="radio" name={`garage-${title}`} value={color.value} checked={value === color.value} onChange={() => onChange(color.value)} aria-label={`${title}: ${color.name} · ${status(color)}`} />
       <i style={{ background: finishSwatch(color.value) }} />{color.value === DARK_CARBON && <span><strong>DUNKLES KARBON</strong><small>PREMIUM · {status(color)}</small></span>}{value === color.value && <Check size={16} aria-hidden="true" />}
     </label>)}</div>
-    {options.length > 12 && <button className="gc-text-button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Weniger Farben' : `Weitere Farben (${options.length})`} <ChevronDown size={14} aria-hidden="true" /></button>}
+    {options.length > compactCount && <button className="gc-text-button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Weniger Farben' : `Weitere Farben (${options.length})`} <ChevronDown size={14} aria-hidden="true" /></button>}
   </fieldset>;
 }
 
@@ -226,7 +227,7 @@ export default function Garage({ player, products, update, services, notify, sta
         {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps am Hüftclip</button></div>}
         {part === 'helmet' && <div className="gc-helmet-options">
           <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name}</button>)}</div></fieldset>
-          <Palette title="Helmfarbe" colors={HELMET_COLORS.map(color => ({ ...color, name: colorName(color.value) }))} value={appearance.helmetColor} equipped={player.helmetColor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetColor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetColor => editHelmet({ helmetColor })} />
+          <Palette title="Helmfarbe" compactCount={16} colors={HELMET_COLORS} value={appearance.helmetColor} equipped={player.helmetColor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetColor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetColor => editHelmet({ helmetColor })} />
           <Palette title="Visier / Brillenglas" colors={VISOR_COLORS} value={appearance.helmetVisor} equipped={player.helmetVisor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetVisor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetVisor => editHelmet({ helmetVisor })} />
           {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}
         </div>}

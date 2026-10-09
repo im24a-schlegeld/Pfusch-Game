@@ -20,7 +20,10 @@ const ray = (x: number, y: number) =>
 // Source-space assertions are independent of the shared authored riding tilt.
 const sourceHelmet = (color: string) => {
   const helmet = createMotocrossHelmet(color);
-  helmet.traverse(part => { if (part instanceof Mesh) part.geometry.rotateX(.36); });
+  helmet.geometry.rotateX(-helmet.userData.sourceTilt);
+  (helmet.getObjectByName('motocross-peak') as Mesh).geometry.rotateX(-helmet.userData.sourceTilt);
+  const goggles = helmet.getObjectByName('motocross-goggles')!;
+  goggles.position.set(0, 0, 0); goggles.rotation.set(0, 0, 0);
   return helmet;
 };
 
@@ -170,20 +173,24 @@ describe('independent motocross equipment geometry', () => {
       }
       expect(Math.sqrt(closest)).toBeLessThan(.008);
     }
-    const strap = helmet.getObjectByName('goggle-strap') as Mesh;
+    const fitted = createMotocrossHelmet('#d7dbd7');
+    fitted.updateMatrixWorld(true);
+    const goggles = fitted.getObjectByName('motocross-goggles')!;
+    const strap = fitted.getObjectByName('goggle-strap') as Mesh;
     expect(strap.userData.width).toBe(.048);
     for (const angle of [1.8, 2.3, Math.PI, 4, 4.5]) for (const y of [-.011, .004, .019]) {
       const direction = new Vector3(Math.sin(angle), 0, -Math.cos(angle));
-      const cast = new Raycaster(new Vector3(0, y, 0).addScaledVector(direction, 1), direction.negate());
-      const skin = cast.intersectObject(helmet, false)[0];
+      const origin = goggles.localToWorld(new Vector3(0, y, 0).addScaledVector(direction, 1));
+      const cast = new Raycaster(origin, direction.negate().transformDirection(goggles.matrixWorld));
+      const skin = cast.intersectObject(fitted, false)[0];
       const textile = cast.intersectObject(strap, false)[0];
       expect(skin).toBeDefined(); expect(textile).toBeDefined();
       expect(skin.distance - textile.distance).toBeGreaterThan(0);
       expect(skin.distance - textile.distance).toBeLessThan(.02);
     }
     const strapBounds = new Box3().setFromObject(strap, true);
-    const frameBounds = new Box3().setFromObject(helmet.getObjectByName('motocross-goggle-frame')!, true);
-    const mounts = helmet.getObjectsByProperty('name', 'goggle-strap-outrigger');
+    const frameBounds = new Box3().setFromObject(fitted.getObjectByName('motocross-goggle-frame')!, true);
+    const mounts = fitted.getObjectsByProperty('name', 'goggle-strap-outrigger');
     expect(mounts).toHaveLength(2);
     for (const mount of mounts) {
       const bounds = new Box3().setFromObject(mount, true);
@@ -192,15 +199,21 @@ describe('independent motocross equipment geometry', () => {
     }
   });
 
-  it('tilts shell, peak, goggles and strap together without moving the shared head joint', () => {
+  it('keeps goggles level independently of the gentler shell pitch and shared head joint', () => {
     const helmet = createMotocrossHelmet('#d7dbd7');
-    expect(helmet.userData.sourceTilt).toBe(-.36);
+    expect(helmet.userData.sourceTilt).toBeGreaterThan(-.36);
+    expect(helmet.userData.sourceTilt).toBeLessThan(0);
     expect(helmet.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
     expect(helmet.position.toArray()).toEqual([0, 0, 0]);
     const lens = helmet.getObjectByName('motocross-goggle-lens') as Mesh;
-    const p = new Vector3().fromBufferAttribute(lens.geometry.getAttribute('position'), 0).applyAxisAngle(new Vector3(1, 0, 0), .36);
+    const p = new Vector3().fromBufferAttribute(lens.geometry.getAttribute('position'), 0);
     expect(p.x).toBeCloseTo(-.09, 5);
     expect(p.y).toBeCloseTo(-.028, 5);
+    helmet.rotation.x = -.06;
+    helmet.updateMatrixWorld(true);
+    const upright = new Vector3(0, 1, 0).transformDirection(lens.matrixWorld);
+    expect(upright.y).toBeCloseTo(1, 5);
+    expect(upright.z).toBeCloseTo(0, 5);
     const band = helmet.getObjectByName('goggle-strap') as Mesh;
     expect(band.userData.width).toBe(.048);
   });
