@@ -7,8 +7,6 @@ type HelmetMesh = THREE.Mesh<
   THREE.MeshStandardMaterial[]
 >;
 const lerp = THREE.MathUtils.lerp;
-const smooth = THREE.MathUtils.smoothstep;
-const wrappedAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const apertureAngle = 1.25;
 
 function material(color: string, metalness = 0, roughness = 0.65) {
@@ -277,7 +275,14 @@ function strapSurface(geometry: THREE.BufferGeometry) {
 
 /** A 48 mm band fitted to the shell, with continuous textile frame transitions. */
 function addStrap(parent: THREE.Object3D, shellGeometry: THREE.BufferGeometry) {
-  const sample = strapSurface(shellGeometry);
+  // Intersect the shell with parallel inclined planes: the band wraps around
+  // the head, but its top/bottom edges remain straight in the side view.
+  const frontZ = -.096, frontY = .003;
+  const slope = .045 / .246, pitch = Math.atan(slope);
+  const bandToGoggles = new THREE.Matrix4().makeRotationX(-pitch);
+  bandToGoggles.setPosition(0, frontY - slope * frontZ, 0);
+  const bandShell = shellGeometry.clone().applyMatrix4(bandToGoggles.clone().invert());
+  const sample = strapSurface(bandShell);
   const fabric = material('#171b1e', 0, 0.96);
   const edging = material('#14181a', 0, 0.98);
   const startAngle = apertureAngle + 0.025;
@@ -285,14 +290,12 @@ function addStrap(parent: THREE.Object3D, shellGeometry: THREE.BufferGeometry) {
   const steps = 128;
   const across = [-1, -0.94, -0.78, -0.4, 0, 0.4, 0.78, 0.94, 1];
   const halfWidth = 0.024;
-  const centerY = (a: number) => 0.003 +
-    0.045 * smooth(Math.abs(wrappedAngle(a)), startAngle, 2.8);
   const lift = (v: number) => Math.abs(v) > 0.94 ? 0.0010 :
     Math.abs(v) > 0.78 ? 0.0016 : 0.0019;
   const onShell = (a: number, v: number) => {
-    const y = centerY(a) + v * halfWidth;
     const direction = new THREE.Vector3(Math.sin(a), 0, -Math.cos(a));
-    return { p: sample(y, direction), direction };
+    const p = sample(v * halfWidth, direction).applyMatrix4(bandToGoggles);
+    return { p, direction: direction.transformDirection(bandToGoggles) };
   };
   const surface: Point[] = [], inside: Point[] = [], faces: number[] = [];
   for (let i = 0; i <= steps; i++) {
@@ -325,18 +328,9 @@ function addStrap(parent: THREE.Object3D, shellGeometry: THREE.BufferGeometry) {
       const t = row / rows;
       for (const v of across) {
         const { p, direction } = onShell(a, v);
-        const front = new THREE.Vector3(side * 0.102, 0.003 + v * halfWidth, -0.096);
-        const tangent = new THREE.Vector3(side * 0.26, 0, 1).normalize();
-        const distance = front.distanceTo(p);
-        const control1 = front.clone().addScaledVector(tangent, distance / 3);
-        const contactTangent = new THREE.Vector3(side * Math.cos(startAngle), 0,
-          Math.sin(startAngle)).normalize();
-        const control2 = p.clone().addScaledVector(contactTangent, -distance / 3);
-        const u = 1 - t;
-        const point = front.clone().multiplyScalar(u * u * u)
-          .addScaledVector(control1, 3 * u * u * t)
-          .addScaledVector(control2, 3 * u * t * t)
-          .addScaledVector(p, t * t * t);
+        const front = new THREE.Vector3(side * 0.102, v * halfWidth,
+          frontZ / Math.cos(pitch)).applyMatrix4(bandToGoggles);
+        const point = front.lerp(p, t);
         const normal = new THREE.Vector3(side, 0, 0).lerp(direction, t).normalize();
         outer.push(point.clone().addScaledVector(normal, lift(v)).toArray() as Point);
         inner.push(point.addScaledVector(normal, 0.00035).toArray() as Point);
@@ -356,6 +350,7 @@ function addStrap(parent: THREE.Object3D, shellGeometry: THREE.BufferGeometry) {
       [fabric, fabric, edging], 'goggle-strap-outrigger');
     mount.userData.integratedStrapTransition = true;
   }
+  bandShell.dispose();
 }
 
 /** The same adult head transform owns this equipment on every motorcycle. */

@@ -179,11 +179,11 @@ describe('independent motocross equipment geometry', () => {
     const strap = fitted.getObjectByName('goggle-strap') as Mesh;
     expect(strap.userData.width).toBe(.048);
     for (const angle of [1.8, 2.3, Math.PI, 4, 4.5]) for (const offset of [-.014, 0, .014]) {
-      const around = Math.abs(Math.atan2(Math.sin(angle), Math.cos(angle)));
-      const t = Math.max(0, Math.min(1, (around - 1.275) / (2.8 - 1.275)));
-      const y = .003 + .045 * t * t * (3 - 2 * t) + offset;
-      const direction = new Vector3(Math.sin(angle), 0, -Math.cos(angle));
-      const origin = goggles.localToWorld(new Vector3(0, y, 0).addScaledVector(direction, 1));
+      const pitch = -Math.atan2(.045, .246), axis = new Vector3(1, 0, 0);
+      const direction = new Vector3(Math.sin(angle), 0, -Math.cos(angle)).applyAxisAngle(axis, pitch);
+      const across = new Vector3(0, offset, 0).applyAxisAngle(axis, pitch);
+      const origin = goggles.localToWorld(new Vector3(0, .003 + .045 * .096 / .246, 0)
+        .add(across).addScaledVector(direction, 1));
       const cast = new Raycaster(origin, direction.negate().transformDirection(goggles.matrixWorld));
       const skin = cast.intersectObject(fitted, false)[0];
       const textile = cast.intersectObject(strap, false)[0];
@@ -200,6 +200,20 @@ describe('independent motocross equipment geometry', () => {
       expect(bounds.intersectsBox(strapBounds)).toBe(true);
       expect(bounds.intersectsBox(frameBounds)).toBe(true);
     }
+    // Every longitudinal strip stays in one inclined plane, including the
+    // frame transitions. A bowed side profile would leave these planes.
+    const slope = .045 / .246, intercept = .003 + slope * .096;
+    const planes = [-1, -.94, -.78, -.4, 0, .4, .78, .94, 1]
+      .map(v => intercept + v * .024 * Math.sqrt(1 + slope * slope));
+    let deviation = 0;
+    for (const part of [strap, ...mounts] as Mesh[]) {
+      const positions = part.geometry.getAttribute('position');
+      for (let i = 0; i < positions.count; i++) {
+        const height = positions.getY(i) - slope * positions.getZ(i);
+        deviation = Math.max(deviation, Math.min(...planes.map(plane => Math.abs(height - plane))));
+      }
+    }
+    expect(deviation).toBeLessThan(.000002);
   });
 
   it('keeps goggles level independently of the gentler shell pitch and shared head joint', () => {
