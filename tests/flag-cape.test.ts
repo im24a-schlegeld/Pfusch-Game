@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Box3, DoubleSide, Group, Matrix4, Mesh, MeshStandardMaterial, Texture, TextureLoader, Vector3 } from 'three';
+import { DoubleSide, Group, Mesh, MeshStandardMaterial, Texture, TextureLoader, Vector3 } from 'three';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { addFlagCape, FLAG_CAPE, flagCapeUv } from '../app/game/flagCape';
@@ -22,6 +22,32 @@ function cape() {
   const controller = addFlagCape(torso, product, loader)!;
   return { bike, torso, texture, loader, ...controller };
 }
+
+function clothMeasures(mesh: Mesh) {
+  mesh.updateWorldMatrix(true, false);
+  const positions = mesh.geometry.getAttribute('position');
+  const { rows, columns, width, length } = FLAG_CAPE;
+  const scale = mesh.getWorldScale(new Vector3());
+  const a = new Vector3(), b = new Vector3();
+  const distance = (first: number, second: number) => a.fromBufferAttribute(positions, first).applyMatrix4(mesh.matrixWorld)
+    .distanceTo(b.fromBufferAttribute(positions, second).applyMatrix4(mesh.matrixWorld));
+  let horizontal = 0, vertical = 0, minimumRatio = Infinity, maximumRatio = 0;
+  for (let row = 0; row <= rows; row++) for (let column = 0; column <= columns; column++) {
+    const vertex = row * (columns + 1) + column;
+    if (column < columns) {
+      const edge = distance(vertex, vertex + 1), ratio = edge / (width / columns * scale.x);
+      horizontal += edge; minimumRatio = Math.min(minimumRatio, ratio); maximumRatio = Math.max(maximumRatio, ratio);
+    }
+    if (row < rows) {
+      const edge = distance(vertex, vertex + columns + 1), ratio = edge / (length / rows * scale.y);
+      vertical += edge; minimumRatio = Math.min(minimumRatio, ratio); maximumRatio = Math.max(maximumRatio, ratio);
+    }
+  }
+  return { scale, width: horizontal / (rows + 1), length: vertical / (columns + 1), minimumRatio, maximumRatio };
+}
+
+const pointAt = (mesh: Mesh, vertex: number) => new Vector3().fromBufferAttribute(mesh.geometry.getAttribute('position'), vertex);
+const pinIndices = Array.from({ length: FLAG_CAPE.columns + 1 }, (_, vertex) => vertex);
 describe('original PFUSCH flag as a neck cape', () => {
   it('turns the untouched flag a quarter-turn so its original left eyelet edge is the collar', () => {
     const { mesh, texture, loader } = cape();
@@ -31,8 +57,8 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(texture.flipY).toBe(true);
     expect(mesh.material.side).toBe(DoubleSide);
     expect(mesh.material.color.getHexString()).toBe('ffffff');
-    expect(mesh.geometry.getAttribute('position').count).toBe(525);
-    expect(mesh.geometry.index!.count / 3).toBe(960);
+    expect(mesh.geometry.getAttribute('position').count).toBe((FLAG_CAPE.columns + 1) * (FLAG_CAPE.rows + 1));
+    expect(mesh.geometry.index!.count / 3).toBe(FLAG_CAPE.columns * FLAG_CAPE.rows * 2);
     const uv = mesh.geometry.getAttribute('uv');
     expect([uv.getX(0), uv.getY(0)]).toEqual([0, 0]);
     expect([uv.getX(FLAG_CAPE.columns), uv.getY(FLAG_CAPE.columns)]).toEqual([0, 1]);
@@ -61,71 +87,63 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(lastEye.position.x - positions.getX(last)).toBeLessThan(.005);
     expect(mesh.getObjectByName('flag-cape-knot')).toBeDefined();
     expect(mesh.getObjectByName('flag-cape-knot')!.position.x).toBeCloseTo(0, 8);
-    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.58);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(FLAG_CAPE.neckY - .03);
     expect(mesh.getObjectByName('flag-eyelet-connecting-tie')).toBeDefined();
-    const center = Math.floor(FLAG_CAPE.columns / 2), hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1) + center;
-    const previous = hem - (FLAG_CAPE.columns + 1);
-    // The extra length curls rearward over the seat, with a continuing sloped hem.
-    expect(positions.getZ(hem)).toBeGreaterThan(.3);
-    expect(positions.getY(hem)).toBeLessThan(.09);
-    expect(Math.abs(positions.getY(hem) - positions.getY(previous))).toBeGreaterThan(.001);
-    expect(positions.getZ(hem)).toBeGreaterThan(positions.getZ(previous));
   });
-  it.each(['125', 'moped', 'scooter', '450', '701'] as const)('keeps the lower flag above the actual %s seat and tail through idle, riding and wheelies', id => {
+  it('keeps the same material dimensions on all five bikes after rest and riding', () => {
     const loader = vi.spyOn(TextureLoader.prototype, 'load').mockImplementation(() => new Texture());
+    const measurements: { id: string; phase: string; width: number; length: number }[] = [];
     try {
-      const player = newPlayer(); player.bike = id; player.equipped.cape = product.id;
-      const bike = makeBike(player, [product]);
-      const flag = bike.root.getObjectByName('pfusch-flag-cape') as Mesh;
-      const positions = flag.geometry.getAttribute('position'), original = positions.array;
-      bike.body.updateWorldMatrix(true, true);
-      const inverse = new Matrix4().copy(bike.body.matrixWorld).invert(), transform = new Matrix4();
-      const bounds = new Box3(), point = new Vector3();
-      let highest = (bike.body.userData.tailContact as number[])[1];
-      bike.body.traverse(object => {
-        if (!(object instanceof Mesh) || !/seat|saddle/i.test(object.userData.importedPart ?? '')) return;
-        object.geometry.computeBoundingBox();
-        transform.multiplyMatrices(inverse, object.matrixWorld);
-        bounds.copy(object.geometry.boundingBox!).applyMatrix4(transform);
-        highest = Math.max(highest, bounds.max.y);
-      });
-      for (const [speed, pitch] of [[0, 0], [40, 0], [10, 1.1], [55, 1.1]]) {
-        bike.root.rotation.x = pitch;
-        bike.animateRider({ wheelie: pitch, steer: .2, landing: 0, bikePitch: pitch }, 1 / 60);
-        bike.animateAccessories({ speed, reducedMotion: true }, 1 / 60);
-        bike.body.updateWorldMatrix(true, true);
-        inverse.copy(bike.body.matrixWorld).invert();
-        transform.multiplyMatrices(inverse, flag.matrixWorld);
-        for (let vertex = 8 * (FLAG_CAPE.columns + 1); vertex < positions.count; vertex++) {
-          point.fromBufferAttribute(positions, vertex).applyMatrix4(transform);
-          expect(point.y, `${id}, speed=${speed}, pitch=${pitch}, vertex=${vertex}`).toBeGreaterThan(highest + .035);
+      for (const id of ['125', 'moped', 'scooter', '450', '701']) {
+        const player = newPlayer(); player.bike = id; player.equipped.cape = product.id;
+        const bike = makeBike(player, [product]);
+        const flag = bike.root.getObjectByName('pfusch-flag-cape') as Mesh;
+        const positions = flag.geometry.getAttribute('position'), original = positions.array;
+        // Initial construction settles 90 fixed steps. Re-evaluate after the
+        // imported rider counter-scale is installed, as the real garage does.
+        bike.animateAccessories({ speed: 0, reducedMotion: true }, 1 / 60);
+        for (const phase of ['rest', 'riding']) {
+          if (phase === 'riding') for (let frame = 0; frame < 300; frame++)
+            bike.animateAccessories({ speed: 40, lateralAcceleration: 4 }, 1 / 60);
+          const measure = clothMeasures(flag), detail = `${id} ${phase}: ${JSON.stringify(measure)}`;
+          for (const scale of measure.scale.toArray()) expect(scale).toBeCloseTo(1.45, 8);
+          expect(Math.abs(measure.width / (FLAG_CAPE.width * 1.45) - 1), detail).toBeLessThan(.04);
+          expect(Math.abs(measure.length / (FLAG_CAPE.length * 1.45) - 1), detail).toBeLessThan(.04);
+          expect(measure.minimumRatio, detail).toBeGreaterThan(.70);
+          expect(measure.maximumRatio, detail).toBeLessThan(1.30);
+          measurements.push({ id, phase, width: measure.width, length: measure.length });
+          expect(positions.array).toBe(original);
         }
-        expect(positions.array).toBe(original);
+      }
+      for (const phase of ['rest', 'riding']) for (const dimension of ['width', 'length'] as const) {
+        const values = measurements.filter(measure => measure.phase === phase).map(measure => measure[dimension]);
+        expect(Math.max(...values) / Math.min(...values), `${phase} ${dimension} across bikes`).toBeLessThan(1.04);
       }
     } finally { loader.mockRestore(); }
-  });
-  it('keeps every neck attachment fixed through wind, steering, wheelies and landings', () => {
+  }, 120000);
+  it('keeps the wrapped collar fixed while the remaining fabric and hem move', () => {
     const { bike, torso, mesh, update } = cape();
     const attribute = mesh.geometry.getAttribute('position');
     const positions = attribute.array as Float32Array;
-    const attachment = Array.from(positions.slice(0, (FLAG_CAPE.columns + 1) * 3));
+    const attachment = pinIndices.map(vertex => pointAt(mesh, vertex));
+    const firstFreeRow = FLAG_CAPE.columns + 1;
+    const fabric = Array.from({ length: FLAG_CAPE.columns + 1 }, (_, vertex) => pointAt(mesh, firstFreeRow + vertex));
     const knot = mesh.getObjectByName('flag-cape-knot')!;
     const knotPosition = knot.position.toArray();
     const skeletonPosition = torso.position.toArray();
     for (let frame = 0; frame < 240; frame++) {
       bike.rotation.x = Math.sin(frame / 60) * 1.1; bike.rotation.z = Math.sin(frame / 30) * .2;
       update({ speed: 55, lateralAcceleration: Math.sin(frame / 18) * 18, landing: frame === 80 ? 1 : 0 }, 1 / 60);
-      expect(Array.from(positions.slice(0, attachment.length))).toEqual(attachment);
+      for (let pin = 0; pin < pinIndices.length; pin++) expect(pointAt(mesh, pinIndices[pin]).toArray()).toEqual(attachment[pin].toArray());
       expect(torso.position.toArray()).toEqual(skeletonPosition);
       expect(knot.position.toArray()).toEqual(knotPosition);
     }
     expect(attribute.array).toBe(positions);
+    expect(fabric.some((point, vertex) => point.distanceTo(pointAt(mesh, firstFreeRow + vertex)) > .002)).toBe(true);
     for (let vertex = 0; vertex < attribute.count; vertex++) {
       const x = attribute.getX(vertex), y = attribute.getY(vertex), z = attribute.getZ(vertex);
       expect(Number.isFinite(x + y + z)).toBe(true);
-      expect(Math.abs(x)).toBeLessThanOrEqual(.700001);
-      expect(y).toBeGreaterThanOrEqual(-.460001); expect(y).toBeLessThanOrEqual(1.650001);
-      expect(z).toBeGreaterThan(-.17); expect(z).toBeLessThanOrEqual(1.280001);
+      expect(Math.min(...attachment.map(anchor => anchor.distanceTo(new Vector3(x, y, z))))).toBeLessThan(FLAG_CAPE.length + FLAG_CAPE.width);
       const normal = mesh.geometry.getAttribute('normal');
       expect(Math.hypot(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex))).toBeCloseTo(1, 5);
     }
@@ -143,6 +161,52 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(Array.from(positions)).toEqual(reduced);
     update({ speed: Infinity, lateralAcceleration: NaN }, 0);
     expect(Array.from(positions)).toEqual(reduced);
+  });
+  it('reaches the same cloth state after 300 fixed steps at 30, 60 and 120 Hz', () => {
+    const results = [30, 60, 120].map(rate => {
+      const { mesh, update } = cape();
+      for (let frame = 0; frame < rate * 5; frame++)
+        update({ speed: 38, lateralAcceleration: 3, longitudinalAcceleration: 1 }, 1 / rate);
+      return Array.from(mesh.geometry.getAttribute('position').array);
+    });
+    for (const result of results.slice(1)) {
+      let maximum = 0;
+      for (let i = 0; i < result.length; i++) maximum = Math.max(maximum, Math.abs(result[i] - results[0][i]));
+      expect(maximum).toBeLessThan(1e-5);
+    }
+  });
+  it('preserves free cloth inertia when the torso turns, while the wrapped collar follows', () => {
+    const { torso, mesh, update } = cape();
+    mesh.updateWorldMatrix(true, false);
+    const hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1) + FLAG_CAPE.columns / 2;
+    const worldHem = pointAt(mesh, hem).applyMatrix4(mesh.matrixWorld);
+    const localHem = pointAt(mesh, hem);
+    const worldPin = pointAt(mesh, 0).applyMatrix4(mesh.matrixWorld);
+    const pins = pinIndices.map(vertex => pointAt(mesh, vertex).toArray());
+    torso.rotation.x -= .25;
+    // Half a simulation step isolates frame transport from subsequent forces.
+    update({ speed: 0 }, 1 / 120);
+    mesh.updateWorldMatrix(true, false);
+    expect(pointAt(mesh, hem).applyMatrix4(mesh.matrixWorld).distanceTo(worldHem)).toBeLessThan(1e-6);
+    expect(pointAt(mesh, hem).distanceTo(localHem)).toBeGreaterThan(.02);
+    expect(pointAt(mesh, 0).applyMatrix4(mesh.matrixWorld).distanceTo(worldPin)).toBeGreaterThan(.05);
+    expect(pinIndices.map(vertex => pointAt(mesh, vertex).toArray())).toEqual(pins);
+  });
+  it('does not lift cloth onto the height of a distant finite seat volume', () => {
+    const body = new Group(), torso = new Group();
+    body.userData.importedBike = '125';
+    // High bodywork well in front of the rider must not become an infinite
+    // horizontal obstacle underneath every cloth point.
+    body.userData.tailContact = [0, 1.1, -4];
+    body.add(torso); torso.position.set(0, .8, .2); torso.rotation.x = -.35;
+    const { mesh, update } = addFlagCape(torso, product, () => new Texture())!;
+    update({ speed: 0, reducedMotion: true }, 1 / 60);
+    mesh.updateWorldMatrix(true, false);
+    const hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1);
+    let lowest = Infinity;
+    for (let column = 0; column <= FLAG_CAPE.columns; column++)
+      lowest = Math.min(lowest, pointAt(mesh, hem + column).applyMatrix4(mesh.matrixWorld).y);
+    expect(lowest).toBeLessThan(.8);
   });
   it('uses the current rider pose for gravity before the renderer updates world matrices', () => {
     const pending = cape(), rendered = cape();
@@ -167,11 +231,14 @@ describe('original PFUSCH flag as a neck cape', () => {
     const bag = new Group(); bag.name = 'crossbody-assembly-v43';
     bagged.torso.add(bag);
     for (const item of [bare, bagged]) item.update({ speed: 0, reducedMotion: true }, 1 / 60);
-    const middle = 11 * (FLAG_CAPE.columns + 1) + FLAG_CAPE.columns / 2;
-    const bareZ = bare.mesh.geometry.getAttribute('position').getZ(middle);
-    const bagZ = bagged.mesh.geometry.getAttribute('position').getZ(middle);
-    expect(bareZ).toBeLessThan(.20);
-    expect(bagZ - bareZ).toBeGreaterThan(.10);
+    const positions = bagged.mesh.geometry.getAttribute('position');
+    let displaced = 0;
+    for (let vertex = 0; vertex < positions.count; vertex++) {
+      const a = pointAt(bare.mesh, vertex), b = pointAt(bagged.mesh, vertex);
+      displaced = Math.max(displaced, a.distanceTo(b));
+      if (b.z > .10) expect(Math.hypot(b.x / .20, (b.y - .16) / .22, (b.z - .18) / .13)).toBeGreaterThanOrEqual(.9999);
+    }
+    expect(displaced).toBeGreaterThan(.02);
   });
   it('owns and releases only its own texture with the mesh material', () => {
     const { mesh, texture } = cape();

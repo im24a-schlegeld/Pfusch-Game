@@ -33,6 +33,7 @@ export function createPreviewColorUpdater(
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+        if (material.userData.fixedHardwareFinish) continue;
         const previousSlot = material.userData.appearanceColorSlot as ColorSlot | undefined;
         if (previousSlot === 'paint' || previousSlot === 'rims') { slots[previousSlot].add(material); continue; }
         const importedRim = material.userData.rimPalette ?? /(^|[_\s-])rims?(?=\d|$|[_\s-])/i.test(material.name);

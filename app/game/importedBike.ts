@@ -8,6 +8,7 @@ import type { CarriedCapMotionInput } from './carriedCapMotion';
 import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { getImportedBikeAsset, type ImportedBikeId, type ImportedBikeMaterial } from './importedBikeAsset';
 import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
+import { createImportedHardwareFinisher } from './importedHardwareFinish';
 
 interface ImportedRiderController {
   group: THREE.Group;
@@ -79,6 +80,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     return material;
   });
   const materialByName = new Map(manifest.materials.map((definition, index) => [definition.name, materials[index]]));
+  const finishHardware = createImportedHardwareFinisher(id, binary, player.paint);
   for (const part of manifest.parts) {
     const geometry = new THREE.BufferGeometry();
     // Copy once: cached CPU buffers are immutable and scene disposal stays local.
@@ -108,6 +110,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     mesh.userData.importedPart = part.name;
     const definition = typeof part.material === 'number' ? manifest.materials[part.material] : manifest.materials.find((candidate) => candidate.name === part.material);
     mesh.userData.bikePaintSurface = part.paintable ?? definition?.paintable ?? /livery|paint|fairing|bodywork/i.test(material.name);
+    finishHardware(mesh, part);
     mesh.castShadow = true; mesh.receiveShadow = true;
     parent.add(mesh);
   }

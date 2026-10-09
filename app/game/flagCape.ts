@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import type { Product } from '../domain/types';
 import { imagePath } from '../domain/preview';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
+import { createFlagCloth } from './flagCloth';
 
 export const FLAG_CAPE = Object.freeze({
-  columns: 20, rows: 24, width: .626, length: 1.04,
-  neckY: .619, neckZ: .012, collarRadiusX: .15, collarRadiusZ: .14,
+  columns: 10, rows: 14, width: .626, length: 1.04,
+  neckY: .64, neckZ: .012, collarRadiusX: .106, collarRadiusZ: .096,
   collarStart: -Math.PI + .075, collarEnd: Math.PI - .075,
 });
 type Artwork = NonNullable<NonNullable<Product['preview']>['artwork']>;
@@ -21,26 +22,32 @@ function collarPoint(u: number) {
   return new THREE.Vector3(Math.sin(angle) * collarRadiusX, collarY(angle), neckZ + Math.cos(angle) * collarRadiusZ);
 }
 
-/** One cached conservative surface above the actual saddle and rear bodywork. */
+/** Finite seat/tail and rear-wheel volumes, in the actual bike's frame. */
 function bikeClearance(torso: THREE.Object3D | null) {
   let body = torso;
   while (body && !body.userData.importedBike) body = body.parent;
   if (!body) return undefined;
-  const tail = body.userData.tailContact as readonly number[] | undefined;
-  const contact = body.userData.riderSeatContact as { surfaceY: number } | undefined;
-  let top = Math.max(tail?.[1] ?? -Infinity, contact?.surfaceY ?? -Infinity);
   body.updateWorldMatrix(true, true);
   const inverse = new THREE.Matrix4().copy(body.matrixWorld).invert();
   const transform = new THREE.Matrix4(), bounds = new THREE.Box3();
+  const seat = new THREE.Box3(), wheel = new THREE.Box3();
   body.traverse(object => {
-    if (!(object instanceof THREE.Mesh) || !/seat|saddle/i.test(object.userData.importedPart ?? '')) return;
+    if (!(object instanceof THREE.Mesh)) return;
+    const name = String(object.userData.importedPart ?? '');
+    const target = /seat|saddle/i.test(name) ? seat : /rearWheel/i.test(name) ? wheel : undefined;
+    if (!target) return;
     object.geometry.computeBoundingBox();
     if (!object.geometry.boundingBox) return;
     transform.multiplyMatrices(inverse, object.matrixWorld);
     bounds.copy(object.geometry.boundingBox).applyMatrix4(transform);
-    top = Math.max(top, bounds.max.y);
+    target.union(bounds);
   });
-  return Number.isFinite(top) ? { body, top: top + .045 } : undefined;
+  const tail = body.userData.tailContact as readonly number[] | undefined;
+  if (tail) {
+    seat.expandByPoint(new THREE.Vector3(tail[0] - .12, tail[1] - .045, tail[2] - .10));
+    seat.expandByPoint(new THREE.Vector3(tail[0] + .12, tail[1] + .015, tail[2] + .10));
+  }
+  return { body, boxes: [seat, wheel].filter(box => !box.isEmpty()).map(box => box.expandByScalar(.025)) };
 }
 
 export function flagCapeUv(artwork: Artwork) {
@@ -76,122 +83,152 @@ export function createFlagCapeGeometry() {
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3).setUsage(THREE.DynamicDrawUsage));
   geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  geometry.boundingBox = new THREE.Box3(new THREE.Vector3(-.75, -.48, -.17), new THREE.Vector3(.75, 1.7, 1.3));
-  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, .6, .59), 1.55);
+  geometry.boundingBox = new THREE.Box3(new THREE.Vector3(-1.2, -.65, -1.1), new THREE.Vector3(1.2, 1.9, 1.3));
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, .64, .012), 1.35);
   return geometry;
 }
 
-/** The short eyelet edge wraps around the neck; its tied corners stay fixed. */
+/** Fixed material lengths, gravity and inertia; only the neck supports follow the rider. */
 export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   const geometry = mesh.geometry;
   const position = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const points = position.array as Float32Array;
   const normal = geometry.getAttribute('normal') as THREE.BufferAttribute;
-  const points = position.array as Float32Array, normals = normal.array as Float32Array;
-  const indices = geometry.index!.array;
-  const inverse = new THREE.Matrix4(), down = new THREE.Vector3(), back = new THREE.Vector3(), direction = new THREE.Vector3();
+  const normals = normal.array as Float32Array, indices = geometry.index!.array;
+  const { columns, rows, width, length } = FLAG_CAPE;
+  const cloth = createFlagCloth(columns, rows, width, length, points);
   const clearance = bikeClearance(mesh.parent);
-  const torsoToBike = new THREE.Matrix4(), bikeToTorso = new THREE.Matrix4(), bikePoint = new THREE.Vector3();
-  let phase = 0, wind = 0, sway = 0, impulse = 0, lastLanding = 0;
-  const { rows, columns, length, width, neckZ, collarStart, collarEnd, collarRadiusX, collarRadiusZ } = FLAG_CAPE;
-
-  const shape = (reducedMotion: boolean) => {
-    // The pouch is added after the cape during rider assembly. Reserve its
-    // volume only when it is actually equipped, not behind every bare back.
-    let hasBag = false;
-    for (const child of mesh.parent?.children ?? [])
-      if (child.name === 'crossbody-assembly-v43') { hasBag = true; break; }
-    down.set(0, -1, 0); back.set(0, 0, 1);
+  const inverse = new THREE.Matrix4(), lastWorld = new THREE.Matrix4(), rebase = new THREE.Matrix4();
+  const torsoToBike = new THREE.Matrix4(), bikeToTorso = new THREE.Matrix4();
+  const down = new THREE.Vector3(), back = new THREE.Vector3(), force = new THREE.Vector3();
+  const point = new THREE.Vector3();
+  let phase = 0, remainder = 0, hasWorld = false, hasBag = false, lastLanding = 0;
+  let scaleChanged = false;
+  let reducedKey = '', wasReduced = false;
+  // A conservative fit around the real garment loft, not an oversized bubble
+  // that pushes the flag away from the rider's back.
+  const profile = [
+    [-.10, .228, .150], [.18, .235, .144], [.37, .248, .151],
+    [.52, .265, .132], [.568, .235, .108], [.588, .188, .096],
+    [.607, .116, .074], [.631, .082, .065], [.65, .064, .064], [.80, .064, .064],
+  ];
+  const collide = (vertex: number) => {
+    const i = vertex * 3;
+    let x = points[i], y = points[i + 1], z = points[i + 2];
+    if (y > profile[0][0] && y < profile[profile.length - 1][0]) {
+      let row = 1;
+      while (row < profile.length - 1 && y > profile[row][0]) row++;
+      const a = profile[row - 1], b = profile[row], t = (y - a[0]) / (b[0] - a[0]);
+      const rx = a[1] + (b[1] - a[1]) * t, rz = a[2] + (b[2] - a[2]) * t;
+      const radialSquared = x * x / (rx * rx) + z * z / (rz * rz);
+      if (radialSquared < 1) {
+        const radial = Math.sqrt(radialSquared);
+        if (radial > 1e-7) {
+          // Follow the sloping shoulder/neck surface normal. A horizontal-only
+          // push widens the collar instead of letting it slide up the neck.
+          const nx = x / (rx * rx), nz = z / (rz * rz);
+          const ny = -x * x * (b[1] - a[1]) / ((b[0] - a[0]) * rx ** 3)
+            - z * z * (b[2] - a[2]) / ((b[0] - a[0]) * rz ** 3);
+          const correction = (1 - radial) * radial / (nx * nx + ny * ny + nz * nz);
+          x += nx * correction; y += ny * correction; z += nz * correction;
+        } else z = rz;
+      }
+    }
+    if (hasBag && z > .10) {
+      const by = y - .16, bz = z - .18;
+      const squared = x * x / .04 + by * by / .0484 + bz * bz / .0169;
+      if (squared < 1 && squared > 1e-14) {
+        const distance = Math.sqrt(squared);
+        x /= distance; y = .16 + by / distance; z = .18 + bz / distance;
+      }
+    }
+    if (clearance) {
+      point.set(x, y, z).applyMatrix4(torsoToBike);
+      let contact = false;
+      for (const box of clearance.boxes) {
+        if (!box.containsPoint(point)) continue;
+        contact = true;
+        // The finite volume lets the hem fall beside or behind the motorcycle.
+        // Never stretch every lower vertex onto an infinite horizontal plane.
+        let face = 0, nearest = point.x - box.min.x;
+        const right = box.max.x - point.x, bottom = point.y - box.min.y;
+        const top = box.max.y - point.y, front = point.z - box.min.z, rear = box.max.z - point.z;
+        if (right < nearest) { face = 1; nearest = right; }
+        if (bottom < nearest) { face = 2; nearest = bottom; }
+        if (top < nearest) { face = 3; nearest = top; }
+        if (front < nearest) { face = 4; nearest = front; }
+        if (rear < nearest) face = 5;
+        if (face === 0) point.x = box.min.x;
+        else if (face === 1) point.x = box.max.x;
+        else if (face === 2) point.y = box.min.y;
+        else if (face === 3) point.y = box.max.y;
+        else if (face === 4) point.z = box.min.z;
+        else point.z = box.max.z;
+      }
+      if (contact) {
+        point.applyMatrix4(bikeToTorso);
+        x = point.x; y = point.y; z = point.z;
+      }
+    }
+    points[i] = x; points[i + 1] = y; points[i + 2] = z;
+  };
+  const frame = (preserveInertia: boolean) => {
+    scaleChanged = false;
+    hasBag = false;
+    for (const child of mesh.parent?.children ?? []) if (child.name === 'crossbody-assembly-v43') hasBag = true;
     if (mesh.parent) {
-      // Static imported transforms must also follow a newly posed ancestor
-      // before gravity and clearance are evaluated, ahead of the render pass.
       for (let ancestor: THREE.Object3D | null = mesh.parent; ancestor; ancestor = ancestor.parent)
         ancestor.matrixWorldNeedsUpdate = true;
       mesh.parent.updateWorldMatrix(true, false);
       const world = mesh.parent.matrixWorld;
-      const determinant = world.determinant();
-      if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-10) return;
+      if (!world.elements.every(Number.isFinite) || Math.abs(world.determinant()) < 1e-10) return false;
       inverse.copy(world).invert();
-      down.transformDirection(inverse); back.transformDirection(inverse);
+      if (hasWorld) {
+        const old = lastWorld.elements, current = world.elements;
+        scaleChanged = Math.abs(Math.hypot(old[0], old[1], old[2]) - Math.hypot(current[0], current[1], current[2])) > 1e-5;
+      }
+      if (hasWorld && preserveInertia && !scaleChanged) {
+        rebase.multiplyMatrices(inverse, lastWorld);
+        for (let vertex = 0; vertex < points.length / 3; vertex++) {
+          if (cloth.pinned[vertex]) continue;
+          const i = vertex * 3;
+          point.fromArray(points, i).applyMatrix4(rebase).toArray(points, i);
+          point.fromArray(cloth.previous, i).applyMatrix4(rebase).toArray(cloth.previous, i);
+        }
+      }
+      lastWorld.copy(world); hasWorld = true;
       if (clearance) {
         bikeToTorso.multiplyMatrices(inverse, clearance.body.matrixWorld);
         torsoToBike.copy(bikeToTorso).invert();
       }
-    }
-    direction.copy(down).multiplyScalar(1 - .90 * wind).addScaledVector(back, .13 + .97 * wind).normalize();
-    for (let row = 0; row <= rows; row++) {
-      const t = row / rows, spread = smooth(t / .31), shoulders = smooth(t / .10);
-      const travel = length * t;
-      // The idle cloth follows the back, then bends rearward over the seat.
-      // Integrate a short circular bend instead of flattening the long hem at a Y clamp.
-      const bendTravel = Math.max(0, travel - .46), bendAngle = Math.min(1.15, bendTravel / .25);
-      const afterBend = Math.max(0, bendTravel - .25 * 1.15);
-      const drop = Math.min(travel, .46) + .25 * Math.sin(bendAngle) + afterBend * Math.cos(1.15);
-      const rear = .25 * (1 - Math.cos(bendAngle)) + afterBend * Math.sin(1.15);
-      const centerX = (down.x * drop + back.x * rear) * (1 - wind) + direction.x * travel * wind;
-      const centerY = (down.y * drop + back.y * rear) * (1 - wind) + direction.y * travel * wind;
-      const centerZ = (down.z * drop + back.z * rear) * (1 - wind) + direction.z * travel * wind;
-      for (let column = 0; column <= columns; column++) {
-        const u = column / columns, side = u * 2 - 1;
-        const collarAngle = collarStart + (collarEnd - collarStart) * u;
-        const angle = collarAngle + (side * Math.PI / 2 - collarAngle) * spread;
-        const radius = collarRadiusX + (width / 2 - collarRadiusX) * shoulders;
-        const anchorY = collarY(collarAngle);
-        const anchorZ = neckZ + Math.cos(collarAngle) * collarRadiusZ;
-        const vertex = (row * (columns + 1) + column) * 3;
-        if (row === 0) {
-          points[vertex] = Math.sin(collarAngle) * collarRadiusX;
-          points[vertex + 1] = anchorY;
-          points[vertex + 2] = anchorZ;
-          continue;
+    } else inverse.identity();
+    down.set(0, -1, 0).transformDirection(inverse);
+    // Ride direction belongs to the motorcycle, including garage turntables.
+    back.set(0, 0, 1);
+    if (clearance) back.transformDirection(bikeToTorso);
+    return true;
+  };
+  const seed = () => {
+    for (let row = 0; row <= rows; row++) for (let column = 0; column <= columns; column++) {
+      const u = column / columns, t = row / rows, spread = smooth(t / .30);
+      const anchor = collarPoint(u), side = 2 * u - 1;
+      const i = (row * (columns + 1) + column) * 3;
+      points[i] = anchor.x * (1 - spread) + side * width / 2 * spread;
+      points[i + 1] = anchor.y - length * t;
+      points[i + 2] = anchor.z * (1 - spread) + (.165 + t * .08) * spread;
+      if (row > 0) {
+        if (clearance) {
+          point.fromArray(points, i).applyMatrix4(torsoToBike);
+          for (const box of clearance.boxes) if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)
+            point.y = Math.max(point.y, box.max.y + .005);
+          point.applyMatrix4(bikeToTorso).toArray(points, i);
         }
-        const folds = .016 * Math.sin(u * Math.PI * 6 + .6 * Math.sin(t * 5)) * (Math.sin(Math.PI * t) + .25 * t);
-        const flutter = reducedMotion ? 0 : wind * t * (.027 * Math.sin(phase * (3 + 6 * wind) - t * 10 + u * 4.2)
-          + .011 * Math.sin(phase * 13 - t * 17 - u * 7));
-        const landing = reducedMotion ? 0 : impulse * t * Math.sin(phase * 11 - t * 8);
-        // The collar first fans over both shoulders and then opens into the
-        // narrower, long flag. The tied corners meet at the front centre.
-        let x = Math.sin(angle) * radius * (1 - spread) + side * width / 2 * spread + centerX + sway * t * t;
-        let y = anchorY + centerY + flutter * .4 + landing;
-        let z = neckZ + Math.cos(angle) * (collarRadiusZ + .04 * shoulders) * (1 - spread)
-          + .17 * spread + centerZ + .10 * t * t * (1 - wind) + folds * spread + flutter;
-        // Smooth torso / bag clearance starts behind the shoulder wrap.
-        y = Math.max(-.46, Math.min(1.65, y));
-        const backClearance = .16 + (hasBag ? .145 * Math.exp(-(((y - .10) / .25) ** 2)) : 0)
-          + .18 * smooth(-y / .25);
-        const safeZ = anchorZ + (backClearance - anchorZ) * spread;
-        // Blend onto the back instead of switching abruptly at the clearance
-        // boundary, which made a rigid ridge through the printed flag.
-        z = safeZ + .024 * Math.log1p(Math.exp((z - safeZ) / .024));
-        // Garments remain wide above the skeleton's shoulder joint: their
-        // neckline only narrows around Y .607. Keep the wrap outside that
-        // sloping surface, including its sleeve seam, rather than through it.
-        if (t < .36 && y > .36 && y < .65) {
-          const neckline = smooth((y - .55) / .075);
-          const shoulderX = .31 - .19 * neckline;
-          const shoulderZ = .17 - .075 * neckline;
-          const radialZ = z - neckZ;
-          const outside = Math.hypot(x / shoulderX, radialZ / shoulderZ);
-          if (outside < 1 && outside > 1e-7) {
-            x /= outside; z = neckZ + radialZ / outside;
-          }
-        }
-        if (clearance && t > .30) {
-          // A bike-space surface follows the real chassis through wheelies.
-          // Smoothly bend the drape above seat/tail instead of a flat Y clamp
-          // in torso space, which allowed the hem to cut through the bike.
-          bikePoint.set(x, y, z).applyMatrix4(torsoToBike);
-          const gap = bikePoint.y - clearance.top;
-          if (gap < .24) {
-            bikePoint.y = clearance.top + .065 * Math.log1p(Math.exp(gap / .065));
-            bikePoint.applyMatrix4(bikeToTorso);
-            x = bikePoint.x; y = bikePoint.y; z = bikePoint.z;
-          }
-        }
-        x = Math.max(-.70, Math.min(.70, x));
-        points[vertex] = x; points[vertex + 1] = y; points[vertex + 2] = Math.min(1.28, z);
+        collide(row * (columns + 1) + column);
       }
     }
-    // Reuse the existing buffers; no per-frame geometry/vector allocation.
+    cloth.reset();
+  };
+  const publish = () => {
     normals.fill(0);
     for (let i = 0; i < indices.length; i += 3) {
       const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
@@ -203,31 +240,63 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       normals[c] += nx; normals[c + 1] += ny; normals[c + 2] += nz;
     }
     for (let i = 0; i < normals.length; i += 3) {
-      const size = Math.hypot(normals[i], normals[i + 1], normals[i + 2]);
+      const size = Math.sqrt(normals[i] * normals[i] + normals[i + 1] * normals[i + 1] + normals[i + 2] * normals[i + 2]);
       if (size > 1e-10) { normals[i] /= size; normals[i + 1] /= size; normals[i + 2] /= size; }
       else { normals[i] = 0; normals[i + 1] = 0; normals[i + 2] = 1; }
     }
     position.needsUpdate = true; normal.needsUpdate = true;
   };
-  const reset = () => { phase = wind = sway = impulse = lastLanding = 0; shape(true); };
+  const settle = (speed: number) => {
+    force.copy(down).multiplyScalar(9.81);
+    const wind = Math.min(24, speed * speed * .008);
+    for (let step = 0; step < 90; step++) cloth.step(force.x, force.y, force.z, back.x * wind, back.y * wind, back.z * wind, 0, 0, .82, collide);
+    cloth.previous.set(points);
+  };
+  const reset = () => {
+    phase = remainder = lastLanding = 0; hasWorld = false; reducedKey = ''; wasReduced = false;
+    if (!frame(false)) return;
+    seed(); settle(0); publish();
+  };
   const update = (input: CarriedCapMotionInput, dt: number) => {
     if (input.paused || !Number.isFinite(dt) || dt <= 0) return;
-    const elapsed = Math.min(dt, 1 / 12), targetWind = Math.pow(clamp(input.speed, 0, 60) / 60, .7);
-    const landing = clamp(input.landing, 0, 1);
-    if (input.reducedMotion) {
-      phase = sway = impulse = 0; wind = targetWind;
-    } else {
-      phase = (phase + elapsed) % 1000;
-      wind += (targetWind - wind) * (1 - Math.exp(-elapsed * 5));
-      sway += (-clamp(input.lateralAcceleration, -20, 20) * .004 - sway) * (1 - Math.exp(-elapsed * 7));
-      impulse = Math.min(.065, impulse + Math.max(0, landing - lastLanding) * .055) * Math.exp(-elapsed * 6);
+    const reduced = input.reducedMotion === true, speed = clamp(input.speed, 0, 60);
+    if (!frame(!reduced)) return;
+    // Imported bikes finish applying their inverse rider scale after assembly.
+    // That construction transform is not a physical movement or an impulse.
+    if (scaleChanged) { if (!reduced) { seed(); settle(0); } reducedKey = ''; }
+    if (reduced) {
+      const key = [down.x, down.y, down.z, speed, hasBag ? 1 : 0, ...torsoToBike.elements].map(value => Math.round(value * 10000)).join(',');
+      if (!wasReduced || key !== reducedKey) { seed(); settle(speed); publish(); reducedKey = key; }
+      wasReduced = true; remainder = 0; lastLanding = clamp(input.landing, 0, 1);
+      return;
     }
+    wasReduced = false;
+    const landing = clamp(input.landing, 0, 1), impulse = Math.max(0, landing - lastLanding) * .012;
     lastLanding = landing;
-    shape(input.reducedMotion === true);
+    if (impulse) for (let vertex = 0; vertex < points.length / 3; vertex++) {
+      if (cloth.pinned[vertex]) continue;
+      const i = vertex * 3;
+      cloth.previous[i] += down.x * impulse; cloth.previous[i + 1] += down.y * impulse; cloth.previous[i + 2] += down.z * impulse;
+    }
+    force.copy(down).multiplyScalar(9.81);
+    const wind = Math.min(24, speed * speed * .008);
+    point.set(-clamp(input.lateralAcceleration, -20, 20), 0, clamp(input.longitudinalAcceleration, -20, 20)).transformDirection(inverse);
+    // Acceleration amplitudes must survive the coordinate transform.
+    const acceleration = Math.hypot(clamp(input.lateralAcceleration, -20, 20), clamp(input.longitudinalAcceleration, -20, 20));
+    force.addScaledVector(point, acceleration * .6);
+    // Visual cloth never catches up a long browser stall: at most two small
+    // simulation steps per rendered frame, with fixed buffers and no new mesh.
+    remainder += Math.min(dt, 1 / 30);
+    while (remainder + 1e-10 >= 1 / 60) {
+      remainder = Math.max(0, remainder - 1 / 60); phase += 1 / 60;
+      cloth.step(force.x, force.y, force.z, back.x * wind, back.y * wind, back.z * wind, phase, speed / 60 * 2, .96, collide);
+    }
+    publish();
   };
   reset();
   return { update, reset };
 }
+
 
 /** Physical eyelets and the tied cloth corners, outside the unchanged printed artwork. */
 function addTiedEyelets(mesh: THREE.Mesh) {

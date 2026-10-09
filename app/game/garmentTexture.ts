@@ -4,6 +4,7 @@ import audit from '../../public/catalog/garment-textures.json';
 import fabricAudit from '../../public/catalog/fabric-samples.json';
 import { loadNumberFont } from './numberFont';
 import { createKeepUpInkGlow } from './garmentGlow';
+import { SLEEVE_UV_METRES } from './sleeveSurface';
 type Placement = { center: number[]; width: number; height: number };
 type Side = {
   crop: number[];
@@ -309,6 +310,8 @@ export function sleeveMaterial(
   ctx.fillRect(0, 0, 512, 512);
   const map = new THREE.CanvasTexture(canvas);
   map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = THREE.RepeatWrapping;
+  map.anisotropy = 4;
   const m = new THREE.MeshStandardMaterial({
     map,
     color: '#fff',
@@ -326,13 +329,19 @@ export function sleeveMaterial(
     .then((img) => {
       if (disposed) return;
       ctx.save();
-      ctx.translate(256, 350);
+      // Preserve the supplied artwork's aspect on the measured cloth surface.
+      // The photographed placement leaves the ribbed cuff clear of ink.
+      const printLength = 0.4, cuffClearance = 0.06;
+      const length = (printLength / SLEEVE_UV_METRES.along) * 512;
+      const width = (printLength * img.height / img.width / SLEEVE_UV_METRES.around) * 512;
+      const centerFromCuff = cuffClearance + printLength / 2;
+      ctx.translate(256, (1 - centerFromCuff / SLEEVE_UV_METRES.along) * 512);
       ctx.scale(side > 0 ? 1 : -1, 1);
-      // Keep the original lengthwise placement; flip the source top-to-bottom
+      // Keep the original lengthwise orientation; flip the source top-to-bottom
       // about its horizontal axis before wrapping it around either sleeve.
       ctx.rotate(Math.PI / 2);
       ctx.scale(1, -1);
-      ctx.drawImage(img, -135, -43, 270, 86);
+      ctx.drawImage(img, -length / 2, -width / 2, length, width);
       ctx.restore();
       map.needsUpdate = true;
     })

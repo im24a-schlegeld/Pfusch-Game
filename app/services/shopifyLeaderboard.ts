@@ -1,13 +1,17 @@
 import type { Player } from '../domain/types';
-import type { LeaderboardService, LeaderboardSnapshot } from './index';
+import type { AuthService, LeaderboardService, LeaderboardSnapshot } from './index';
 import type { CloudTransport } from './shopifyBridge';
 
 export class ShopifyLeaderboardService implements LeaderboardService {
-  constructor(private transport: CloudTransport, private local: LeaderboardService) {}
+  constructor(private transport: CloudTransport, private local: LeaderboardService, private auth?: Pick<AuthService, 'getUser'>) {}
   list(player: Player, period: 'Today' | 'This week' | 'All time') { return this.local.list(player, period); }
   async fetch(player: Player, period: 'Today' | 'This week' | 'All time'): Promise<LeaderboardSnapshot> {
+    const signInRequired = (): LeaderboardSnapshot => ({ entries: this.list(player, period), source: 'local',
+      message: 'Melde dich an, um die Community-Rangliste zu sehen. Hier siehst du deinen eigenen Bestwert.' });
     try {
+      if (this.auth && (await this.auth.getUser()).kind === 'guest') return signInRequired();
       const response = await this.transport.request('GET', undefined, 'leaderboard', period === 'Today' ? 'day' : period === 'This week' ? 'week' : 'all');
+      if (response.status === 401) return signInRequired();
       const data = response.data;
       if (response.status !== 200 || !data || typeof data !== 'object') throw new Error('Leaderboard unavailable');
       const value = data as Record<string, unknown>;

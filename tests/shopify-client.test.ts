@@ -500,9 +500,29 @@ describe('real leaderboard rows', () => {
   });
   it('labels a failed online fetch as local instead of fabricating global results', async () => {
     const transport: CloudTransport = { request: vi.fn(async () => ({ status: 503, data: {} })) };
-    const result = await new ShopifyLeaderboardService(transport, new LocalLeaderboardService()).fetch({ ...newPlayer(), highScore: 78 }, 'All time');
+    const auth = { getUser: async () => ({ id: '123', kind: 'customer' as const }) };
+    const result = await new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), auth).fetch({ ...newPlayer(), highScore: 78 }, 'All time');
     expect(result.source).toBe('local');
     expect(result.entries).toEqual([{ name: 'DU', score: 78, you: true }]);
     expect(result.message).toContain('nicht erreichbar');
+    expect(result.message).not.toContain('Melde dich an');
+  });
+  it('asks known guests to sign in without making a protected ranking request', async () => {
+    const transport: CloudTransport = { request: vi.fn() };
+    const auth = { getUser: async () => ({ id: 'guest-local', kind: 'guest' as const }) };
+    const result = await new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), auth).fetch({ ...newPlayer(), highScore: 78 }, 'All time');
+    expect(result.source).toBe('local');
+    expect(result.entries).toEqual([{ name: 'DU', score: 78, you: true }]);
+    expect(result.message).toContain('Melde dich an');
+    expect(result.message).not.toContain('nicht erreichbar');
+    expect(transport.request).not.toHaveBeenCalled();
+  });
+  it('asks a customer with an expired ranking session to sign in again', async () => {
+    const transport: CloudTransport = { request: vi.fn(async () => ({ status: 401, data: { error: 'unauthorized' } })) };
+    const auth = { getUser: async () => ({ id: '123', kind: 'customer' as const }) };
+    const result = await new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), auth).fetch(newPlayer(), 'Today');
+    expect(result.source).toBe('local');
+    expect(result.message).toContain('Melde dich an');
+    expect(result.message).not.toContain('nicht erreichbar');
   });
 });

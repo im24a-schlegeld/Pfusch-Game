@@ -32,6 +32,7 @@ import {
   sleeveSeams,
 } from './garmentDetails';
 import { applyRibbedTrim } from './garmentTrim';
+import { fitPrintedSleeve } from './sleeveSurface';
 import {
   SPORT_GEOMETRY,
   sportTireGeometry,
@@ -2537,6 +2538,9 @@ function makeRider(
     // Narrowing at the deltoid and widening over the biceps looked skin-tight.
     const shoulderRadius = (outerwear ? 0.088 : tee ? 0.089 : 0.081) * volume;
     const armMeshes: THREE.Mesh[] = [];
+    const printedSleeve = upper?.handle === 'racing-zipper';
+    const sleeveRings = tee ? 24 : printedSleeve ? 48 : 36;
+    const sleeveSides = tee || printedSleeve ? 24 : 20;
 
     const shapeArmholeInward = (
       sleeve: THREE.Mesh,
@@ -2787,8 +2791,8 @@ function makeRider(
                 'cuff',
               )
             : cloth,
-          36,
-          20,
+          sleeveRings,
+          sleeveSides,
           0.94,
           side,
         ),
@@ -2805,33 +2809,35 @@ function makeRider(
 
     sleeveFolds(
       armMeshes[0],
-      tee ? 24 : 36,
-      tee ? 24 : 20,
+      sleeveRings,
+      sleeveSides,
       tee,
       (tee || outerwear) ? 0 : 0.06,
     );
     shapeArmholeInward(
       armMeshes[0],
-      tee ? 24 : 36,
-      tee ? 24 : 20,
+      sleeveRings,
+      sleeveSides,
       side as -1 | 1,
       tee ? 0.036 : outerwear ? 0.04 : 0.022,
     );
     flattenShoulderTop(
       armMeshes[0],
-      tee ? 24 : 36,
-      tee ? 24 : 20,
+      sleeveRings,
+      sleeveSides,
     );
     smoothOuterSleeveContour(
       armMeshes[0],
-      tee ? 24 : 36,
-      tee ? 24 : 20,
+      sleeveRings,
+      sleeveSides,
       side as -1 | 1,
     );
     // Wardrobe shading must include the sleeve clones as well as the torso.
     // Unnamed clones stayed brighter and exposed patch-like armhole overlaps.
     armMeshes[0].name = 'garment-sleeve';
-    fairShoulder(armMeshes[0], tee ? 24 : 36, tee ? 24 : 20, torso, torsoGroup, tee);
+    if (printedSleeve)
+      fitPrintedSleeve(armMeshes[0].geometry, sleeveRings, sleeveSides, V(elbow));
+    fairShoulder(armMeshes[0], sleeveRings, sleeveSides, torso, torsoGroup, tee);
     if (upper && !tee && !outerwear) {
       const seams = sleeveSeams(
         armMeshes[0],

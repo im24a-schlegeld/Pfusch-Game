@@ -4,6 +4,9 @@ import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import type { StickerPlacement } from '../domain/types';
 
 let artwork: THREE.Texture | undefined;
+// The imported Supermoto keeps its authored airbox and rear plate in this
+// separate plastic mesh. Generic dark meshes also contain mechanical parts.
+const importedStickerPlastics = new Set(['fs450_inner_trim:body']);
 export function stickerArtwork() {
   if (!artwork) {
     // Match the supplied nearly-square decal with deeply rounded corners.
@@ -58,10 +61,12 @@ export function stickerSurfaces(
         : [object.material];
       if (
         object.userData.bikePaintSurface ||
-        materials.some(
-          (m) =>
-            m instanceof THREE.MeshStandardMaterial && (m.userData.appearanceColorSlot === 'paint' || m.color.equals(color)),
-        ) ||
+        importedStickerPlastics.has(object.userData.importedPart) ||
+        (object.userData.bikePaintSurface === undefined &&
+          materials.some(
+            (m) => m instanceof THREE.MeshStandardMaterial &&
+              (m.userData.appearanceColorSlot === 'paint' || m.color.equals(color)),
+          )) ||
         /tank|fairing|shroud|apron|leg-shield|fender|tail-shell|open-back-fork-guard/.test(
           object.name,
         )
@@ -202,7 +207,9 @@ function projectedStickerGeometry(
   localSource.updateMatrixWorld(true);
   const geometry = new DecalGeometry(
     localSource, point, new THREE.Euler().setFromQuaternion(rotation),
-    new THREE.Vector3(placement.size, placement.size, 0.035),
+    // A fixed 3.5 cm box sliced the artwork off curved plastics. Its depth must
+    // follow the footprint; the facing filter below still rejects the back skin.
+    new THREE.Vector3(placement.size, placement.size, Math.max(0.035, placement.size)),
   );
   // Keep the clicked skin even when its winding points inward, then turn
   // only that skin outward so the print remains visible without mirroring.
@@ -244,7 +251,7 @@ function projectedStickerGeometry(
 function reshapedSurfacePoint(source: THREE.Mesh, point: THREE.Vector3, normal: THREE.Vector3) {
   if (!['radiator-shroud', 'supermoto-front-fender', 'supermoto-headlight-mask', 'supermoto-fuel-tank',
     'supermoto-side-cover', 'supermoto-tail-fender', 'open-back-fork-guard'].includes(source.name) &&
-    !(source.userData.importedPart && source.userData.bikePaintSurface))
+    !(source.userData.importedPart && (source.userData.bikePaintSurface || importedStickerPlastics.has(source.userData.importedPart))))
     return undefined;
   const positions = source.geometry.getAttribute('position'), index = source.geometry.getIndex();
   const triangle = new THREE.Triangle(), candidate = new THREE.Vector3(), faceNormal = new THREE.Vector3();

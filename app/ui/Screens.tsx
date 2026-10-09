@@ -346,7 +346,7 @@ export function Leaderboard({
           // Valid HTML autofill token; retained for the player's public display name.
           // eslint-disable-next-line jsx-a11y/autocomplete-valid
           autoComplete="nickname"
-          placeholder="z. B. Dario"
+          placeholder="Dein Name"
           onChange={(event) => setDraftName(event.target.value)}
         />
         {invalidName && <p role="alert">Nutze maximal 24 Zeichen ohne Steuerzeichen.</p>}

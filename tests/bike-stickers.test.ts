@@ -32,7 +32,7 @@ function fixture() {
   const suspension = new THREE.Group();
   suspension.name = 'suspension';
   body.add(suspension, rider);
-  const shell = new THREE.Mesh(
+  const shell: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
     new THREE.BoxGeometry(0.8, 0.6, 0.012),
     new THREE.MeshStandardMaterial({ color: paint }),
   );
@@ -58,6 +58,39 @@ function decal(shell: THREE.Mesh, id = 'chrome-1') {
 }
 
 describe('bike sticker geometry', () => {
+  it('admits the original black Supermoto plastics without admitting painted mechanical parts', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
+    const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
+    const trim = [...surfaces.values()].find(mesh => mesh.userData.importedPart === 'fs450_inner_trim:body');
+    expect(trim).toBeInstanceOf(THREE.Mesh);
+    expect(trim!.userData.bikePaintSurface).toBe(false);
+    const spring = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .2), new THREE.MeshStandardMaterial({ color: paint }));
+    spring.name = 'rear-shock-spring';
+    spring.userData.bikePaintSurface = false;
+    spring.material.userData.appearanceColorSlot = 'paint';
+    bike.body.add(spring);
+    expect([...stickerSurfaces(bike.body, bike.rider, paint).values()]).not.toContain(spring);
+  });
+
+  it('keeps the full print width across a curved panel while leaving its back blank', () => {
+    const { body, rider, shell, placement } = fixture();
+    shell.geometry.dispose();
+    shell.geometry = new THREE.CylinderGeometry(.16, .16, .8, 96, 1, true);
+    const curved = { ...placement, point: [0, 0, .16] as [number, number, number] };
+    applyBikeStickers(body, rider, paint, [curved]);
+    const sticker = decal(shell), geometry = sticker.geometry;
+    const indices = geometry.getIndex()!, uv = geometry.getAttribute('uv');
+    const horizontal = Array.from({ length: indices.count }, (_, i) => uv.getX(indices.getX(i)));
+    expect(Math.min(...horizontal)).toBeCloseTo(0, 5);
+    expect(Math.max(...horizontal)).toBeCloseTo(1, 5);
+    body.updateMatrixWorld(true);
+    const front = new THREE.Raycaster(new THREE.Vector3(.11, 0, 1), new THREE.Vector3(0, 0, -1));
+    expect(front.intersectObject(sticker, false).length).toBeGreaterThan(0);
+    const rear = new THREE.Raycaster(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 0, 1));
+    expect(rear.intersectObject(sticker, false)).toHaveLength(0);
+    expect(curved.point).toEqual([0, 0, .16]);
+  });
+
   it('restores the selected panel after unrelated model details shift child indices', () => {
     const { body, rider, suspension, shell, placement } = fixture();
     const otherSide = new THREE.Mesh(

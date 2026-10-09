@@ -32,7 +32,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [assetRevision, setAssetRevision] = useState(0);
-  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Tippe auf die Helmschale. Ziehen dreht die Ansicht.' : 'Tippe auf eine lackierte Fläche. Ziehen dreht die Ansicht.');
+  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Tippe auf die Helmschale. Ziehen dreht die Ansicht.' : 'Tippe auf Verkleidung, Tank oder Heckplastik. Ziehen dreht die Ansicht.');
   const state = useRef({ placements, drafts, target, targetKey, size, rotation, selected });
   state.current = { placements, drafts, target, targetKey, size, rotation, selected };
   const view = useRef<((angle: number) => void) | null>(null);
@@ -125,9 +125,9 @@ export default function StickerWorkshop({ player, account, products, initialTarg
       };
       if (helmetView && helmet) collect(helmet); else collect(bike.body);
       const hit = ray.intersectObjects(visible, false)[0];
-      if (!hit?.face) { setHint(helmetView ? 'Bitte die feste Helmschale antippen.' : 'Bitte eine lackierte Verkleidung oder den Tank antippen.'); return; }
+      if (!hit?.face) { setHint(helmetView ? 'Bitte die feste Helmschale antippen.' : 'Bitte Verkleidung, Tank oder Heckplastik antippen.'); return; }
       const surface = [...surfaces].find(([, mesh]) => mesh === hit.object)?.[0];
-      if (!surface || (helmetView && hit.face.materialIndex !== 0)) { setHint(helmetView ? 'Visier, Brille und Polster bleiben frei. Wähle eine Stelle auf der Helmschale.' : 'Hier sitzt ein Bauteil. Wähle eine freie lackierte Fläche.'); return; }
+      if (!surface || (helmetView && hit.face.materialIndex !== 0)) { setHint(helmetView ? 'Visier, Brille und Polster bleiben frei. Wähle eine Stelle auf der Helmschale.' : 'Wähle eine freie Stelle auf Verkleidung, Tank oder Heckplastik.'); return; }
       if (!current.selected && current.placements.length >= MAX_STICKERS) { setHint(`Maximal ${MAX_STICKERS} Sticker pro ${helmetView ? 'Helm' : 'Fahrzeug'}.`); return; }
       const id = current.selected ?? crypto.randomUUID();
       const placement: StickerPlacement = { id, productId: product.id, surface, point: hit.object.worldToLocal(hit.point.clone()).toArray(), normal: hit.face.normal.clone().normalize().toArray(), size: current.size, rotation: current.rotation };
@@ -177,7 +177,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   function selectTarget(next: Target) {
     if (next === target || savePending.current) return;
     setTarget(next); setSelected(null); setSize(next === 'helmet' ? 0.07 : 0.18); setRotation(0);
-    setHint(next === 'helmet' ? 'Tippe auf die Helmschale. Deine Motorrad-Sticker bleiben erhalten.' : 'Tippe auf eine lackierte Fläche. Deine Helm-Sticker bleiben erhalten.');
+    setHint(next === 'helmet' ? 'Tippe auf die Helmschale. Deine Motorrad-Sticker bleiben erhalten.' : 'Tippe auf Verkleidung, Tank oder Heckplastik. Deine Helm-Sticker bleiben erhalten.');
   }
   function change(value: number, field: 'size' | 'rotation') {
     if (field === 'size') setSize(value); else setRotation(value);
