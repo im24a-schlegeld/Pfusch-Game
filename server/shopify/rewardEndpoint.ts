@@ -76,7 +76,10 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
     const load = () => loadRewardLedger(config, identity.customerId, now, dependencies.request);
     let saved = await load();
     if (saved.unavailableReason) return { status: action === 'status' ? 200 : 503,
-      body: { ...status(saved.ledger, saved.unavailableReason), csrfToken, ...(action === 'status' ? {} : { error: saved.unavailableReason }) } };
+      body: { ...status(saved.ledger, saved.unavailableReason), csrfToken,
+        ...(action === 'status' && saved.unavailableReason.endsWith('_scope_missing')
+          ? { diagnostics: { adminClientId: config.clientId ?? null } } : {}),
+        ...(action === 'status' ? {} : { error: saved.unavailableReason }) } };
     if (action === 'status') return { status: 200, body: { ...status(saved.ledger), csrfToken } };
 
     // Retry only compare-and-set conflicts. Every mutation is recomputed from the newer ledger.

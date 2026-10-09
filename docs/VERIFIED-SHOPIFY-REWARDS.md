@@ -30,6 +30,8 @@ Je nach Bereich zeigt Shopify auch englische Schaltflächen an: **Versions → C
 
 Die bestehenden serverseitigen Admin-Zugangsdaten und Customer-Account-Anmeldedaten bleiben erforderlich. Secrets gehören nie in `PUBLIC_`- oder `VITE_`-Variablen. Die Shop-Währung muss CHF sein; sonst liefert der Status `currency_not_chf`. Shopifys [Oxygen-Umgebungsdokumentation](https://shopify.dev/docs/storefronts/headless/hydrogen/environments) beschreibt die Variablen und den erforderlichen erneuten Deploy.
 
+Wenn `discount_scope_missing` trotz veröffentlichter Berechtigung bleibt, erneuert der Server den zwischengespeicherten Admin-Token einmal und prüft die tatsächlich gewährten Scopes erneut. Pro laufender Serverinstanz und Zugangsdaten ist diese Erneuerung auf einmal pro Minute begrenzt. Statische ältere Admin-Tokens lassen sich so nicht erneuern. Bleibt die Berechtigung danach aus, enthält der authentifizierte Status unter `diagnostics.adminClientId` die öffentliche Client-ID der verwendeten Admin-App. Diese muss zur App-Version mit `write_discounts` passen; sie wird aus `SHOPIFY_CLIENT_ID` gelesen. Es werden keine Secrets oder Admin-Tokens ausgegeben. In diesem Fall die aktive App-Version, die Freigabe der Installation und die Client-ID in Production vergleichen.
+
 Zum Abschalten den Wert auf `false` setzen und erneut deployen. Dies verhindert weitere Erstellung durch diese Anwendung; bereits ausgestellte Shopify-Codes werden dadurch nicht automatisch gelöscht. Einen bereits ausgestellten Code kann der Händler im Shopify-Admin unter **Discounts / Rabatte** verwalten.
 
 ## Serverprotokoll und Vertrauensgrenzen

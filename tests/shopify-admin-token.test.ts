@@ -64,6 +64,42 @@ describe('Dev Dashboard server authentication', () => {
     await getToken(config, request);
     expect(request).toHaveBeenCalledTimes(4);
   });
+  it('refreshes changed scopes once per minute instead of waiting for the cached token to expire', async () => {
+    let now = 1000;
+    const getToken = createShopifyAdminTokenProvider(() => now);
+    let exchanges = 0;
+    const request = vi.fn<typeof fetch>(async () => tokenResponse(`token-${++exchanges}`));
+    expect(await getToken(config, request)).toBe('token-1');
+    expect(await getToken.refreshAfterScopeChange(config, request)).toBe(true);
+    expect(await getToken(config, request)).toBe('token-2');
+    expect(await getToken.refreshAfterScopeChange(config, request)).toBe(false);
+    expect(request).toHaveBeenCalledTimes(2);
+    now += 60000;
+    expect(await getToken.refreshAfterScopeChange(config, request)).toBe(true);
+    expect(await getToken(config, request)).toBe('token-3');
+    expect(request).toHaveBeenCalledTimes(3);
+  });
+  it('shares one scope refresh between concurrent readers', async () => {
+    let resolve!: (response: Response) => void;
+    const getToken = createShopifyAdminTokenProvider();
+    const request = vi.fn<typeof fetch>().mockImplementationOnce(async () => tokenResponse('original'))
+      .mockImplementationOnce(() => new Promise<Response>(done => { resolve = done; }));
+    await getToken(config, request);
+    const first = getToken.refreshAfterScopeChange(config, request);
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+    const second = getToken.refreshAfterScopeChange(config, request);
+    resolve(tokenResponse('replacement'));
+    expect(await first).toBe(true);
+    await second;
+    expect(await getToken(config, request)).toBe('replacement');
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+  it('does not attempt to refresh a legacy token', async () => {
+    const request = vi.fn<typeof fetch>();
+    const getToken = createShopifyAdminTokenProvider();
+    expect(await getToken.refreshAfterScopeChange({ shop: config.shop, secret: 'legacy-secret', adminToken: 'legacy-token' }, request)).toBe(false);
+    expect(request).not.toHaveBeenCalled();
+  });
   it('fails closed on refresh failure, exposes no upstream secrets and retries on the next request', async () => {
     let now = 0;
     const getToken = createShopifyAdminTokenProvider(() => now);

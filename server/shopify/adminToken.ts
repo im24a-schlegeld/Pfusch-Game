@@ -1,8 +1,9 @@
 import { ApiError, type ShopifyConfig } from './auth.js';
 import { byteLength, sha256 } from './crypto.js';
 
-interface CachedToken { key: string; token?: string; expiresAt: number; pending?: Promise<string> }
+interface CachedToken { key: string; token?: string; expiresAt: number; pending?: Promise<string>; scopeRefreshAfter: number }
 const REFRESH_EARLY_MS = 60_000;
+const SCOPE_REFRESH_INTERVAL_MS = 60_000;
 // Return only known diagnostic codes, never Shopify's free-form error text.
 const TOKEN_ERRORS = new Set(['shop_not_permitted', 'app_not_installed', 'application_cannot_be_found',
   'invalid_client', 'invalid_grant', 'unsupported_grant_type', 'invalid_request', 'access_denied']);
@@ -12,13 +13,13 @@ const TOKEN_ERRORS = new Set(['shop_not_permitted', 'app_not_installed', 'applic
  * Tokens and credentials never leave the server or enter persistent storage. */
 export function createShopifyAdminTokenProvider(now: () => number = Date.now) {
   let cached: CachedToken | undefined;
-  return async function adminToken(config: ShopifyConfig, request: typeof fetch): Promise<string> {
+  const adminToken = async (config: ShopifyConfig, request: typeof fetch): Promise<string> => {
     if (!config.clientId) {
       if (config.adminToken) return config.adminToken;
       throw new ApiError(503, 'not_configured');
     }
     const key = await sha256(JSON.stringify([config.shop, config.clientId, config.secret]));
-    if (cached?.key !== key) cached = { key, expiresAt: 0 };
+    if (cached?.key !== key) cached = { key, expiresAt: 0, scopeRefreshAfter: 0 };
     const entry = cached;
     if (entry.token && now() < entry.expiresAt - REFRESH_EARLY_MS) return entry.token;
     if (entry.pending) return entry.pending;
@@ -67,6 +68,23 @@ export function createShopifyAdminTokenProvider(now: () => number = Date.now) {
     try { return await entry.pending; }
     finally { entry.pending = undefined; }
   };
+  return Object.assign(adminToken, {
+    /** Recheck newly granted scopes without retaining an older token for a day.
+     * One exchange per minute and credential set; concurrent readers share it. */
+    async refreshAfterScopeChange(config: ShopifyConfig, request: typeof fetch): Promise<boolean> {
+      if (!config.clientId) return false;
+      const key = await sha256(JSON.stringify([config.shop, config.clientId, config.secret]));
+      const entry = cached;
+      if (!entry || entry.key !== key) return false;
+      if (entry.pending) { await entry.pending; return true; }
+      if (now() < entry.scopeRefreshAfter) return false;
+      entry.scopeRefreshAfter = now() + SCOPE_REFRESH_INTERVAL_MS;
+      entry.token = undefined;
+      entry.expiresAt = 0;
+      await adminToken(config, request);
+      return true;
+    },
+  });
 }
 
 export const shopifyAdminToken = createShopifyAdminTokenProvider();

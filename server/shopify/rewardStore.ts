@@ -4,6 +4,7 @@ import { isRecord } from './playerValidation.js';
 import { PLAYER_NAMESPACE, shopifyGraphql, type ShopifyFetch } from './playerStore.js';
 import type { VerifiedRunChallenge } from '../../app/game/verifiedRun.js';
 import { BIKES } from '../../app/domain/config.js';
+import { shopifyAdminToken } from './adminToken.js';
 
 export const REWARD_KEY = 'verified_rewards_v1';
 export const VERIFIED_POINTS_REQUIRED = 50_000;
@@ -69,7 +70,7 @@ function validLedger(value: unknown): value is RewardLedger {
 }
 
 /** Separate, authenticated server ledger. Client player_v1 fields never enter this read path. */
-export async function loadRewardLedger(config: ShopifyConfig, customerId: string, now: number, request: ShopifyFetch): Promise<SavedRewardLedger> {
+export async function loadRewardLedger(config: ShopifyConfig, customerId: string, now: number, request: ShopifyFetch, recheckScopes = true): Promise<SavedRewardLedger> {
   const data = await shopifyGraphql(config, `query GameRewardLedger($id: ID!, $namespace: String!, $key: String!) {
     shop { currencyCode }
     currentAppInstallation { accessScopes { handle } }
@@ -81,6 +82,9 @@ export async function loadRewardLedger(config: ShopifyConfig, customerId: string
   const scopes = data.currentAppInstallation.accessScopes.filter(isRecord).map(scope => scope.handle);
   const unavailableReason = !scopes.includes('write_discounts') ? 'discount_scope_missing'
     : !scopes.includes('write_customers') ? 'customer_scope_missing' : data.shop.currencyCode !== 'CHF' ? 'currency_not_chf' : undefined;
+  if (recheckScopes && (unavailableReason === 'discount_scope_missing' || unavailableReason === 'customer_scope_missing')
+    && await shopifyAdminToken.refreshAfterScopeChange(config, request))
+    return loadRewardLedger(config, customerId, now, request, false);
   const field = data.customer.metafield;
   if (field === null) return { ledger: emptyRewardLedger(now), compareDigest: null, unavailableReason };
   if (!isRecord(field) || !digest(field.compareDigest) || typeof field.value !== 'string' || field.value.length > 32768)
