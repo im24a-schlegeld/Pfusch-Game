@@ -1,6 +1,6 @@
 .game-brand { display: inline-flex; width: 100%; flex-direction: column; align-items: center; flex: 0 0 auto; }
 .game-brand-signs { display: block; position: relative; width: 100%; aspect-ratio: 2.85; }
-.game-brand .game-brand-signs > img { position: absolute; inset: 0 5% 0 0; width: 95%; max-width: none; height: 100%; object-fit: contain; transform: rotate(6deg); }
+.game-brand .game-brand-signs > img:not(.stop-sign) { position: absolute; inset: 0 5% 0 0; width: 95%; max-width: none; height: 100%; object-fit: contain; transform: rotate(6deg); }
 .game-brand .game-brand-stop { position: absolute; width: 6.2%; height: auto; right: 0; bottom: 8%; }
 .game-brand .game-brand-title { display: block; width: 57%; height: auto; margin-top: -6%; object-fit: contain; transform: none; }
 .game-signs-home > .game-brand { width: 108px; }

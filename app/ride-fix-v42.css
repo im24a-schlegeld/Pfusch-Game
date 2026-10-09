@@ -84,7 +84,7 @@
   inset: auto !important;
   transform: none !important;
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 20px;
+  grid-template-columns: minmax(0, 1fr) 16px;
   gap: 2px;
   place-items: center;
   filter: drop-shadow(0 1px 1px #0008);
@@ -99,8 +99,10 @@
 }
 .ride-screen .v42-sign-stop {
   display: block;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
+  transform: none;
+  animation: none;
 }
 .ride-screen .v42-pause {
   width: 44px !important;

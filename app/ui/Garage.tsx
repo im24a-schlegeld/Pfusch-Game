@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, ChevronDown, ExternalLink, RotateCw } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ExternalLink } from 'lucide-react';
 import type { Player, Product, ProductConfiguration, Slot } from '../domain/types';
 import type { Services } from '../services';
 import { confirmPlayerSave } from '../services/saveConfirmation';
@@ -193,9 +193,8 @@ export default function Garage({ player, products, update, services, notify, sta
 
   return <main className="garage-page garage-configurator"><div className="gc-layout">
     <section className="gc-preview" aria-label="Motorrad- und Fahrervorschau">
-      <div className="gc-preview-heading"><span className={`gc-state${changed ? ' is-preview' : ''}`}>{changed ? 'VORSCHAU' : 'AKTUELLES SETUP'}</span>
+      <div className="gc-preview-heading">{changed && <span className="gc-state is-preview">Vorschau</span>}
         <div className="gc-balance"><Coin value={player.coins} />{embedded && <button onClick={onProgress} aria-label={`Fortschritt, Stufe ${player.level}`}>ST. {String(player.level).padStart(2, '0')}</button>}</div>
-        {changed && <button className="gc-text-button" onClick={discard}>Verwerfen</button>}
       </div>
       <div className="gc-model" data-testid="garage-model" data-bike={appearance.bike} data-paint={appearance.paint} data-rims={appearance.rims}
         data-variant={configuration?.variantId ?? ''} data-product={selectedProduct?.id ?? appearance.equipped.upper ?? ''}
@@ -206,20 +205,19 @@ export default function Garage({ player, products, update, services, notify, sta
           onLoadError={message => { setPreviewReady(false); onLoadError?.(message); }}
           inspectionFocus={focus} inspectionAngle={angle} inspectionRevision={inspectionRevision} />
       </div>
-      {previewReady && <div className="gc-preview-footer"><h2>{bike.name}</h2><p>{products.find(product => product.id === appearance.equipped.upper)?.title ?? 'Standard-Outfit'}</p></div>}
-      {previewReady && <div className="gc-angles" aria-label="Kameraansicht"><RotateCw size={14} aria-hidden="true" />
+      {previewReady && <div className="gc-preview-footer"><h2>{bike.name}</h2>{appearance.equipped.upper && <p>{products.find(product => product.id === appearance.equipped.upper)?.title}</p>}</div>}
+      {previewReady && <div className="gc-angles" aria-label="Kameraansicht">
         {[{ name: 'Vorne ¾', value: 2.35 }, { name: 'Seite', value: 1.57 }, { name: 'Hinten ¾', value: .55 }].map(view => <button key={view.name} onClick={() => { setAngle(view.value); setInspectionRevision(revision => revision + 1); }}>{view.name}</button>)}
-        <span>Ziehen · Zoomen</span>
       </div>}
     </section>
     <section className="gc-controls" aria-label="Garage konfigurieren">
       <nav className="gc-areas" aria-label="Garage-Bereiche"><button aria-pressed={area === 'bike'} onClick={() => { if (area !== 'bike') selectPart('model'); }}>Motorrad</button><button aria-pressed={area === 'rider'} onClick={() => { if (area !== 'rider') selectPart('upper'); }}>Fahrer</button></nav>
       <nav className="gc-parts" aria-label="Ausrüstungsteil">{(area === 'bike' ? bikeParts : riderParts).map(item => <button key={item.id} aria-pressed={part === item.id || (part === 'head' && item.id === 'helmet')} onClick={() => selectPart(item.id)}>{item.name}</button>)}</nav>
-      <div className="gc-panel"><div className="gc-panel-title"><h2>{partNames[part]}</h2><span>KOSTENLOS AUSPROBIEREN</span></div>
-        {part === 'model' && <div className="gc-bikes" aria-label="Motorradmodell">{BIKES.map((item, index) => {
+      <div className="gc-panel">{part !== 'model' && <div className="gc-panel-title"><h2>{partNames[part]}</h2></div>}
+        {part === 'model' && <div className="gc-bikes" aria-label="Motorradmodell">{BIKES.map((item) => {
           const owned = player.ownedItems.includes(`bike:${item.id}`);
           return <button key={item.id} className="gc-bike" aria-pressed={appearance.bike === item.id} onClick={() => setEdit({ kind: 'model', value: item.id })}>
-            <span className="gc-bike-index">0{index + 1}</span><span><strong>{item.name}</strong><small>{item.tag}</small><span>{player.bike === item.id ? 'Ausgerüstet' : owned ? 'In deinem Besitz' : `Level ${item.level} · ${item.price} Coins`}</span></span>
+            <span className="gc-bike-info"><strong>{item.name}</strong><span>{player.bike === item.id ? 'Ausgerüstet' : owned ? 'In deinem Besitz' : `Level ${item.level} · ${item.price} Coins`}</span></span>
             {appearance.bike === item.id ? <Check size={18} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
           </button>;
         })}</div>}
@@ -232,8 +230,7 @@ export default function Garage({ player, products, update, services, notify, sta
           {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}
         </div>}
         {part === 'head' && <p className="gc-help">Caps hängen am Hüftclip. Dein Fahrhelm bleibt auf.</p>}
-        {part === 'accessory' && <p className="gc-help">Tasche, Cape und Cap lassen sich gemeinsam tragen. Alles kostenlos anprobieren; erst Ausrüsten speichert deine Auswahl.</p>}
-        {part === 'extras' && <p className="gc-help">Passend für {bike.name}: Sticker auf gültigen Flächen, Schlüsselanhänger am Befestigungspunkt.</p>}
+        {part === 'accessory' && <p className="gc-help">Tasche, Cape und Cap lassen sich gemeinsam tragen.</p>}
         {['upper', 'head', 'accessory', 'extras'].includes(part) && <>
           {products.length === 0 && <output className="gc-help">Produkte werden geladen …</output>}
           <div className="gc-products" aria-label="Artikelauswahl">{activeProducts.map(product => {
@@ -258,10 +255,10 @@ export default function Garage({ player, products, update, services, notify, sta
         </section>}
         <div className="gc-utilities"><a href="https://pfusch-clothing.ch" target="_blank" rel="noreferrer">PFUSCH-Shop <ExternalLink size={13} aria-hidden="true" /></a></div>
         <SavedSetups player={player} products={products} services={services} update={next => { account.current = next; update(next); }} notify={notify} previewing={changed || !!purchase} onEquip={discard} />
-        <output className="gc-notice">{notice || 'Nur Ausrüsten übernimmt deine Vorschau.'}</output>
+        {notice && <output className="gc-notice">{notice}</output>}
       </div>
     </section>
-    <div className="gc-action" aria-label="Auswahl übernehmen"><div className="gc-action-summary" aria-live="polite"><strong>{placingSticker ? `Sticker auf ${stickerTarget === 'helmet' ? 'Helm' : bike.name}` : changed ? offer?.name : 'Dein Setup ist bereit'}</strong><span>{purchase ? `${purchase.name} wird gespeichert` : placingSticker ? 'Kostenlose Vorschau' : changed ? offer?.owned ? 'In deinem Besitz · kostenlose Änderung' : `${offer?.price ?? 0} Coins · digitaler Spielartikel` : 'Bestätigte Ausrüstung'}</span></div>
+    <div className="gc-action" aria-label="Auswahl übernehmen">{(changed || placingSticker || purchase) && <div className="gc-action-summary" aria-live="polite"><strong>{placingSticker ? `Sticker auf ${stickerTarget === 'helmet' ? 'Helm' : bike.name}` : offer?.name}</strong><span>{purchase ? 'Wird gespeichert …' : placingSticker ? 'Kostenlos ausprobieren' : offer?.owned ? 'In deinem Besitz' : `${offer?.price ?? 0} Coins · Spielartikel`}</span></div>}
       <button className="gc-primary" disabled={!!purchase || (!placingSticker && changed && !!offer?.blocked)} onClick={() => { void confirmEdit(); }}>{buttonText}{!purchase && (placingSticker || !(changed && offer?.blocked)) && <ArrowRight size={18} aria-hidden="true" />}</button>
       {changed && <button className="gc-action-discard" onClick={discard}>Verwerfen</button>}
     </div>

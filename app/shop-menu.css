@@ -1,0 +1,79 @@
+/* Storefront rhythm: open space, plain separators and the original shop type. */
+.app-shell:not([data-screen='results']) { --menu-bg: #323232; }
+.app-shell .garage-page.garage-configurator { background: var(--menu-bg) !important; padding: 28px 36px 0 !important; }
+.app-shell .gc-layout { column-gap: 48px; }
+.app-shell .gc-preview { border: 0; background: var(--menu-bg); }
+.app-shell .gc-preview-heading { padding-inline: 0; }
+@media (min-width: 761px) { .app-shell:not(.app-shell-embedded) .gc-balance > .coin { display: none; } }
+.app-shell .gc-preview-footer { left: 0; }
+.app-shell .gc-preview-footer h2 { font-size: 32px !important; }
+.app-shell .gc-state { letter-spacing: .03em; font-size: 11px; font-weight: 400; }
+.app-shell .gc-angles { left: 0; gap: 8px; }
+.app-shell .gc-angles button { font-size: 11px; padding-inline: 4px; color: #bdbdbd; }
+.app-shell .gc-areas { border-bottom: 1px solid #555; gap: 28px; }
+.app-shell .gc-areas button { flex: initial; padding-inline: 0; border-bottom-width: 1px; text-transform: none; font-size: 22px; font-weight: 400; }
+#root .gc-areas button, #root .gc-bike strong { font-family: 'PFUSCH Germania One', Georgia, serif !important; font-style: normal !important; font-weight: 400; }
+.app-shell .gc-parts { gap: 20px; padding: 12px 0 8px; }
+.app-shell .gc-parts button { flex: initial; background: transparent; border: 0; border-bottom: 1px solid transparent; padding: 6px 0; font-size: 12px; }
+.app-shell .gc-parts button[aria-pressed='true'] { color: #fff; background: transparent; border-bottom-color: #fff; }
+.app-shell .gc-panel-title { margin: 20px 0 12px; }
+.app-shell .gc-panel-title h2 { font-size: 26px !important; }
+.app-shell .gc-bikes { gap: 0; }
+.app-shell .gc-bike { border: 0; border-bottom: 1px solid #505050; min-height: 76px; padding: 14px 0; background: transparent; }
+.app-shell .gc-bike[aria-pressed='true'] { background: transparent; box-shadow: none; border-bottom-color: #999; }
+.app-shell .gc-bike-info { display: flex; flex: 1; flex-direction: column; gap: 4px; }
+.app-shell .gc-bike strong { font-size: 24px; }
+.app-shell .gc-bike-info > span { color: #c2c2c2; font-size: 11px; }
+.app-shell .gc-products { gap: 22px 14px; }
+.app-shell .gc-product { padding: 0 0 10px; border: 0; border-bottom: 1px solid transparent; background: transparent; }
+.app-shell .gc-product[aria-pressed='true'] { box-shadow: none; border-bottom-color: #fff; }
+.app-shell .gc-product strong { font-size: 12px; font-weight: 400; }
+.app-shell .gc-product-image { background: #e6e6e6; }
+.app-shell .gc-product-options { padding: 18px 0 0; background: transparent; border: 0; border-top: 1px solid #555; }
+.app-shell .gc-swatches label { border: 0; }
+.app-shell .gc-swatches label.is-selected { border: 1px solid #ddd; box-shadow: none; }
+.app-shell .gc-utilities { margin-top: 24px; }
+.app-shell .gc-action { background: var(--menu-bg); border: 0; border-top: 1px solid #555; padding: 16px 0; box-shadow: none; grid-template-columns: minmax(0, 1fr) auto; }
+.app-shell .gc-action-summary { grid-column: 1 / -1; }
+.app-shell .gc-action-discard { display: block; min-height: 44px; padding: 8px 12px; background: transparent; color: #ccc; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
+.app-shell .gc-primary { min-height: 48px; font-size: 13px; font-weight: 400; }
+.app-shell .gc-primary:only-child { grid-column: 1 / -1; }
+.app-shell.has-account-header .account-header-button { border: 0; font-weight: 400; letter-spacing: .02em; }
+.app-shell .bottom-nav { background: #323232 !important; }
+.app-shell .bottom-nav button { gap: 0 !important; font-size: 11px !important; font-weight: 400 !important; letter-spacing: .02em !important; }
+.app-shell .bottom-nav button svg { display: none !important; }
+.app-shell .bottom-nav button.active::before { background: #eee !important; height: 1px !important; }
+.app-shell .standard-page { background: #323232 !important; }
+.app-shell .screen-heading { border: 0 !important; padding-bottom: 12px !important; margin-bottom: 20px !important; }
+.app-shell .screen-heading h1 { font-size: clamp(28px, 4vw, 42px) !important; letter-spacing: 0 !important; }
+.app-shell :is(.page-feature, .progress-overview, .challenge-card, .reward-card, .real-reward, .leaderboard-panel, .leaderboard-identity) { background: transparent !important; box-shadow: none !important; }
+.app-shell :is(.challenge-card, .reward-card, .real-reward) { border: 0 !important; border-top: 1px solid #555 !important; padding: 24px 0 !important; }
+.app-shell :is(.challenge-grid, .reward-grid) { gap: 24px 36px !important; }
+.app-shell .page-feature { padding: 0 !important; border: 0 !important; }
+.app-shell .page-feature > svg, .app-shell .challenge-top { display: none; }
+.app-shell .progress-overview { border: 0 !important; border-block: 1px solid #555 !important; }
+.app-shell .progress-overview > div { background: transparent !important; border: 0 !important; }
+.app-shell .progress-overview svg { display: none; }
+.app-shell .mission-remaining { display: none; }
+.app-shell .challenge-card.complete { border-color: #999 !important; }
+.app-shell .settings-list > div { background: transparent !important; border: 0 !important; border-bottom: 1px solid #555 !important; }
+@media (max-width: 760px) {
+  .app-shell .garage-page.garage-configurator { padding: 0 !important; }
+  .app-shell .gc-preview { height: clamp(240px, 36dvh, 340px); }
+  .app-shell .gc-preview-heading { padding-inline: 18px; }
+  .app-shell .gc-preview-footer { left: 18px; }
+  .app-shell .gc-preview-footer h2 { font-size: 27px !important; }
+  .app-shell .gc-angles { left: 14px; gap: 4px; }
+  .app-shell .gc-angles button { font-size: 10px; }
+  .app-shell .gc-controls { padding: 0 18px; }
+  .app-shell .gc-areas { gap: 32px; }
+  .app-shell .gc-areas button { font-size: 22px; }
+  .app-shell .gc-parts { gap: 22px; }
+  .app-shell .gc-bike { min-height: 70px; }
+  .app-shell .gc-action { padding: 12px 18px max(12px, env(safe-area-inset-bottom)); }
+  .app-shell .gc-products { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-shell .bottom-nav button { font-size: 10px !important; }
+}
+@media (max-height: 620px) and (max-width: 760px) { .app-shell .gc-preview { height: 215px; } }
+/* Text fallback remains free to grow on devices without WebGL. */
+.app-shell .gc-preview:has(.scene-fallback) { height: auto; }

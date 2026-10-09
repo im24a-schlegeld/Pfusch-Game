@@ -167,7 +167,7 @@ export function ScreenHeading({
         <ChevronLeft />
       </button>
       <div>
-        <p className="eyebrow">{kicker}</p>
+        {kicker && <p className="eyebrow">{kicker}</p>}
         <h1>{title}</h1>
       </div>
     </div>

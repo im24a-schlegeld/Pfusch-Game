@@ -60,3 +60,4 @@ import './refinement-v40.css';
 
 import './ride-fix-v42.css';
 import './shop-typography.css';
+import './shop-menu.css';

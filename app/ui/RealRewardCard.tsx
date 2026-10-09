@@ -37,7 +37,7 @@ export default function RealRewardCard({ service }: { service?: VerifiedRewardsS
   }
   return <section className="real-reward" aria-labelledby="real-reward-title">
     <div className="real-reward-heading"><Gift aria-hidden="true" size={23} /><div><span className="eyebrow">PFUSCH-SHOP</span>
-      <h2 id="real-reward-title">{status?.available || reward ? 'CHF 5 erspielen.' : 'Shop-Belohnung'}</h2></div></div>
+      <h2 id="real-reward-title">{status?.available || reward ? 'CHF 5 Rabatt' : 'Shop-Belohnung'}</h2></div></div>
     {loading ? <output>Kontofortschritt wird geprüft …</output> : status?.available || reward ? <>
       <p>CHF 5 Rabatt ab CHF 50 Bestellwert. Einmal pro Konto; nach Ausstellung 30 Tage gültig.</p>
       {reward ? <div className="real-reward-code"><span>{expired ? 'Dein Code ist abgelaufen.' : `Gültig bis ${new Date(reward.expiresAt).toLocaleDateString('de-CH')}`}</span>
@@ -47,9 +47,9 @@ export default function RealRewardCard({ service }: { service?: VerifiedRewardsS
         <p>{status!.verifiedRuns} / {status!.runsRequired} bestätigte Fahrten · Heute {fmt(status!.dailyPoints)} / {fmt(status!.dailyCap)} Punkte</p>
         <p className="real-reward-help">Es zählen neue, vom Spielserver bestätigte Fahrten ab 20 Sekunden. Mindestens 10 Fahrten und 50’000 Punkte; höchstens 10’000 Punkte pro UTC-Tag. Lokale Coins und bisherige XP zählen hier nicht.</p>
         {status!.pending && <p>Dein Code ist reserviert. Die Bestätigung steht noch aus.</p>}
-        <button className="button" disabled={busy || !(status!.eligible || status!.pending)} onClick={() => { void claim(); }}>{busy ? 'CODE WIRD BESTÄTIGT …' : status!.pending ? 'CODE BESTÄTIGEN' : status!.eligible ? 'CHF 5 CODE ABHOLEN' : 'WEITERSPIELEN & FREISCHALTEN'}</button>
+        <button className="button" disabled={busy || !(status!.eligible || status!.pending)} onClick={() => { void claim(); }}>{busy ? 'CODE WIRD BESTÄTIGT …' : status!.pending ? 'CODE BESTÄTIGEN' : status!.eligible ? 'CODE ABHOLEN' : 'NOCH NICHT FREIGESCHALTET'}</button>
       </>}
-    </> : <p>Shop-Belohnungen sind hier noch nicht freigeschaltet. Deine digitalen Spielbelohnungen bleiben verfügbar.</p>}
+    </> : <p>Shop-Belohnungen sind noch nicht verfügbar. Spielbelohnungen kannst du weiterhin abholen.</p>}
     {message && <output>{message}</output>}
     {!loading && service && !status && <button className="button small" onClick={() => setRevision(value => value + 1)}>ERNEUT PRÜFEN</button>}
   </section>;

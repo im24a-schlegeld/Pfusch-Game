@@ -57,13 +57,13 @@ export function Challenges({
   return (
     <main className="standard-page">
       <ScreenHeading
-        kicker="EIN GRUND FÜR NOCH EINE."
+        kicker=""
         title="TÄGLICHE AUFGABEN."
         back={back}
       />
       <div className="page-intro">
         <div className="page-feature"><Target aria-hidden="true" /><p>
-          Jeden Tag neue Ziele und andere Coins-/XP-Belohnungen. Fortschritt zählt über alle Fahrten.
+          Sammle Coins und XP. Alle heutigen Fahrten zählen.
         </p></div>
         <span className="tag">NEU AB 00:00 UTC</span>
       </div>
@@ -84,7 +84,7 @@ export function Challenges({
               className={`challenge-card ${complete ? 'complete' : ''}`}
             >
               <div className="challenge-top">
-                <span>0{i + 1} / TÄGLICH</span>
+                <span>0{i + 1}</span>
                 <span className="mission-symbol">{complete ? <CircleCheck aria-hidden="true" /> : <Icon aria-hidden="true" />}</span>
               </div>
               <h2>{c.title}</h2>
@@ -97,7 +97,7 @@ export function Challenges({
                 value={(value / c.target) * 100}
                 aria-label={`${c.title} Fortschritt`}
               />
-              <p className="mission-remaining">{complete ? 'Geschafft — Belohnung gutgeschrieben.' : `Noch ${fmt(c.target - value)} ${unit}.`}</p>
+              <p className="mission-remaining">{complete ? 'Belohnung gutgeschrieben.' : `Noch ${fmt(c.target - value)} ${unit}.`}</p>
               <div className="challenge-reward">
                 <span><Sparkles size={15} aria-hidden="true" /> +{c.xp} XP</span>
                 <Coin value={c.coins} />
@@ -182,7 +182,7 @@ export function ProgressScreen({ player, back }: Base) {
   return (
     <main className="standard-page narrow">
       <ScreenHeading
-        kicker="JEDE FAHRT ZÄHLT."
+        kicker=""
         title="FORTSCHRITT."
         back={back}
       />
@@ -206,13 +206,13 @@ export function Rewards({
   return (
     <main className="standard-page">
       <ScreenHeading
-        kicker="IM SPIEL VERDIENT."
+        kicker=""
         title="BELOHNUNGEN."
         back={back}
       />
       <div className="page-intro">
-        <div className="page-feature"><Gift aria-hidden="true" /><p>Coins und neue Looks. Erspiele die Level und hol dir deine Extras.</p></div>
-        <span className="tag">{ready.length} BEREIT ZUM ABHOLEN</span>
+        <div className="page-feature"><Gift aria-hidden="true" /><p>Erreiche das angegebene Level und hole deine Belohnung ab.</p></div>
+        <span className="tag">{ready.length} VERFÜGBAR</span>
       </div>
       <div className="reward-grid">
         {rewards.map((r) => {
@@ -234,7 +234,7 @@ export function Rewards({
               <div>
                 <h2>{r.title}</h2>
                 <p>{r.description}</p>
-                <span className="reward-unlock"><Medal size={15} aria-hidden="true" />{claimed ? 'In deiner Garage' : available ? 'Level erreicht · einmalig abholen' : `Level ${r.level} · noch ${fmt(neededXp)} XP`}</span>
+                <span className="reward-unlock"><Medal size={15} aria-hidden="true" />{claimed ? 'Gutgeschrieben' : available ? 'Einmalig abholbar' : `Noch ${fmt(neededXp)} XP bis Level ${r.level}`}</span>
                 <button
                   className={`button ${claimed ? 'equipped' : ''}`}
                   disabled={claimed || !available}
@@ -256,7 +256,7 @@ export function Rewards({
         })}
       </div>
       <p className="catalog-note">
-        Diese Level-Belohnungen sind digitale Spielgegenstände. Neue Looks kannst du in der Garage ansehen und ausrüsten.
+        Alle Level-Belohnungen gelten im Spiel. Ausrüstung findest du in der Garage.
       </p>
       <RealRewardCard service={services.rewards.real} />
       <button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button>
@@ -298,12 +298,12 @@ export function Leaderboard({
   return (
     <main className="standard-page narrow">
       <ScreenHeading
-        kicker="DEINE FAHRTEN. DEINE PUNKTE."
+        kicker=""
         title="RANGLISTE."
         back={back}
       />
       <div className="page-intro">
-        <div className="page-feature"><Trophy aria-hidden="true" /><p>{online ? 'Die besten gespeicherten Fahrten der Community.' : 'Deine echten Bestleistungen im gewählten Zeitraum.'}</p></div>
+        <div className="page-feature"><Trophy aria-hidden="true" /><p>{online ? 'Die besten Fahrten der Community.' : 'Deine Bestleistungen im gewählten Zeitraum.'}</p></div>
         <span className="tag">{online ? <Globe2 size={13} aria-hidden="true" /> : <Route size={13} aria-hidden="true" />}{online ? 'COMMUNITY' : 'DEINE BESTWERTE'}</span>
       </div>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
@@ -317,7 +317,7 @@ export function Leaderboard({
       </Tabs>
       <section className="settings-section leaderboard-name-form" aria-labelledby="leaderboard-name-title">
         <h2 id="leaderboard-name-title">DEIN RANGLISTENNAME</h2>
-        <p>Gib dir einen Namen für deine Bestwerte. Leer bleibt die neutrale Anzeige „DU“.</p>
+        <p>Ohne Namen erscheinst du als „DU“.</p>
         <label htmlFor="leaderboard-name">Anzeigename</label>
         <input
           id="leaderboard-name"
@@ -341,7 +341,7 @@ export function Leaderboard({
       </section>
       {result.loading && <output className="ranking-state"><span className="spinner" /> BESTWERTE WERDEN GELADEN</output>}
       {result.error && <div className="ranking-state"><p>Die Rangliste ist gerade nicht erreichbar.</p><button className="button small" onClick={() => setRevision((value) => value + 1)}>ERNEUT LADEN</button></div>}
-      {!result.loading && !result.error && entries.length === 0 && <div className="ranking-state"><Trophy size={32} aria-hidden="true" /><h2>DEINE ERSTE MARKE FEHLT NOCH.</h2><p>Beende eine Fahrt, um hier deinen Punktestand zu sehen.</p><button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button></div>}
+      {!result.loading && !result.error && entries.length === 0 && <div className="ranking-state"><Trophy size={32} aria-hidden="true" /><h2>NOCH KEINE FAHRTEN.</h2><p>Nach deiner ersten Fahrt erscheint hier dein Punktestand.</p><button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button></div>}
       {entries.length > 0 && <>
       <div className="ranking-list">
         <div className="ranking-head">
@@ -398,7 +398,7 @@ export function SettingsScreen({
   }
   return (
     <main className="standard-page narrow">
-      <ScreenHeading kicker="STELL ES EIN." title="EINSTELLUNGEN." back={back} backLabel={backLabel} />
+      <ScreenHeading kicker="" title="EINSTELLUNGEN." back={back} backLabel={backLabel} />
       <div className="settings-list">
         <div>
           <label htmlFor="sound">
@@ -414,7 +414,7 @@ export function SettingsScreen({
         <div>
           <label htmlFor="motion">
             <b>Reduzierte Bewegung</b>
-            <span>Weniger Kamerabewegung. Keine automatische Garage-Rotation.</span>
+            <span>Weniger Kamerabewegung, keine automatische Drehung in der Garage.</span>
           </label>
           <Switch
             id="motion"
@@ -460,7 +460,7 @@ export function SettingsScreen({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2>STEUERUNG</h2>
           {onTutorial && <button className="button small" onClick={onTutorial}>
-            <Repeat2 size={18} aria-hidden="true" /> SPIELHINWEISE ERNEUT STARTEN
+            <Repeat2 size={18} aria-hidden="true" /> SPIELHINWEISE ANSEHEN
           </button>}
         </div>
         {touchCapable && <fieldset className="touch-control-options">
