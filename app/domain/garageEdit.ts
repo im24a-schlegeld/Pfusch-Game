@@ -1,5 +1,6 @@
 import { BIKES, PAINTS, RIMS } from './config';
-import { equipHelmet } from './helmet';
+import { equipHelmet, isHelmet, isHelmetColor, isVisorColor, unownedHelmetFinishes } from './helmet';
+import { CARBON_PRICE } from './carbon';
 import { equipConfiguration, equipmentSlot, equippable, previewLoadout, validConfiguration } from './preview';
 import { digitalLevel, digitalPrice, unlock } from './progression';
 import { colorName } from './paletteView';
@@ -56,7 +57,11 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
     // Legacy purchased colors retain their identity even if the current palette no longer lists them.
     valid = !!color || (player.ownedItems.includes(id) && /^#[\da-f]{6}$/i.test(edit.value));
   } else if (edit.kind === 'helmet') {
-    name = 'Helm'; valid = !!equipHelmet(player, edit);
+    const purchases = unownedHelmetFinishes(player, edit);
+    price = purchases.length * CARBON_PRICE;
+    valid = isHelmet(edit.helmet) && isHelmetColor(edit.helmetColor) && isVisorColor(edit.helmetVisor);
+    return { name: purchases.length ? 'Dunkles Karbon · Helm' : 'Helm', price, owned: purchases.length === 0, requiredLevel: 1, collectible: false,
+      blocked: !valid ? 'Diese Auswahl ist nicht verfügbar' : purchases.length && player.level < 1 ? 'Ab Level 1 verfügbar' : player.coins < price ? `Dir fehlen ${price - player.coins} Coins` : null };
   } else if (edit.kind === 'remove') name = 'Standard / ohne Artikel';
   else if (edit.kind === 'product') {
     const product = products.find(p => p.id === edit.productId);

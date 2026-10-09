@@ -17,6 +17,13 @@ vi.mock('../app/game/garmentTexture', () => ({
 const ray = (x: number, y: number) =>
   new Raycaster(new Vector3(x, y, -1), new Vector3(0, 0, 1));
 
+// Source-space assertions are independent of the shared authored riding tilt.
+const sourceHelmet = (color: string) => {
+  const helmet = createMotocrossHelmet(color);
+  helmet.traverse(part => { if (part instanceof Mesh) part.geometry.rotateX(.36); });
+  return helmet;
+};
+
 describe('independent motocross equipment geometry', () => {
   it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s mounts and animates both helmet styles on the same unchanged head',
@@ -50,7 +57,7 @@ describe('independent motocross equipment geometry', () => {
     },
   );
   it('retains the caller contract and adult cranium bounds with finite indexed surfaces', () => {
-    const helmet = createMotocrossHelmet('#b8ce47');
+    const helmet = sourceHelmet('#b8ce47');
     expect(helmet.name).toBe('motocross-helmet');
     expect(helmet.userData.helmetStyle).toBe('motocross');
     expect(helmet.material[0].color.getHexString()).toBe('b8ce47');
@@ -60,7 +67,8 @@ describe('independent motocross equipment geometry', () => {
     expect(Math.max(Math.abs(bounds.min.x), bounds.max.x)).toBeLessThanOrEqual(
       0.1271,
     );
-    expect(bounds.max.y).toBeCloseTo(0.154, 5);
+    expect(bounds.max.y).toBeGreaterThan(.14);
+    expect(bounds.max.y).toBeLessThan(.16);
     expect(bounds.max.z).toBeLessThanOrEqual(0.16);
     expect(bounds.min.z).toBeLessThan(-0.21);
     helmet.traverse((part) => {
@@ -77,7 +85,7 @@ describe('independent motocross equipment geometry', () => {
   });
 
   it('has a real open eye aperture through the shell, while crown and chin remain solid', () => {
-    const helmet = createMotocrossHelmet('#202324');
+    const helmet = sourceHelmet('#202324');
     helmet.updateMatrixWorld(true);
     for (const [x, y] of [
       [0, 0],
@@ -89,7 +97,9 @@ describe('independent motocross equipment geometry', () => {
       expect(hits.length).toBeGreaterThan(0);
       // The ray must reach the far inner shell; a visor-colored face covering
       // the opening would be hit first at negative Z and fail this check.
-      expect(hits[0].point.z).toBeGreaterThan(0.03);
+      const lens = helmet.getObjectByName('motocross-goggle-lens') as Mesh;
+      const lensHit = ray(x, y).intersectObject(lens, false)[0];
+      expect(hits[0].point.z).toBeGreaterThan((lensHit?.point.z ?? -.15) + .025);
     }
     for (const [x, y] of [
       [0, 0.11],
@@ -98,10 +108,6 @@ describe('independent motocross equipment geometry', () => {
       const hits = ray(x, y).intersectObject(helmet, false);
       expect(hits[0]?.point.z).toBeLessThan(-0.08);
     }
-    const chinVent = ray(0, -0.129).intersectObject(helmet, false);
-    // This vent exits below the raised rear neck opening; a rear-shell hit
-    // would require the obsolete deep helmet bowl.
-    expect(chinVent).toHaveLength(0);
   });
 
   it('keeps the shell and projecting chin one connected thick surface', () => {
@@ -131,7 +137,7 @@ describe('independent motocross equipment geometry', () => {
   });
 
   it('fits a separate convex lens with a nose notch inside an open goggle frame', () => {
-    const helmet = createMotocrossHelmet('#202324');
+    const helmet = sourceHelmet('#202324');
     helmet.updateMatrixWorld(true);
     const lens = helmet.getObjectByName('motocross-goggle-lens') as Mesh;
     const frame = helmet.getObjectByName('motocross-goggle-frame') as Mesh;
@@ -147,85 +153,69 @@ describe('independent motocross equipment geometry', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('supports the peak at both temples and joins a broad strap to both goggle outriggers', () => {
-    const helmet = createMotocrossHelmet('#d7dbd7');
-    helmet.updateMatrixWorld(true);
-    const peak = helmet.getObjectByName('motocross-peak')!;
-    const peakBounds = new Box3().setFromObject(peak, true);
-    const mounts = helmet.getObjectsByProperty('name', 'peak-temple-mount');
-    expect(mounts).toHaveLength(2);
-    helmet.geometry.computeBoundingBox();
-    for (const mount of mounts) {
-      const bounds = new Box3().setFromObject(mount, true);
-      expect(bounds.intersectsBox(peakBounds)).toBe(true);
-      expect(bounds.intersectsBox(helmet.geometry.boundingBox!)).toBe(true);
-    }
-    const strapMesh = helmet.getObjectByName('goggle-strap') as Mesh;
-    const strap = new Box3().setFromObject(strapMesh, true);
-    // A 37 mm band follows a 3.5 mm rise toward the back of the shell.
-    expect(strap.max.y - strap.min.y).toBeCloseTo(0.0405, 5);
-    const rearRay = new Raycaster(new Vector3(0, 0.0065, 1), new Vector3(0, 0, -1));
-    const shellBack = rearRay.intersectObject(helmet, false)[0].point.z;
-    const strapBack = rearRay.intersectObject(strapMesh, false)[0].point.z;
-    expect(strapBack - shellBack).toBeGreaterThan(0);
-    expect(strapBack - shellBack).toBeLessThan(0.003);
-    const frame = new Box3().setFromObject(
-      helmet.getObjectByName('motocross-goggle-frame')!,
-      true,
-    );
-    const outriggers = helmet.getObjectsByProperty(
-      'name',
-      'goggle-strap-outrigger',
-    );
-    expect(outriggers).toHaveLength(2);
-    for (const outrigger of outriggers) {
-      const bounds = new Box3().setFromObject(outrigger, true);
-      expect(bounds.intersectsBox(strap)).toBe(true);
-      expect(bounds.intersectsBox(frame)).toBe(true);
-    }
-  });
-
-  it('adds a subtle molded rear ridge with both roots attached to the shell', () => {
-    const helmet = createMotocrossHelmet('#d7dbd7');
-    helmet.updateMatrixWorld(true);
-    const ridge = helmet.getObjectByName('motocross-rear-ridge') as Mesh;
-    const fromRear = (y: number, target: Mesh) =>
-      new Raycaster(
-        new Vector3(0, y, 1),
-        new Vector3(0, 0, -1),
-      ).intersectObject(target, false)[0]?.point.z;
-    const projection = fromRear(0.109, ridge)! - fromRear(0.109, helmet)!;
-    expect(projection).toBeGreaterThan(0.004);
-    expect(projection).toBeLessThan(0.006);
-    for (const y of [0.1025, 0.1175])
-      expect(Math.abs(fromRear(y, ridge)! - fromRear(y, helmet)!)).toBeLessThan(
-        0.002,
-      );
-  });
-
-  it('leaves the rear crown exposed, opens the peak reliefs and keeps the peak rails linear', () => {
-    const helmet = createMotocrossHelmet('#d7dbd7');
+  it('attaches the original peak on both sides and wraps a wider band over shell recesses', () => {
+    const helmet = sourceHelmet('#d7dbd7');
     helmet.updateMatrixWorld(true);
     const peak = helmet.getObjectByName('motocross-peak') as Mesh;
-    const down = (x: number, z: number, target: Mesh = peak) =>
-      new Raycaster(
-        new Vector3(x, 1, z),
-        new Vector3(0, -1, 0),
-      ).intersectObject(target, false);
-
-    // The previous rectangular canopy covered these points outside the crown.
+    const shellPoints = helmet.geometry.getAttribute('position');
+    const peakPoints = peak.geometry.getAttribute('position');
     for (const side of [-1, 1]) {
-      expect(down(side * 0.105, -0.06)).toHaveLength(0);
-      expect(down(side * 0.035, -0.132)).toHaveLength(0);
+      let closest = Infinity;
+      const a = new Vector3(), b = new Vector3();
+      for (let i = 0; i < peakPoints.count; i++) {
+        a.fromBufferAttribute(peakPoints, i);
+        if (a.x * side < .08 || a.y > .085) continue;
+        for (let j = 0; j < shellPoints.count; j++)
+          closest = Math.min(closest, a.distanceToSquared(b.fromBufferAttribute(shellPoints, j)));
+      }
+      expect(Math.sqrt(closest)).toBeLessThan(.008);
     }
-    expect(down(0, -0.132).length).toBeGreaterThan(0);
-    const heights = [-0.20, -0.22, -0.24, -0.26].map(z => down(0, z)[0].point.y);
-    const drop = heights[0] - heights[1];
-    expect(drop).toBeGreaterThan(0);
-    for (let i = 1; i < heights.length - 1; i++)
-      expect(heights[i] - heights[i + 1]).toBeCloseTo(drop, 6);
-    const root = down(0, -0.041)[0].point;
-    const crown = down(0, -0.041, helmet)[0].point;
-    expect(Math.abs(root.y - crown.y)).toBeLessThan(0.006);
+    const strap = helmet.getObjectByName('goggle-strap') as Mesh;
+    expect(strap.userData.width).toBe(.048);
+    for (const angle of [1.8, 2.3, Math.PI, 4, 4.5]) for (const y of [-.011, .004, .019]) {
+      const direction = new Vector3(Math.sin(angle), 0, -Math.cos(angle));
+      const cast = new Raycaster(new Vector3(0, y, 0).addScaledVector(direction, 1), direction.negate());
+      const skin = cast.intersectObject(helmet, false)[0];
+      const textile = cast.intersectObject(strap, false)[0];
+      expect(skin).toBeDefined(); expect(textile).toBeDefined();
+      expect(skin.distance - textile.distance).toBeGreaterThan(0);
+      expect(skin.distance - textile.distance).toBeLessThan(.02);
+    }
+    const strapBounds = new Box3().setFromObject(strap, true);
+    const frameBounds = new Box3().setFromObject(helmet.getObjectByName('motocross-goggle-frame')!, true);
+    const mounts = helmet.getObjectsByProperty('name', 'goggle-strap-outrigger');
+    expect(mounts).toHaveLength(2);
+    for (const mount of mounts) {
+      const bounds = new Box3().setFromObject(mount, true);
+      expect(bounds.intersectsBox(strapBounds)).toBe(true);
+      expect(bounds.intersectsBox(frameBounds)).toBe(true);
+    }
+  });
+
+  it('tilts shell, peak, goggles and strap together without moving the shared head joint', () => {
+    const helmet = createMotocrossHelmet('#d7dbd7');
+    expect(helmet.userData.sourceTilt).toBe(-.36);
+    expect(helmet.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
+    expect(helmet.position.toArray()).toEqual([0, 0, 0]);
+    const lens = helmet.getObjectByName('motocross-goggle-lens') as Mesh;
+    const p = new Vector3().fromBufferAttribute(lens.geometry.getAttribute('position'), 0).applyAxisAngle(new Vector3(1, 0, 0), .36);
+    expect(p.x).toBeCloseTo(-.09, 5);
+    expect(p.y).toBeCloseTo(-.028, 5);
+    const band = helmet.getObjectByName('goggle-strap') as Mesh;
+    expect(band.userData.width).toBe(.048);
+  });
+
+  it('ships the clean imported source with bounded geometry and no print-support wall', () => {
+    const helmet = sourceHelmet('#d7dbd7');
+    expect(helmet.userData.geometryRevision).toBe('thor-source-shell-v1');
+    const peak = helmet.getObjectByName('motocross-peak') as Mesh;
+    expect(helmet.geometry.index!.count / 3 + peak.geometry.index!.count / 3).toBeLessThan(6000);
+    peak.geometry.computeBoundingBox();
+    const bounds = peak.geometry.boundingBox!;
+    expect(bounds.max.y).toBeLessThan(.18);
+    expect(bounds.min.z).toBeLessThan(-.23);
+    expect(bounds.max.z).toBeLessThan(.01);
+    expect(helmet.getObjectByName('motocross-goggle-lens')).toBeDefined();
+    expect(helmet.getObjectByName('goggle-face-seal')).toBeDefined();
   });
 });

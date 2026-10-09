@@ -4,6 +4,7 @@ import type { Player, Product, ProductConfiguration, Slot } from '../domain/type
 import type { Services } from '../services';
 import { confirmPlayerSave } from '../services/saveConfirmation';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
+import { CARBON_PRICE, DARK_CARBON, finishSwatch } from '../domain/carbon';
 import { digitalLevel, digitalPrice, ownership } from '../domain/progression';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS } from '../domain/helmet';
 import { isSticker } from '../domain/stickers';
@@ -43,7 +44,7 @@ function Palette({ title, colors, value, equipped, status, onChange }: {
       });
       chosen.push(...remaining.splice(best, 1));
     }
-    for (const required of [value, equipped]) {
+    for (const required of [value, equipped, DARK_CARBON]) {
       const current = options.find(color => color.value === required);
       if (current && !chosen.some(color => color.value === required)) chosen.push(current);
     }
@@ -53,9 +54,9 @@ function Palette({ title, colors, value, equipped, status, onChange }: {
   if (options.length === 1) return <div className="gc-single-color"><i style={{ background: options[0].value }} /><span>{title}: {options[0].name}</span></div>;
   return <fieldset className="gc-palette"><legend>{title}</legend>
     <div className="gc-color-summary" aria-live="polite"><strong>{selected?.name ?? value}</strong><span>{selected ? status(selected) : ''}</span></div>
-    <div className="gc-swatches">{(expanded ? options : compact).map(color => <label key={color.value} className={value === color.value ? 'is-selected' : ''} title={`${color.name} · ${status(color)}`}>
+    <div className="gc-swatches">{(expanded ? options : compact).map(color => <label key={color.value} className={`${value === color.value ? 'is-selected' : ''} ${color.value === DARK_CARBON ? 'gc-carbon' : ''}`} title={`${color.name} · ${status(color)}`}>
       <input type="radio" name={`garage-${title}`} value={color.value} checked={value === color.value} onChange={() => onChange(color.value)} aria-label={`${title}: ${color.name} · ${status(color)}`} />
-      <i style={{ background: color.value }} />{value === color.value && <Check size={16} aria-hidden="true" />}
+      <i style={{ background: finishSwatch(color.value) }} />{color.value === DARK_CARBON && <span><strong>DUNKLES KARBON</strong><small>PREMIUM · {status(color)}</small></span>}{value === color.value && <Check size={16} aria-hidden="true" />}
     </label>)}</div>
     {options.length > 12 && <button className="gc-text-button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Weniger Farben' : `Weitere Farben (${options.length})`} <ChevronDown size={14} aria-hidden="true" /></button>}
   </fieldset>;
@@ -158,7 +159,7 @@ export default function Garage({ player, products, update, services, notify, sta
       if (/^#[\da-f]{6}$/i.test(value) && !palette.some(color => color.value === value)) palette.push({ value, name: colorName(value), price: 0 });
     }
     return <Palette title={kind === 'paint' ? 'Lackfarbe' : 'Felgenfarbe'} colors={palette} value={appearance[kind]} equipped={player[kind]}
-      status={color => player[kind] === color.value ? 'Ausgerüstet' : player.ownedItems.includes(`${kind}:${color.value}`) ? 'In deinem Besitz' : `${color.price} Coins`}
+      status={color => player[kind] === color.value ? 'Ausgerüstet' : player.ownedItems.includes(`${kind}:${color.value}`) ? 'In deinem Besitz' : `${color.price?.toLocaleString('de-CH')} Coins`}
       onChange={value => setEdit({ kind, value })} />;
   }
   const productStatus = (product: Product) => {
@@ -225,8 +226,8 @@ export default function Garage({ player, products, update, services, notify, sta
         {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps am Hüftclip</button></div>}
         {part === 'helmet' && <div className="gc-helmet-options">
           <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name}</button>)}</div></fieldset>
-          <Palette title="Helmfarbe" colors={HELMET_COLORS.map(color => ({ ...color, name: colorName(color.value) }))} value={appearance.helmetColor} equipped={player.helmetColor} status={() => 'Kostenlos'} onChange={helmetColor => editHelmet({ helmetColor })} />
-          <Palette title="Visier / Brillenglas" colors={VISOR_COLORS} value={appearance.helmetVisor} equipped={player.helmetVisor} status={() => 'Kostenlos'} onChange={helmetVisor => editHelmet({ helmetVisor })} />
+          <Palette title="Helmfarbe" colors={HELMET_COLORS.map(color => ({ ...color, name: colorName(color.value) }))} value={appearance.helmetColor} equipped={player.helmetColor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetColor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetColor => editHelmet({ helmetColor })} />
+          <Palette title="Visier / Brillenglas" colors={VISOR_COLORS} value={appearance.helmetVisor} equipped={player.helmetVisor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetVisor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetVisor => editHelmet({ helmetVisor })} />
           {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}
         </div>}
         {part === 'head' && <p className="gc-help">Caps hängen am Hüftclip. Dein Fahrhelm bleibt auf.</p>}

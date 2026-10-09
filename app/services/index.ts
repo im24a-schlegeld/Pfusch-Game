@@ -1,3 +1,4 @@
+import { DARK_CARBON } from '../domain/carbon';
 import type {
   AnalyticsEvent,
   Player,
@@ -127,7 +128,7 @@ export function decodePlayer(raw: string): Player {
   if (typeof v.bike === 'string' && BIKES.some((b) => b.id === v.bike))
     p.bike = v.bike;
   for (const field of ['paint', 'rims'] as const)
-    if (typeof v[field] === 'string' && /^#[0-9a-f]{6}$/i.test(v[field]))
+    if (typeof v[field] === 'string' && (/^#[0-9a-f]{6}$/i.test(v[field]) || (v[field] === DARK_CARBON && p.ownedItems.includes(`${field}:${DARK_CARBON}`))))
       p[field] = v[field];
   // Additive v1 migration: older saves keep the original full-face chalk helmet.
   // Invalid optional helmet values recover independently without losing progress.
@@ -135,6 +136,8 @@ export function decodePlayer(raw: string): Player {
   if (isHelmetColor(v.helmetColor)) p.helmetColor = v.helmetColor;
   // Additive v1 migration: previous saves have neither visor tint nor placements.
   if (isVisorColor(v.helmetVisor)) p.helmetVisor = v.helmetVisor;
+  if (p.helmetColor === DARK_CARBON && !p.ownedItems.includes(`helmetColor:${DARK_CARBON}`)) p.helmetColor = newPlayer().helmetColor;
+  if (p.helmetVisor === DARK_CARBON && !p.ownedItems.includes(`helmetVisor:${DARK_CARBON}`)) p.helmetVisor = newPlayer().helmetVisor;
   // Additive v1 migration: absent helmet target lists stay empty; bike paths are unchanged.
   if (isRecord(v.stickers))
     for (const target of STICKER_TARGETS) {

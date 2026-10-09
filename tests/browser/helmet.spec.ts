@@ -60,7 +60,7 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
                 helmet.material as THREE.MeshStandardMaterial[]
               )[0].color.getHexString(),
               peak: !!helmet.getObjectByName('motocross-peak'),
-              rearRidge: !!helmet.getObjectByName('motocross-rear-ridge'),
+              source: helmet.userData.geometryRevision,
             }
           : null;
       }),
@@ -69,7 +69,7 @@ test('helmet styles and colors preview freely and only Equip persists them', asy
       scale: [1.065, 1.065, 1.065],
       color: '366bc0',
       peak: true,
-      rearRidge: true,
+      source: 'thor-source-shell-v1',
     });
   expect(await saved()).toEqual(before);
   await discardPreview(page);

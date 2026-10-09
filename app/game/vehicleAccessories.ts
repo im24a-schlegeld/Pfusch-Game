@@ -748,6 +748,11 @@ export function addIgnitionKey(
     face.position.z = side === 'front' ? 0.0036 : -0.0008;
     if (side === 'back') face.rotation.y = Math.PI;
   }
+  // The socket belongs to its real support. Exposed handlebar/top-clamp mounts
+  // turn with steering; the scooter's inner-shield mount stays on its body.
+  const importedSupport = body.userData.ignitionSupport as THREE.Object3D | undefined;
+  const supportParent = importedSupport?.userData.supportParent as THREE.Object3D | undefined;
+  supportParent?.attach(assembly);
   // The same bounded, fixed-step gravity/acceleration/landing pendulum as caps.
   // Only this dedicated pivot rotates; the key, socket and attachment stay fixed.
   return createCarriedCapMotion(pivot);

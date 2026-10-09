@@ -28,6 +28,7 @@ describe('hip cap attachment on the shared rider', () => {
       const pivot = bike.rider.getObjectByName('carried-cap-pivot')!;
       const clip = bike.rider.getObjectByName('cap-belt-clip')!;
       const carried = bike.rider.getObjectByName('carried-cap')!;
+      expect(carried.getObjectByName('imported-cap-shell')?.userData.sourceModel).toBe('user-supplied-cap-obj');
       const helmet = bike.rider.getObjectByName('full-face-helmet')!;
       const rest = carried.quaternion.clone();
       const childPosition = carried.position.clone();

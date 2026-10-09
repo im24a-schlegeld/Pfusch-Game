@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DARK_CARBON } from '../app/domain/carbon';
 import catalog from '../public/catalog/products.json';
 import type { Player, Product, StickerPlacement } from '../app/domain/types';
 import { newPlayer } from '../app/domain/progression';
@@ -118,12 +119,12 @@ describe('additive accessory and visor migration', () => {
     expect(player).toEqual(original);
   });
 
-  it('round trips every supported visor on either helmet and changes no other loadout', () => {
+  it('round trips every stock visor on either helmet and changes no other loadout', () => {
     const player = stickerOwner();
     player.equipped = { accessory: bag.id, keychain: keychain.id, head: cap.id };
     player.stickers = { '125': [placement()] };
     for (const helmet of HELMETS)
-      for (const color of VISOR_COLORS) {
+      for (const color of VISOR_COLORS.filter(color => color.value !== DARK_CARBON)) {
         const equipped = equipHelmet(player, {
           helmet: helmet.id,
           helmetColor: player.helmetColor,

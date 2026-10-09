@@ -1,5 +1,6 @@
 import type { Bike, ChallengeDefinition } from './types';
 import { pricedAppearanceColors } from './appearanceColors.js';
+import { CARBON_FINISH, CARBON_PAINT_PRICE, CARBON_RIM_PRICE } from './carbon.js';
 export const MAX_RIDE_SPEED = 140 / 3.6;
 export const BIKES: Bike[] = [
   {
@@ -151,7 +152,7 @@ export const WEEKLY_CHALLENGES: ChallengeDefinition[] = [
     cadence: 'weekly',
   },
 ];
-export const PAINTS = pricedAppearanceColors([
+export const PAINTS = [...pricedAppearanceColors([
   { name: 'Hell', value: '#e7e7df', price: 0 },
   { name: 'Asphalt', value: '#323638', price: 80 },
   { name: 'Orange', value: '#dc632e', price: 120 },
@@ -161,7 +162,7 @@ export const PAINTS = pricedAppearanceColors([
   { name: 'Tanne', value: '#3e5c52', price: 120 },
   { name: 'Sand', value: '#b6a083', price: 120 },
   { name: 'Violett', value: '#7461a5', price: 120 },
-], 120);
+], 120), { ...CARBON_FINISH, price: CARBON_PAINT_PRICE }];
 const rimPalette = pricedAppearanceColors([
   { name: 'Silber', value: '#a6acb0', price: 0 },
   { name: 'Schwarz', value: '#24282b', price: 60 },
@@ -169,7 +170,7 @@ const rimPalette = pricedAppearanceColors([
   { name: 'Bronze', value: '#967847', price: 100 },
   { name: 'Kobalt', value: '#627dac', price: 100 },
 ], 100);
-export const RIMS = rimPalette;
+export const RIMS = [...rimPalette, { ...CARBON_FINISH, price: CARBON_RIM_PRICE }];
 export const REWARDS = [
   {
     id: 'starter-coins',

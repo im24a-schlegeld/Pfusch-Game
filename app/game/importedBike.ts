@@ -175,25 +175,37 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     const ignitionSupport = new THREE.Object3D();
     ignitionSupport.name = 'imported-ignition-support';
     ignitionSupport.position.copy(point(source.steeringPivot ?? source.grip));
-    if (id === 'scooter') { ignitionSupport.position.x += 0.08; ignitionSupport.position.y -= 0.12; ignitionSupport.position.z += 0.06; }
-    else ignitionSupport.position.y -= 0.018;
+    // Put each barrel on its own cockpit: side of the top clamp on exposed
+    // bars, left triple clamp on Sport, right inner leg shield on the scooter.
+    const ignitionOffsets: Record<ImportedBikeId, Point> = {
+      '125': [-0.045, 0.035, 0.025], moped: [-0.045, 0.012, 0.02],
+      '450': [-0.06, 0.018, 0.028], '701': [-0.105, 0.018, 0.025],
+      scooter: [0.12, -0.13, 0.09],
+    };
+    ignitionSupport.position.add(new THREE.Vector3(...ignitionOffsets[id]));
     // Find a real mounting surface only when an equipped keychain needs it.
     body.updateWorldMatrix(true, true);
     const inverseBody = body.matrixWorld.clone().invert();
     const supportPoint = new THREE.Vector3(), supportMatrix = new THREE.Matrix4();
+    const triangle = new THREE.Triangle();
     const desiredSupport = ignitionSupport.position.clone();
     let nearestSupport = Infinity;
     body.traverse((object) => {
-      if (!(object instanceof THREE.Mesh) || !['body', 'steering', 'fork'].includes(object.userData.importedRig)) return;
+      if (!(object instanceof THREE.Mesh) || object.userData.importedRig !== (id === 'scooter' ? 'body' : 'steering')) return;
       supportMatrix.multiplyMatrices(inverseBody, object.matrixWorld);
       const positions = object.geometry.getAttribute('position');
-      for (let vertex = 0; vertex < positions.count; vertex++) {
-        supportPoint.fromBufferAttribute(positions, vertex).applyMatrix4(supportMatrix);
+      const index = object.geometry.index!;
+      for (let vertex = 0; vertex < index.count; vertex += 3) {
+        triangle.a.fromBufferAttribute(positions, index.getX(vertex)).applyMatrix4(supportMatrix);
+        triangle.b.fromBufferAttribute(positions, index.getX(vertex + 1)).applyMatrix4(supportMatrix);
+        triangle.c.fromBufferAttribute(positions, index.getX(vertex + 2)).applyMatrix4(supportMatrix);
+        triangle.closestPointToPoint(desiredSupport, supportPoint);
         const distance = supportPoint.distanceToSquared(desiredSupport);
         if (distance < nearestSupport) {
           nearestSupport = distance;
           ignitionSupport.position.copy(supportPoint);
           ignitionSupport.userData.supportSurface = object.name;
+          ignitionSupport.userData.supportParent = object.parent;
         }
       }
     });

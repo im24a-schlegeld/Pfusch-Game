@@ -352,20 +352,20 @@ export function accessoryMaterial(
   > = {
     'p-zero-cap': {
       crop: [157, 226, 330, 87],
-      width: 240,
-      height: 280,
+      width: 136,
+      height: 141,
       y: 560,
     },
     'logo-cap-1': {
       crop: [185, 180, 236, 153],
-      width: 215,
-      height: 580,
+      width: 117,
+      height: 300,
       y: 530,
     },
     'pfusch-logo-cap': {
       crop: [244, 241, 146, 84],
-      width: 185,
-      height: 380,
+      width: 109,
+      height: 245,
       y: 555,
     },
     'logo-crossbody-tasche': {
@@ -400,7 +400,9 @@ export function accessoryMaterial(
       .then((img) => {
         if (disposed) return;
         ctx.drawImage(
-          printedCrop(img, design.crop),
+          // This cap's light embroidery sits on black photographic fabric;
+          // exclude its dark folds so no rectangular fabric patch is pasted on.
+          printedCrop(img, design.crop, img, product.handle === 'logo-cap-1'),
           768 - design.width / 2,
           design.y - design.height / 2,
           design.width,

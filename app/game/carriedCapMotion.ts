@@ -55,6 +55,10 @@ export function createCarriedCapMotion(pivot: Object3D) {
     );
     localDirection.copy(worldDirection);
     if (pivot.parent) {
+      // Imported steering uses an imperative matrix; force the ancestor chain
+      // so a body wheelie cannot leave its previous frame's gravity transform.
+      for (let ancestor: Object3D | null = pivot.parent; ancestor; ancestor = ancestor.parent)
+        ancestor.matrixWorldNeedsUpdate = true;
       pivot.parent.updateWorldMatrix(true, false);
       const matrix = pivot.parent.matrixWorld;
       const determinant = matrix.determinant();

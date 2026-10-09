@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { finishBaseColor } from '../domain/carbon';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import type { StickerPlacement } from '../domain/types';
 
@@ -43,7 +44,7 @@ export function stickerSurfaces(
   paint: string,
 ) {
   const result = new Map<string, THREE.Mesh>();
-  const color = new THREE.Color(paint);
+  const color = new THREE.Color(finishBaseColor(paint));
   function visit(object: THREE.Object3D, path: string) {
     if (
       object === rider ||
@@ -59,7 +60,7 @@ export function stickerSurfaces(
         object.userData.bikePaintSurface ||
         materials.some(
           (m) =>
-            m instanceof THREE.MeshStandardMaterial && m.color.equals(color),
+            m instanceof THREE.MeshStandardMaterial && (m.userData.appearanceColorSlot === 'paint' || m.color.equals(color)),
         ) ||
         /tank|fairing|shroud|apron|leg-shield|fender|tail-shell|open-back-fork-guard/.test(
           object.name,

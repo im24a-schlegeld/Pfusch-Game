@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { Player } from '../domain/types';
 import { helmetStickerSurfaces, stickerHelmet } from './bikeStickers';
+import { finishBaseColor } from '../domain/carbon';
+import { applyColorFinish } from './carbonFinish';
 
 type ColoredMaterial = THREE.MeshStandardMaterial;
 type ColorSlot = 'paint' | 'rims' | 'helmetColor' | 'helmetVisor';
@@ -23,14 +25,16 @@ export function createPreviewColorUpdater(
     paint: new Set(), rims: new Set(), helmetColor: new Set(), helmetVisor: new Set(),
   };
   const helmetShade = new Map<ColoredMaterial, number>();
-  const initialPaint = new THREE.Color(player.paint);
-  const initialRim = new THREE.Color(player.rims);
+  const initialPaint = new THREE.Color(finishBaseColor(player.paint));
+  const initialRim = new THREE.Color(finishBaseColor(player.rims));
   const visitBody = (object: THREE.Object3D) => {
     if (object === rider || object.userData.bikeSticker) return;
     if (object instanceof THREE.Mesh) {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+        const previousSlot = material.userData.appearanceColorSlot as ColorSlot | undefined;
+        if (previousSlot === 'paint' || previousSlot === 'rims') { slots[previousSlot].add(material); continue; }
         const importedRim = material.userData.rimPalette ?? /(^|[_\s-])rims?(?=\d|$|[_\s-])/i.test(material.name);
         const authoredRim = !object.userData.importedPart && /rim|wheel-ring|wheel-face/.test(object.name.toLowerCase()) &&
           !/spoke|tyre|tire/.test(object.name.toLowerCase());
@@ -60,9 +64,12 @@ export function createPreviewColorUpdater(
     // Preserve the authored darker molded panels and painted edge shading.
     for (const [index, material] of materials.entries()) {
       if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+      if (material.userData.appearanceColorSlot === 'helmetColor') {
+        slots.helmetColor.add(material); helmetShade.set(material, material.userData.helmetShade ?? 1); continue;
+      }
       const shade = material.metalness === 0.12 ? 0.96 : material.roughness === 0.6 ? 0.87 : 1;
       if ((index === 0 || material.metalness === 0.12) &&
-        material.color.equals(new THREE.Color(player.helmetColor).multiplyScalar(shade))) {
+        material.color.equals(new THREE.Color(finishBaseColor(player.helmetColor)).multiplyScalar(shade))) {
         slots.helmetColor.add(material);
         helmetShade.set(material, shade);
       }
@@ -84,14 +91,20 @@ export function createPreviewColorUpdater(
     helmetColor: player.helmetColor, helmetVisor: player.helmetVisor,
   };
   const colorSlots = Object.keys(slots) as ColorSlot[];
+  for (const slot of colorSlots) for (const material of slots[slot]) {
+    material.userData.appearanceColorSlot = slot;
+    if (slot === 'helmetColor') material.userData.helmetShade = helmetShade.get(material) ?? 1;
+  }
   return (appearance: Pick<Player, ColorSlot>) => {
+    let changed = false;
     for (const slot of colorSlots) {
       if (appearance[slot] === previous[slot]) continue;
+      changed = true;
       previous[slot] = appearance[slot];
       for (const material of slots[slot]) {
-        material.color.set(appearance[slot]);
-        if (slot === 'helmetColor') material.color.multiplyScalar(helmetShade.get(material) ?? 1);
+        applyColorFinish(material, appearance[slot], slot === 'helmetColor' ? helmetShade.get(material) ?? 1 : 1);
       }
     }
+    return changed;
   };
 }

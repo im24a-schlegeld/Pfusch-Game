@@ -1,0 +1,15 @@
+Dark carbon finish: Carbon01_Color01_1K.png from the user-supplied Carbon01_1K.zip.
+Reduced from 1024 x 1024 to 128 x 128 JPEG. Only the original color map is used;
+the normal, metallic, roughness and AO maps are intentionally omitted for mobile.
+
+Original source read me.txt:
+Free texture from game piggs creators.
+If you enjoy my free texture, please subscribe my YOUTUBE channel ore write your comments.
+Feedback help me to create better texture and give me more motivation.
+
+https://www.youtube.com/channel/UC3XzVCHgu4mxY-waZx9YhDQ/featured?view_as=subscriber
+
+Also you can visit my free website with free assets
+https://game-piggs.com/textures/
+
+Thank you very much :)

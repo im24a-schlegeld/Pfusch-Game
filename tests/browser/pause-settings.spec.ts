@@ -47,7 +47,9 @@ test('settings retain the paused ride, accept controls and return to pause', asy
   await expect(page.getByRole('heading', { name: 'PAUSE.' })).toBeVisible();
   await expect(ride).toHaveAttribute('data-phase', 'paused');
   await page.getByRole('button', { name: 'WEITERFAHREN', exact: true }).click();
-  await expect(ride).toHaveAttribute('data-phase', 'playing');
+  // The countdown continues through rendered frames; shader compilation after
+  // changing quality can make those frames slower on software-rendered CI.
+  await expect(ride).toHaveAttribute('data-phase', 'playing', { timeout: 15000 });
   await page.getByRole('button', { name: 'Fahrt pausieren', exact: true }).click();
   await page.getByRole('button', { name: 'FAHRT BEENDEN', exact: true }).click();
   await expect(page.getByRole('button', { name: 'NOCHMAL FAHREN', exact: true })).toBeVisible();

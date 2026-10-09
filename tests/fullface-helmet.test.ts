@@ -18,7 +18,7 @@ describe('simplified supplied racing helmet', () => {
     const helmet = createFullfaceHelmet('#f0f0f0', '#30414b');
     const geometry = helmet.geometry, normal = geometry.getAttribute('normal');
     expect(geometry.index!.count / 3).toBeLessThan(7000);
-    expect(atob(FULLFACE_HELMET_ASSET.data).length).toBeLessThan(80000);
+    expect(atob(FULLFACE_HELMET_ASSET.data).length).toBeLessThan(90000);
     expect(geometry.groups.map(group => group.materialIndex)).toEqual([0, 1, 2]);
     expect(geometry.groups.reduce((sum, group) => sum + group.count, 0)).toBe(geometry.index!.count);
     expect(helmet.children).toHaveLength(0);
@@ -30,7 +30,9 @@ describe('simplified supplied racing helmet', () => {
     const size = geometry.boundingBox!.getSize(new Vector3());
     expect(size.x).toBeGreaterThan(.245); expect(size.x).toBeLessThan(.26);
     expect(size.y).toBeGreaterThan(.295); expect(size.y).toBeLessThan(.315);
-    expect(size.z).toBeGreaterThan(.28); expect(size.z).toBeLessThan(.31);
+    // Original assembled Rossi shell, including its aero rear; the head width
+    // and shared adult rider scale remain unchanged.
+    expect(size.z).toBeGreaterThan(.335); expect(size.z).toBeLessThan(.365);
   });
 
   it('keeps the actual front visor in slot 1 and the side painted shell in slot 0', () => {
@@ -40,6 +42,10 @@ describe('simplified supplied racing helmet', () => {
     const shell = new Raycaster(new Vector3(1, .07, .055), new Vector3(-1, 0, 0)).intersectObject(helmet, false)[0];
     expect(visor.face!.materialIndex).toBe(1);
     expect(shell.face!.materialIndex).toBe(0);
+    // The closed original visor reaches the lower eye opening. The rejected
+    // print-parts assembly left a white gap here instead of continuous glass.
+    const lowerVisor = new Raycaster(new Vector3(0, -.08, -1), new Vector3(0, 0, 1)).intersectObject(helmet, false)[0];
+    expect(lowerVisor.face!.materialIndex).toBe(1);
   });
 
   it('preserves live shell/visor recoloring without rebuilding geometry or changing dark trim', () => {

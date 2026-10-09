@@ -568,7 +568,7 @@ export default function SceneView({
         vehicleProducts = nextAppearance.products;
         if (mode === 'garage') transitionPreview(now, appliedFocus);
       }
-      if (latestAssetReady) updateColors(nextAppearance.player);
+      if (latestAssetReady && updateColors(nextAppearance.player)) invalidation.track(bike.root);
       if (mode === 'garage' && command.inspectionFocus !== appliedFocus) {
         appliedFocus = command.inspectionFocus;
         transitionPreview(now, appliedFocus, focusAngles[appliedFocus]);

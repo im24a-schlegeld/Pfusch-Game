@@ -49,6 +49,13 @@ describe('authentic, chassis-attached keychain', () => {
     );
     expect(Math.min(...endpoints.map((point) => point.distanceTo(support)))).toBeLessThan(1e-7);
     expect(endpoints[0].distanceTo(endpoints[1])).toBeLessThan(0.085);
+    expect(assembly.parent?.name).toBe(model === 'scooter' ? 'imported-motorcycle' : 'imported-steering');
+    const mountBeforeSteer = assembly.getWorldPosition(new Vector3());
+    for (let frame = 0; frame < 20; frame++) bike.animateRider({ wheelie: 0, steer: 1, landing: 0 }, 1 / 60);
+    bike.root.updateMatrixWorld(true);
+    const mountMovement = assembly.getWorldPosition(new Vector3()).distanceTo(mountBeforeSteer);
+    if (model === 'scooter') expect(mountMovement).toBeLessThan(1e-8);
+    else expect(mountMovement).toBeGreaterThan(0.001);
     const anchor = pivot.position.clone();
     const front = pivot.getObjectByName('keychain-mockup-front') as Mesh;
     const back = pivot.getObjectByName('keychain-mockup-back') as Mesh;

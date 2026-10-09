@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HELMETS, HELMET_COLORS, equipHelmet } from '../app/domain/helmet';
+import { DARK_CARBON } from '../app/domain/carbon';
 import { newPlayer } from '../app/domain/progression';
 import type { Helmet } from '../app/domain/types';
 import { decodePlayer, LocalPlayerRepository } from '../app/services';
@@ -29,7 +30,7 @@ describe('stock helmet options', () => {
   it('round trips every supported style and color without purchasing anything', () => {
     const player = { ...newPlayer(), coins: 0 };
     for (const helmet of HELMETS) {
-      for (const color of HELMET_COLORS) {
+      for (const color of HELMET_COLORS.filter(color => color.value !== DARK_CARBON)) {
         const equipped = equipHelmet(player, {
           helmet: helmet.id,
           helmetColor: color.value,

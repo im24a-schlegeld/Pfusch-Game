@@ -2,6 +2,7 @@ import type { Player, Slot, StickerPlacement } from '../../app/domain/types.js';
 import { levelForXp, newPlayer, normalizeLeaderboardName } from '../../app/domain/progression.js';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
 import { BIKES, REWARDS } from '../../app/domain/config.js';
+import { DARK_CARBON } from '../../app/domain/carbon.js';
 import { MAX_SAVED_SETUPS, MAX_SAVED_SETUPS_BYTES, sanitizeSavedSetups } from '../../app/domain/setups.js';
 import { isTutorialHint, normalizeTutorialHints, TUTORIAL_HINTS } from '../../app/domain/tutorial.js';
 import { ApiError } from './auth.js';
@@ -65,8 +66,12 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   player.bike = bikeId;
   for (const field of ['paint', 'rims', 'helmetColor', 'helmetVisor'] as const) {
     if (input[field] === undefined && ['helmetColor', 'helmetVisor'].includes(field)) continue;
-    const color = text(input[field], 7);
-    if (!/^#[a-f0-9]{6}$/i.test(color)) invalid();
+    const color = text(input[field], 32);
+    // Carbon is a digital inventory finish, not a hex color. Keep the same
+    // ownership requirement as the client so equipped finishes survive backup.
+    if (color === DARK_CARBON) {
+      if (!player.ownedItems.includes(`${field}:${DARK_CARBON}`)) invalid();
+    } else if (!/^#[a-f0-9]{6}$/i.test(color)) invalid();
     player[field] = color;
   }
   if (input.helmet !== undefined) {

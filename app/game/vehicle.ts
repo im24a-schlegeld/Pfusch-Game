@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { finishBaseColor } from '../domain/carbon';
+import { createPreviewColorUpdater } from './previewAppearance';
 import { makeImportedBike } from './importedBike';
 import { isImportedBike } from './importedBikeAsset';
 import { addSupermotoRearProtection, supermotoRearFenderUndersideAt } from './supermotoRearProtection';
@@ -7,9 +9,9 @@ import type { Player, Product } from '../domain/types';
 import {
   garmentMaterial,
   sleeveMaterial,
-  accessoryMaterial,
   fabricMaterial,
 } from './garmentTexture';
+import { createCarriedCap } from './carriedCap';
 import {
   BIKE_CONTACTS,
   POSES,
@@ -442,6 +444,13 @@ function makeHelmet(
   return helmet;
 }
 export function makeBike(player: Player, products: Product[]) {
+  const base = { ...player, paint: finishBaseColor(player.paint), rims: finishBaseColor(player.rims),
+    helmetColor: finishBaseColor(player.helmetColor), helmetVisor: finishBaseColor(player.helmetVisor) };
+  const bike = buildBike(base, products);
+  createPreviewColorUpdater(bike.body, bike.rider, base)(player);
+  return bike;
+}
+function buildBike(player: Player, products: Product[]) {
   const imported = isImportedBike(player.bike) ? player.bike : undefined;
   if (imported) return makeImportedBike(player, products, (parent, pose, appearance, catalog) => {
     const rider = makeRider(parent, pose, appearance, catalog);
@@ -2970,8 +2979,7 @@ function makeRider(
   let capMotion: ReturnType<typeof createCarriedCapMotion> | undefined;
   const cap = products.find((p) => p.id === player.equipped.head);
   if (cap) {
-    const capM = material(productColor(cap), 0, 0.97),
-      group = new THREE.Group(),
+    const group = new THREE.Group(),
       pivot = new THREE.Group();
     pivot.position.set(-0.25, pose.hip[1] + 0.015, pose.hip[2] + 0.035);
     pivot.name = 'carried-cap-pivot';
@@ -2996,46 +3004,7 @@ function makeRider(
     group.name = 'carried-cap';
     group.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
     pivot.add(group);
-    rod(group, [-0.032, 0, 0.1], [0.032, 0, 0.1], 0.005, capM).name =
-      'cap-adjustment-strap';
-    loft(
-      group,
-      [
-        [0, 0.103, 0.1, 0],
-        [0.045, 0.1, 0.095, 0],
-        [0.1, 0.07, 0.065, 0],
-        [0.12, 0.012, 0.013, 0],
-      ],
-      accessoryMaterial(cap, player, productColor(cap)),
-    );
-    const brimVertices: number[] = [],
-      brimIndices: number[] = [];
-    const rows = 14,
-      cols = 24;
-    for (let i = 0; i <= rows; i++)
-      for (let j = 0; j <= cols; j++) {
-        const t = i / rows,
-          u = (j / cols) * 2 - 1;
-        brimVertices.push(
-          u * (0.108 - 0.018 * t),
-          -0.025 * u * u - 0.014 * t,
-          -0.045 - t * (0.19 - 0.06 * u * u),
-        );
-      }
-    for (let i = 0; i < rows; i++)
-      for (let j = 0; j < cols; j++) {
-        const a = i * (cols + 1) + j,
-          b = a + cols + 1;
-        brimIndices.push(a, a + 1, b, b, a + 1, b + 1);
-      }
-    const brimGeometry = new THREE.BufferGeometry();
-    brimGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(brimVertices, 3),
-    );
-    brimGeometry.setIndex(brimIndices);
-    capM.side = THREE.DoubleSide;
-    mesh(group, brimGeometry, capM).name = 'curved-cap-brim';
+    group.add(createCarriedCap(cap, player, productColor(cap)));
     capMotion = createCarriedCapMotion(pivot);
   }
   rider.userData.skeleton = RIDER_DIMENSIONS;
