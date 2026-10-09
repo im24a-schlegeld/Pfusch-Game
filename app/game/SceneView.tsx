@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';
 import { suspensionTarget } from './activeSuspension';
 import { wheelieLanePose } from './riderMotion';
@@ -33,7 +34,7 @@ import { createSceneInvalidation } from './sceneInvalidation';
 import { createRenderCadence } from './renderCadence';
 import { selectTutorialCue, visibleTutorialProjection, type TutorialCue, type TutorialTarget } from './tutorialCues';
 
-export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'accessory' | 'cape' | 'keychain';
+export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'cap' | 'accessory' | 'cape' | 'keychain';
 
 export const preloadBikeAsset = preloadImportedBike;
 
@@ -254,6 +255,7 @@ export default function SceneView({
         rims: [0.48, portrait ? 5.2 : 4.25, 0.4],
         upper: [2, portrait ? 3.2 : 2.7, 0.28],
         head: [2.65, portrait ? 2.1 : 1.7, 0.12],
+        cap: [1.4, portrait ? 1.8 : 1.5, 0.08],
         accessory: [1.65, portrait ? 3.7 : 3, 0.28],
         cape: [2, portrait ? 4.2 : 3.5, 0.18],
         keychain: [1.1, portrait ? 2.7 : 2.3, 0.45],
@@ -262,7 +264,7 @@ export default function SceneView({
       const look = new THREE.Vector3(0, y, 0);
       const name = focus === 'upper' ? 'tailored-garment'
         : focus === 'head' ? (appearance.current.player.helmet === 'fullface' ? 'full-face-helmet' : 'motocross-helmet')
-          : focus === 'cape' ? 'pfusch-flag-cape' : focus === 'accessory' ? 'carried-crossbody-bag' : focus === 'keychain' ? 'keychain-fabric-tag' : '';
+          : focus === 'cap' ? 'carried-cap' : focus === 'cape' ? 'pfusch-flag-cape' : focus === 'accessory' ? 'carried-crossbody-bag' : focus === 'keychain' ? 'keychain-fabric-tag' : '';
       const target = focus === 'model' ? bike.root : name ? bike.root.getObjectByName(name) : undefined;
       if (target) {
         const priorRotation = bike.root.rotation.y;
@@ -276,7 +278,7 @@ export default function SceneView({
       }
       return { look, position: look.clone().add(new THREE.Vector3(0, elevation, distance * zoom)) };
     };
-    const focusAngles: Record<InspectionFocus, number> = { model: 2.35, paint: 1.65, rims: 1.55, upper: 2.45, head: 2.6, accessory: 3.75, cape: 0.3, keychain: 1.65 };
+    const focusAngles: Record<InspectionFocus, number> = { model: 2.35, paint: 1.65, rims: 1.55, upper: 2.45, head: 2.6, cap: 1.65, accessory: 3.75, cape: 0.3, keychain: 1.65 };
     const transitionPreview = (now: number, focus: InspectionFocus, angle = rotation) => {
       invalidation.invalidate();
       const target = previewTargets(focus, angle);
@@ -1135,8 +1137,8 @@ export default function SceneView({
       )}
       {renderReady && assetLoading && !error && <output className="scene-load-note" aria-live="polite"><span className="spinner" aria-hidden="true" />Neues Modell wird geladen · bisherige Ansicht</output>}
       {mode === 'garage' && renderReady && !error && <div className="scene-zoom" aria-label="Vorschau vergrößern oder verkleinern">
-        <button type="button" aria-label="Vorschau vergrößern" onClick={() => zoomPreview.current(1 / 1.12)}>+</button>
-        <button type="button" aria-label="Vorschau verkleinern" onClick={() => zoomPreview.current(1.12)}>−</button>
+        <button type="button" aria-label="Vorschau vergrößern" onClick={() => zoomPreview.current(1 / 1.12)}><Plus size={18} strokeWidth={3} aria-hidden="true" /></button>
+        <button type="button" aria-label="Vorschau verkleinern" onClick={() => zoomPreview.current(1.12)}><Minus size={18} strokeWidth={3} aria-hidden="true" /></button>
       </div>}
       {error && mode !== 'ride' && <SceneFallback player={player} products={products} />}
       {error && mode === 'ride' && (

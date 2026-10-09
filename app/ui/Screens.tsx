@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   Check,
@@ -274,23 +274,42 @@ export function Leaderboard({
   );
   const [result, setResult] = useState<{ snapshot: LeaderboardSnapshot | null; loading: boolean; error: boolean }>({ snapshot: null, loading: true, error: false });
   const [revision, setRevision] = useState(0);
+  const saveRevision = useRef(0);
   const [draftName, setDraftName] = useState(player.leaderboardName);
   useEffect(() => setDraftName(player.leaderboardName), [player.leaderboardName]);
   useEffect(() => {
+    let previous = services.players.syncStatus?.state;
+    return services.players.subscribeSync?.(() => {
+      const next = services.players.syncStatus?.state;
+      if (previous === 'saving' && next !== 'saving') {
+        // Invalidate an older fetch immediately, before React runs its cleanup.
+        // A confirmed fifth trial save can finish as unavailable, not synced.
+        saveRevision.current += 1;
+        setRevision((value) => value + 1);
+      }
+      previous = next;
+    });
+  }, [services.players]);
+  useEffect(() => {
     let current = true;
+    const savedAtStart = saveRevision.current;
     setResult({ snapshot: null, loading: true, error: false });
     const fetch = services.leaderboard.fetch;
     if (!fetch) {
       setResult({ snapshot: { entries: services.leaderboard.list(player, period), source: 'local', message: 'Deine gespeicherten Fahrten auf diesem Gerät.' }, loading: false, error: false });
       return;
     }
-    void fetch.call(services.leaderboard, player, period).then((snapshot) => {
-      if (current) setResult({ snapshot, loading: false, error: false });
-    }).catch(() => {
-      if (current) setResult({ snapshot: null, loading: false, error: true });
+    void (async () => {
+      // The server attempts the ranking update before acknowledging a queued save.
+      await services.players.flush?.();
+      if (!current || savedAtStart !== saveRevision.current) return;
+      const snapshot = await fetch.call(services.leaderboard, player, period);
+      if (current && savedAtStart === saveRevision.current) setResult({ snapshot, loading: false, error: false });
+    })().catch(() => {
+      if (current && savedAtStart === saveRevision.current) setResult({ snapshot: null, loading: false, error: true });
     });
     return () => { current = false; };
-  }, [services.leaderboard, player, period, revision]);
+  }, [services.leaderboard, services.players, player, period, revision]);
   const entries = result.snapshot?.entries ?? [];
   const online = result.snapshot?.source === 'shopify';
   const normalizedName = normalizeLeaderboardName(draftName);
@@ -349,7 +368,7 @@ export function Leaderboard({
           <span>PUNKTE</span>
         </div>
         {entries.map((e, i) => (
-          <div key={e.name} className={e.you ? 'you' : ''}>
+          <div key={`${i}:${e.name}`} className={e.you ? 'you' : ''}>
             <span className="rank">
               {i === 0 ? <Trophy size={23} /> : String(i + 1).padStart(2, '0')}
             </span>

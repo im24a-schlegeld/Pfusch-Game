@@ -84,23 +84,22 @@
   inset: auto !important;
   transform: none !important;
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 16px;
-  gap: 2px;
   place-items: center;
   filter: drop-shadow(0 1px 1px #0008);
+}
+.ride-screen .v42-signs .signs-lockup {
+  max-width: calc(44px * 2.85);
 }
 .ride-screen .v42-signs canvas {
   display: block !important;
   min-height: 0 !important;
-  max-height: 44px !important;
-  width: 100% !important;
+  max-height: none !important;
+  width: 95% !important;
   height: 100% !important;
   object-fit: contain !important;
 }
 .ride-screen .v42-sign-stop {
   display: block;
-  width: 16px;
-  height: 16px;
   transform: none;
   animation: none;
 }
@@ -454,9 +453,8 @@
     background: #13131380;
     border: 1px solid #ffffff44;
   }
-  .ride-screen .v42-signs canvas {
-    height: auto !important;
-    max-height: none !important;
+  .ride-screen .v42-signs .signs-lockup {
+    max-width: none;
   }
   .ride-screen .v42-pause {
     grid-column: 3;

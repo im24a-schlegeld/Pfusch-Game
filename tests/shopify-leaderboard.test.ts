@@ -37,6 +37,18 @@ describe('real saved rider leaderboard', () => {
     player.highScore = 1; board = mergeRanking(board, (80).toString(16).padStart(16, '0'), player, now);
     expect(board.all.rows[0].score).toBe(80);
   });
+  it('clears a saved public name in every ranking window without losing the best score', async () => {
+    const alias = await playerAlias(config, '123');
+    const player = { ...newPlayer(), leaderboardName: 'Dario', highScore: 400, history: [{ date: '2026-10-05', score: 400 }] };
+    const named = mergeRanking(empty(), alias, player, now);
+    for (const history of [player.history, []]) {
+      const cleared = mergeRanking(named, alias, { ...player, leaderboardName: '', highScore: 300, history }, now);
+      for (const period of ['day', 'week', 'all'] as const)
+        expect(cleared[period].rows).toEqual([{ alias, score: 400 }]);
+      const result = await handleRankingRequest('GET', signed(), config, vi.fn().mockResolvedValue(loaded(cleared)), now);
+      expect(result.body).toMatchObject({ entries: [{ name: 'DU', score: 400, you: true }] });
+    }
+  });
   it('never erases an already advanced UTC window from an older in-flight request', async () => {
     const advanced = empty();
     advanced.day = { key: '2026-10-06', rows: [{ alias: 'b'.repeat(16), score: 250 }] };

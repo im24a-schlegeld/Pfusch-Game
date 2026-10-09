@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loadSignArtwork, type SignArtwork } from '../game/signArtwork';
 import { COMPLETE_SIGN_MASK } from '../game/signSet';
 import StopSign from './StopSign';
+import './signs-lockup.css';
 export default function SignProgress({ mask }: { mask: number }) {
   const ref = useRef<HTMLCanvasElement>(null),
     [art, setArt] = useState<SignArtwork | null>(null),
@@ -22,18 +23,12 @@ export default function SignProgress({ mask }: { mask: number }) {
   useEffect(() => {
     if (!art || !ref.current) return;
     const c = ref.current;
-    // Match the slight clockwise placement of the complete print on the hoodie.
-    const angle = Math.PI / 30,
-      cos = Math.cos(angle),
-      sin = Math.sin(angle);
-    c.width = Math.ceil(art.width * cos + art.height * sin);
-    c.height = Math.ceil(art.width * sin + art.height * cos);
+    // The shared lockup applies the same tilt and STOP placement as the logo.
+    c.width = art.width;
+    c.height = art.height;
     const ctx = c.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, c.width, c.height);
-    ctx.translate(c.width / 2, c.height / 2);
-    ctx.rotate(angle);
-    ctx.translate(-art.width / 2, -art.height / 2);
     // Whole, separate layers: selecting F cannot reveal any U pixels. The dark
     // U layer remains in front and occludes F at their natural overlap.
     art.pieces.forEach((p, i) =>
@@ -54,8 +49,10 @@ export default function SignProgress({ mask }: { mask: number }) {
       data-fallbacks={art?.fallbacks ?? 0}
       aria-label={`${count} von 6 Schildern gesammelt${failed ? '. Bild nicht verfügbar' : ''}`}
     >
-      <canvas ref={ref} width={660} height={205} aria-hidden="true" />
-      <StopSign active={complete} className="v42-sign-stop" />
+      <span className="signs-lockup">
+        <canvas className="signs-lockup-artwork" ref={ref} width={660} height={220} aria-hidden="true" />
+        <StopSign active={complete} className="v42-sign-stop signs-lockup-stop" />
+      </span>
     </figure>
   );
 }

@@ -95,8 +95,17 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   const { rows, columns, length, width, neckZ, collarStart, collarEnd, collarRadiusX, collarRadiusZ } = FLAG_CAPE;
 
   const shape = (reducedMotion: boolean) => {
+    // The pouch is added after the cape during rider assembly. Reserve its
+    // volume only when it is actually equipped, not behind every bare back.
+    let hasBag = false;
+    for (const child of mesh.parent?.children ?? [])
+      if (child.name === 'crossbody-assembly-v43') { hasBag = true; break; }
     down.set(0, -1, 0); back.set(0, 0, 1);
     if (mesh.parent) {
+      // Static imported transforms must also follow a newly posed ancestor
+      // before gravity and clearance are evaluated, ahead of the render pass.
+      for (let ancestor: THREE.Object3D | null = mesh.parent; ancestor; ancestor = ancestor.parent)
+        ancestor.matrixWorldNeedsUpdate = true;
       mesh.parent.updateWorldMatrix(true, false);
       const world = mesh.parent.matrixWorld;
       const determinant = world.determinant();
@@ -147,8 +156,12 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
           + .17 * spread + centerZ + .10 * t * t * (1 - wind) + folds * spread + flutter;
         // Smooth torso / bag clearance starts behind the shoulder wrap.
         y = Math.max(-.46, Math.min(1.65, y));
-        const backClearance = .16 + .145 * Math.exp(-(((y - .10) / .25) ** 2)) + .18 * smooth(-y / .25);
-        z = Math.max(z, anchorZ + (backClearance - anchorZ) * spread);
+        const backClearance = .16 + (hasBag ? .145 * Math.exp(-(((y - .10) / .25) ** 2)) : 0)
+          + .18 * smooth(-y / .25);
+        const safeZ = anchorZ + (backClearance - anchorZ) * spread;
+        // Blend onto the back instead of switching abruptly at the clearance
+        // boundary, which made a rigid ridge through the printed flag.
+        z = safeZ + .024 * Math.log1p(Math.exp((z - safeZ) / .024));
         // Garments remain wide above the skeleton's shoulder joint: their
         // neckline only narrows around Y .607. Keep the wrap outside that
         // sloping surface, including its sleeve seam, rather than through it.

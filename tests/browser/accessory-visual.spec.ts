@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import type { Product } from '../../app/domain/types';
 import { newPlayer } from '../../app/domain/progression';
 import type * as THREE from 'three';
+import { CARRIED_CAP_STRAP_ANCHOR } from '../../app/game/carriedCap';
 
 declare global {
   interface Window {
@@ -60,7 +61,7 @@ test('carried caps and bag retain the riding helmet, real artwork and free previ
   expect(errors).toEqual([]);
 });
 
-test('hip cap remains clipped, responds to a real wheelie and freezes on pause', async ({
+test('hip cap remains attached by its own strap, responds to a real wheelie and freezes on pause', async ({
   page,
   request,
 }) => {
@@ -114,18 +115,18 @@ test('hip cap remains clipped, responds to a real wheelie and freezes on pause',
   const ride = page.getByTestId('ride-screen');
   await expect(ride).toHaveAttribute('data-phase', 'playing');
   const state = () =>
-    page.evaluate(() => {
+    page.evaluate((strapAnchor) => {
       const scene = window.capMotionProbe.scenes
         .filter((s) => s.getObjectByName('road-headlight'))
         .at(-1)!;
       const pivot = scene.getObjectByName('carried-cap-pivot')!;
-      const clip = scene.getObjectByName('cap-belt-clip')!;
       const cap = scene.getObjectByName('carried-cap')!;
       return {
         rotation: pivot.quaternion.toArray(),
         attachmentGap: pivot
           .getWorldPosition(pivot.position.clone())
-          .distanceTo(clip.getWorldPosition(clip.position.clone())),
+          .distanceTo(cap.position.clone().set(...strapAnchor).applyMatrix4(cap.matrixWorld)),
+        hasHook: !!scene.getObjectByName('cap-belt-clip'),
         down: pivot.position
           .clone()
           .set(0, -1, 0)
@@ -134,7 +135,7 @@ test('hip cap remains clipped, responds to a real wheelie and freezes on pause',
         rest: cap.position.toArray(),
         helmet: !!scene.getObjectByName('full-face-helmet'),
       };
-    });
+    }, CARRIED_CAP_STRAP_ANCHOR);
   const before = await state();
   await page.keyboard.down('s');
   await expect
@@ -146,6 +147,7 @@ test('hip cap remains clipped, responds to a real wheelie and freezes on pause',
   const wheelie = await state();
   expect(wheelie.rotation).not.toEqual(before.rotation);
   expect(wheelie.attachmentGap).toBeLessThan(1e-8);
+  expect(wheelie.hasHook).toBe(false);
   expect(wheelie.down[1]).toBeLessThan(-0.9);
   expect(wheelie.rest).toEqual(before.rest);
   expect(wheelie.helmet).toBe(true);
@@ -159,7 +161,7 @@ test('hip cap remains clipped, responds to a real wheelie and freezes on pause',
   });
   await page.clock.runFor(20);
   // Read immediately after rendering, before WebGL clears its drawing buffer.
-  // The paused close-up inspects the real clip without the dialog obscuring it.
+  // The paused close-up inspects the strap contact without the dialog obscuring it.
   const capture = await page.evaluate(() => window.capMotionProbe.capture!);
   await writeFile(
     'outputs/cap-wheelie-attachment.png',

@@ -17,9 +17,19 @@ vi.mock('../app/game/garmentTexture', () => ({
 const ray = (x: number, y: number) =>
   new Raycaster(new Vector3(x, y, -1), new Vector3(0, 0, 1));
 
-// Source-space assertions are independent of the shared authored riding tilt.
-const sourceHelmet = (color: string) => {
+// Source geometry/fit assertions use authored units; equipment enlargement
+// must leave every component in the same relative position.
+const authoredHelmet = (color: string) => {
   const helmet = createMotocrossHelmet(color);
+  const scale = 1 / helmet.userData.equipmentScale;
+  helmet.traverse(part => {
+    if (part !== helmet) part.position.multiplyScalar(scale);
+    if (part instanceof Mesh) part.geometry.scale(scale, scale, scale);
+  });
+  return helmet;
+};
+const sourceHelmet = (color: string) => {
+  const helmet = authoredHelmet(color);
   helmet.geometry.rotateX(-helmet.userData.sourceTilt);
   (helmet.getObjectByName('motocross-peak') as Mesh).geometry.rotateX(-helmet.userData.sourceTilt);
   const goggles = helmet.getObjectByName('motocross-goggles')!;
@@ -173,7 +183,7 @@ describe('independent motocross equipment geometry', () => {
       }
       expect(Math.sqrt(closest)).toBeLessThan(.008);
     }
-    const fitted = createMotocrossHelmet('#d7dbd7');
+    const fitted = authoredHelmet('#d7dbd7');
     fitted.updateMatrixWorld(true);
     const goggles = fitted.getObjectByName('motocross-goggles')!;
     const strap = fitted.getObjectByName('goggle-strap') as Mesh;
@@ -217,7 +227,7 @@ describe('independent motocross equipment geometry', () => {
   });
 
   it('keeps goggles level independently of the gentler shell pitch and shared head joint', () => {
-    const helmet = createMotocrossHelmet('#d7dbd7');
+    const helmet = authoredHelmet('#d7dbd7');
     expect(helmet.userData.sourceTilt).toBeGreaterThan(-.36);
     expect(helmet.userData.sourceTilt).toBeLessThan(0);
     expect(helmet.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);

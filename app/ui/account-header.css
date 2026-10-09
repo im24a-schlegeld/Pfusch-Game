@@ -24,6 +24,25 @@
 .app-shell.has-account-header .account-header-button:hover { background: #414141; }
 .app-shell.has-account-header .account-header-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .app-shell.has-account-header .account-header-button:disabled { opacity: .6; cursor: wait; }
+.app-shell.has-account-header .account-header-button[data-login-hint='true'] {
+  animation: account-login-intro 2.6s ease-in-out 1;
+}
+@keyframes account-login-intro {
+  0%, 100% { border-color: #656565; background: transparent; box-shadow: none; }
+  25%, 65% { border-color: #c4c4c4; background: #ffffff14; box-shadow: 0 0 0 2px #ffffff12; }
+}
+.app-shell.has-account-header .account-header-button[data-login-hint='true'][data-reduced-motion='true'] {
+  animation: none;
+  border-color: #c4c4c4;
+  background: #ffffff14;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.has-account-header .account-header-button[data-login-hint='true'] {
+    animation: none;
+    border-color: #c4c4c4;
+    background: #ffffff14;
+  }
+}
 .app-shell.app-shell-embedded.has-account-header:not([data-screen='results']) {
   grid-template-rows: 48px minmax(0, 1fr) auto !important;
 }

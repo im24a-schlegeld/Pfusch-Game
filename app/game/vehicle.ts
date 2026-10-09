@@ -11,7 +11,7 @@ import {
   sleeveMaterial,
   fabricMaterial,
 } from './garmentTexture';
-import { createCarriedCap } from './carriedCap';
+import { CARRIED_CAP_STRAP_ANCHOR, createCarriedCap } from './carriedCap';
 import {
   BIKE_CONTACTS,
   POSES,
@@ -2448,6 +2448,7 @@ function makeRider(
   const waistPoint = new THREE.Vector3(), waistBent = new THREE.Vector3(), waistHip = V(pose.hip);
   const waistRotation = new THREE.Quaternion(), waistEuler = new THREE.Euler();
   let waistLean = NaN, waistRoll = NaN;
+  let capPivot: THREE.Group | undefined, capWaistVertex = 0;
   const followGarmentWaist = (lean: number, roll: number) => {
     if (lean === waistLean && roll === waistRoll) return;
     waistLean = lean; waistRoll = roll;
@@ -2463,6 +2464,7 @@ function makeRider(
     }
     waistPositions.needsUpdate = true;
     trouserSeat.geometry.computeVertexNormals();
+    capPivot?.position.fromBufferAttribute(waistPositions, capWaistVertex);
   };
   followGarmentWaist(pose.torsoLean, 0);
 
@@ -2981,28 +2983,24 @@ function makeRider(
   if (cap) {
     const group = new THREE.Group(),
       pivot = new THREE.Group();
-    pivot.position.set(-0.25, pose.hip[1] + 0.015, pose.hip[2] + 0.035);
+    const waistContact = new THREE.Vector3(-0.2, pose.hip[1] + 0.025, pose.hip[2] + 0.035);
+    const waistVertex = new THREE.Vector3();
+    let contactDistance = Infinity;
+    for (let i = 0; i < waistPositions.count; i++) {
+      waistVertex.fromBufferAttribute(waistPositions, i);
+      const distance = waistVertex.distanceToSquared(waistContact);
+      if (distance < contactDistance) { contactDistance = distance; capWaistVertex = i; }
+    }
+    pivot.position.fromBufferAttribute(waistPositions, capWaistVertex);
+    capPivot = pivot;
     pivot.name = 'carried-cap-pivot';
     pelvis.add(pivot);
-    const clip = mesh(
-      pelvis,
-      new THREE.TorusGeometry(0.017, 0.0035, 8, 24),
-      material('#aeb6b8', 0.8, 0.28),
-    );
-    clip.name = 'cap-belt-clip';
-    clip.position.copy(pivot.position);
-    rod(
-      pelvis,
-      [-0.205, pose.hip[1] + 0.043, pose.hip[2] + 0.035],
-      [-0.25, pose.hip[1] + 0.029, pose.hip[2] + 0.035],
-      0.006,
-      boot,
-    ).name = 'cap-belt-loop';
-    // Hang from the rear adjustment strap. The crown faces out from the hip;
-    // the unchanged curved brim hangs below it, clear of the rider's leg.
-    group.position.set(0, -0.118, 0);
+    // The cap's own rear adjustment strap rests directly at the trouser waist.
+    // Pivot exactly on that fabric contact so gravity cannot open a gap.
+    // The crown faces out; the original curved brim hangs beside the leg.
     group.name = 'carried-cap';
     group.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+    group.position.set(...CARRIED_CAP_STRAP_ANCHOR).applyEuler(group.rotation).negate();
     pivot.add(group);
     group.add(createCarriedCap(cap, player, productColor(cap)));
     capMotion = createCarriedCapMotion(pivot);

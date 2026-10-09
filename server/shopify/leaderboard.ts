@@ -57,11 +57,11 @@ export function mergeRanking(board: Board, alias: string, player: Player, now: n
   for (const period of periods) {
     const score = Math.floor(period === 'all' ? player.highScore : player.history.reduce((best, run) =>
       run.date >= keys[period] && run.date <= keys.day ? Math.max(best, run.score) : best, 0));
-    if (!validScore(score)) continue;
     const rows = next[period].rows;
     const previous = rows.find(row => row.alias === alias);
-    const name = normalizeLeaderboardName(player.leaderboardName) || previous?.name;
-    next[period].rows = [...rows.filter(row => row.alias !== alias), { alias, score: Math.max(score, previous?.score ?? 0), ...(name ? { name } : {}) }]
+    if (!validScore(score) && !previous) continue;
+    const name = normalizeLeaderboardName(player.leaderboardName);
+    next[period].rows = [...rows.filter(row => row.alias !== alias), { alias, score: Math.max(validScore(score) ? score : 0, previous?.score ?? 0), ...(name ? { name } : {}) }]
       .sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias)).slice(0, LIMIT);
   }
   return next;

@@ -386,5 +386,13 @@ export function createMotocrossHelmet(color: string, visorColor = '#34454d'): He
   addStrap(goggles, strapShell);
   strapShell.dispose();
   helmet.userData.sourceTilt = shellTilt;
+  // Enlarge the complete equipment consistently on every bike, without
+  // changing the immutable rider's head joint or animation transform.
+  const equipmentScale = 1.06;
+  helmet.traverse(part => {
+    if (part !== helmet) part.position.multiplyScalar(equipmentScale);
+    if (part instanceof THREE.Mesh) part.geometry.scale(equipmentScale, equipmentScale, equipmentScale);
+  });
+  helmet.userData.equipmentScale = equipmentScale;
   return helmet;
 }

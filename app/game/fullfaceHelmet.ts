@@ -14,6 +14,8 @@ function geometry() {
       positions[i] = view.getInt16(i * 2, true) / 100000;
       normals[i] = view.getInt16((count + i) * 2, true) / 32767;
     }
+    // Small equipment-fit adjustment; the shared adult head joint stays fixed.
+    for (let i = 2; i < count; i += 3) positions[i] -= .005;
     for (let i = 0; i < indices.length; i++) indices[i] = view.getUint16(count * 4 + i * 2, true);
     decoded = { positions, normals, indices };
   }

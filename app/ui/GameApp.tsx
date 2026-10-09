@@ -58,6 +58,7 @@ export default function GameApp() {
   const accessStatus = useSyncExternalStore(subscribeSave, getAccessStatus, getAccessStatus);
   const [player, setPlayer] = useState<Player | null>(null);
   const [accountKind, setAccountKind] = useState<'guest' | 'customer'>('guest');
+  const [loginHint, setLoginHint] = useState(false);
   const loginPending = useRef(false);
   const current = useRef<Player | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -92,6 +93,7 @@ export default function GameApp() {
       .then(([user, p]) => {
         if (alive) {
           setAccountKind(user.kind);
+          setLoginHint(user.kind === 'guest');
           current.current = p;
           setPlayer(p);
           services.analytics.track('game_started');
@@ -111,6 +113,11 @@ export default function GameApp() {
       alive = false;
     };
   }, [services]);
+  useEffect(() => {
+    if (!loginHint) return;
+    const timer = window.setTimeout(() => setLoginHint(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [loginHint]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(''), 3800);
@@ -374,6 +381,7 @@ export default function GameApp() {
     <UserRound size={16} aria-hidden="true" />
     <span>KONTO</span>
   </button> : <a className="account-header-button" aria-label="Anmelden" href={oxygenLoginHref}
+    data-login-hint={loginHint || undefined} data-reduced-motion={player.settings.reducedMotion}
     target={embedded ? '_top' : undefined} rel={embedded ? 'noopener' : undefined}>
     <UserRound size={16} aria-hidden="true" />
     <span>ANMELDEN</span>

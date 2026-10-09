@@ -104,7 +104,7 @@ export default function Garage({ player, products, update, services, notify, sta
   const placingSticker = Boolean(selectedProduct && isSticker(selectedProduct));
   const mockup = productView === 'back' ? selectedColor?.back ?? selectedColor?.front : selectedColor?.front ?? selectedColor?.back;
   const focus = part === 'model' || part === 'paint' || part === 'rims' || part === 'upper' ? part
-    : part === 'helmet' || part === 'head' ? 'head' : part === 'extras' && selectedProduct?.handle === 'schlusselanhanger' ? 'keychain'
+    : part === 'helmet' ? 'head' : part === 'head' ? 'cap' : part === 'extras' && selectedProduct?.handle === 'schlusselanhanger' ? 'keychain'
       : part === 'extras' ? 'model'
         : selectedProduct && equipmentSlot(selectedProduct) === 'cape' ? 'cape' : 'accessory';
   const helmetEdit = previewEdit?.kind === 'helmet' ? previewEdit : { kind: 'helmet' as const, helmet: player.helmet, helmetColor: player.helmetColor, helmetVisor: player.helmetVisor };
@@ -224,14 +224,14 @@ export default function Garage({ player, products, update, services, notify, sta
           </button>;
         })}</div>}
         {(part === 'paint' || part === 'rims') && colorPalette(part)}
-        {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps am Hüftclip</button></div>}
+        {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps an der Hose</button></div>}
         {part === 'helmet' && <div className="gc-helmet-options">
           <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name}</button>)}</div></fieldset>
           <Palette title="Helmfarbe" compactCount={16} colors={HELMET_COLORS} value={appearance.helmetColor} equipped={player.helmetColor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetColor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetColor => editHelmet({ helmetColor })} />
           <Palette title="Visier / Brillenglas" colors={VISOR_COLORS} value={appearance.helmetVisor} equipped={player.helmetVisor} status={color => color.value !== DARK_CARBON ? 'Kostenlos' : player.ownedItems.includes(`helmetVisor:${DARK_CARBON}`) ? 'In deinem Besitz' : `${CARBON_PRICE.toLocaleString('de-CH')} Coins`} onChange={helmetVisor => editHelmet({ helmetVisor })} />
           {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}
         </div>}
-        {part === 'head' && <p className="gc-help">Caps hängen am Hüftclip. Dein Fahrhelm bleibt auf.</p>}
+        {part === 'head' && <p className="gc-help">Caps hängen mit ihrer Schlaufe direkt an der Hose. Dein Fahrhelm bleibt auf.</p>}
         {part === 'accessory' && <p className="gc-help">Tasche, Cape und Cap lassen sich gemeinsam tragen.</p>}
         {['upper', 'head', 'accessory', 'extras'].includes(part) && <>
           {products.length === 0 && <output className="gc-help">Produkte werden geladen …</output>}

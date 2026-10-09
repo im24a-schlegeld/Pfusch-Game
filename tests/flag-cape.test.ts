@@ -144,6 +144,35 @@ describe('original PFUSCH flag as a neck cape', () => {
     update({ speed: Infinity, lateralAcceleration: NaN }, 0);
     expect(Array.from(positions)).toEqual(reduced);
   });
+  it('uses the current rider pose for gravity before the renderer updates world matrices', () => {
+    const pending = cape(), rendered = cape();
+    for (const item of [pending, rendered]) {
+      const importedScale = new Group();
+      importedScale.matrixAutoUpdate = false;
+      importedScale.matrix.makeScale(1.05, 1.05, 1.05);
+      importedScale.add(item.torso);
+      item.bike.add(importedScale);
+      item.bike.updateMatrixWorld(true);
+      item.bike.rotation.x = .8;
+      item.torso.rotation.x = -.5;
+    }
+    rendered.bike.updateMatrixWorld(true);
+    pending.update({ speed: 0, reducedMotion: true }, 1 / 60);
+    rendered.update({ speed: 0, reducedMotion: true }, 1 / 60);
+    expect(Array.from(pending.mesh.geometry.getAttribute('position').array))
+      .toEqual(Array.from(rendered.mesh.geometry.getAttribute('position').array));
+  });
+  it('drapes close to the back and reserves pouch volume only with an equipped bag', () => {
+    const bare = cape(), bagged = cape();
+    const bag = new Group(); bag.name = 'crossbody-assembly-v43';
+    bagged.torso.add(bag);
+    for (const item of [bare, bagged]) item.update({ speed: 0, reducedMotion: true }, 1 / 60);
+    const middle = 11 * (FLAG_CAPE.columns + 1) + FLAG_CAPE.columns / 2;
+    const bareZ = bare.mesh.geometry.getAttribute('position').getZ(middle);
+    const bagZ = bagged.mesh.geometry.getAttribute('position').getZ(middle);
+    expect(bareZ).toBeLessThan(.20);
+    expect(bagZ - bareZ).toBeGreaterThan(.10);
+  });
   it('owns and releases only its own texture with the mesh material', () => {
     const { mesh, texture } = cape();
     const dispose = vi.spyOn(texture, 'dispose');

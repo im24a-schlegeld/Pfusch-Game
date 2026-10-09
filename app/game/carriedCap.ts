@@ -3,6 +3,9 @@ import type { Player, Product } from '../domain/types';
 import { accessoryMaterial } from './garmentTexture';
 import { CARRIED_CAP_ASSET as asset } from './carriedCapAsset';
 
+/** Rear adjustment strap on the supplied cap, where it meets the trouser waist. */
+export const CARRIED_CAP_STRAP_ANCHOR = [0, 0.0115, 0.109] as const;
+
 let cached: THREE.BufferGeometry | undefined;
 function capGeometry() {
   if (!cached) {

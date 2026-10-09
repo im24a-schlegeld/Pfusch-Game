@@ -27,6 +27,6 @@ export async function chooseProduct(page: Page, product: Product) {
   await chooseArea(page, slot === 'keychain' || slot === 'bike' ? 'Motorrad' : 'Fahrer');
   await choosePart(page, slot === 'keychain' || slot === 'bike' ? 'Extras'
     : slot === 'head' ? 'Kopf' : slot === 'upper' ? 'Oberteil' : 'Accessoires');
-  if (slot === 'head') await page.getByRole('button', { name: 'Caps am Hüftclip', exact: true }).click();
+  if (slot === 'head') await page.getByRole('button', { name: 'Caps an der Hose', exact: true }).click();
   await page.getByTestId('product-card').filter({ has: page.getByText(product.title, { exact: true }) }).click();
 }

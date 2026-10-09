@@ -14,7 +14,8 @@
 .scene-load-note { position: absolute; z-index: 4; left: 12px; right: 12px; top: 12px; width: fit-content; max-width: calc(100% - 24px); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 5px; color: #eee; background: #171717e8; font-size: 11px; pointer-events: none; }
 .scene-load-note .spinner { width: 14px; height: 14px; }
 .scene-zoom { position: absolute; right: 12px; bottom: 12px; z-index: 2; display: flex; gap: 6px; }
-.scene-zoom button { width: 44px; height: 44px; color: white; background: #191919db; border: 1px solid #777; border-radius: 6px; font-size: 22px; }
+.scene-zoom button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; line-height: 1; color: white; background: #191919db; border: 1px solid #777; border-radius: 6px; }
+.scene-zoom button > svg { display: block; width: 18px; height: 18px; margin: 0; }
 .scene-zoom button:focus-visible { outline: 2px solid white; outline-offset: 2px; }
 .scene-zoom button:hover { background: #353535; border-color: #ddd; }
 .scene-zoom button:active { background: #555; }

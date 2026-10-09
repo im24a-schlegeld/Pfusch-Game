@@ -24,7 +24,7 @@ const finiteClamp = (value: number | undefined, low: number, high: number) =>
 
 /**
  * Controls only a dedicated hanging pivot's quaternion. Its initial local -Y
- * axis is the clip-to-cap direction; put the cap's authored rest pose and offset
+ * axis is the strap-to-cap direction; put the cap's authored rest pose and offset
  * in a child. The attachment position, child transform and skeleton stay fixed.
  *
  * Call update after the bike/parent pose has changed. Gravity is transformed

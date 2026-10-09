@@ -40,8 +40,9 @@
 .app-shell .gc-primary:only-child { grid-column: 1 / -1; }
 .app-shell.has-account-header .account-header-button { border: 0; font-weight: 400; letter-spacing: .02em; }
 .app-shell .bottom-nav { background: #323232 !important; }
-.app-shell .bottom-nav button { gap: 0 !important; font-size: 11px !important; font-weight: 400 !important; letter-spacing: .02em !important; }
-.app-shell .bottom-nav button svg { display: none !important; }
+.app-shell .bottom-nav button { gap: 5px !important; font-size: 11px !important; font-weight: 400 !important; letter-spacing: .02em !important; }
+.app-shell .bottom-nav button svg { display: block !important; width: 18px; height: 18px; }
+.app-shell .garage-link svg { display: block !important; }
 .app-shell .bottom-nav button.active::before { background: #eee !important; height: 1px !important; }
 .app-shell .standard-page { background: #323232 !important; }
 .app-shell .screen-heading { border: 0 !important; padding-bottom: 12px !important; margin-bottom: 20px !important; }
@@ -50,13 +51,19 @@
 .app-shell :is(.challenge-card, .reward-card, .real-reward) { border: 0 !important; border-top: 1px solid #555 !important; padding: 24px 0 !important; }
 .app-shell :is(.challenge-grid, .reward-grid) { gap: 24px 36px !important; }
 .app-shell .page-feature { padding: 0 !important; border: 0 !important; }
-.app-shell .page-feature > svg, .app-shell .challenge-top { display: none; }
+.app-shell .page-feature > svg { display: block; }
+.app-shell .challenge-top { display: flex; }
 .app-shell .progress-overview { border: 0 !important; border-block: 1px solid #555 !important; }
 .app-shell .progress-overview > div { background: transparent !important; border: 0 !important; }
-.app-shell .progress-overview svg { display: none; }
+.app-shell .progress-overview svg { display: block; }
 .app-shell .mission-remaining { display: none; }
 .app-shell .challenge-card.complete { border-color: #999 !important; }
 .app-shell .settings-list > div { background: transparent !important; border: 0 !important; border-bottom: 1px solid #555 !important; }
+.app-shell .leaderboard-name-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.app-shell .leaderboard-name-form > :is(h2, p, label, input) { margin: 0; }
+.app-shell .leaderboard-name-form > label { display: block; margin-top: 4px; }
+.app-shell .leaderboard-name-form > input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; }
+.app-shell .leaderboard-name-form > button { justify-self: start; }
 @media (max-width: 760px) {
   .app-shell .garage-page.garage-configurator { padding: 0 !important; }
   .app-shell .gc-preview { height: clamp(240px, 36dvh, 340px); }
