@@ -24,6 +24,13 @@ export interface VerifiedRewardsService {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
+export class VerifiedRewardsError extends Error {
+  constructor(readonly code: string, readonly status?: number) {
+    super(code);
+    this.name = 'VerifiedRewardsError';
+  }
+}
+
 /** Valuable rewards are issued only by the same-origin authenticated server. */
 export class OxygenVerifiedRewards implements VerifiedRewardsService {
   private csrfToken = '';
@@ -32,7 +39,9 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
   private revision = 0;
   private settlement: Promise<RealRewardStatus> | null = null;
   private pendingSubmission: VerifiedRunSubmission | null = null;
-  constructor(private requestFetch: typeof fetch, private timeoutMs = 6000) {}
+  // Account verification and Shopify can each need an upstream round trip.
+  // Preparation is background work and never delays starting a ride.
+  constructor(private requestFetch: typeof fetch, private timeoutMs = 30000, private onUnauthorized?: () => void) {}
 
   private async request(path: string, payload?: Record<string, unknown>): Promise<Record<string, unknown>> {
     const controller = new AbortController();
@@ -43,13 +52,27 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
         headers: { Accept: 'application/json', ...(payload ? { 'Content-Type': 'application/json' } : {}) },
         ...(payload ? { body: JSON.stringify({ ...payload, csrfToken: this.csrfToken }) } : {}),
       });
-      if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('rewards_unavailable');
+      if (response.status === 401) {
+        this.csrfToken = '';
+        this.prepared = null;
+        this.preparing = null;
+        this.revision++;
+        this.onUnauthorized?.();
+      }
+      if (!response.headers.get('content-type')?.includes('application/json'))
+        throw new VerifiedRewardsError('rewards_unavailable', response.status);
       const raw = await response.text();
-      if (raw.length > 32768) throw new Error('invalid_reward_response');
-      const data: unknown = JSON.parse(raw);
-      if (!isRecord(data) || !response.ok) throw new Error(isRecord(data) && typeof data.error === 'string' ? data.error : 'rewards_unavailable');
+      if (raw.length > 32768) throw new VerifiedRewardsError('invalid_reward_response', response.status);
+      let data: unknown;
+      try { data = JSON.parse(raw); }
+      catch { throw new VerifiedRewardsError('invalid_reward_response', response.status); }
+      if (!isRecord(data) || !response.ok)
+        throw new VerifiedRewardsError(isRecord(data) && typeof data.error === 'string' ? data.error : 'rewards_unavailable', response.status);
       if (typeof data.csrfToken === 'string' && data.csrfToken.length <= 2048) this.csrfToken = data.csrfToken;
       return data;
+    } catch (error: unknown) {
+      if (error instanceof VerifiedRewardsError) throw error;
+      throw new VerifiedRewardsError(controller.signal.aborted ? 'request_timeout' : 'network_error');
     } finally { clearTimeout(timeout); }
   }
   private parseStatus(data: Record<string, unknown>): RealRewardStatus {
@@ -60,7 +83,7 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
       || data.reason !== undefined && typeof data.reason !== 'string'
       || data.reward !== null && (!isRecord(data.reward) || typeof data.reward.code !== 'string'
         || !/^[A-Z0-9-]{6,80}$/i.test(data.reward.code) || typeof data.reward.expiresAt !== 'string'
-        || !Number.isFinite(Date.parse(data.reward.expiresAt)))) throw new Error('invalid_reward_response');
+        || !Number.isFinite(Date.parse(data.reward.expiresAt)))) throw new VerifiedRewardsError('invalid_reward_response');
     return data as unknown as RealRewardStatus;
   }
   async status() {
@@ -123,6 +146,13 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
   }
   async claim() {
     if (!this.csrfToken) await this.status();
-    return this.parseStatus(await this.request('claim', {}));
+    try { return this.parseStatus(await this.request('claim', {})); }
+    catch (error: unknown) {
+      if (!(error instanceof VerifiedRewardsError) || error.status !== 403 || error.code !== 'csrf') throw error;
+      // A card can stay open beyond the token lifetime. Refresh once, then let
+      // the server confirm the same reserved reward; never loop on a failure.
+      await this.status();
+      return this.parseStatus(await this.request('claim', {}));
+    }
   }
 }

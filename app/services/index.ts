@@ -394,7 +394,7 @@ export function createServices(): Services {
         : new GuestAuthService(),
     players: cloud ?? local,
     products: new LocalProductProvider(),
-    rewards: new MockRewardService(oxygen ? new OxygenVerifiedRewards(window.fetch.bind(window)) : undefined),
+    rewards: new MockRewardService(oxygen ? new OxygenVerifiedRewards(window.fetch.bind(window), undefined, () => cloud?.invalidateSession()) : undefined),
     leaderboard: transport ? new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), cloud ?? undefined) : new LocalLeaderboardService(),
     analytics: new LocalAnalyticsService(),
   };

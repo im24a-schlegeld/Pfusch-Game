@@ -268,6 +268,75 @@ describe('Shopify account saves', () => {
     expect(repo.syncStatus.message).toContain('nur in dieser Sitzung');
   });
 
+  it.each(['save', 'csrf refresh'])('expires identity on a 401 during %s without losing unsaved equipment', async (stage) => {
+    vi.useFakeTimers();
+    const driver = storage();
+    const responses: CloudResponse[] = [response()];
+    if (stage === 'csrf refresh') responses.push({ status: 403, data: { error: 'csrf' } });
+    responses.push({ status: 401, data: { error: 'login_required' } });
+    const { repo } = repository(responses, driver);
+    const updated = { ...(await repo.load()), coins: 333, helmetColor: '#202324' };
+    repo.save(updated);
+    await repo.flush();
+    expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
+    expect(await repo.load()).toMatchObject({ id: 'shopify:123', coins: 333, helmetColor: '#202324' });
+    expect(repo.syncStatus.message).toContain('Bitte erneut anmelden');
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123:pending')!)).toMatchObject({ player: updated, dirty: true });
+    expect(driver.getItem('pfusch:player:v1')).toBeNull();
+  });
+
+  it('invalidates identity on a reward 401 and recovers pending progress only after a fresh account check', async () => {
+    vi.useFakeTimers();
+    const driver = storage();
+    const updated = { ...newPlayer(), coins: 333, helmetColor: '#202324' };
+    const { repo, transport } = repository([response(), response(), response('123', updated, nextHash)], driver);
+    await repo.load();
+    repo.save(updated);
+    const pending = driver.getItem('pfusch:player:v1:shopify:123:pending');
+    const listener = vi.fn();
+    repo.subscribeSync(listener);
+    repo.invalidateSession();
+    expect(listener).toHaveBeenCalled();
+    expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
+    expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    await repo.flush();
+    expect(transport.request).toHaveBeenCalledTimes(1);
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe(pending);
+    expect((await repo.refreshAccess()).allowed).toBe(true);
+    expect(await repo.getUser()).toEqual({ id: '123', kind: 'customer' });
+    expect(await repo.load()).toMatchObject({ coins: 333, helmetColor: '#202324' });
+    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
+  });
+
+  it('keeps a network failure distinct from an expired session', async () => {
+    const { repo } = repository([response(), { status: 503, data: { error: 'admin_unavailable' } }]);
+    await repo.load();
+    expect((await repo.refreshAccess()).allowed).toBe(false);
+    expect(await repo.getUser()).toEqual({ id: '123', kind: 'customer' });
+    expect(repo.syncStatus.message).not.toContain('erneut anmelden');
+  });
+
+  it.each(['read', 'write'])('does not revive a rejected session with an earlier in-flight %s', async (method) => {
+    vi.useFakeTimers();
+    const driver = storage();
+    let resolve!: (value: CloudResponse) => void, started!: () => void;
+    const ready = new Promise<void>(done => { started = done; });
+    const inFlight = new Promise<CloudResponse>(done => { resolve = done; });
+    const transport: CloudTransport = { request: vi.fn().mockResolvedValueOnce(response())
+      .mockImplementationOnce(() => { started(); return inFlight; }) };
+    const repo = new ShopifyCloudRepository(transport, driver, new LocalPlayerRepository(driver), decodePlayer, 20);
+    const player = await repo.load();
+    if (method === 'write') repo.save(player);
+    const work = method === 'write' ? repo.flush() : repo.refreshAccess();
+    await ready;
+    repo.invalidateSession();
+    resolve(response('123', player, method === 'write' ? nextHash : hash));
+    await work;
+    expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
+    expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    expect((await repo.load()).id).toBe('shopify:123');
+  });
+
   it('does not claim a guest backup when the embedded browser denies storage', async () => {
     const driver: StorageDriver = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
     const { repo } = repository([{ status: 401, data: {} }], driver);
@@ -398,6 +467,7 @@ describe('newsletter ride and persistence gate', () => {
     const player = await repo.load();
     const before = [...driver.values];
     expect(await repo.refreshAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
     repo.save({ ...player, coins: player.coins + 100 });
     expect([...driver.values]).toEqual(before);
     expect(driver.getItem('pfusch:player:v1')).toBeNull();

@@ -1,11 +1,56 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BIKES } from '../app/domain/config';
-import { OxygenVerifiedRewards } from '../app/services/verifiedRewards';
+import { OxygenVerifiedRewards, VerifiedRewardsError } from '../app/services/verifiedRewards';
 
 const status = { available: true, csrfToken: 'csrf', verifiedPoints: 0, verifiedRuns: 0,
   pointsRequired: 50000, runsRequired: 10, dailyPoints: 0, dailyCap: 10000, eligible: false, pending: false, reward: null };
 const json = (data: unknown, code = 200) => new Response(JSON.stringify(data), { status: code, headers: { 'Content-Type': 'application/json' } });
+afterEach(() => vi.useRealTimers());
 describe('server-owned real rewards adapter', () => {
+  it.each([
+    [401, 'login_required'],
+    [403, 'csrf'],
+    [503, 'not_configured'],
+  ])('preserves HTTP %s separately from network failures', async (httpStatus, code) => {
+    const service = new OxygenVerifiedRewards(vi.fn<typeof fetch>().mockResolvedValue(json({ error: code }, httpStatus)));
+    await expect(service.status()).rejects.toMatchObject({ name: 'VerifiedRewardsError', status: httpStatus, code });
+  });
+  it('identifies a malformed response without treating it as a login failure', async () => {
+    const service = new OxygenVerifiedRewards(vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('{broken', { headers: { 'Content-Type': 'application/json' } }),
+    ));
+    await expect(service.status()).rejects.toMatchObject({ code: 'invalid_reward_response', status: 200 });
+  });
+  it('invalidates the account, CSRF token and prepared run when the server rejects the session', async () => {
+    const challenge = { version: 1, runId: 'run-1', seed: 42, bikeId: BIKES[0].id,
+      startedAt: Date.now(), expiresAt: Date.now() + 1800000, token: 'signed-challenge' };
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status)).mockResolvedValueOnce(json({ challenge }))
+      .mockResolvedValueOnce(json({ error: 'login_required' }, 401)).mockResolvedValueOnce(json({ error: 'login_required' }, 401));
+    const unauthorized = vi.fn();
+    const service = new OxygenVerifiedRewards(request, 30000, unauthorized);
+    await service.prepare(BIKES[0].id);
+    await expect(service.status()).rejects.toMatchObject({ status: 401 });
+    expect(unauthorized).toHaveBeenCalledTimes(1);
+    expect(service.takeChallenge(BIKES[0].id)).toBeNull();
+    await expect(service.claim()).rejects.toMatchObject({ status: 401 });
+    expect(request.mock.calls[3][0]).toBe('/api/rewards/status');
+    expect(unauthorized).toHaveBeenCalledTimes(2);
+  });
+  it('allows slow account verification past six seconds and reports the bounded thirty-second timeout', async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | null | undefined;
+    const request = vi.fn<typeof fetch>().mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+      signal = init?.signal;
+      signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    const pending = new OxygenVerifiedRewards(request).status();
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'request_timeout' });
+    await vi.advanceTimersByTimeAsync(6001);
+    expect(signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(23999);
+    await rejected;
+    expect(signal?.aborted).toBe(true);
+  });
   it('prefetches and consumes a signed challenge once without transmitting player progress', async () => {
     const challenge = { version: 1, runId: 'run-1', seed: 42, bikeId: BIKES[0].id,
       startedAt: Date.now(), expiresAt: Date.now() + 1800000, token: 'signed-challenge' };
@@ -40,13 +85,42 @@ describe('server-owned real rewards adapter', () => {
     expect((await service.claim()).reward).toEqual(reward);
     expect(JSON.parse(String(request.mock.calls[1][1]?.body))).toEqual({ csrfToken: 'csrf' });
   });
+  it('refreshes CSRF once when confirming a reserved code after the card has stayed open', async () => {
+    const reward = { code: 'PFUSCH-ABC123', expiresAt: new Date(Date.now() + 86400000).toISOString() };
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ ...status, pending: true, csrfToken: 'old-token' }))
+      .mockResolvedValueOnce(json({ error: 'csrf' }, 403))
+      .mockResolvedValueOnce(json({ ...status, pending: true, csrfToken: 'fresh-token' }))
+      .mockResolvedValueOnce(json({ ...status, reward }));
+    const service = new OxygenVerifiedRewards(request);
+    await service.status();
+    expect((await service.claim()).reward).toEqual(reward);
+    expect(request.mock.calls.map(call => call[0])).toEqual(['/api/rewards/status', '/api/rewards/claim', '/api/rewards/status', '/api/rewards/claim']);
+    expect(JSON.parse(String(request.mock.calls[3][1]?.body))).toEqual({ csrfToken: 'fresh-token' });
+  });
+  it('does not loop when the refreshed claim is still rejected', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status))
+      .mockResolvedValueOnce(json({ error: 'csrf' }, 403)).mockResolvedValueOnce(json(status))
+      .mockResolvedValueOnce(json({ error: 'csrf' }, 403));
+    const service = new OxygenVerifiedRewards(request);
+    await service.status();
+    await expect(service.claim()).rejects.toBeInstanceOf(VerifiedRewardsError);
+    expect(request).toHaveBeenCalledTimes(4);
+  });
+  it('never retries a claim rejected for another reason', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status))
+      .mockResolvedValueOnce(json({ error: 'invalid_origin' }, 403));
+    const service = new OxygenVerifiedRewards(request);
+    await service.status();
+    await expect(service.claim()).rejects.toMatchObject({ code: 'invalid_origin', status: 403 });
+    expect(request).toHaveBeenCalledTimes(2);
+  });
   it('retries the same signed proof after a lost response before replacing its active run', async () => {
     const submission = { token: 'signed-run', proof: { ticks: 1200, events: [] } };
     const request = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce(json({ ...status, verifiedPoints: 300, verifiedRuns: 1 }))
       .mockResolvedValueOnce(json({ ...status, verifiedPoints: 300, verifiedRuns: 1 }));
     const service = new OxygenVerifiedRewards(request);
-    await expect(service.finish(submission)).rejects.toThrow('offline');
+    await expect(service.finish(submission)).rejects.toMatchObject({ code: 'network_error' });
     expect((await service.status()).verifiedPoints).toBe(300);
     expect(request.mock.calls.map(call => call[0])).toEqual(['/api/rewards/run/finish', '/api/rewards/status', '/api/rewards/run/finish']);
     expect(JSON.parse(String(request.mock.calls[2][1]?.body)).token).toBe(submission.token);
@@ -71,7 +145,7 @@ describe('server-owned real rewards adapter', () => {
       .mockResolvedValueOnce(json(status)).mockRejectedValueOnce(new Error('offline-again'))
       .mockResolvedValueOnce(json(status)).mockResolvedValueOnce(json({ ...status, verifiedPoints: 450, verifiedRuns: 1 }));
     const service = new OxygenVerifiedRewards(request);
-    await expect(service.finish(submission)).rejects.toThrow('offline');
+    await expect(service.finish(submission)).rejects.toMatchObject({ code: 'network_error' });
     expect((await service.status()).verifiedPoints).toBe(0);
     expect((await service.status()).verifiedPoints).toBe(450);
     expect(JSON.parse(String(request.mock.calls[4][1]?.body)).token).toBe(submission.token);

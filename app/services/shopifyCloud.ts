@@ -40,6 +40,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private initial: Promise<Player> | null = null;
   private refreshing: Promise<PlayerAccess> | null = null;
   private session: Snapshot | null = null;
+  private authenticated = false;
+  private authRevision = 0;
   private guestMode = false;
   private guestPlayer: Player | null = null;
   private access = unavailableAccess();
@@ -84,6 +86,13 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     if (access.reason === 'unsubscribed' || access.reason === 'newsletter_required') this.clearOutbox();
     this.setAccess(access);
     this.status('unavailable', message);
+  }
+  /** A retained save snapshot is not proof that the server session is still valid. */
+  invalidateSession(): void {
+    this.authenticated = false;
+    this.authRevision++;
+    if (this.session) this.deny(unavailableAccess(this.localCompletedRuns),
+      `Deine Spielsitzung ist abgelaufen. Bitte erneut anmelden.${this.lastUnsaved ? ` ${this.recoveryMessage()}` : ''}`);
   }
   /** Keep the five-ride guest trial usable while Oxygen is being configured.
    * No account save is claimed here; a later successful login/bootstrap can
@@ -144,11 +153,12 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
   async getUser() {
     await this.load();
-    return this.session ? { id: this.session.customer.id, kind: 'customer' as const } : { id: 'guest-local', kind: 'guest' as const };
+    return this.session && this.authenticated ? { id: this.session.customer.id, kind: 'customer' as const } : { id: 'guest-local', kind: 'guest' as const };
   }
   /** Adopt a server-authenticated customer after this page initially loaded as a guest. */
   private async adoptSession(next: Snapshot): Promise<Player> {
     this.session = next;
+    this.authenticated = true;
     this.guestMode = false;
     this.guestPlayer = null;
     this.localCompletedRuns = next.storage.completedRuns;
@@ -276,14 +286,21 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
   private async write(player: Player): Promise<void> {
     const session = this.session!;
+    const authRevision = this.authRevision;
     try {
       let response = await this.transport.request('POST', { player, compareDigest: session.compareDigest, csrfToken: session.csrfToken });
       if (this.newsletterDenial(response)) return;
       if (response.status === 403 && record(response.data) && response.data.error === 'csrf') {
         const refresh = await this.transport.request('GET');
-        if (refresh.status !== 200) { this.deny(unavailableAccess(this.localCompletedRuns), `Shop-Anmeldung prüfen. ${this.recoveryMessage()}`); return; }
+        if (refresh.status !== 200) {
+          if (refresh.status === 401) this.invalidateSession();
+          else this.deny(unavailableAccess(this.localCompletedRuns), `Shop-Anmeldung prüfen. ${this.recoveryMessage()}`);
+          return;
+        }
+        if (authRevision !== this.authRevision) return;
         const next = snapshot(refresh.data, this.decode);
         if (next.customer.id !== session.customer.id || next.compareDigest !== session.compareDigest) {
+          if (next.customer.id !== session.customer.id) this.authenticated = false;
           this.blocked = true;
           this.setAccess(unavailableAccess(this.localCompletedRuns));
           this.status('conflict', 'Konto oder Kontostand geändert. Vorhandene Sicherung behalten; bitte neu laden.');
@@ -301,7 +318,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         this.status('conflict', `Auf einem anderen Gerät wurde gespeichert. ${this.recoveryMessage()} Bitte exportieren und neu laden.`);
         return;
       }
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) { this.invalidateSession(); return; }
+      if (response.status === 403) {
         this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Anmeldung hat sich geändert. Bitte neu laden.');
         return;
       }
@@ -321,6 +339,10 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       if (this.outbox?.player === player) this.clearOutbox();
       else if (this.outbox) this.storeOutbox(this.outbox.player);
       if (this.lastUnsaved === player) this.lastUnsaved = null;
+      // A concurrent protected request may already have rejected this session.
+      // Keep an acknowledged save, but do not revive its stale login or access.
+      if (authRevision !== this.authRevision) return;
+      this.authenticated = true;
       this.setAccess(result.storage);
       if (!result.storage.allowed) { this.deny(result.storage); return; }
       if (!this.pending) this.status('synced', this.backupWritable ? 'Im Kundenkonto gespeichert.' : 'Im Kundenkonto gespeichert; lokale Sicherung nicht verfügbar.');
@@ -338,6 +360,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     await this.load();
     await this.flush();
     try {
+      const authRevision = this.authRevision;
       const requestedDigest = this.session?.compareDigest;
       const response = await this.transport.request('GET');
       if (response.status === 401 && !this.session) {
@@ -349,10 +372,11 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       }
       if (response.status !== 200) {
         if (!this.session) return this.useLocalGuest().then(() => this.access);
-        this.deny(unavailableAccess(this.localCompletedRuns), response.status === 401
-          ? 'Shop-Anmeldung geändert. Bitte neu laden.' : 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
+        if (response.status === 401) this.invalidateSession();
+        else this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
         return this.access;
       }
+      if (authRevision !== this.authRevision) return this.access;
       const next = snapshot(response.data, this.decode);
       if (!this.session) {
         const player = await this.adoptSession(next);
@@ -360,9 +384,11 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         return this.access;
       }
       if (next.customer.id !== this.session.customer.id) {
+        this.authenticated = false;
         this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Anmeldung geändert. Bitte neu laden.');
         return this.access;
       }
+      this.authenticated = true;
       // A save can finish while this GET is in flight. Its old digest is no
       // evidence of another device changing progress; check the current base.
       if (requestedDigest !== this.session.compareDigest) return this.checkAccess();

@@ -258,7 +258,7 @@ export function Rewards({
       <p className="catalog-note">
         Alle Level-Belohnungen gelten im Spiel. Ausrüstung findest du in der Garage.
       </p>
-      <RealRewardCard service={services.rewards.real} />
+      <RealRewardCard service={services.rewards.real} onSignIn={services.auth.login} />
       <button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button>
     </main>
   );

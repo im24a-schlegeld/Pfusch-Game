@@ -140,6 +140,17 @@ export default function GameApp() {
     setAccountKind(user.kind);
     return latest;
   }, [services]);
+  useEffect(() => {
+    let alive = true;
+    // Reward/player responses can reject a session while this tab stays open.
+    // Update the account button without replacing the retained player snapshot.
+    const unsubscribe = services.players.subscribeSync?.(() => {
+      void services.auth.getUser().then(user => {
+        if (alive) setAccountKind(user.kind);
+      }).catch(() => {});
+    });
+    return () => { alive = false; unsubscribe?.(); };
+  }, [services]);
   const beginLogin = useCallback(async () => {
     if ((!services.auth.login && !oxygenRuntime) || loginPending.current) return;
     loginPending.current = true;
