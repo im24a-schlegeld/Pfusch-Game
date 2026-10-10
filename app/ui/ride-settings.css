@@ -1,18 +1,30 @@
-.game-dialog.ride-settings-dialog {
+.game-dialog.ride-settings-dialog[data-slot='dialog-content'] {
   box-sizing: border-box !important;
+  display: block !important;
   width: min(680px, calc(100vw - 20px)) !important;
   max-width: 680px !important;
-  max-height: calc(100dvh - 20px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))) !important;
   padding: 0 !important;
   gap: 0 !important;
+  overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   background: #292929 !important;
   color: #f4f4f4;
 }
 .ride-settings-dialog .standard-page {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
   height: auto !important;
   min-height: 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
   overflow: visible !important;
   padding: 16px !important;
 }
@@ -22,4 +34,13 @@
   z-index: 1;
   background: #292929;
   padding-block: 8px;
+}
+
+.game-dialog.ride-pause-v38[data-slot='dialog-content'] {
+  max-height: calc(100dvh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
 }

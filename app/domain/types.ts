@@ -194,7 +194,8 @@ export interface ChallengeDefinition {
     | 'wheelie'
     | 'nearMisses'
     | 'score'
-    | 'jumps';
+    | 'jumps'
+    | 'signs';
   target: number;
   xp: number;
   coins: number;

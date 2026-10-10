@@ -6,7 +6,7 @@ import { createFlagCloth } from './flagCloth';
 
 export const FLAG_CAPE = Object.freeze({
   columns: 10, rows: 14, width: .626, length: 1.04,
-  neckY: .64, neckZ: .012, collarRadiusX: .106, collarRadiusZ: .096,
+  neckY: .637, neckZ: .040, collarRadiusX: .095, collarRadiusZ: .120,
   collarStart: -Math.PI + .075, collarEnd: Math.PI - .075,
 });
 type Artwork = NonNullable<NonNullable<Product['preview']>['artwork']>;
@@ -14,12 +14,30 @@ type TextureFactory = (url: string) => THREE.Texture;
 const clamp = (value: number | undefined, min: number, max: number) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
-const collarY = (angle: number) => FLAG_CAPE.neckY - .012 * (1 + Math.cos(angle)) - .03 * smooth(-Math.cos(angle));
+// The rear edge passes over the folded hood, below the helmet. The side
+// supports sit on the narrow neck; the original eyelets meet over the chest.
+const collarY = (angle: number) => FLAG_CAPE.neckY - .017 * Math.cos(angle) ** 2 - .010 * smooth(-Math.cos(angle));
 
 function collarPoint(u: number) {
   const { collarStart, collarEnd, collarRadiusX, collarRadiusZ, neckZ } = FLAG_CAPE;
   const angle = collarStart + (collarEnd - collarStart) * u;
   return new THREE.Vector3(Math.sin(angle) * collarRadiusX, collarY(angle), neckZ + Math.cos(angle) * collarRadiusZ);
+}
+
+/** Sample the actual hood loft once, including its rounded intermediate rings. */
+function hoodClearance(torso: THREE.Object3D | null) {
+  const hood = torso?.getObjectByName('folded-hood');
+  if (!(hood instanceof THREE.Mesh)) return [];
+  const positions = hood.geometry.getAttribute('position') as THREE.BufferAttribute;
+  const rings = new Map<number, number[]>();
+  for (let vertex = 0; vertex < positions.count; vertex++) {
+    const y = positions.getY(vertex), x = Math.abs(positions.getX(vertex)), z = positions.getZ(vertex);
+    const ring = rings.get(y);
+    if (ring) { ring[1] = Math.max(ring[1], x); ring[2] = Math.min(ring[2], z); ring[3] = Math.max(ring[3], z); }
+    else rings.set(y, [y, x, z, z]);
+  }
+  return [...rings.values()].sort((a, b) => a[0] - b[0])
+    .map(([y, x, front, rear]) => [y, x + .006, (rear - front) / 2 + .008, (rear + front) / 2]);
 }
 
 /** Finite seat/tail and rear-wheel volumes, in the actual bike's frame. */
@@ -112,6 +130,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     [.52, .265, .132], [.568, .235, .108], [.588, .188, .096],
     [.607, .116, .074], [.631, .082, .065], [.65, .064, .064], [.80, .064, .064],
   ];
+  const hoodProfile = hoodClearance(mesh.parent);
   const collide = (vertex: number) => {
     const i = vertex * 3;
     let x = points[i], y = points[i + 1], z = points[i + 2];
@@ -133,6 +152,15 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
           x += nx * correction; y += ny * correction; z += nz * correction;
         } else z = rz;
       }
+    }
+    if (hoodProfile.length && y > hoodProfile[0][0] && y < hoodProfile[hoodProfile.length - 1][0]) {
+      let row = 1;
+      while (row < hoodProfile.length - 1 && y > hoodProfile[row][0]) row++;
+      const a = hoodProfile[row - 1], b = hoodProfile[row], t = (y - a[0]) / (b[0] - a[0]);
+      const rx = a[1] + (b[1] - a[1]) * t, rz = a[2] + (b[2] - a[2]) * t;
+      const center = a[3] + (b[3] - a[3]) * t;
+      if (Math.abs(x) < rx + .008 && z > center - .02)
+        z = Math.max(z, center + rz * Math.sqrt(Math.max(0, 1 - x * x / (rx * rx))));
     }
     if (hasBag && z > .10) {
       const by = y - .16, bz = z - .18;
@@ -175,7 +203,9 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   const frame = (preserveInertia: boolean) => {
     scaleChanged = false;
     hasBag = false;
-    for (const child of mesh.parent?.children ?? []) if (child.name === 'crossbody-assembly-v43') hasBag = true;
+    for (const child of mesh.parent?.children ?? []) {
+      if (child.name === 'crossbody-assembly-v43') hasBag = true;
+    }
     if (mesh.parent) {
       for (let ancestor: THREE.Object3D | null = mesh.parent; ancestor; ancestor = ancestor.parent)
         ancestor.matrixWorldNeedsUpdate = true;
@@ -216,7 +246,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       points[i] = anchor.x * (1 - spread) + side * width / 2 * spread;
       points[i + 1] = anchor.y - length * t;
       points[i + 2] = anchor.z * (1 - spread) + (.165 + t * .08) * spread;
-      if (row > 0) {
+      if (!cloth.pinned[row * (columns + 1) + column]) {
         if (clearance) {
           point.fromArray(points, i).applyMatrix4(torsoToBike);
           for (const box of clearance.boxes) if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)

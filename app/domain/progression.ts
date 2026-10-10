@@ -107,6 +107,8 @@ export function finishRun(
     nearMisses: run.nearMisses,
     score: run.score,
     jumps: run.jumps,
+    // Sign progress and its one-time coin payout are saved at each pickup.
+    signs: 0,
   };
   const challenges = dailyChallengesForDate(date);
   for (const c of challenges)

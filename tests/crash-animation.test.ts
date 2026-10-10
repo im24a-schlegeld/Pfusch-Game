@@ -101,6 +101,74 @@ function minimumVisibleY(owner: Object3D, excluded?: Object3D) {
 }
 
 describe('bounded crash presentation', () => {
+  it('loads the front on a bumper impact, lifts it after a rear ram and yaws more at speed', () => {
+    const motionAtImpact = (direction: 'front' | 'rear', speed: number) => {
+      const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+      const scene = new Scene();
+      scene.add(bike.root);
+      const animation = createCrashAnimation(bike, {
+        cause: 'Traffic collision',
+        pitch: 0,
+        travel: 0,
+        reducedMotion: false,
+        impactDirection: direction,
+        impactSpeed: speed,
+      });
+      animation.advance(0.1, true);
+      return {
+        pitch: bike.body.rotation.x,
+        yaw: Math.abs(bike.root.rotation.y),
+      };
+    };
+    const front = motionAtImpact('front', 28);
+    const rear = motionAtImpact('rear', 28);
+    expect(front.pitch).toBeLessThan(-0.15);
+    expect(rear.pitch).toBeGreaterThan(0.1);
+    expect(front.yaw).toBeGreaterThan(motionAtImpact('front', 5).yaw * 1.4);
+  });
+
+  it('briefly retains an overrotated wheelie before falling, then settles its pitch and rebound', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const scene = new Scene();
+    scene.add(bike.root);
+    bike.animateSuspension(1.3, 0);
+    const animation = createCrashAnimation(bike, {
+      cause: 'Overrotated the wheelie',
+      pitch: 1.3,
+      travel: 0,
+      reducedMotion: false,
+      impactSpeed: 28,
+    });
+    animation.advance(0.1, true);
+    expect(bike.body.rotation.x).toBeGreaterThan(1.3);
+    for (let i = 0; i < 11; i++) animation.advance(0.1, true);
+    bike.root.updateMatrixWorld(true);
+    expect(bike.body.rotation.x).toBeCloseTo(0, 6);
+    expect(minimumVisibleY(bike.body, bike.rider)).toBeCloseTo(0.025, 4);
+  });
+
+  it('makes one small road-contact rebound and returns to supported ground contact', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
+    const scene = new Scene();
+    scene.add(bike.root);
+    const animation = createCrashAnimation(bike, {
+      cause: 'Traffic collision',
+      pitch: 0,
+      travel: 0,
+      reducedMotion: false,
+      impactDirection: 'front',
+      impactSpeed: 28,
+    });
+    for (let i = 0; i < 6; i++) animation.advance(0.1, true);
+    bike.root.updateMatrixWorld(true);
+    const reboundHeight = minimumVisibleY(bike.body, bike.rider);
+    expect(reboundHeight).toBeGreaterThan(0.065);
+    expect(reboundHeight).toBeLessThan(0.13);
+    for (let i = 0; i < 6; i++) animation.advance(0.1, true);
+    bike.root.updateMatrixWorld(true);
+    expect(minimumVisibleY(bike.body, bike.rider)).toBeCloseTo(0.025, 4);
+  });
+
   it('keeps visible helmet and clothing outside a real car throughout the fall', () => {
     const engine = new Engine(
       BIKES.find(({ id }) => id === '125')!,
@@ -379,7 +447,7 @@ describe('bounded crash presentation', () => {
     }
   });
 
-  it.each(['125', 'scooter', '450', '701'] as const)(
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s falls with released limbs, fixed skeleton scale, ground clearance and attached lights',
     (model) => {
       const { bike, animation } = fixture(model);
@@ -482,7 +550,7 @@ describe('bounded crash presentation', () => {
       const cap = (catalog as Product[]).find(
         (product) => product.handle === 'p-zero-cap',
       )!;
-      for (const model of ['125', 'scooter', '450', '701']) {
+      for (const model of ['125', 'scooter', 'moped', '450', '701']) {
         const player = newPlayer();
         player.bike = model;
         player.equipped.head = cap.id;

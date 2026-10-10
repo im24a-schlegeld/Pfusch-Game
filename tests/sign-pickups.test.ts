@@ -27,8 +27,8 @@ describe('PFUSCH road sign pickups', () => {
       expect(engine.signPickupSerial).toBe(serial);
     }
     expect(engine.signSetCount).toBe(1);
-    expect(engine.event.text).toBe('PFUSCH SET COMPLETE');
-    expect(engine.score).toBeCloseTo(5 * 45 + 750 + engine.distance * 0.12, 8);
+    expect(engine.event.text).toBe('SIGNS · ALLE GESAMMELT');
+    expect(engine.score).toBeCloseTo(6 * 45 + engine.distance * 0.12, 8);
     expect(engine.spawnSign('P', 0, 0)).toBeUndefined();
     engine.advance(STEP);
     expect(engine.collectedSigns).toBe(63);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { Player, Product, RunStats, TutorialHint } from '../domain/types';
 import { BIKES } from '../domain/config';
+import { dayKey } from '../domain/progression';
 import { TUTORIAL_HINTS } from '../domain/tutorial';
 import { Engine } from '../game/engine';
 import { VerifiedRunRecorder, type VerifiedRunChallenge, type VerifiedRunSubmission } from '../game/verifiedRun';
@@ -32,6 +33,7 @@ interface Props {
   onReady?: () => void;
   onLoadError?: (message: string) => void;
   onTutorialSeen?: (ids: readonly TutorialHint[]) => void;
+  onSignPickup?: (eventId: string) => void;
 }
 type ActiveTutorial = { id: TutorialHint; target?: { x: number; y: number } };
 export default function Ride({
@@ -46,6 +48,7 @@ export default function Ride({
   onReady,
   onLoadError,
   onTutorialSeen,
+  onSignPickup,
   verifiedChallenge,
 }: Props) {
   const engine = useMemo(
@@ -68,6 +71,9 @@ export default function Ride({
   for (const hint of player.settings.tutorialHintsSeen ?? []) seenTutorials.current.add(hint);
   const tutorialCallback = useRef(onTutorialSeen);
   tutorialCallback.current = onTutorialSeen;
+  const signCallback = useRef(onSignPickup);
+  signCallback.current = onSignPickup;
+  const lastSignPickup = useRef(0);
   const lastTutorialElapsed = useRef(-Infinity);
   const tutorialPointer = useRef<{ id: number; x: number; y: number; time: number } | null>(null);
   const gestureSurface = useRef<HTMLDivElement>(null);
@@ -380,6 +386,12 @@ export default function Ride({
     resultsReady.current(settled.current.id);
   }
   function frame(e: Engine) {
+    if (e.signPickupSerial > lastSignPickup.current) {
+      const runId = e.stats().id;
+      while (lastSignPickup.current < e.signPickupSerial) {
+        signCallback.current?.(`${runId}:${++lastSignPickup.current}`);
+      }
+    }
     showControls();
     audio.update(
       e.speed,
@@ -498,7 +510,8 @@ export default function Ride({
           <text data-part="label-text" x="0" y="1" />
         </g>
       </svg>
-      <RideHud engine={engine} best={player.highScore} pause={pause} />
+      <RideHud engine={engine} best={player.highScore} pause={pause}
+        dailySigns={player.challenges.date === dayKey() ? player.challenges.values['daily-signs'] ?? 0 : 0} />
       {buttonMode && touchActive && engine.phase === 'playing' && !tutorial &&
         <RideTouchButtons onPress={pressTouchButton} wheelieHeld={engine.wheelieHeld} brakeHeld={engine.forwardHeld} />}
       {engine.phase === 'playing' && (

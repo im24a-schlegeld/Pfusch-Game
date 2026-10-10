@@ -94,6 +94,46 @@ describe.each(['125', 'moped', '450', '701', 'scooter'] as const)('Imported %s a
     expect(model.pose.contactGrips?.[0][2]).not.toBe(model.pose.contactGrips?.[1][2]);
   });
 
+  it('uses the actual handlebar meshes and turns both controls independently of rider weight shift', () => {
+    let nearestGrip = Infinity;
+    let gripRig: string | undefined;
+    for (const part of manifest.parts) {
+      const raw = new Float32Array(buffer.buffer, buffer.byteOffset + part.position.offset, part.position.count * 3);
+      for (let index = 0; index < raw.length; index += 3) {
+        const distance = Math.hypot(Math.abs(raw[index]) - manifest.anchors.grip[0],
+          raw[index + 1] - manifest.anchors.grip[1], raw[index + 2] - manifest.anchors.grip[2]);
+        if (distance < nearestGrip) { nearestGrip = distance; gripRig = part.rig; }
+      }
+    }
+    expect(nearestGrip).toBeLessThan(0.06);
+    expect(gripRig).toBe('steering');
+    const model = bike();
+    const steering = model.body.getObjectByName('imported-steering')!;
+    model.root.updateMatrixWorld(true);
+    const rearBefore = model.wheels[1].getWorldPosition(new Vector3());
+    const neutral = model.pose.contactGrips!.map((grip) => new Vector3(...grip));
+    model.animateRider({ steer: 0, handlebarSteer: 1, wheelie: 1, landing: 0 }, 0.2);
+    model.root.updateMatrixWorld(true);
+    const trace = steering.matrix.elements[0] + steering.matrix.elements[5] + steering.matrix.elements[10];
+    const angle = Math.acos((trace - 1) / 2);
+    expect(angle).toBeGreaterThan(0.14);
+    expect(angle).toBeLessThan(0.161);
+    expect(model.wheels[1].getWorldPosition(new Vector3()).distanceTo(rearBefore)).toBeLessThan(1e-12);
+    for (let side = 0; side < 2; side++) {
+      const expected = neutral[side].clone().divideScalar(model.body.scale.x)
+        .applyMatrix4(steering.matrix).multiplyScalar(model.body.scale.x);
+      expect(new Vector3(...model.pose.contactGrips![side]).distanceTo(expected)).toBeLessThan(1e-12);
+      expect(model.motion().limbs[side].arm.end).toEqual(model.pose.contactGrips![side]);
+      expect(expected.distanceTo(neutral[side])).toBeGreaterThan(0.02);
+    }
+    model.animateRider({ steer: 0, handlebarSteer: 0, wheelie: 1, landing: 0 }, 1 / 60);
+    expect(steering.matrix.equals(new Matrix4())).toBe(false);
+    for (let frame = 0; frame < 60; frame++)
+      model.animateRider({ steer: 0, handlebarSteer: 0, wheelie: 1, landing: 0 }, 1 / 60);
+    for (let side = 0; side < 2; side++)
+      expect(new Vector3(...model.pose.contactGrips![side]).distanceTo(neutral[side])).toBeLessThan(1e-6);
+  });
+
   it('puts the imported scooter rider on the rear half of the saddle', () => {
     if (id !== 'scooter') return;
     expect(bike().pose.hip[2]).toBeCloseTo(0.36, 6);

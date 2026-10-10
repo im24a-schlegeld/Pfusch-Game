@@ -3,6 +3,7 @@ import type { Player, Product } from '../domain/types';
 import { BIKE_MODEL_SCALES } from './vehicleScale';
 import { BIKE_CONTACTS, resolveRiderPose, type RiderPose, type Point } from './riderSkeleton';
 import type { RiderMotion } from './riderMotion';
+import { nextHandlebarAngle } from './bikeMotion';
 import type { RagdollPose } from './ragdoll';
 import type { CarriedCapMotionInput } from './carriedCapMotion';
 import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
@@ -274,13 +275,13 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   return {
     root, body, wheels, rider: rider.group,
     animateRider: (input: RiderMotion, dt: number) => {
-      steerAngle += (input.steer * -0.065 - steerAngle) * (1 - Math.exp(-dt * 12));
+      steerAngle = nextHandlebarAngle(steerAngle, input.handlebarSteer ?? input.steer, dt);
       steering.matrix.copy(steerStart).multiply(steerTurn.makeRotationAxis(steeringAxis, steerAngle)).multiply(steerEnd);
       steering.matrixWorldNeedsUpdate = true;
-      authoredWrists.forEach((wrist, index) => {
-        gripPoint.copy(wrist).applyMatrix4(steering.matrix).multiplyScalar(modelScale);
+      for (let index = 0; index < authoredWrists.length; index++) {
+        gripPoint.copy(authoredWrists[index]).applyMatrix4(steering.matrix).multiplyScalar(modelScale);
         gripPoint.toArray(contactGrips[index]);
-      });
+      }
       rider.animate(input, dt);
     },
     captureRagdollPose: rider.captureRagdollPose,

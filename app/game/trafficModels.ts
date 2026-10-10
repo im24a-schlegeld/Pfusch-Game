@@ -139,9 +139,7 @@ export function makeDetailedTraffic(
     'paint',
     kind === 'police'
       ? '#e4e7e0'
-      : kind === 'towtruck'
-        ? '#ced1c8'
-        : PAINTS[colorIndex % PAINTS.length],
+      : PAINTS[colorIndex % PAINTS.length],
     0.34,
     0.3,
   );

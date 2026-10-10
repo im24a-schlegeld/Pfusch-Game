@@ -9,6 +9,8 @@ import {
 export interface RiderMotion {
   wheelie: number;
   steer: number;
+  /** Real cockpit angle input, separate from the rider's smaller weight shift. */
+  handlebarSteer?: number;
   landing: number;
   forward?: number;
   /** Short rearward pull at the start of a lift. */

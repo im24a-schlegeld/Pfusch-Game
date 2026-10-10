@@ -215,7 +215,7 @@ export function makeTraffic(kind: string, colorIndex: number) {
 /** Build each shape once; colors never change a vehicle's geometry or contacts. */
 export function makeTrafficVariants(kind: string): readonly THREE.Group[] {
   const base = makeTraffic(kind, 0);
-  return kind === 'car' || kind === 'van'
+  return kind === 'car' || kind === 'van' || kind === 'towtruck'
     ? [base, ...[1, 2, 3].map((color) => cloneTrafficColor(base, color))]
     : [base, base, base, base];
 }

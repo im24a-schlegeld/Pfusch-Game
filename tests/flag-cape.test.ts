@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DoubleSide, Group, Mesh, MeshStandardMaterial, Texture, TextureLoader, Vector3 } from 'three';
+import { DoubleSide, Group, Mesh, MeshStandardMaterial, Raycaster, Texture, TextureLoader, Vector3 } from 'three';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { addFlagCape, FLAG_CAPE, flagCapeUv } from '../app/game/flagCape';
@@ -47,7 +47,7 @@ function clothMeasures(mesh: Mesh) {
 }
 
 const pointAt = (mesh: Mesh, vertex: number) => new Vector3().fromBufferAttribute(mesh.geometry.getAttribute('position'), vertex);
-const pinIndices = Array.from({ length: FLAG_CAPE.columns + 1 }, (_, vertex) => vertex);
+const pinIndices = [0, FLAG_CAPE.columns / 2, FLAG_CAPE.columns];
 describe('original PFUSCH flag as a neck cape', () => {
   it('turns the untouched flag a quarter-turn so its original left eyelet edge is the collar', () => {
     const { mesh, texture, loader } = cape();
@@ -121,7 +121,34 @@ describe('original PFUSCH flag as a neck cape', () => {
       }
     } finally { loader.mockRestore(); }
   }, 120000);
-  it('keeps the wrapped collar fixed while the remaining fabric and hem move', () => {
+  it('keeps the rear neck seam and fabric outside the actual folded hoodie', () => {
+    const loader = vi.spyOn(TextureLoader.prototype, 'load').mockImplementation(() => new Texture());
+    try {
+      const hoodie = catalog.find(item => item.handle === 'keep-up-hoodie') as Product;
+      const player = newPlayer(); player.bike = '450'; player.helmet = 'motocross';
+      player.equipped.cape = product.id; player.equipped.upper = hoodie.id;
+      const bike = makeBike(player, [product, hoodie]);
+      bike.animateAccessories({ speed: 0, reducedMotion: true }, 1 / 60);
+      bike.root.updateMatrixWorld(true);
+      const flag = bike.root.getObjectByName('pfusch-flag-cape') as Mesh;
+      const hood = bike.root.getObjectByName('folded-hood') as Mesh;
+      const positions = flag.geometry.getAttribute('position'), ray = new Raycaster();
+      const direction = new Vector3(0, 0, -1).transformDirection(flag.matrixWorld);
+      let checked = 0;
+      for (let vertex = 0; vertex < positions.count; vertex++) {
+        const point = pointAt(flag, vertex);
+        if (point.z < .08) continue;
+        ray.set(flag.localToWorld(new Vector3(point.x, point.y, 1)), direction);
+        const hit = ray.intersectObject(hood, false)[0];
+        if (!hit) continue;
+        const rearSurface = flag.worldToLocal(hit.point).z;
+        expect(point.z, `rear hood contact at vertex ${vertex}`).toBeGreaterThan(rearSurface + .002);
+        checked++;
+      }
+      expect(checked).toBeGreaterThan(3);
+    } finally { loader.mockRestore(); }
+  });
+  it('keeps the eyelets and rear neck support fixed while collar fabric and hem can drape', () => {
     const { bike, torso, mesh, update } = cape();
     const attribute = mesh.geometry.getAttribute('position');
     const positions = attribute.array as Float32Array;

@@ -77,7 +77,7 @@ export function Challenges({
           const value = Math.max(0, Math.min(c.target, daily.values[c.id] ?? 0));
           const complete = daily.claimed.includes(c.id);
           const Icon = c.stat === 'runs' ? Repeat2 : c.stat === 'distance' ? Route : c.stat === 'nearMisses' ? Zap : Target;
-          const unit = c.stat === 'runs' ? 'Fahrten' : c.stat === 'distance' || c.stat === 'wheelie' ? 'm' : c.stat === 'nearMisses' ? 'knappe Manöver' : c.stat === 'score' ? 'Punkte' : 'Sprünge';
+          const unit = c.stat === 'runs' ? 'Fahrten' : c.stat === 'distance' || c.stat === 'wheelie' ? 'm' : c.stat === 'nearMisses' ? 'knappe Manöver' : c.stat === 'score' ? 'Punkte' : c.stat === 'signs' ? 'Schilder' : 'Sprünge';
           return (
             <article
               key={c.id}
@@ -108,7 +108,7 @@ export function Challenges({
         })}
       </div>
       <div className="challenge-footer">
-        <p>Belohnungen werden nach einer Fahrt automatisch gutgeschrieben.</p>
+        <p>Signs zählen direkt beim Einsammeln. Die anderen Aufgaben werden nach einer Fahrt gutgeschrieben.</p>
         <button className="button primary" onClick={start}>
           FAHRT STARTEN <ArrowRight />
         </button>

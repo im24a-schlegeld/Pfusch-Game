@@ -9,28 +9,28 @@ const run: RunStats = { id: 'daily-run', score: 3000, distance: 1000, seconds: 4
   bestCombo: 3, nearMisses: 4, jumps: 3, wheelieMeters: 250, maxSpeed: 120, cause: 'Traffic collision' };
 
 describe('rotating UTC daily tasks and coin balance', () => {
-  it('rotates all six tracked metrics with four unique tasks and fixed fair daily budgets', () => {
+  it('rotates six metrics alongside a fixed sign task and fair daily budgets', () => {
     const seen = new Set<string>();
     let previous = '';
     for (let index = 1; index <= 16; index++) {
       const date = `2026-10-${String(index).padStart(2, '0')}`;
       const tasks = dailyChallengesForDate(date);
       expect(tasks).toEqual(dailyChallengesForDate(date));
-      expect(tasks).toHaveLength(4);
-      expect(new Set(tasks.map(task => task.id)).size).toBe(4);
-      expect(new Set(tasks.map(task => task.stat)).size).toBe(4);
-      expect(tasks.reduce((sum, task) => sum + task.coins, 0)).toBe(300);
+      expect(tasks).toHaveLength(5);
+      expect(new Set(tasks.map(task => task.id)).size).toBe(5);
+      expect(new Set(tasks.map(task => task.stat)).size).toBe(5);
+      expect(tasks.reduce((sum, task) => sum + task.coins, 0)).toBe(420);
       expect(tasks.reduce((sum, task) => sum + task.xp, 0)).toBe(540);
       expect(JSON.stringify(tasks)).not.toBe(previous);
       previous = JSON.stringify(tasks);
       for (const task of tasks) {
         seen.add(task.stat);
         const ranges = { runs: [4, 5], distance: [3000, 4000], wheelie: [400, 500],
-          nearMisses: [8, 10], jumps: [6, 8], score: [7000, 9000] };
+          nearMisses: [8, 10], jumps: [6, 8], score: [7000, 9000], signs: [6] };
         expect(ranges[task.stat]).toContain(task.target);
       }
     }
-    expect([...seen].sort()).toEqual(['distance', 'jumps', 'nearMisses', 'runs', 'score', 'wheelie']);
+    expect([...seen].sort()).toEqual(['distance', 'jumps', 'nearMisses', 'runs', 'score', 'signs', 'wheelie']);
     expect(() => dailyChallengesForDate('2026-02-30')).toThrow();
   });
 
@@ -59,10 +59,12 @@ describe('rotating UTC daily tasks and coin balance', () => {
     expect(migrated.coins).toBe(player.coins);
     expect(migrated.xp).toBe(player.xp);
     expect(migrated.challenges.claimed).toEqual(expect.arrayContaining(player.challenges.claimed));
-    for (const task of dailyChallengesForDate(player.challenges.date)) {
+    for (const task of dailyChallengesForDate(player.challenges.date).slice(0, 4)) {
       expect(migrated.challenges.claimed).toContain(task.id);
       expect(migrated.challenges.values[task.id]).toBe(task.target);
     }
+    expect(migrated.challenges.claimed).not.toContain('daily-signs');
+    expect(migrated.challenges.values['daily-signs']).toBeUndefined();
     expect(refreshDaily(migrated, player.challenges.date)).toBe(migrated);
     const outcome = finishRun(migrated, { ...run, score: 100000, distance: 10000, wheelieMeters: 1000, nearMisses: 30, jumps: 20 }, player.challenges.date)!;
     expect(outcome.reward.challengeIds).toEqual([]);
@@ -73,7 +75,7 @@ describe('rotating UTC daily tasks and coin balance', () => {
     const progress = { date: '2026-10-09',
       values: { 'three-rides': 2, 'one-wheel': 200, 'close-call': 4, 'night-shift': 1100 }, claimed: [] };
     const migrated = normalizeDailyProgress(progress, progress.date);
-    expect(dailyChallengesForDate(progress.date).map(task => task.stat)).toEqual(['runs', 'jumps', 'score', 'distance']);
+    expect(dailyChallengesForDate(progress.date).map(task => task.stat)).toEqual(['runs', 'jumps', 'score', 'distance', 'signs']);
     expect(migrated.values).toMatchObject({ ...progress.values,
       'daily-rides': 2, 'daily-skill': 0, 'daily-focus': 0, 'daily-distance': 1100 });
     expect(migrated.claimed).toEqual([]);

@@ -3062,7 +3062,7 @@ function makeRider(
       transformExtremity(extremities[i].boot, limb.leg, rest.limbs[i].leg);
     });
   };
-  const motion: Required<RiderMotion> = {
+  const motion: Required<Omit<RiderMotion, 'handlebarSteer'>> = {
     wheelie: 0,
     steer: 0,
     landing: 0,

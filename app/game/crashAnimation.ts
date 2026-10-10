@@ -61,8 +61,17 @@ function crashMotion(options: CrashOptions, initialRoll: number) {
         ? 'front'
         : 'fall');
   const wheelie = /overrotated/i.test(options.cause);
-  const speed = Math.max(0, Math.min(40, options.impactSpeed ?? 14));
-  const lateral = Math.max(-2.2, Math.min(2.2, options.lateralVelocity ?? 0));
+  const speed = Math.max(
+    0,
+    Math.min(40, Number.isFinite(options.impactSpeed) ? options.impactSpeed! : 14),
+  );
+  const lateral = Math.max(
+    -2.2,
+    Math.min(
+      2.2,
+      Number.isFinite(options.lateralVelocity) ? options.lateralVelocity! : 0,
+    ),
+  );
   // Falling follows the actual lean/sideways momentum, never the equipment.
   const side =
     Math.abs(initialRoll) > 0.025
@@ -79,6 +88,7 @@ function crashMotion(options: CrashOptions, initialRoll: number) {
     direction,
     side,
     wheelie,
+    speed,
     fallTime: wheelie ? 0.88 : rear ? 0.82 : 0.74,
     lateralSlide: lateral * 0.16 + side * (rear ? 0.28 : 0.22),
     forwardSlide: (front ? 0.7 : rear ? 1.3 : 0.95) + speed * 0.025,
@@ -92,6 +102,62 @@ function crashMotion(options: CrashOptions, initialRoll: number) {
       side * 0.08,
       -side * (rear ? 1.15 : 1.35),
     ] as Point,
+  };
+}
+
+/** A short impact impulse, followed by road contact and friction. The cached
+ * chassis hull still owns ground/vehicle separation; this only supplies its
+ * orientation and a small contact rebound, without a second physics world. */
+function chassisPose(
+  motion: ReturnType<typeof crashMotion>,
+  time: number,
+  initialRoll: number,
+  initialYaw: number,
+  initialPitch: number,
+  initialTravel: number,
+) {
+  const fall = smooth(time / motion.fallTime);
+  const slide = 1 - (1 - Math.min(1, time / 1.2)) ** 3;
+  const severity = Math.min(1, motion.speed / 28);
+  // Bumper impact loads the front suspension first. A rear ram instead lifts
+  // the front; an overrotated wheelie briefly retains its upward momentum.
+  const impact = Math.sin(Math.PI * Math.min(1, time / 0.43));
+  const pitchImpulse = motion.wheelie
+    ? 0.20 + severity * 0.12
+    : motion.direction === 'front'
+      ? -0.16 - severity * 0.17
+      : motion.direction === 'rear'
+        ? 0.12 + severity * 0.14
+        : -0.05 - severity * 0.06;
+  const contactTime = motion.fallTime * 0.68;
+  const reboundTime = (time - contactTime) / 0.28;
+  const rebound =
+    reboundTime > 0 && reboundTime < 1
+      ? Math.sin(Math.PI * reboundTime) * (0.025 + severity * 0.055)
+      : 0;
+  // One small roll rebound accompanies the hard parts touching the road.
+  // Both pulses end before the final pose, so the bike cannot freeze mid-bounce.
+  const rollRebound = rebound * 0.9;
+  const yawAmount =
+    motion.direction === 'side'
+      ? 0.30 + severity * 0.13
+      : motion.direction === 'rear'
+        ? 0.17 + severity * 0.12
+        : 0.12 + severity * 0.12;
+  return {
+    fall,
+    slide,
+    rebound,
+    roll:
+      initialRoll +
+      (-motion.side * 1.46 - initialRoll) * fall +
+      motion.side * rollRebound,
+    yaw: initialYaw + motion.side * yawAmount * slide,
+    pitch:
+      initialPitch * (1 - fall) + pitchImpulse * impact * (1 - fall * 0.4),
+    travel:
+      initialTravel * (1 - fall) +
+      (motion.direction === 'front' ? -0.018 : 0.01) * impact * severity,
   };
 }
 
@@ -307,7 +373,6 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
   const initialRoll = bike.root.rotation.z,
     initialYaw = bike.root.rotation.y;
   const motion = crashMotion(options, initialRoll);
-  const { side } = motion;
   bike.rider.updateWorldMatrix(true, true);
   const riderWorld = bike.rider.matrixWorld.clone();
   const riderInverse = riderWorld.clone().invert();
@@ -335,26 +400,29 @@ function createPhysicalCrash(bike: CrashBike, options: CrashOptions) {
     settled = false;
 
   function bodyPose(time: number) {
-    const fall = smooth(time / motion.fallTime);
-    const slide = 1 - (1 - Math.min(1, time / 1.2)) ** 3;
+    const pose = chassisPose(
+      motion,
+      time,
+      initialRoll,
+      initialYaw,
+      options.pitch,
+      options.travel,
+    );
     bike.root.position.set(
-      initialRoot.x + motion.lateralSlide * slide,
-      initialRoot.y * (1 - fall),
-      initialRoot.z - motion.forwardSlide * slide,
+      initialRoot.x + motion.lateralSlide * pose.slide,
+      initialRoot.y * (1 - pose.fall),
+      initialRoot.z - motion.forwardSlide * pose.slide,
     );
-    bike.root.rotation.z = initialRoll + (-side * 1.46 - initialRoll) * fall;
-    bike.root.rotation.y = initialYaw + side * 0.11 * fall;
-    bike.animateSuspension(
-      options.pitch * (1 - fall),
-      options.travel * (1 - fall),
-    );
+    bike.root.rotation.z = pose.roll;
+    bike.root.rotation.y = pose.yaw;
+    bike.animateSuspension(pose.pitch, pose.travel);
     bike.body.updateWorldMatrix(true, false);
     bodyBounds.makeEmpty();
     for (const support of chassis.points)
       bodyBounds.expandByPoint(
         point.copy(support).applyMatrix4(bike.body.matrixWorld),
       );
-    const lift = Math.max(0, 0.025 - bodyBounds.min.y);
+    const lift = Math.max(0, 0.025 + pose.rebound - bodyBounds.min.y);
     shiftWorld(bike.root, new Vector3(0, lift, 0));
     bodyBounds.translate(new Vector3(0, lift, 0));
     separateChassis(
@@ -530,34 +598,40 @@ export function createCrashAnimation(bike: CrashBike, options: CrashOptions) {
       elapsed = Math.min(duration, elapsed + Math.max(0, Math.min(dt, 0.1)));
     if (duration === 0) return true;
     if (finalGroundSettled) return elapsed >= duration;
-    const fall = options.reducedMotion ? 1 : smooth(elapsed / motion.fallTime);
+    const time = options.reducedMotion ? 1.2 : elapsed;
+    const chassisPoseAtTime = chassisPose(
+      motion,
+      time,
+      initialRoll,
+      initialYaw,
+      options.pitch,
+      options.travel,
+    );
+    const { fall, slide } = chassisPoseAtTime;
     bike.animateCrashPose?.(
       fall,
       side,
       options.reducedMotion ? 1 : active ? dt : 0,
       options.reducedMotion ? 1.2 : elapsed,
     );
-    const slide = options.reducedMotion
-      ? 1
-      : 1 - (1 - Math.min(1, elapsed / duration)) ** 3;
     bike.root.position.set(
       initialRoot.x + motion.lateralSlide * slide,
       initialRoot.y * (1 - fall),
       initialRoot.z - motion.forwardSlide * slide,
     );
-    bike.root.rotation.z = initialRoll + (-side * 1.46 - initialRoll) * fall;
-    bike.root.rotation.y = initialYaw + side * 0.11 * fall;
-    bike.animateSuspension(
-      options.pitch * (1 - fall),
-      options.travel * (1 - fall),
-    );
+    bike.root.rotation.z = chassisPoseAtTime.roll;
+    bike.root.rotation.y = chassisPoseAtTime.yaw;
+    bike.animateSuspension(chassisPoseAtTime.pitch, chassisPoseAtTime.travel);
     bike.body.updateWorldMatrix(true, false);
     bodyBounds.makeEmpty();
     for (const corner of chassis.points)
       bodyBounds.expandByPoint(
         point.copy(corner).applyMatrix4(bike.body.matrixWorld),
       );
-    const groundLift = Math.max(0, 0.025 - bodyBounds.min.y);
+    const groundLift = Math.max(
+      0,
+      0.025 + chassisPoseAtTime.rebound - bodyBounds.min.y,
+    );
     bike.root.position.y += groundLift;
     bodyBounds.min.y += groundLift;
     bodyBounds.max.y += groundLift;

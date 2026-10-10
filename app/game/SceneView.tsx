@@ -3,6 +3,7 @@ import { Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';
 import { suspensionTarget } from './activeSuspension';
 import { wheelieLanePose } from './riderMotion';
+import { handlebarSteeringInput } from './bikeMotion';
 import { rendererSessions } from './rendererSession';
 import type { Player, Product, TutorialHint } from '../domain/types';
 import { Engine, LANE } from './engine';
@@ -748,6 +749,11 @@ export default function SceneView({
               wheelie: frontLift,
               forward: engine.forwardLoad,
               steer: balancing + lanePose.steer,
+              handlebarSteer: handlebarSteeringInput(
+                steering, engine.laneChangeAge, engine.laneChangeDirection,
+                engine.wheelie ? frontLift : 0, engine.elapsed, balance,
+                appearance.current.player.settings.reducedMotion,
+              ),
               bikePitch: tilt,
               bikeRoll: bike.root.rotation.z,
               landing,

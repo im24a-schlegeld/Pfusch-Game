@@ -68,6 +68,10 @@
   min-width: 0;
   height: 44px;
 }
+.ride-screen .v42-daily-signs { display:flex; flex-direction:column; align-items:flex-end; gap:3px; color:#f1f1ed; }
+.ride-screen .v42-daily-signs > small { font-size:8px; letter-spacing:.09em; font-weight:800; }
+.ride-screen .v42-daily-signs > b { font-size:20px; line-height:1; }
+.ride-screen .v42-daily-signs b small { font-size:11px; opacity:.6; }
 .ride-screen .v42-sign-slot {
   width: var(--ride-sign-width);
   min-width: 0;

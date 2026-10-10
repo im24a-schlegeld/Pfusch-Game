@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { Player, Product, RunReward, RunStats } from '../domain/types';
 import { refreshDaily } from '../domain/progression';
+import { recordDailySign } from '../domain/dailySigns';
 import { markTutorialsSeen } from '../domain/tutorial';
 import { createServices, type Services } from '../services';
 import { unavailableAccess } from '../services/playerAccess';
@@ -309,6 +310,18 @@ export default function GameApp() {
       services.analytics.track('challenge_completed', { id }),
     );
   }
+  function collectSign(eventId: string) {
+    if (!current.current) return;
+    const next = recordDailySign(current.current, eventId);
+    if (next === current.current) return;
+    const completed = !current.current.challenges.claimed.includes('daily-signs')
+      && next.challenges.claimed.includes('daily-signs');
+    update(next);
+    if (completed) {
+      setNotice('Signs-Tagesaufgabe geschafft · +120 Coins');
+      services.analytics.track('challenge_completed', { id: 'daily-signs' });
+    }
+  }
   function revealResults(runId: string, generation: number) {
     if (
       generation !== activeRun.current ||
@@ -353,6 +366,7 @@ export default function GameApp() {
           products={products}
           audio={audio}
           onFinish={(run, verified) => finish(run, runKey, verified)}
+          onSignPickup={collectSign}
           verifiedChallenge={verifiedChallenge}
           onResultsReady={(runId) => revealResults(runId, runKey)}
           onExit={() => navigate('garage')}

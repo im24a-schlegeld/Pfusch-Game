@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Matrix4, Quaternion, Vector3 } from 'three';
-import { suspensionPose } from '../app/game/bikeMotion';
+import { handlebarSteeringInput, nextHandlebarAngle, suspensionPose } from '../app/game/bikeMotion';
 import { SPORT_GEOMETRY } from '../app/game/sportGeometry';
 import { SUPERMOTO_CHASSIS } from '../app/game/supermotoFit';
 
@@ -40,6 +40,36 @@ const transform = (angle: number, position: Vector3) =>
   new Matrix4().makeRotationX(angle).setPosition(position);
 const close = (actual: Vector3, expected: Vector3) =>
   expect(actual.distanceTo(expected)).toBeLessThan(1e-12);
+
+describe('visible cockpit steering', () => {
+  it('sustains a mirrored short turn through each lane change and returns to centre', () => {
+    for (const side of [-1, 1]) {
+      const input = handlebarSteeringInput(0.2 * side, 0.2, side, 0, 1, 0, false);
+      expect(input * side).toBeGreaterThan(0.7);
+      expect(nextHandlebarAngle(0, input, 0.15) * side).toBeLessThan(-0.09);
+      expect(handlebarSteeringInput(0, 0.6, side, 0, 1, 0, false)).toBe(0);
+    }
+  });
+  it('makes small signed balance corrections only with the front wheel lifted', () => {
+    const forward = handlebarSteeringInput(0, 1, 0, 1, Math.PI / 7, 0, false);
+    const reverse = handlebarSteeringInput(0, 1, 0, 1, 3 * Math.PI / 7, 0, false);
+    expect(forward).toBeCloseTo(0.22, 12);
+    expect(reverse).toBeCloseTo(-0.22, 12);
+    expect(Math.abs(nextHandlebarAngle(0, forward, 1))).toBeGreaterThan(0.03);
+    expect(Math.abs(nextHandlebarAngle(0, forward, 1))).toBeLessThan(0.04);
+    expect(handlebarSteeringInput(0, 1, 0, 0, Math.PI / 7, 1, false)).toBe(0);
+    expect(handlebarSteeringInput(1, 0.2, 1, 1, Math.PI / 7, 1, true)).toBe(0);
+  });
+  it('smooths without frame-rate bias or nonfinite angles', () => {
+    let fine = 0;
+    for (let frame = 0; frame < 60; frame++) fine = nextHandlebarAngle(fine, 1, 1 / 60);
+    expect(fine).toBeCloseTo(nextHandlebarAngle(0, 1, 1), 12);
+    expect(nextHandlebarAngle(NaN, Infinity, NaN)).toBe(0);
+    expect(handlebarSteeringInput(NaN, Infinity, NaN, NaN, Infinity, NaN, false)).toBe(0);
+    expect(nextHandlebarAngle(0, 100, 1)).toBeCloseTo(nextHandlebarAngle(0, 1, 1), 12);
+    expect(nextHandlebarAngle(0.1, 0, -1)).toBe(0.1);
+  });
+});
 
 describe('visual front suspension', () => {
   for (const geometry of geometries) {

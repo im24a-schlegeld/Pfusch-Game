@@ -126,15 +126,13 @@ test.describe('touch button mode', () => {
     await expect(page.getByTestId('ride-touch-buttons')).toBeVisible();
     expect(await page.locator('.v42-score').evaluate(node => getComputedStyle(node).clipPath)).toBe('none');
     expect(await page.locator('.v42-metrics').evaluate(node => getComputedStyle(node).borderLeftWidth)).toBe('0px');
-    const stop = page.getByTestId('sign-progress').locator('.v42-sign-stop');
-    await expect(stop).toHaveAttribute('data-active', 'false');
-    await expect(stop.locator('path')).toHaveAttribute('fill', '#555555');
-    await page.evaluate(() => { window.touchButtonsTestEngine!.collectedSigns = 63; });
+    const signs = page.locator('.v42-daily-signs');
+    await expect(signs).toContainText('0 / 6');
+    await page.evaluate(() => { window.touchButtonsTestEngine!.signPickupSerial += 6; });
     await page.clock.runFor(100);
-    await expect(stop).toHaveAttribute('data-active', 'true');
-    await expect(stop.locator('path')).toHaveAttribute('fill', '#d5252b');
+    await expect(signs).toContainText('6 / 6');
+    expect((await saved(page)).challenges.claimed).toContain('daily-signs');
     await page.screenshot({ path: 'outputs/touch-buttons-hud-complete.png' });
-    await page.evaluate(() => { window.touchButtonsTestEngine!.collectedSigns = 0; });
     await page.clock.runFor(100);
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);

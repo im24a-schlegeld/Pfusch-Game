@@ -68,9 +68,10 @@ function frameTrailerCamera(isPortrait: boolean) {
   // The visible helmet/wheel silhouette sits below the full mesh bounds.
   subject.y -= .45;
   camera.fov = isPortrait ? 68 : 39;
-  // Road-level, front-left three-quarter view: the wheel, engine and rider
-  // silhouette gain depth while the complete chase stays inside either crop.
-  camera.position.set(isPortrait ? -5.2 : -6.1, 1.9, isPortrait ? -6.7 : -5.8);
+  // Front-left three-quarter view, looking slightly down across the street.
+  // Keep the bike vertically centred while showing asphalt below the complete
+  // motorcycle and chase instead of filling the upper frame with empty sky.
+  camera.position.set(isPortrait ? -5.2 : -6.1, 4.3, isPortrait ? -6.7 : -5.8);
   camera.lookAt(subject);
   camera.updateProjectionMatrix();
 }

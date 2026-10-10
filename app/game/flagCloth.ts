@@ -6,9 +6,9 @@ export function createFlagCloth(columns: number, rows: number, width: number, le
   const anchors = new Float32Array(points.length);
   const pinned = new Uint8Array(count);
   const supports = [0, columns / 2, columns];
-  // The tied short edge stays wrapped around the neck. Its arc has the same
-  // material length as the flat flag; all rows below that collar are free.
-  for (let vertex = 0; vertex <= columns; vertex++) pinned[vertex] = 1;
+  // The eyelets and rear neck support follow the rider. The fabric between
+  // them can slide over the hood instead of a rigid collar crossing through it.
+  for (const vertex of supports) pinned[vertex] = 1;
   const links: number[] = [], lengths: number[] = [], stiffness: number[] = [];
   const dx = width / columns, dy = length / rows;
   const link = (a: number, b: number, distance: number, strength: number) => {
@@ -24,7 +24,7 @@ export function createFlagCloth(columns: number, rows: number, width: number, le
     }
     // Weak bending constraints remove sharp numerical creases, while allowing
     // a folded, hanging cloth instead of holding it in a flat sail shape.
-    if (column + 2 <= columns) link(a, a + 2, dx * 2, .035);
+    if (column + 2 <= columns) link(a, a + 2, dx * 2, row < 2 ? .16 : .035);
     if (row + 2 <= rows) link(a, a + 2 * (columns + 1), dy * 2, .035);
   }
   const pairs = new Uint16Array(links), rest = new Float32Array(lengths), strength = new Float32Array(stiffness);
@@ -45,6 +45,7 @@ export function createFlagCloth(columns: number, rows: number, width: number, le
   for (let i = 0; i < tethers.length; i++) tetherSquared[i] = tethers[i] * tethers[i];
   const pin = () => {
     for (let vertex = 0; vertex <= columns; vertex++) {
+      if (!pinned[vertex]) continue;
       const i = vertex * 3;
       points[i] = anchors[i]; points[i + 1] = anchors[i + 1]; points[i + 2] = anchors[i + 2];
     }
@@ -91,7 +92,8 @@ export function createFlagCloth(columns: number, rows: number, width: number, le
         points[a] += x * correction * wa; points[a + 1] += y * correction * wa; points[a + 2] += z * correction * wa;
         points[b] -= x * correction * wb; points[b + 1] -= y * correction * wb; points[b + 2] -= z * correction * wb;
       }
-      for (let vertex = columns + 1; vertex < count; vertex++) {
+      for (let vertex = 0; vertex < count; vertex++) {
+        if (pinned[vertex]) continue;
         const i = vertex * 3;
         for (let support = 0; support < supports.length; support++) {
           const a = supports[support] * 3;

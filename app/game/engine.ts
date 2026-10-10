@@ -35,6 +35,7 @@ import {
   signBit,
   signScoreReady,
   SIGN_RETRY_DISTANCE,
+  SIGN_DISTANCE_GAP,
 } from './signSet';
 import { rampEntryImpulse, consumeRampImpulse } from './rampEntry';
 import {
@@ -625,6 +626,12 @@ export class Engine {
     this.spawnWaveSign();
   }
   private spawnWaveSign() {
+    // Daily progress is stored outside the fixed-step engine. A long ride can
+    // keep collecting small point bonuses, including after UTC midnight.
+    if (this.collectedSigns === COMPLETE_SIGN_MASK && this.distance >= this.nextSignAttempt) {
+      this.collectedSigns = 0;
+      this.signSequence = 0;
+    }
     if (
       this.collectedSigns === COMPLETE_SIGN_MASK ||
       this.distance < this.nextSignAttempt ||
@@ -656,7 +663,7 @@ export class Engine {
     if (lane === undefined) return;
     if (this.spawnSign(id, lane, 128)) {
       this.signSequence = (SIGN_IDS.indexOf(id) + 1) % SIGN_IDS.length;
-      this.nextSignAttempt = this.distance + 15500 + this.random() * 3500;
+      this.nextSignAttempt = this.distance + SIGN_DISTANCE_GAP + this.random() * 120;
     }
   }
   spawnSign(id: SignId, lane: number, z: number) {
@@ -1589,13 +1596,10 @@ export class Engine {
           this.lastSignId = sign.id;
           this.signPickupSerial++;
           this.collectedSigns |= signBit(sign.id);
-          if (
-            this.collectedSigns === COMPLETE_SIGN_MASK &&
-            this.signSetCount === 0
-          ) {
-            this.signSetCount = 1;
+          if (this.collectedSigns === COMPLETE_SIGN_MASK) {
+            this.signSetCount++;
             for (const pending of this.signs) pending.active = false;
-            this.skill('PFUSCH SET COMPLETE', 750);
+            this.skill('SIGNS · ALLE GESAMMELT', 45);
           } else this.skill(`SIGN · ${sign.id}`, 45);
         } else if (sign.z < -12) {
           sign.active = false;
