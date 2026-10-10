@@ -19,28 +19,28 @@ export const WORLD_VIEW = Object.freeze({
 });
 
 const COLORS = {
-  asphalt: '#30383d',
-  marking: '#dbddd0',
-  curb: '#a4aaa0',
-  sidewalk: '#7e8985',
-  grass: '#63715c',
-  soil: '#6e6759',
+  asphalt: '#303132',
+  marking: '#e2e0d7',
+  curb: '#b8b6b0',
+  sidewalk: '#858582',
+  grass: '#636e5b',
+  soil: '#766d60',
   sand: '#96917d',
-  concrete: '#929993',
-  dark: '#333e42',
-  steel: '#626f75',
-  glass: '#36505a',
-  glassLit: '#b6c3b4',
+  concrete: '#a8a7a1',
+  dark: '#242729',
+  steel: '#6e7377',
+  glass: '#303d43',
+  glassLit: '#d0cbb8',
   water: '#466e7c',
   ripple: '#7b9a9d',
-  city0: '#b0b2a6',
-  city1: '#7f8a88',
-  city2: '#747b7c',
-  city3: '#b8ad96',
-  shed0: '#687774',
-  shed1: '#8f968b',
-  shed2: '#8e7663',
-  shed3: '#5f7379',
+  city0: '#c4c2ba',
+  city1: '#939695',
+  city2: '#63696c',
+  city3: '#b2a798',
+  shed0: '#646c6b',
+  shed1: '#9c9c92',
+  shed2: '#867464',
+  shed3: '#505b60',
   brick: '#826b5c',
   white: '#c8cbbf',
   orange: '#c58444',
@@ -210,17 +210,12 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     if (clearanceCount >= clearances.length / 6)
       throw new RangeError('World clearance pool exhausted');
     const i = clearanceCount++ * 6;
-    clearances.set(
-      [
-        clearanceBox.min.x,
-        clearanceBox.min.y,
-        clearanceBox.min.z,
-        clearanceBox.max.x,
-        clearanceBox.max.y,
-        clearanceBox.max.z,
-      ],
-      i,
-    );
+    clearances[i] = clearanceBox.min.x;
+    clearances[i + 1] = clearanceBox.min.y;
+    clearances[i + 2] = clearanceBox.min.z;
+    clearances[i + 3] = clearanceBox.max.x;
+    clearances[i + 4] = clearanceBox.max.y;
+    clearances[i + 5] = clearanceBox.max.z;
   }
   let anchor = 0;
 
@@ -348,7 +343,11 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   function tree(x: number, z: number, height: number, pine: boolean) {
     if (treeCount === candidates.length)
       throw new RangeError('World tree candidate pool exhausted');
-    Object.assign(candidates[treeCount++], { x, z, height, pine });
+    const candidate = candidates[treeCount++];
+    candidate.x = x;
+    candidate.z = z;
+    candidate.height = height;
+    candidate.pine = pine;
   }
   function drawTree(x: number, z: number, height: number, pine: boolean) {
     put('round', 'trunk', 0.18, height * 0.7, 0.18, x, height * 0.35, z);
@@ -418,7 +417,13 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       drawTree(x, z, height, pine);
       if (clearanceCount >= clearances.length / 6)
         throw new RangeError('World tree clearance pool exhausted');
-      clearances.set([minX, 0, minZ, maxX, top, maxZ], clearanceCount++ * 6);
+      const index = clearanceCount++ * 6;
+      clearances[index] = minX;
+      clearances[index + 1] = 0;
+      clearances[index + 2] = minZ;
+      clearances[index + 3] = maxX;
+      clearances[index + 4] = top;
+      clearances[index + 5] = maxZ;
     }
     drawingTrees = false;
   }
@@ -434,11 +439,19 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       depth = Math.min(10.8, length - 0.5);
     for (const side of [-1, 1]) {
       const v = variation(cell, segment.variant, side + 3),
-        height = 6 + (v % 5) * 2.8,
-        width = 5.8 + (v % 3) * 0.7,
+        baseHeight = 6 + (v % 5) * 2.8,
+        height = baseHeight + ((v >>> 7) % 3) * 0.45,
+        width = 5.8 + (v % 3) * 0.7 + ((v >>> 5) % 3) * 0.4,
         setback = v % 3 === 0 ? 2.2 : 0,
         x = side * (8.15 + setback + width / 2),
-        facade = side * (8.12 + setback);
+        facade = side * (8.12 + setback),
+        // Variants reuse every existing window and facade instance. Storeys
+        // retain their original budget; proportions change only at cell recycle.
+        floors = Math.min(low ? 3 : 6, Math.floor((baseHeight - 2) / 2.6)),
+        windowHeight = 1 + ((v >>> 9) % 3) * 0.22,
+        windowDepth = depth * (0.13 + ((v >>> 11) % 3) * 0.025),
+        floorSpacing = (height - 3.8) / floors,
+        mirror = (v >>> 13) % 2 === 0 ? 1 : -1;
       box(
         `city${(v >>> 3) % 4}` as Finish,
         width,
@@ -450,7 +463,15 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       );
       box('concrete', width + 0.2, 0.24, depth + 0.1, x, height + 0.12, mid);
       box('dark', 0.18, 0.22, depth, facade, 2.85, mid);
-      box('glass', 0.035, 1.8, depth * 0.64, facade - side * 0.05, 1.3, mid);
+      box(
+        'glass',
+        0.035,
+        1.55 + ((v >>> 15) % 3) * 0.15,
+        depth * (0.54 + ((v >>> 17) % 3) * 0.05),
+        facade - side * 0.05,
+        1.3,
+        mid + mirror * depth * 0.04,
+      );
       box(
         segment.variant % 2 ? 'brick' : 'dark',
         1.2,
@@ -460,17 +481,16 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         2.65,
         mid,
       );
-      const floors = Math.min(low ? 3 : 6, Math.floor((height - 2) / 2.6));
       for (let floor = 0; floor < floors; floor++)
         for (let column = 0; column < (low ? 2 : 3); column++)
           box(
             (floor + column + v) % 4 === 0 ? 'glassLit' : 'glass',
             0.045,
-            1.1,
-            depth * 0.14,
+            windowHeight,
+            windowDepth,
             facade - side * 0.07,
-            4 + floor * 2.6,
-            mid + (column - (low ? 0.5 : 1)) * depth * 0.29,
+            3.8 + floor * floorSpacing,
+            mid + mirror * (column - (low ? 0.5 : 1)) * depth * 0.29,
           );
       if (!low) {
         box('steel', 1.3, 0.45, 1.1, x, height + 0.45, mid);
@@ -481,11 +501,11 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       // A second staggered silhouette gives streets depth beyond the first facade.
       box(
         `city${v % 4}` as Finish,
-        8,
-        height + 4,
+        8 + ((v >>> 19) % 3) * 0.7,
+        height + 2.4 + ((v >>> 21) % 4) * 1.4,
         depth * 0.85,
         side * (20 + setback),
-        (height + 4) / 2,
+        (height + 2.4 + ((v >>> 21) % 4) * 1.4) / 2,
         mid,
       );
     }
@@ -501,21 +521,33 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       mid = (start + end) / 2,
       depth = Math.min(10.8, length - 0.4);
     for (const side of [-1, 1]) {
-      const v = variation(cell, segment.variant, side + 5);
-      box(`shed${v % 4}` as Finish, 10, 4.8, depth, side * 14, 2.4, mid);
-      box('steel', 10.4, 0.3, depth + 0.1, side * 14, 4.95, mid);
-      box('dark', 0.07, 3.4, depth * 0.5, side * 8.96, 1.8, mid);
+      const v = variation(cell, segment.variant, side + 5),
+        height = 4.8 + ((v >>> 7) % 4) * 0.35,
+        width = 10 + ((v >>> 9) % 3) * 0.6,
+        x = side * (9 + width / 2),
+        doorDepth = depth * (0.4 + ((v >>> 11) % 3) * 0.07);
+      box(`shed${v % 4}` as Finish, width, height, depth, x, height / 2, mid);
+      box('steel', width + 0.4, 0.3, depth + 0.1, x, height + 0.15, mid);
+      box(
+        'dark',
+        0.07,
+        height * 0.7,
+        doorDepth,
+        side * 8.96,
+        height * 0.375,
+        mid,
+      );
       for (let rib = 0; rib < (low ? 2 : 5); rib++)
         box(
           'steel',
           0.11,
-          4.6,
+          height - 0.2,
           0.08,
           side * 8.9,
-          2.4,
+          height / 2,
           mid + (rib / (low ? 1 : 4) - 0.5) * depth * 0.9,
         );
-      box('yellow', 0.1, 0.12, depth * 0.5, side * 8.88, 0.35, mid);
+      box('yellow', 0.1, 0.12, doorDepth, side * 8.88, 0.35, mid);
       rail(side * 7, start, end, 1.7);
       if (v % 3 === 0) {
         put('round', 'concrete', 1.7, 8.2, 1.7, side * 22, 4.1, mid);

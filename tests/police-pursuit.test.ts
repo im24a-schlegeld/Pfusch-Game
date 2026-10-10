@@ -60,7 +60,8 @@ describe('police pursuit gameplay', () => {
     expect(engine.policeVehicle.phase).toBe('chasing');
     expect(engine.policeVehicle.visible).toBe(false);
     const remaining = engine.policeRamRemaining;
-    expect(remaining).toBeGreaterThan(10);
+    expect(remaining).toBeGreaterThanOrEqual(10 - STEP * 1.01);
+    expect(remaining).toBeLessThanOrEqual(10);
     for (let count = 0; count < 30; count++) frame(engine);
     expect(engine.policeChase).toBe(true);
     expect(engine.policeRamRemaining).toBeCloseTo(remaining - 0.5, 5);
@@ -106,7 +107,7 @@ describe('police pursuit gameplay', () => {
 
   it('rewards a genuine close call exactly once and leaves unrelated NPCs alone', () => {
     const engine = startPursuit();
-    const target = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2)!;
     const innocent = engine.spawn('van', -1, 95, 0, 6)!;
     for (let count = 0; count < 30; count++) frame(engine, [target, innocent]);
     expect(engine.phase).toBe('playing');
@@ -125,7 +126,7 @@ describe('police pursuit gameplay', () => {
 
   it('leaves the exact close-call car solid and moving normally after the police wreck retires', () => {
     const engine = startPursuit();
-    const target = engine.spawn('car', 1, 0.4, -1, 23)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2, 23)!;
     const targetId = target.spawnId;
     for (let count = 0; count < 510; count++) frame(engine, [target]);
     expect(engine.phase).toBe('playing');
@@ -208,7 +209,7 @@ describe('police pursuit gameplay', () => {
     const engine = startPursuit();
     engine.policeVehicle.x = 1.8;
     engine.policeVehicle.velocity = 6;
-    const target = engine.spawn('car', 1, 0.4, -1, 6)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2, 6)!;
     let slowing = false;
     for (
       let count = 0;
@@ -284,7 +285,7 @@ describe('police pursuit gameplay', () => {
 
   it('reports the original target once when its pool slot is recycled, without touching the replacement', () => {
     const engine = startPursuit();
-    const target = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2)!;
     frame(engine, [target]);
     expect(engine.policeImpactTarget).toBe(target);
     expect(engine.policeImpact.serial).toBe(0);
@@ -321,7 +322,7 @@ describe('police pursuit gameplay', () => {
   it('ends a blocked approach with one fallback at the same original target instead of choosing another car', () => {
     const engine = startPursuit();
     engine.policeVehicle.z = -80;
-    const target = engine.spawn('car', 1, 0.4, -1, 6)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2, 6)!;
     const innocent = engine.spawn('van', -1, 95, 0, 6)!;
     frame(engine, [target, innocent]);
     engine.policeVehicle.age = POLICE.escapeSeconds;
@@ -365,7 +366,7 @@ describe('police pursuit gameplay', () => {
 
   it('keeps ordinary NPC pool slots free of chase state after a patrol is reused', () => {
     const engine = startPursuit();
-    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const closeCall = engine.spawn('car', 1, 0.4, -1.2)!;
     const target = engine.spawn('car', -1, 120, 0, 6)!;
     for (
       let count = 0;
@@ -400,7 +401,7 @@ describe('police pursuit gameplay', () => {
 
   it('hits only the close-call car behind the rider and never substitutes visible traffic ahead', () => {
     const engine = startPursuit();
-    const target = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2)!;
     const innocent = engine.spawn('van', -1, 120, 0, 6)!;
     const targetId = target.spawnId;
     for (
@@ -443,7 +444,7 @@ describe('police pursuit gameplay', () => {
   it('waits for intervening traffic without turning the blocker into its crash target', () => {
     const engine = startPursuit();
     engine.policeVehicle.x = -LANE;
-    const target = engine.spawn('car', 1, 0.4, -1)!;
+    const target = engine.spawn('car', 1, 0.4, -1.2)!;
     const blocker = engine.spawn('van', 0, -12, 0, engine.speed)!;
     const blockerId = blocker.spawnId;
     const traffic = [target, blocker];
@@ -511,7 +512,7 @@ describe('police pursuit gameplay', () => {
     const a = startPursuit();
     const b = startPursuit();
     for (const run of [a, b]) {
-      run.spawn('car', 1, 0.4, -1);
+      run.spawn('car', 1, 0.4, -1.2);
       run.spawn('van', -1, 120, 0, 6);
     }
     for (let count = 0; count < 420; count++) a.advance(STEP);
@@ -599,7 +600,7 @@ describe('speed camera pursuit integration', () => {
     engine.wheelieAngle = 0;
     engine.wheelieAngularVelocity = 0;
     engine.wheelie = false;
-    const closeCall = engine.spawn('car', 1, 0.4, -1)!;
+    const closeCall = engine.spawn('car', 1, 0.4, -1.2)!;
     const target = engine.spawn('van', -1, 120, 0, 6)!;
     engine.score = 22500;
     for (

@@ -10,5 +10,5 @@
 .real-reward-code { display: grid; justify-items: start; gap: 12px; margin-top: 20px; }
 .real-reward-code span { font-size: 12px; }
 .real-reward-code code { display: block; max-width: 100%; padding: 12px; border: 1px solid var(--border); font-size: 19px; overflow-wrap: anywhere; user-select: all; }
-.real-reward button { min-height: 44px; }
+.real-reward .button { min-height: 44px !important; }
 @media (max-width: 480px) { .real-reward { padding: 16px; }.real-reward .button { width: 100%; font-size: 10px; } }

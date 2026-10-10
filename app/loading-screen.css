@@ -4,14 +4,14 @@
 .ride-loading-embedded{min-height:0;max-height:100%}
 .ride-loading picture{position:absolute;inset:0;z-index:-2}
 .ride-loading-art{width:100%;height:100%;object-fit:cover;object-position:center 35%;position:absolute;inset:0}
-.ride-loading::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11, 11, 11,.16),transparent 30%,transparent 61%,rgba(11, 11, 11,.9))}
+.ride-loading::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,11,.42),rgba(11,11,11,.08) 30%,transparent 58%,rgba(11,11,11,.94))}
 .ride-loading-brand{position:absolute;left:max(env(safe-area-inset-left),clamp(20px,4vw,52px));top:max(env(safe-area-inset-top),clamp(18px,4vh,42px));width:240px;max-width:calc(100% - 40px)}
 .ride-loading-brand .game-brand{width:100%}
 .ride-loading-caption{position:absolute;bottom:max(env(safe-area-inset-bottom),clamp(22px,5vh,50px));left:max(env(safe-area-inset-left),clamp(20px,4vw,52px));right:max(env(safe-area-inset-right),clamp(20px,4vw,52px));max-width:420px}
-.ride-loading-kicker{display:block;font:900 clamp(19px,3vw,32px)/1.1 Arial,sans-serif;letter-spacing:-.035em;margin-bottom:17px}
+.ride-loading-kicker{display:block;font:900 clamp(23px,3vw,36px)/1.05 Arial,sans-serif;letter-spacing:-.045em;margin-bottom:15px}
 .ride-loading-line{display:flex;align-items:center;gap:10px;font:700 9px/1.5 Arial,sans-serif;letter-spacing:.12em}
 .ride-loading-track{display:block;margin-top:14px;height:3px;background:#ffffff25;overflow:hidden}
-.ride-loading-track i{display:block;height:100%;width:35%;background:#aeaeae;animation:ride-loading-slide 1.35s ease-in-out infinite alternate}
+.ride-loading-track i{display:block;height:100%;width:35%;background:#dedede;animation:ride-loading-slide 1.35s ease-in-out infinite alternate}
 @keyframes ride-loading-slide{from{transform:translateX(-35%)}to{transform:translateX(220%)}}
 @media(max-width:600px){.ride-loading-brand{width:180px}.ride-loading-caption{bottom:max(env(safe-area-inset-bottom),24px)}}
 @media(max-height:420px){.ride-loading-brand{top:14px;width:180px}.ride-loading-kicker{display:none}.ride-loading-caption{bottom:15px}}

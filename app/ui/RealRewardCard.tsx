@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Gift } from 'lucide-react';
 import { VerifiedRewardsError, type RealRewardStatus, type VerifiedRewardsService } from '../services/verifiedRewards';
 import { fmt } from './shared';
@@ -17,39 +17,60 @@ function rewardErrorMessage(error: unknown) {
   return 'Der Rabattdienst ist vorübergehend nicht erreichbar. Bitte versuche es später erneut.';
 }
 
-export default function RealRewardCard({ service, onSignIn }: { service?: VerifiedRewardsService; onSignIn?: () => void }) {
+export default function RealRewardCard({ service, onSignIn, loginHref }: { service?: VerifiedRewardsService; onSignIn?: () => void; loginHref?: string }) {
   const [status, setStatus] = useState<RealRewardStatus | null>(null);
   const [loading, setLoading] = useState(!!service);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [loginRequired, setLoginRequired] = useState(false);
-  const [revision, setRevision] = useState(0);
+  const requestEpoch = useRef(0);
+  const claiming = useRef(false);
   useEffect(() => {
     if (!service) return;
+    const rewardService = service;
     let active = true;
-    setLoading(true);
-    setMessage(''); setLoginRequired(false);
-    void service.status().then(value => {
-      if (active) { setStatus(value); setMessage(''); }
-    }).catch((error: unknown) => {
-      if (active) {
-        setMessage(rewardErrorMessage(error));
-        setLoginRequired(error instanceof VerifiedRewardsError && error.status === 401);
-      }
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [service, revision]);
+    let checking = false, lastCheck = 0;
+    function check() {
+      if (!active || checking || claiming.current || Date.now() - lastCheck < 1000) return;
+      checking = true; lastCheck = Date.now();
+      const epoch = ++requestEpoch.current;
+      setLoading(true);
+      setMessage(''); setLoginRequired(false);
+      void rewardService.status().then(value => {
+        if (active && epoch === requestEpoch.current) { setStatus(value); setMessage(''); }
+      }).catch((error: unknown) => {
+        if (active && epoch === requestEpoch.current) {
+          setStatus(null);
+          setMessage(rewardErrorMessage(error));
+          setLoginRequired(error instanceof VerifiedRewardsError && error.status === 401);
+        }
+      }).finally(() => { checking = false; if (active) setLoading(false); });
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    check();
+    window.addEventListener('focus', onVisible);
+    window.addEventListener('pageshow', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [service]);
   const reward = status?.reward;
   const expired = reward ? Date.parse(reward.expiresAt) <= Date.now() : false;
   async function claim() {
     if (!service || busy || !status?.available || !(status.eligible || status.pending)) return;
+    claiming.current = true; requestEpoch.current++;
     setBusy(true); setMessage(''); setLoginRequired(false);
     try { setStatus(await service.claim()); }
     catch (error: unknown) {
       setMessage(`Der Code wurde noch nicht bestätigt. ${rewardErrorMessage(error)}`);
       setLoginRequired(error instanceof VerifiedRewardsError && error.status === 401);
+      if (error instanceof VerifiedRewardsError && error.status === 401) setStatus(null);
     }
-    finally { setBusy(false); }
+    finally { claiming.current = false; setBusy(false); }
   }
   async function copyCode() {
     if (!reward) return;
@@ -72,7 +93,7 @@ export default function RealRewardCard({ service, onSignIn }: { service?: Verifi
       </>}
     </> : status || !service ? <p>{status?.reason === 'rewards_disabled' ? 'Shop-Rabatte sind derzeit deaktiviert.' : 'Shop-Belohnungen sind noch nicht verfügbar.'} Spielbelohnungen kannst du weiterhin abholen.</p> : null}
     {message && <output>{message}</output>}
-    {loginRequired && onSignIn && <button className="button small" onClick={onSignIn}>IM SPIEL ANMELDEN</button>}
-    {!loading && service && !status && <button className="button small" onClick={() => setRevision(value => value + 1)}>ERNEUT PRÜFEN</button>}
+    {loginRequired && (loginHref ? <a className="button small" href={loginHref} target="_top" rel="noopener">IM SPIEL ANMELDEN</a>
+      : onSignIn && <button className="button small" onClick={onSignIn}>IM SPIEL ANMELDEN</button>)}
   </section>;
 }

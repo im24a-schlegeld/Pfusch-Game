@@ -66,7 +66,7 @@ describe('direct stunt points without a combo multiplier', () => {
         engine.height = 0.4;
         engine.velocityY = 1;
       }
-      engine.spawn('car', 1, 0.4, -1);
+      engine.spawn('car', 1, 0.4, -1.2);
       steps(engine, 30);
       expect(engine.phase).toBe('playing');
       expect(engine.nearMisses).toBe(1);
@@ -84,7 +84,7 @@ describe('direct stunt points without a combo multiplier', () => {
     const engine = ride();
     engine.height = 3;
     engine.velocityY = 1;
-    engine.spawn('car', 1, 0.4, -1);
+    engine.spawn('car', 1, 0.4, -1.2);
     steps(engine, 30);
     expect(engine.phase).toBe('playing');
     expect(engine.nearMisses).toBe(0);

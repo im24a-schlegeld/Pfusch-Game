@@ -11,14 +11,18 @@ import { policeRampPose } from '../app/game/policePursuit';
 import { newPlayer } from '../app/domain/progression';
 import { shadeClothingCatalog } from '../app/domain/appearanceColors';
 import type { Product } from '../app/domain/types';
-import catalog from '../public/catalog/products.json';
 
 await preloadImportedBike('450');
+// Public catalog data is served as an asset, never imported into Vite's module graph.
+const catalog = await fetch('/catalog/products.json').then((response) => {
+  if (!response.ok) throw new Error(`Loading artwork catalog: ${response.status}`);
+  return response.json() as Promise<Product[]>;
+});
 const params = new URLSearchParams(location.search);
 const portrait = params.has('portrait');
 const trailerScene = params.get('scene') === 'trailer';
-const width = portrait ? 900 : 1400;
-const height = portrait ? 1600 : 1080;
+const width = portrait ? 900 : 1600;
+const height = portrait ? 1600 : 900;
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(width, height);
 renderer.setPixelRatio(1);
@@ -50,7 +54,7 @@ const player = newPlayer();
 Object.assign(player, { bike: '450', paint: '#7536c6', rims: '#ffffff', helmet: 'motocross', helmetColor: '#7536c6', helmetVisor: '#ffffff' });
 player.equipped.upper = '10237061759305';
 player.variants['10237061759305'] = '54581933375817';
-const bike = makeBike(player, shadeClothingCatalog(catalog as Product[]));
+const bike = makeBike(player, shadeClothingCatalog(catalog));
 scene.add(bike.root);
 const pitch = trailerScene ? .17 : .56;
 bike.animateSuspension(pitch, 0, trailerScene ? .2 : .7);
@@ -63,8 +67,10 @@ function frameTrailerCamera(isPortrait: boolean) {
   const subject = new THREE.Box3().setFromObject(bike.root).getCenter(new THREE.Vector3());
   // The visible helmet/wheel silhouette sits below the full mesh bounds.
   subject.y -= .45;
-  camera.fov = isPortrait ? 68 : 37;
-  camera.position.set(isPortrait ? -3.8 : -4.6, 3, isPortrait ? -7 : -6.4);
+  camera.fov = isPortrait ? 68 : 39;
+  // Road-level, front-left three-quarter view: the wheel, engine and rider
+  // silhouette gain depth while the complete chase stays inside either crop.
+  camera.position.set(isPortrait ? -5.2 : -6.1, 1.9, isPortrait ? -6.7 : -5.8);
   camera.lookAt(subject);
   camera.updateProjectionMatrix();
 }
@@ -147,7 +153,7 @@ async function finish() {
   // context or rebuilding the large native world/vehicle asset graph.
   if (trailerScene) Object.assign(window, {
     exportLoadingArt(isPortrait: boolean) {
-      const w = isPortrait ? 900 : 1400, h = isPortrait ? 1600 : 1080;
+      const w = isPortrait ? 900 : 1600, h = isPortrait ? 1600 : 900;
       renderer.setSize(w, h);
       camera.aspect = w / h;
       frameTrailerCamera(isPortrait);

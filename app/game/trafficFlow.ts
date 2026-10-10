@@ -8,8 +8,8 @@ export const TRAFFIC_FLOW = Object.freeze({
   reactionSeconds: 0.5,
   laneChangeSeconds: 0.38,
   minimumArrivalGap: 1.22,
-  pairedTrafficChance: 0.11,
   towCarPairChance: 0.18,
+  minimumVehicleGap: 2,
 });
 export function trafficWaveSpacing(
   initial: number,
@@ -36,4 +36,18 @@ export function trafficArrivalGap(
       previousHalfLength / previousClosing +
       nextHalfLength / nextClosing,
   );
+}
+/** Different speeds must not create an ordinary side-by-side pair later. */
+export function trafficSeparatedUntilPass(
+  previousZ: number,
+  previousSpeed: number,
+  nextSpeed: number,
+  previousHalfLength: number,
+  nextHalfLength: number,
+  sharedLifetime: number,
+) {
+  const initialGap = 145 - previousZ;
+  const finalGap = initialGap + (nextSpeed - previousSpeed) * sharedLifetime;
+  return Math.min(initialGap, finalGap) >=
+    previousHalfLength + nextHalfLength + TRAFFIC_FLOW.minimumVehicleGap;
 }

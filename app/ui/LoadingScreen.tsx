@@ -26,6 +26,7 @@ export default function LoadingScreen({
         <GameBrand wordmark />
       </div>
       <div className="ride-loading-caption">
+        <span className="ride-loading-kicker" aria-hidden="true">GLEICH GEHT’S LOS.</span>
         <div className="ride-loading-line"><Bike size={19} aria-hidden="true" /><span>{label}</span></div>
         <span className="ride-loading-track" aria-hidden="true"><i /></span>
       </div>

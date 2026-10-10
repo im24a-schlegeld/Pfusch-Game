@@ -4,6 +4,7 @@ import { Engine, LANE, STEP, STUNT_POINTS } from '../app/game/engine';
 import { TRAFFIC_SHAPES, TOW_RAMP, towDeckPosition } from '../app/game/trafficDomain';
 import { BALANCE, tailScrape } from '../app/game/wheelie';
 import { TRAFFIC_FLOW } from '../app/game/trafficFlow';
+import { ROAD_EVENTS, isRoadEvent } from '../app/game/roadEvents';
 import { TAIL_CONTACT } from '../app/game/tailContact';
 
 function ride(bike = BIKES[0], seed = 539) {
@@ -351,13 +352,16 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
             wave.every(
               (o) =>
                 Math.abs(lane * LANE - (o.lane * LANE + o.offsetX)) >
-                TRAFFIC_SHAPES[o.kind as keyof typeof TRAFFIC_SHAPES]
+                (isRoadEvent(o.kind) ? ROAD_EVENTS[o.kind] : TRAFFIC_SHAPES[o.kind])
                   .contactHalfWidth +
                   0.1,
             ),
           );
           expect(safe.length).toBeGreaterThan(0);
-          if (wave.length === 2) pairedWaves++;
+          if (wave.length === 2) {
+            expect(wave.some((o) => o.kind === 'towtruck')).toBe(true);
+            pairedWaves++;
+          }
           sawMoving ||= wave.some((o) => o.velocity > 0);
           sawConstruction ||= wave.some((o) => o.kind === 'construction');
           sawTow ||= wave.some((o) => o.kind === 'towtruck');
@@ -380,11 +384,10 @@ describe('progressive traffic without impossible moving-wave overlaps', () => {
       }
       expect(difficulty[1]).toBeGreaterThan(difficulty[0]);
       expect(engine.difficulty).toBe(1);
-      // Tow/car pairs are deliberately more frequent than ordinary doubles;
-      // allow finite-sample variation around the configured upper rate.
+      // Only the tow/car stunt occupies two lanes in the same traffic wave.
       expect(pairedWaves).toBeGreaterThan(0);
       expect(pairedWaves / waveSerial).toBeLessThan(
-        Math.max(TRAFFIC_FLOW.pairedTrafficChance, TRAFFIC_FLOW.towCarPairChance) + 0.05,
+        TRAFFIC_FLOW.towCarPairChance + 0.05,
       );
       expect(engine.obstacles).toHaveLength(32);
     }

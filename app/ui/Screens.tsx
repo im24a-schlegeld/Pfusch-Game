@@ -196,10 +196,14 @@ export function Rewards({
   update,
   notify,
   back,
+  loginHref,
+  onLogin,
 }: Base & {
   services: Services;
   update: (p: Player) => void;
   notify: (s: string) => void;
+  loginHref?: string;
+  onLogin?: () => void;
 }) {
   const rewards = REWARDS.filter((reward) => reward.kind !== 'future');
   const ready = rewards.filter((reward) => reward.level <= player.level && !player.redeemedRewards.includes(reward.id));
@@ -258,8 +262,7 @@ export function Rewards({
       <p className="catalog-note">
         Alle Level-Belohnungen gelten im Spiel. Ausrüstung findest du in der Garage.
       </p>
-      <RealRewardCard service={services.rewards.real} onSignIn={services.auth.login} />
-      <button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button>
+      <RealRewardCard service={services.rewards.real} loginHref={loginHref} onSignIn={onLogin ?? services.auth.login} />
     </main>
   );
 }

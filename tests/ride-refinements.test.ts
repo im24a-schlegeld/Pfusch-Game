@@ -63,7 +63,7 @@ describe('readable traffic, early jumps and tipping-point recovery', () => {
     (bike) => {
       const engine = new Engine(bike);
       engine.start();
-      const obstacle = engine.spawn('car', 0, 14)!;
+      const obstacle = engine.spawn('car', 0, 11)!;
       engine.move(1);
       for (let i = 0; i < 70; i++) engine.advance(STEP);
       expect(engine.phase).toBe('playing');

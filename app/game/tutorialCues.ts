@@ -27,8 +27,8 @@ type Observation = Pick<Engine,
   'speedCamera' | 'policeChase' | 'policeRamRemaining' | 'policeVehicle'>;
 
 function obstructionShape(kind: string) {
-  if (kind === 'barrier') {
-    const plate = ROAD_EVENTS.barrier;
+  if (kind === 'barrier' || kind === 'ramp') {
+    const plate = ROAD_EVENTS[kind];
     return { ...plate, frontZ: -plate.length / 2, rearZ: plate.length / 2 };
   }
   return TRAFFIC_SHAPES[kind as TrafficKind];
@@ -78,7 +78,9 @@ export function selectTutorialCue(
     result = { id: target.id, x: point.x, y: point.y };
   };
   state.obstacles.forEach((obstacle, index) => {
-    if (!obstacle.active || obstacle.passed || obstacle.rampUsed) return;
+    // Construction ramps launch automatically; the tow-truck swipe tutorial
+    // does not apply, but their approach still blocks unrelated interruptions.
+    if (!obstacle.active || obstacle.passed || obstacle.rampUsed || obstacle.kind === 'ramp') return;
     const shape = obstructionShape(obstacle.kind);
     if (!shape) return;
     const ramp = obstacle.kind === 'towtruck';

@@ -1,4 +1,5 @@
 import { TOW_TRANSFER, transferX } from './towTransfer';
+import { CONSTRUCTION_RAMP, constructionRampPose } from './constructionRamp';
 import { carContactPitch, carFrontReach, carJumpClearance, carRearReach } from './carClearance';
 import type { Bike, RunStats } from '../domain/types';
 import { World, distanceAtTime, speedAtTime } from './world';
@@ -39,6 +40,7 @@ import { rampEntryImpulse, consumeRampImpulse } from './rampEntry';
 import {
   TRAFFIC_FLOW,
   trafficArrivalGap,
+  trafficSeparatedUntilPass,
   trafficWaveSpacing,
 } from './trafficFlow';
 import { SPEED_CAMERA, SpeedCameraSchedule } from './speedCamera';
@@ -53,6 +55,7 @@ import {
 } from './policePursuit';
 export const LANE = 2.8;
 export const STEP = 1 / 60;
+export const CLOSE_CALL = Object.freeze({ gap: 0.25, evadeSeconds: 0.35 });
 export type EngineInput =
   | { type: 'hold' | 'forward'; value: boolean }
   | { type: 'weight'; value: number }
@@ -121,6 +124,7 @@ export class Engine {
   launchSerial = 0;
   wheelieLaunchSerial = 0;
   towJumpActive = false;
+  constructionJumpActive = false;
   towPitch = 0;
   laneChangeSerial = 0;
   laneChangeDirection = 0;
@@ -213,7 +217,7 @@ export class Engine {
   private safeDirection = 1;
   private pendingWave: {
     section: string;
-    kinds: TrafficKind[];
+    kinds: ObstacleKind[];
     velocity: number;
   } | null = null;
   private scoreGainSerial = 0;
@@ -287,7 +291,7 @@ export class Engine {
           (obstacle.z - rear) / Math.max(1, this.speed - obstacle.velocity);
         if (
           time > -0.05 &&
-          time <= 0.65 &&
+          time <= CLOSE_CALL.evadeSeconds &&
           Math.abs(this.x - (obstacle.lane * LANE + obstacle.offsetX)) <
             shape.contactHalfWidth
         )
@@ -458,6 +462,7 @@ export class Engine {
     this.scrapeIntensity = 0;
     this.scrapeMaterial = null;
     this.towJumpActive = false;
+    this.constructionJumpActive = false;
     this.towCarrier = null;
     this.towSafeObstacles.clear();
     this.towTransferCars.clear();
@@ -503,30 +508,19 @@ export class Engine {
             this.speed * (0.15 + this.random() * 0.08),
           )
         : 0;
-      const kinds: TrafficKind[] = [];
+      const kinds: ObstacleKind[] = [];
       const pool: readonly TrafficKind[] = environment.kinds.includes(
         'construction',
       )
         ? environment.kinds
         : [...environment.kinds, 'car', 'car'];
-      let first = pool[Math.floor(this.random() * pool.length)];
+      let first: ObstacleKind = pool[Math.floor(this.random() * pool.length)];
       if (first === 'towtruck' && this.distance < 500) first = 'car';
+      if (first === 'construction' && this.random() < 0.28) first = 'ramp';
       kinds.push(first);
-      if (this.distance > 350) {
-        const chance =
-          first === 'towtruck'
-            ? TRAFFIC_FLOW.towCarPairChance
-            : TRAFFIC_FLOW.pairedTrafficChance *
-              (0.35 + this.difficulty * 0.65);
-        if (this.random() < chance) {
-          const ordinary = pool.filter((kind) => kind !== 'towtruck');
-          kinds.push(
-            first === 'towtruck'
-              ? 'car'
-              : ordinary[Math.floor(this.random() * ordinary.length)],
-          );
-        }
-      }
+      // A second lane is occupied only for the tow-truck side-jump encounter.
+      if (first === 'towtruck' && this.distance > 350 &&
+        this.random() < TRAFFIC_FLOW.towCarPairChance) kinds.push('car');
       // A generated ramp truck travels continuously. Its relative speed leaves
       // a usable climb interval without ever freezing on the loading bed.
       if (kinds.includes('towtruck'))
@@ -540,7 +534,9 @@ export class Engine {
     const count = nextKinds.length;
     const candidates = [-1, 0, 1];
     const nextHalfLength = Math.max(
-      ...nextKinds.map((k) => TRAFFIC_SHAPES[k].contactHalfLength),
+      ...nextKinds.map((k) => isRoadEvent(k)
+        ? ROAD_EVENTS[k].contactHalfLength
+        : TRAFFIC_SHAPES[k].contactHalfLength),
     );
     const arrival = this.arrivalTime(145, velocity);
     if (
@@ -560,6 +556,27 @@ export class Engine {
             ),
       )
     ) {
+      this.spawnIn = 7;
+      return;
+    }
+    // Arrival gaps protect the rider, while this guard protects the entire
+    // visible road: a slower following car must not drift beside an older one.
+    const nextOrdinary = nextKinds.filter((kind) => kind === 'car' || kind === 'van');
+    if (nextOrdinary.some((kind) => this.obstacles.some((o) => {
+      if (!o.active || (o.kind !== 'car' && o.kind !== 'van')) return false;
+      const sharedLifetime = Math.min(
+        this.arrivalTime(Math.max(0, o.z + 18), o.velocity),
+        this.arrivalTime(163, velocity),
+      );
+      return !trafficSeparatedUntilPass(
+        o.z,
+        o.velocity,
+        velocity,
+        TRAFFIC_SHAPES[o.kind].contactHalfLength,
+        TRAFFIC_SHAPES[kind].contactHalfLength,
+        sharedLifetime,
+      );
+    }))) {
       this.spawnIn = 7;
       return;
     }
@@ -1242,8 +1259,28 @@ export class Engine {
       this.velocityY = 0;
       if (queuedTowLane !== null) this.move(queuedTowLane - this.lane, false);
     } else this.towPitch *= Math.exp(-dt * 8);
-    let landedTowJump = false;
-    if (!this.towCarrier && (this.height > 0 || this.velocityY > 0)) {
+    let supportedConstruction = false;
+    if (!this.towCarrier && !this.towJumpActive && !this.constructionJumpActive && this.velocityY === 0) {
+      const ramp = this.obstacles.find(o => o.active && o.kind === 'ramp' && !o.rampUsed
+        && o.z > CONSTRUCTION_RAMP.lipZ
+        && o.z - travel < CONSTRUCTION_RAMP.entryZ + 2
+        && Math.abs(this.x - (o.lane * LANE + o.offsetX)) < CONSTRUCTION_RAMP.width / 2 - 0.12);
+      if (ramp) {
+        const localZ = ramp.z - travel;
+        const pose = constructionRampPose(this.bike.id, localZ, this.wheelieAngle);
+        this.height = pose.height; this.towPitch = pose.pitch;
+        if (localZ <= CONSTRUCTION_RAMP.lipZ) {
+          ramp.rampUsed = true;
+          this.velocityY = CONSTRUCTION_RAMP.launchVelocity;
+          this.constructionJumpActive = true;
+          this.airLaneChangeUsed = false;
+          this.launchSerial++;
+          this.event = { text: 'BAUSTELLENSPRUNG', kind: 'skill', serial: this.event.serial + 1 };
+        } else supportedConstruction = true;
+      }
+    }
+    let landedTowJump = false, landedConstructionJump = false;
+    if (!this.towCarrier && !supportedConstruction && (this.height > 0 || this.velocityY > 0)) {
       // Keep the original fixed gravity arc for ordinary and tow jumps.
       this.height += this.velocityY * dt - 0.5 * TOW_RAMP.gravity * dt * dt;
       this.velocityY -= TOW_RAMP.gravity * dt;
@@ -1254,6 +1291,10 @@ export class Engine {
         this.velocityY = 0;
         this.airLaneChangeUsed = false;
         this.towPitch = 0;
+        if (this.constructionJumpActive) {
+          this.constructionJumpActive = false;
+          landedConstructionJump = true;
+        }
         if (this.towJumpActive) {
           this.towJumpActive = false;
           landedTowJump = true;
@@ -1269,7 +1310,7 @@ export class Engine {
     }
     const wasArmed = this.liftArmed;
     let touchdown = 0;
-    if (this.towJumpActive) this.airBalance(dt);
+    if (this.towJumpActive || this.constructionJumpActive) this.airBalance(dt);
     else
       touchdown = advanceBalance(
         this,
@@ -1371,6 +1412,16 @@ export class Engine {
         : -length;
       const overlap = o.z < rearContact && prev > frontContact;
       const contactWidth = road?.contactHalfWidth ?? traffic!.contactHalfWidth;
+      if (o.kind === 'ramp') {
+        const inLane = dx < CONSTRUCTION_RAMP.width / 2 - 0.12;
+        if (inLane && o.z < CONSTRUCTION_RAMP.lipZ && o.z > CONSTRUCTION_RAMP.gapEndZ && this.height < 0.12) {
+          this.crash('Baustellenlücke verfehlt', o);
+          break;
+        }
+        if (o.z < frontContact) o.passed = true;
+        if (o.z < -18) o.active = false;
+        continue;
+      }
       // An early queued swipe can launch before the truck's rear collision
       // box reaches us. Keep its exit exemption until we actually clear it.
       if (prev <= frontContact || dx >= contactWidth || (o.kind === 'car' && o.z >= rearContact))
@@ -1449,12 +1500,12 @@ export class Engine {
           }
         } else {
           o.closest = Math.min(o.closest, gap);
-          if (gap < 0.6 && this.height > 0.1) o.airNearMiss = true;
+          if (gap < CLOSE_CALL.gap && this.height > 0.1) o.airNearMiss = true;
           if (
             this.policeChase &&
             !o.police &&
             !road &&
-            (gap < 0.6 || o.lateEvade)
+            (gap < CLOSE_CALL.gap || o.lateEvade)
           )
             policeEscapeTarget ??= o;
         }
@@ -1463,13 +1514,13 @@ export class Engine {
         o.passed = true;
         if (o.police) this.startPoliceChase(o);
         const closeCall =
-          !road && (o.closest < 0.6 || o.lateEvade || o.airNearMiss);
+          !road && (o.closest < CLOSE_CALL.gap || o.lateEvade || o.airNearMiss);
         if (o.cleared && o.rewardPoints > 0) {
           this.skill(o.rewardText, o.rewardPoints);
           if (this.policeChase && !o.police && !road) policeEscapeTarget ??= o;
         } else if (
           (!road || o.kind === 'barrier') &&
-          (o.closest < 0.6 || o.lateEvade)
+          (o.closest < CLOSE_CALL.gap || o.lateEvade)
         ) {
           this.nearMisses++;
           this.skill(
@@ -1500,6 +1551,10 @@ export class Engine {
     if (landedTowJump && this.phase === 'playing') {
       this.jumps++;
       this.skill('SPRUNG GELANDET', STUNT_POINTS.jump);
+    }
+    if (landedConstructionJump && this.phase === 'playing') {
+      this.jumps++;
+      this.skill('BAUSTELLENSPRUNG GELANDET', STUNT_POINTS.jump);
     }
     if (this.phase === 'playing') {
       const jump = this.policeJumpTarget;

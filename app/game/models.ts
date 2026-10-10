@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { isRoadEvent, ROAD_EVENTS } from './roadEvents';
 import { cloneTrafficColor, makeDetailedTraffic } from './trafficModels';
+import { CONSTRUCTION_RAMP } from './constructionRamp';
 
 const materials = new Map<string, THREE.MeshStandardMaterial>();
 function mat(color: string, metal = 0, rough = 0.75) {
@@ -76,6 +77,24 @@ export function makeTraffic(kind: string, colorIndex: number) {
   )
     return makeDetailedTraffic(kind, colorIndex);
   const group = new THREE.Group();
+  if (kind === 'ramp') {
+    const r = CONSTRUCTION_RAMP;
+    group.name = 'construction-jump';
+    const shape = new THREE.Shape();
+    shape.moveTo(r.entryZ, 0); shape.lineTo(r.lipZ, r.height); shape.lineTo(r.lipZ, 0); shape.closePath();
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth: r.width, bevelEnabled: false, curveSegments: 1 });
+    // Shape X becomes road Z; extrusion becomes road X.
+    geometry.rotateY(-Math.PI / 2); geometry.translate(r.width / 2, 0, 0);
+    const ramp = new THREE.Mesh(geometry, mat('#8a8880'));
+    ramp.name = 'construction-launch-ramp'; group.add(ramp);
+    box(group, r.width, 0.025, r.lipZ - r.gapEndZ, 0, 0.014, (r.lipZ + r.gapEndZ) / 2, '#111415');
+    for (const side of [-1, 1]) {
+      const edge = box(group, 0.12, 0.03, r.entryZ - r.lipZ, side * (r.width / 2 - 0.08), r.height / 2 + 0.025, (r.entryZ + r.lipZ) / 2, '#d1b04e');
+      edge.rotation.x = Math.atan2(r.height, r.entryZ - r.lipZ);
+    }
+    box(group, r.width, 0.04, 0.25, 0, 0.03, r.gapEndZ, '#d1b04e');
+    return group;
+  }
   if (kind === 'barrier') {
     // Exposed edge of a temporary road plate, low enough for a controlled wheel lift.
     box(group, 2, 0.16, 0.7, 0, 0.08, 0, '#7a7464');

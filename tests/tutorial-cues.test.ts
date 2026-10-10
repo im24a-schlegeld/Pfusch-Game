@@ -94,6 +94,12 @@ describe('contextual tutorial observations', () => {
     const plate = engine.spawn('barrier', 0, 20)!;
     expect(safeTutorialWindow(engine)).toBe(false);
     plate.active = false;
+    const constructionRamp = engine.spawn('ramp', 0, 20)!;
+    expect(safeTutorialWindow(engine)).toBe(false);
+    expect(selectTutorialCue(engine, [], projection())).toBeNull();
+    constructionRamp.lane = -1;
+    expect(safeTutorialWindow(engine)).toBe(true);
+    constructionRamp.active = false;
     engine.policeChase = true; engine.policeRamRemaining = 5;
     expect(safeTutorialWindow(engine)).toBe(false);
   });

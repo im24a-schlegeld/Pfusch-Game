@@ -3,7 +3,7 @@ import { isRoadEvent, ROAD_EVENTS } from './roadEvents';
 import { TRAFFIC_SHAPES, TOW_RAMP, towRampHeight } from './trafficDomain';
 
 export const POLICE = Object.freeze({
-  chaseSeconds: 22,
+  chaseSeconds: 10,
   followZ: -12,
   ramZ: -4.35,
   escapeClosingSpeed: 38,

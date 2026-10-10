@@ -208,7 +208,7 @@ describe('bike-specific road contacts', () => {
     expect(roadResponse('barrier', '125', 0.17, 0).crash).not.toBeNull();
     expect(roadResponse('barrier', '125', 0.18, 0).rewardPoints).toBe(90);
     const engine = ride();
-    engine.spawn('barrier', 1, 0, -1.12);
+    engine.spawn('barrier', 1, 0, -1.48);
     steps(engine, 30);
     expect(engine.nearMisses).toBe(1);
   });
@@ -339,6 +339,7 @@ describe('world integration and readable traffic', () => {
               expect([
                 ...TRAFFIC_ENVIRONMENTS[environment].kinds,
                 'car',
+                ...(environment === 'construction' ? ['ramp'] : []),
               ]).toContain(o.kind);
             }
             waves++;
@@ -355,6 +356,7 @@ describe('world integration and readable traffic', () => {
       expect([...observedKinds].sort()).toEqual([
         'car',
         'construction',
+        'ramp',
         'towtruck',
         'van',
       ]);

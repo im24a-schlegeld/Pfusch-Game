@@ -1,7 +1,8 @@
 import type { WorldKind } from './world';
 import type { TrafficKind } from './trafficDomain';
+import { CONSTRUCTION_RAMP } from './constructionRamp';
 
-export type RoadEventKind = 'barrier' | 'pothole' | 'rough' | 'gravel' | 'wet';
+export type RoadEventKind = 'barrier' | 'pothole' | 'rough' | 'gravel' | 'wet' | 'ramp';
 export interface RoadEventShape {
   readonly width: number;
   readonly length: number;
@@ -26,6 +27,7 @@ export const ROAD_EVENTS: Readonly<Record<RoadEventKind, RoadEventShape>> = {
   rough: shape(2.15, 4, 0.035),
   gravel: shape(2.2, 4, 0.045),
   wet: shape(2.15, 4.8, 0.012),
+  ramp: shape(CONSTRUCTION_RAMP.width, CONSTRUCTION_RAMP.entryZ - CONSTRUCTION_RAMP.endZ, CONSTRUCTION_RAMP.height),
 };
 export const ROAD_EVENT_KINDS = Object.keys(ROAD_EVENTS) as RoadEventKind[];
 export function isRoadEvent(kind: string): kind is RoadEventKind {
@@ -100,6 +102,7 @@ export function roadResponse(
 ): RoadResponse {
   const profile = SURFACE_PROFILES[bikeId] ?? SURFACE_PROFILES['450'];
   const controlled = forwardLoad >= FORWARD_SURFACE_CONTROL;
+  if (kind === 'ramp') return { crash: null, roughness: 0, grip: 1, rewardPoints: 0, rewardText: '' };
   if (kind === 'barrier' || kind === 'pothole') {
     const cleared =
       kind === 'barrier' ? angle > 0.17 : angle >= profile.potholeClearance;

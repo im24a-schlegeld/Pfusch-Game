@@ -397,6 +397,8 @@ describe('streamed world geometry', () => {
       }));
       const kinds = new Set<string>();
       let peakPoolUsage = 0;
+      let peakInstances = 0;
+      let peakDrawCalls = 0;
       // Hundreds of cell recycles include both tunnel styles and bridge variants.
       for (let distance = 0; distance <= 36000; distance += 72) {
         world.advance(distance);
@@ -407,6 +409,14 @@ describe('streamed world geometry', () => {
             peakPoolUsage,
             mesh.count / mesh.instanceMatrix.count,
           );
+        peakInstances = Math.max(
+          peakInstances,
+          pools.reduce((sum, mesh) => sum + mesh.count, 0),
+        );
+        peakDrawCalls = Math.max(
+          peakDrawCalls,
+          pools.filter((mesh) => mesh.count > 0).length,
+        );
         const versions = pools.map((mesh) => mesh.instanceMatrix.version);
         world.advance(distance + 0.25);
         view.update(world, distance + 0.25);
@@ -441,6 +451,12 @@ describe('streamed world geometry', () => {
       expect(peakPoolUsage).toBeGreaterThan(0);
       expect(peakPoolUsage).toBeLessThanOrEqual(1);
       expect(kinds.size).toBe(11);
+      // Baseline budget for the complete seeded route, before facade/detail
+      // refinements. More variety must reuse the same primitives and batches.
+      expect(pools).toHaveLength(56);
+      expect(new Set(pools.map((mesh) => mesh.material)).size).toBe(41);
+      expect(peakDrawCalls).toBeLessThanOrEqual(31);
+      expect(peakInstances).toBeLessThanOrEqual(low ? 1686 : 1697);
       // Every batch of the same primitive shares one geometry allocation.
       expect(new Set(pools.map((mesh) => mesh.geometry)).size).toBe(7);
     },

@@ -463,6 +463,8 @@ export default function GameApp() {
       {screen === 'progress' && <ProgressScreen player={player} back={back} />}
       {screen === 'rewards' && (
         <Rewards
+          loginHref={oxygenLoginHref}
+          onLogin={() => { void beginLogin(); }}
           player={player}
           services={services}
           update={update}
