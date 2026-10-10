@@ -509,7 +509,7 @@ export function SettingsScreen({
           </span>
         </div>
         <p>
-          {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. P F U S C H komplett sammeln gibt einen Set-Bonus.
+          {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Schilder geben Punkte und zählen zur täglichen Signs-Aufgabe.
         </p>
       </section>
       <footer className="settings-section">

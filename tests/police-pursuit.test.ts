@@ -42,6 +42,11 @@ function startPursuit() {
   patrolEncounter(engine, true);
   expect(engine.phase).toBe('playing');
   expect(engine.policeChase).toBe(true);
+  // Contact scenarios start once the actual patrol has naturally fallen
+  // behind, rather than assuming a hidden car teleported to followZ.
+  for (let count = 0; count < 180 && engine.policeVehicle.z > POLICE.followZ + 0.1; count++)
+    frame(engine);
+  expect(engine.policeVehicle.z).toBeLessThanOrEqual(POLICE.followZ + 0.1);
   return engine;
 }
 
@@ -56,15 +61,36 @@ describe('police pursuit gameplay', () => {
   });
 
   it('starts exactly one pursuit when a patrol sees a wheelie', () => {
-    const engine = startPursuit();
+    const engine = ride();
+    const patrol = patrolEncounter(engine, true);
     expect(engine.policeVehicle.phase).toBe('chasing');
-    expect(engine.policeVehicle.visible).toBe(false);
+    expect(engine.policeVehicle.visible).toBe(true);
+    expect(engine.policeVehicle.x).toBe(patrol.lane * LANE + patrol.offsetX);
+    expect(engine.policeVehicle.z).toBe(patrol.z);
+    expect(engine.policeVehicle.velocity).toBe(patrol.velocity);
     const remaining = engine.policeRamRemaining;
     expect(remaining).toBeGreaterThanOrEqual(10 - STEP * 1.01);
     expect(remaining).toBeLessThanOrEqual(10);
     for (let count = 0; count < 30; count++) frame(engine);
     expect(engine.policeChase).toBe(true);
     expect(engine.policeRamRemaining).toBeCloseTo(remaining - 0.5, 5);
+    expect(engine.policeOutcomeSerial).toBe(0);
+  });
+
+  it('keeps an immediate close call ordinary until the real patrol is behind its target', () => {
+    const engine = ride();
+    patrolEncounter(engine, true);
+    const previousWorldZ = engine.distance + engine.policeVehicle.z;
+    const target = engine.spawn('car', -1, 0.4, 1.2)!;
+    frame(engine, [target]);
+    const worldTravel = engine.distance + engine.policeVehicle.z - previousWorldZ;
+    expect(worldTravel).toBeGreaterThanOrEqual(-1e-8);
+    expect(worldTravel).toBeLessThanOrEqual((engine.speed + 26) * STEP);
+    for (let count = 0; count < 30; count++) frame(engine, [target]);
+    expect(engine.nearMisses).toBe(1);
+    expect(engine.policeChase).toBe(true);
+    expect(engine.policeVehicle.phase).toBe('chasing');
+    expect(engine.policeImpact.serial).toBe(0);
     expect(engine.policeOutcomeSerial).toBe(0);
   });
 

@@ -772,15 +772,19 @@ export class Engine {
     const p = this.policeVehicle;
     Object.assign(p, createPoliceVehicle(), {
       phase: 'chasing',
+      visible: !!patrol,
       x: patrol ? patrol.lane * LANE + patrol.offsetX : this.x,
-      z: POLICE.followZ,
-      velocity: this.speed,
+      z: patrol ? patrol.z : POLICE.followZ,
+      velocity: patrol ? patrol.velocity : this.speed,
     });
     if (patrol) patrol.active = false;
     // Camera and patrol encounters share one recovery window. A camera must
     // not leave an overdue patrol waiting to trigger as soon as its wreck ends.
     this.nextPatrolDistance = this.distance + 1800;
     for (const obstacle of this.obstacles) {
+      // A real patrol keeps its exact contact pose; only an unseen speed-camera
+      // response may choose a clear spawn position behind existing traffic.
+      if (patrol) break;
       if (!obstacle.active) continue;
       const shape = policeTargetShape(obstacle);
       if (
@@ -844,7 +848,11 @@ export class Engine {
       !this.policeChase ||
       !target.active ||
       target.police ||
-      !policeTargetShape(target)
+      !policeTargetShape(target) ||
+      // The pursuing car must first be behind the causative bumper. A close
+      // call made while the passed patrol is still drawing back is an ordinary
+      // near miss, not permission to teleport through that target for a crash.
+      this.policeVehicle.z > target.z + policeImpactOffset(target) - 0.35
     )
       return;
     this.policeChase = false;
@@ -933,6 +941,12 @@ export class Engine {
   private updatePolice(dt: number, travel: number) {
     const p = this.policeVehicle;
     if (p.phase === 'idle' || p.phase === 'ramming') return;
+    // The patrol already travelled in the NPC loop this tick. Its first
+    // pursuit frame must keep that exact visible pose rather than travel twice.
+    if (p.phase === 'chasing' && p.visible && p.age === 0) {
+      p.age += dt;
+      return;
+    }
     p.age += dt;
     if (p.phase === 'approach') {
       p.z -= travel;
@@ -1084,9 +1098,12 @@ export class Engine {
     const desiredX = this.lane * LANE;
     const ahead = firstPoliceHit(this.obstacles, p.x, p.z, p.x, p.z + 7);
     let targetX = p.x;
-    if (!firstPoliceHit(this.obstacles, p.x, p.z, desiredX, p.z))
+    if (
+      p.z < POLICE.ramZ - 0.1 &&
+      !firstPoliceHit(this.obstacles, p.x, p.z, desiredX, p.z)
+    )
       targetX = desiredX;
-    if (ahead) {
+    if (ahead && p.z < POLICE.ramZ - 0.1) {
       const lane = Math.max(-1, Math.min(1, Math.round(p.x / LANE)));
       const candidates = [this.lane, lane - 1, lane + 1].filter(
         (v) => v >= -1 && v <= 1,
@@ -1116,7 +1133,12 @@ export class Engine {
         this.speed + approachVelocity + (goalZ - p.z - travel) * 5,
       ),
     );
-    const nextZ = Math.min(POLICE.ramZ, p.z + velocity * dt);
+    // An adjacent patrol can start just ahead of this rear bumper. Let normal
+    // road travel draw it back first; a cap may only limit forward motion and
+    // must never move that existing car backwards in one frame.
+    const nextZ = p.z > POLICE.ramZ
+      ? p.z + velocity * dt
+      : Math.min(POLICE.ramZ, p.z + velocity * dt);
     const hit = firstPoliceHit(this.obstacles, p.x, p.z, p.x, nextZ);
     const fraction = hit ? Math.max(0, hit.fraction - 0.001) : 1;
     p.z += (nextZ - p.z) * fraction;

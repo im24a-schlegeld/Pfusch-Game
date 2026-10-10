@@ -68,17 +68,17 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(FLAG_CAPE.length / FLAG_CAPE.width).toBeCloseTo(1.04 / .626);
     expect(flagCapeUv({ ...product.preview!.artwork!, crop: { x: 0, y: 0, width: 3000, height: 1 } })).toBeNull();
   });
-  it('brings both original eyelet corners together at the front centre below the helmet edge', () => {
+  it('supports the original eyelet corners behind the shoulders and ties them at the chest', () => {
     const { mesh } = cape();
     const positions = mesh.geometry.getAttribute('position');
     const last = FLAG_CAPE.columns;
     expect(positions.getX(0)).toBeLessThan(0);
     expect(positions.getX(last)).toBeGreaterThan(0);
     expect(positions.getX(0) + positions.getX(last)).toBeCloseTo(0, 8);
-    expect(positions.getZ(0)).toBeLessThan(0);
-    expect(positions.getZ(last)).toBeLessThan(0);
+    expect(positions.getZ(0)).toBeGreaterThan(0);
+    expect(positions.getZ(last)).toBeGreaterThan(0);
     expect(Math.hypot(positions.getX(0) - positions.getX(last), positions.getY(0) - positions.getY(last),
-      positions.getZ(0) - positions.getZ(last))).toBeLessThan(.03);
+      positions.getZ(0) - positions.getZ(last))).toBeLessThan(FLAG_CAPE.width);
     const firstEye = mesh.getObjectByName('flag-original-bottom-left-eyelet')!;
     const lastEye = mesh.getObjectByName('flag-original-top-left-eyelet')!;
     expect(firstEye.position.x).toBeLessThan(positions.getX(0));
@@ -87,7 +87,8 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(lastEye.position.x - positions.getX(last)).toBeLessThan(.005);
     expect(mesh.getObjectByName('flag-cape-knot')).toBeDefined();
     expect(mesh.getObjectByName('flag-cape-knot')!.position.x).toBeCloseTo(0, 8);
-    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(FLAG_CAPE.neckY - .03);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.61);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.z).toBeLessThan(0);
     expect(mesh.getObjectByName('flag-eyelet-connecting-tie')).toBeDefined();
   });
   it('keeps the same material dimensions on all five bikes after rest and riding', () => {

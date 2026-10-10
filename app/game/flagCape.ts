@@ -6,17 +6,18 @@ import { createFlagCloth } from './flagCloth';
 
 export const FLAG_CAPE = Object.freeze({
   columns: 10, rows: 14, width: .626, length: 1.04,
-  neckY: .637, neckZ: .040, collarRadiusX: .095, collarRadiusZ: .120,
-  collarStart: -Math.PI + .075, collarEnd: Math.PI - .075,
+  neckY: .565, neckZ: .125, collarRadiusX: .265, collarRadiusZ: .075,
+  collarStart: -Math.PI / 2, collarEnd: Math.PI / 2,
 });
 type Artwork = NonNullable<NonNullable<Product['preview']>['artwork']>;
 type TextureFactory = (url: string) => THREE.Texture;
 const clamp = (value: number | undefined, min: number, max: number) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
-// The rear edge passes over the folded hood, below the helmet. The side
-// supports sit on the narrow neck; the original eyelets meet over the chest.
-const collarY = (angle: number) => FLAG_CAPE.neckY - .017 * Math.cos(angle) ** 2 - .010 * smooth(-Math.cos(angle));
+// The cloth's upper edge follows the rear shoulders below the folded hood.
+// Only the light eyelet ties go around the neck; the fabric cannot climb
+// into the helmet opening as a fully wrapped neck loop could.
+const collarY = (angle: number) => FLAG_CAPE.neckY - .025 * (1 - Math.cos(angle));
 
 function collarPoint(u: number) {
   const { collarStart, collarEnd, collarRadiusX, collarRadiusZ, neckZ } = FLAG_CAPE;
@@ -347,12 +348,15 @@ function addTiedEyelets(mesh: THREE.Mesh) {
     hardware.add(eye);
     eyes[i].copy(eye.position);
   }
-  const knot = left.clone().add(right).multiplyScalar(.5).add(new THREE.Vector3(0, -.008, -.01));
+  const knot = new THREE.Vector3(0, .595, -.098);
   const tie = (name: string, points: THREE.Vector3[]) => {
     const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 14, .0045, 5, false), fabric);
     cord.name = name; hardware.add(cord);
   };
-  tie('flag-eyelet-connecting-tie', [left, knot, right]);
+  tie('flag-eyelet-connecting-tie', [left, new THREE.Vector3(-.258, .572, .04),
+    new THREE.Vector3(-.118, .625, .012), new THREE.Vector3(-.075, .609, -.076), knot,
+    new THREE.Vector3(.075, .609, -.076), new THREE.Vector3(.118, .625, .012),
+    new THREE.Vector3(.258, .572, .04), right]);
   tie('flag-tie-loop', [knot, knot.clone().add(new THREE.Vector3(.02, .009, -.008)),
     knot.clone().add(new THREE.Vector3(.019, -.009, -.009)), knot]);
   tie('flag-tie-tail', [knot, knot.clone().add(new THREE.Vector3(-.003, -.024, -.004)),
