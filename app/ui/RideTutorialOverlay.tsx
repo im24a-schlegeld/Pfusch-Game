@@ -20,7 +20,7 @@ const lessons: Record<TutorialHint, { title: string; copy: string; target: strin
   ramp: { title: 'Von der Rampe springen', copy: 'Auf der Rampe geht es automatisch hoch. Wische oben seitlich weg, bevor du das Fahrerhaus erreichst.', target: 'RAMPE' },
   police: { title: 'Häng die Polizei ab', copy: 'Ein Wheelie vor der Polizei startet eine Verfolgung. Mit knappem Ausweichen oder einem Rampensprung hängst du sie ab.', target: 'POLIZEI' },
   radar: { title: 'Da steht ein Blitzer', copy: 'Wheelie oder Sprung am Blitzer? Dann folgt die Polizei. Nach oben ziehen senkt das Vorderrad.', target: 'BLITZER' },
-  signs: { title: 'Sammle die PFUSCH-Zeichen', copy: 'Fahre durch die Zeichen. Sammle P F U S C H für 750 Bonuspunkte.', target: 'ZEICHEN' },
+  signs: { title: 'Sammle die PFUSCH-Zeichen', copy: 'Jedes Zeichen bringt 45 Punkte. Sammle heute P F U S C H für 120 Coins. Deinen Fortschritt findest du unter Aufgaben.', target: 'ZEICHEN' },
 };
 
 function SwipeArrow({ direction }: { direction: 'side' | 'up' | 'down' }) {

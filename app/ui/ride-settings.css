@@ -17,7 +17,10 @@
   background: #292929 !important;
   color: #f4f4f4;
 }
-.ride-settings-dialog .standard-page {
+/* Main's mobile .standard-page.narrow rules are loaded after Ride's CSS.
+   Keep this inner page out of the scroll chain: its non-scrolling overflow:auto
+   otherwise consumes touch/wheel input before it reaches the popup. */
+.game-dialog.ride-settings-dialog[data-slot='dialog-content'] .standard-page {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: none !important;
@@ -26,6 +29,8 @@
   min-width: 0 !important;
   margin: 0 !important;
   overflow: visible !important;
+  overscroll-behavior: auto;
+  touch-action: pan-y pinch-zoom;
   padding: 16px !important;
 }
 .ride-settings-dialog .screen-heading {

@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import type { Player, Product, RunStats, TutorialHint } from '../domain/types';
 import { BIKES } from '../domain/config';
 import { dayKey } from '../domain/progression';
+import { dailySignMask } from '../domain/dailySigns';
+import type { SignId } from '../game/signCollectibles';
 import { TUTORIAL_HINTS } from '../domain/tutorial';
 import { Engine } from '../game/engine';
 import { VerifiedRunRecorder, type VerifiedRunChallenge, type VerifiedRunSubmission } from '../game/verifiedRun';
@@ -33,7 +35,7 @@ interface Props {
   onReady?: () => void;
   onLoadError?: (message: string) => void;
   onTutorialSeen?: (ids: readonly TutorialHint[]) => void;
-  onSignPickup?: (eventId: string) => void;
+  onSignPickup?: (eventId: string, signId: SignId) => void;
 }
 type ActiveTutorial = { id: TutorialHint; target?: { x: number; y: number } };
 export default function Ride({
@@ -195,6 +197,13 @@ export default function Ride({
     return () => clearInterval(timer);
   }, [engine, ready]);
   useEffect(() => {
+    // A paused Settings page owns its pointer input, including native scrolling.
+    // Remove gameplay's capturing listeners rather than letting stale drags or
+    // click suppression participate in the dialog's scroll chain.
+    if (pauseSettingsOpen) {
+      clearGestures();
+      return;
+    }
     const showGesture = () => updateGestureIndicator(gestureIndicator.current,
       !buttonMode && touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
     const down = (event: PointerEvent) => {
@@ -389,7 +398,9 @@ export default function Ride({
     if (e.signPickupSerial > lastSignPickup.current) {
       const runId = e.stats().id;
       while (lastSignPickup.current < e.signPickupSerial) {
-        signCallback.current?.(`${runId}:${++lastSignPickup.current}`);
+        const serial = ++lastSignPickup.current;
+        const signId = e.signPickupId(serial);
+        if (signId) signCallback.current?.(`${runId}:${serial}`, signId);
       }
     }
     showControls();
@@ -511,7 +522,7 @@ export default function Ride({
         </g>
       </svg>
       <RideHud engine={engine} best={player.highScore} pause={pause}
-        dailySigns={player.challenges.date === dayKey() ? player.challenges.values['daily-signs'] ?? 0 : 0} />
+        dailySignMask={dailySignMask(player.challenges, dayKey())} />
       {buttonMode && touchActive && engine.phase === 'playing' && !tutorial &&
         <RideTouchButtons onPress={pressTouchButton} wheelieHeld={engine.wheelieHeld} brakeHeld={engine.forwardHeld} />}
       {engine.phase === 'playing' && (

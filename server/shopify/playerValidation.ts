@@ -1,5 +1,5 @@
 import type { Player, Slot, StickerPlacement } from '../../app/domain/types.js';
-import { levelForXp, newPlayer, normalizeLeaderboardName } from '../../app/domain/progression.js';
+import { levelForXp, newPlayer, normalizeLeaderboardName, refreshDaily } from '../../app/domain/progression.js';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../../app/domain/stickers.js';
 import { BIKES, REWARDS } from '../../app/domain/config.js';
 import { DARK_CARBON } from '../../app/domain/carbon.js';
@@ -149,5 +149,5 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
       new TextEncoder().encode(JSON.stringify(input.savedSetups)).length > MAX_SAVED_SETUPS_BYTES) invalid();
     player.savedSetups = sanitizeSavedSetups(input.savedSetups, player);
   }
-  return player;
+  return refreshDaily(player, player.challenges.date);
 }

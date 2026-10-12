@@ -1,5 +1,5 @@
 import { LEVELS } from './config.js';
-import { dailyChallengesForDate, normalizeDailyProgress } from './dailyChallenges.js';
+import { DAILY_SIGN_CHALLENGE, dailyChallengesForDate, normalizeDailyProgress } from './dailyChallenges.js';
 import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet.js';
 import { equipmentSlot } from './preview.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
@@ -75,6 +75,13 @@ export function newPlayer(): Player {
 }
 export function refreshDaily(p: Player, date = dayKey()): Player {
   const challenges = normalizeDailyProgress(p.challenges, date);
+  // Canonical saved letter keys can already form a complete set after recovery.
+  // Set its digital payout and claim together so decode/refresh cannot repay it.
+  if (challenges.values[DAILY_SIGN_CHALLENGE.id] === DAILY_SIGN_CHALLENGE.target &&
+      !challenges.claimed.includes(DAILY_SIGN_CHALLENGE.id)) {
+    return { ...p, coins: p.coins + DAILY_SIGN_CHALLENGE.coins,
+      challenges: { ...challenges, claimed: [...challenges.claimed, DAILY_SIGN_CHALLENGE.id] } };
+  }
   return challenges === p.challenges ? p : { ...p, challenges };
 }
 export function finishRun(

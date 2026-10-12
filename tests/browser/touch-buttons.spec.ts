@@ -128,7 +128,10 @@ test.describe('touch button mode', () => {
     expect(await page.locator('.v42-metrics').evaluate(node => getComputedStyle(node).borderLeftWidth)).toBe('0px');
     const signs = page.locator('.v42-daily-signs');
     await expect(signs).toContainText('0 / 6');
-    await page.evaluate(() => { window.touchButtonsTestEngine!.signPickupSerial += 6; });
+    await page.evaluate(() => {
+      const engine = window.touchButtonsTestEngine!;
+      for (const id of ['P', 'F', 'U', 'S', 'C', 'H'] as const) engine.spawnSign(id, engine.lane, 0);
+    });
     await page.clock.runFor(100);
     await expect(signs).toContainText('6 / 6');
     expect((await saved(page)).challenges.claimed).toContain('daily-signs');

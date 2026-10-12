@@ -1,4 +1,4 @@
-import { Bike } from 'lucide-react';
+import { Motorbike } from 'lucide-react';
 import GameBrand from './GameBrand';
 import '../loading-screen.css';
 
@@ -14,10 +14,11 @@ export function PreviewLoading() {
 export default function LoadingScreen({
   label = 'DEIN SETUP WIRD GELADEN',
   fullScreen = false,
+  reducedMotion = false,
   embedded = typeof window !== 'undefined' && window.parent !== window,
-}: { label?: string; fullScreen?: boolean; embedded?: boolean }) {
+}: { label?: string; fullScreen?: boolean; embedded?: boolean; reducedMotion?: boolean }) {
   return (
-    <output className={`ride-loading${fullScreen ? ' ride-loading-full' : ''}${embedded ? ' ride-loading-embedded' : ''}`} aria-label={label}>
+    <output className={`ride-loading${fullScreen ? ' ride-loading-full' : ''}${embedded ? ' ride-loading-embedded' : ''}`} data-reduced-motion={reducedMotion} aria-label={label}>
       <picture>
         <source media="(max-aspect-ratio: 3/4)" srcSet="/branding/loading-trailer-portrait.webp" />
         <img className="ride-loading-art" src="/branding/loading-trailer.webp" alt="" fetchPriority="high" />
@@ -27,7 +28,7 @@ export default function LoadingScreen({
       </div>
       <div className="ride-loading-caption">
         <span className="ride-loading-kicker" aria-hidden="true">GLEICH GEHT’S LOS.</span>
-        <div className="ride-loading-line"><Bike size={19} aria-hidden="true" /><span>{label}</span></div>
+        <div className="ride-loading-line"><Motorbike className="ride-loading-bike" size={19} aria-hidden="true" /><span>{label}</span></div>
         <span className="ride-loading-track" aria-hidden="true"><i /></span>
       </div>
     </output>

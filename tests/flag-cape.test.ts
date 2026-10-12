@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DoubleSide, Group, Mesh, MeshStandardMaterial, Raycaster, Texture, TextureLoader, Vector3 } from 'three';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Raycaster, Texture, TextureLoader, Vector3 } from 'three';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { addFlagCape, FLAG_CAPE, flagCapeUv } from '../app/game/flagCape';
@@ -89,7 +89,13 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(mesh.getObjectByName('flag-cape-knot')!.position.x).toBeCloseTo(0, 8);
     expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.61);
     expect(mesh.getObjectByName('flag-cape-knot')!.position.z).toBeLessThan(0);
-    expect(mesh.getObjectByName('flag-eyelet-connecting-tie')).toBeDefined();
+    const tie = mesh.getObjectByName('flag-eyelet-connecting-tie') as Mesh;
+    expect(tie).toBeDefined();
+    tie.geometry.computeBoundingBox();
+    // A tie can rest over shoulders/chest; it must not form a high neck hoop
+    // immediately underneath the helmet's chin opening.
+    expect(tie.geometry.boundingBox!.max.y).toBeLessThan(.56);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.55);
   });
   it('keeps the same material dimensions on all five bikes after rest and riding', () => {
     const loader = vi.spyOn(TextureLoader.prototype, 'load').mockImplementation(() => new Texture());
@@ -253,6 +259,26 @@ describe('original PFUSCH flag as a neck cape', () => {
     for (let column = 0; column <= FLAG_CAPE.columns; column++)
       lowest = Math.min(lowest, pointAt(mesh, hem + column).applyMatrix4(mesh.matrixWorld).y);
     expect(lowest).toBeLessThan(.8);
+  });
+  it('ignores unreferenced shared-buffer vertices when fitting a seat collider', () => {
+    const make = (withUnusedVertex: boolean) => {
+      const body = new Group(), torso = new Group();
+      body.userData.importedBike = '125';
+      body.add(torso); torso.position.set(0, .8, .2); torso.rotation.x = -.35;
+      const geometry = new BufferGeometry();
+      const points = [-.1, .35, .5, .1, .35, .5, 0, .35, .75];
+      // Imported split parts share attributes, including vertices that belong
+      // to completely different bike parts. Only these three form the seat.
+      if (withUnusedVertex) points.push(5, 3, 5);
+      geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+      geometry.setIndex([0, 1, 2]);
+      const seat = new Mesh(geometry, new MeshStandardMaterial());
+      seat.userData.importedPart = 'seat'; body.add(seat);
+      const controller = addFlagCape(torso, product, () => new Texture())!;
+      controller.update({ speed: 0, reducedMotion: true }, 1 / 60);
+      return Array.from(controller.mesh.geometry.getAttribute('position').array);
+    };
+    expect(make(true)).toEqual(make(false));
   });
   it('uses the current rider pose for gravity before the renderer updates world matrices', () => {
     const pending = cape(), rendered = cape();

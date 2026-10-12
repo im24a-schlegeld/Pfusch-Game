@@ -13,6 +13,7 @@ import {
 import type { Player, Product, RunReward, RunStats } from '../domain/types';
 import { refreshDaily } from '../domain/progression';
 import { recordDailySign } from '../domain/dailySigns';
+import type { SignId } from '../game/signCollectibles';
 import { markTutorialsSeen } from '../domain/tutorial';
 import { createServices, type Services } from '../services';
 import { unavailableAccess } from '../services/playerAccess';
@@ -310,15 +311,15 @@ export default function GameApp() {
       services.analytics.track('challenge_completed', { id }),
     );
   }
-  function collectSign(eventId: string) {
+  function collectSign(eventId: string, signId: SignId) {
     if (!current.current) return;
-    const next = recordDailySign(current.current, eventId);
+    const next = recordDailySign(current.current, eventId, signId);
     if (next === current.current) return;
     const completed = !current.current.challenges.claimed.includes('daily-signs')
       && next.challenges.claimed.includes('daily-signs');
     update(next);
     if (completed) {
-      setNotice('Signs-Tagesaufgabe geschafft · +120 Coins');
+      setNotice('PFUSCH gesammelt · +120 Coins');
       services.analytics.track('challenge_completed', { id: 'daily-signs' });
     }
   }
@@ -382,7 +383,7 @@ export default function GameApp() {
           }}
         />
         {startingRide && (
-          <LoadingScreen label="FAHRT WIRD VORBEREITET" fullScreen />
+          <LoadingScreen label="FAHRT WIRD VORBEREITET" fullScreen reducedMotion={player.settings.reducedMotion} />
         )}
       </>
     );
@@ -551,7 +552,7 @@ export default function GameApp() {
       </nav>}
       {notice && <output className="toast">{notice}</output>}
     </div>
-    {loadingLabel && <LoadingScreen label={loadingLabel} fullScreen />}
+    {loadingLabel && <LoadingScreen label={loadingLabel} fullScreen reducedMotion={player.settings.reducedMotion} />}
     </>
   );
 }

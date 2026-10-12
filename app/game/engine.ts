@@ -179,6 +179,7 @@ export class Engine {
   signSetCount = 0;
   signPickupSerial = 0;
   lastSignId: SignId | null = null;
+  private readonly signPickupHistory = Array.from({ length: 8 }, () => ({ serial: 0, id: 'P' as SignId }));
   signs: SignPickup[] = Array.from({ length: 8 }, () => ({
     active: false,
     id: 'P',
@@ -250,6 +251,9 @@ export class Engine {
     seed = 5489,
   ) {
     this.rng = seed >>> 0;
+    // Short rides can start with different daily letters; the replay uses the
+    // same seed and the traffic random stream consumes no additional draw.
+    this.signSequence = this.rng % SIGN_IDS.length;
     this.world = new World(seed, bike);
     this.id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${seed}`;
   }
@@ -666,6 +670,12 @@ export class Engine {
       this.signSequence = (SIGN_IDS.indexOf(id) + 1) % SIGN_IDS.length;
       this.nextSignAttempt = this.distance + SIGN_DISTANCE_GAP + this.random() * 120;
     }
+  }
+  /** At most the pooled signs can be collected between renderer callbacks. */
+  signPickupId(serial: number): SignId | null {
+    if (!Number.isInteger(serial) || serial <= 0) return null;
+    const pickup = this.signPickupHistory[serial % this.signPickupHistory.length];
+    return pickup.serial === serial ? pickup.id : null;
   }
   spawnSign(id: SignId, lane: number, z: number) {
     if (
@@ -1618,6 +1628,8 @@ export class Engine {
           if (this.collectedSigns & signBit(sign.id)) continue;
           this.lastSignId = sign.id;
           this.signPickupSerial++;
+          Object.assign(this.signPickupHistory[this.signPickupSerial % this.signPickupHistory.length],
+            { serial: this.signPickupSerial, id: sign.id });
           this.collectedSigns |= signBit(sign.id);
           if (this.collectedSigns === COMPLETE_SIGN_MASK) {
             this.signSetCount++;

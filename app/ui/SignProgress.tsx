@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadSignArtwork, type SignArtwork } from '../game/signArtwork';
 import { COMPLETE_SIGN_MASK } from '../game/signSet';
+import { SIGN_IDS } from '../game/signCollectibles';
 import StopSign from './StopSign';
 import './signs-lockup.css';
 export default function SignProgress({ mask }: { mask: number }) {
@@ -46,13 +47,20 @@ export default function SignProgress({ mask }: { mask: number }) {
       data-mask={mask}
       data-complete={complete}
       data-ready={!!art}
+      data-failed={failed}
       data-fallbacks={art?.fallbacks ?? 0}
-      aria-label={`${count} von 6 Schildern gesammelt${failed ? '. Bild nicht verfügbar' : ''}`}
+      aria-label={`PFUSCH: ${count} von 6 Zeichen gesammelt${complete ? '. Heute erledigt' : ''}`}
     >
       <span className="signs-lockup">
         <canvas className="signs-lockup-artwork" ref={ref} width={660} height={220} aria-hidden="true" />
         <StopSign active={complete} className="v42-sign-stop signs-lockup-stop" />
       </span>
+      <figcaption className="pfusch-letter-progress">
+        <span className="pfusch-letter-row" aria-hidden="true">
+          {SIGN_IDS.map((id, index) => <b key={id} data-collected={!!(mask & (1 << index))}>{id}</b>)}
+        </span>
+        <span>{count} / 6</span>
+      </figcaption>
     </figure>
   );
 }

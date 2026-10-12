@@ -1,18 +1,19 @@
 import type { Engine } from '../game/engine';
 import { speedometerKmh } from '../domain/speedometer';
 import { Pause } from 'lucide-react';
+import SignProgress from './SignProgress';
 const number = (n: number) => Math.floor(n).toLocaleString('de-CH');
 /** Keep the riding instruments at the top without obscuring the road. */
 export default function RideHud({
   engine,
   best,
   pause,
-  dailySigns = 0,
+  dailySignMask = 0,
 }: {
   engine: Engine;
   best: number;
   pause: () => void;
-  dailySigns?: number;
+  dailySignMask?: number;
 }) {
   return (
     <>
@@ -54,9 +55,9 @@ export default function RideHud({
         </div>
         <div className="v42-top-actions">
           <div className="v42-sign-slot">
-            <span className="v42-daily-signs" aria-label={`Signs-Tagesaufgabe: ${Math.min(6, Math.max(0, dailySigns))} von 6 Schildern`}>
-              <small>SIGNS · HEUTE</small>
-              <b>{Math.min(6, Math.max(0, dailySigns))} <small>/ 6</small></b>
+            <span className="v42-daily-signs">
+              <small>PFUSCH · HEUTE</small>
+              <SignProgress mask={dailySignMask} />
             </span>
           </div>
           <button

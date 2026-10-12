@@ -18,6 +18,7 @@ const SIDE_FOLLOW = .8;
 const SIDE_FORCE = .18;
 const SIDE_RESPONSE = 1 - Math.exp(-1 / (60 * .18));
 const MOTION_DAMPING = .92;
+const windPressure = (speed: number) => Math.min(32, speed * speed * .018);
 // The cloth's upper edge follows the rear shoulders below the folded hood.
 // Only the light eyelet ties go around the neck; the fabric cannot climb
 // into the helmet opening as a fully wrapped neck loop could.
@@ -52,25 +53,35 @@ function bikeClearance(torso: THREE.Object3D | null) {
   if (!body) return undefined;
   body.updateWorldMatrix(true, true);
   const inverse = new THREE.Matrix4().copy(body.matrixWorld).invert();
-  const transform = new THREE.Matrix4(), bounds = new THREE.Box3();
-  const seat = new THREE.Box3(), wheel = new THREE.Box3();
+  const transform = new THREE.Matrix4(), bounds = new THREE.Box3(), point = new THREE.Vector3();
+  const seat = new THREE.Box3(), tailBox = new THREE.Box3(), wheel = new THREE.Box3();
   body.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
     const name = String(object.userData.importedPart ?? '');
     const target = /seat|saddle/i.test(name) ? seat : /rearWheel/i.test(name) ? wheel : undefined;
     if (!target) return;
-    object.geometry.computeBoundingBox();
-    if (!object.geometry.boundingBox) return;
+    const positions = object.geometry.getAttribute('position');
+    if (!positions) return;
+    // Imported part geometries can keep a shared position buffer while their
+    // index selects only the seat or wheel triangles. Bounding every buffer
+    // vertex makes a seat collider as tall as the complete motorcycle.
+    const index = object.geometry.index;
+    bounds.makeEmpty();
+    for (let vertex = 0, count = index?.count ?? positions.count; vertex < count; vertex++)
+      bounds.expandByPoint(point.fromBufferAttribute(positions, index ? index.getX(vertex) : vertex));
+    if (bounds.isEmpty()) return;
     transform.multiplyMatrices(inverse, object.matrixWorld);
-    bounds.copy(object.geometry.boundingBox).applyMatrix4(transform);
+    bounds.applyMatrix4(transform);
     target.union(bounds);
   });
   const tail = body.userData.tailContact as readonly number[] | undefined;
   if (tail) {
-    seat.expandByPoint(new THREE.Vector3(tail[0] - .12, tail[1] - .045, tail[2] - .10));
-    seat.expandByPoint(new THREE.Vector3(tail[0] + .12, tail[1] + .015, tail[2] + .10));
+    tailBox.expandByPoint(new THREE.Vector3(tail[0] - .12, tail[1] - .045, tail[2] - .10));
+    tailBox.expandByPoint(new THREE.Vector3(tail[0] + .12, tail[1] + .015, tail[2] + .10));
   }
-  return { body, boxes: [seat, wheel].filter(box => !box.isEmpty()).map(box => box.expandByScalar(.025)) };
+  return { body, boxes: [
+    { box: seat, wheel: false }, { box: tailBox, wheel: false }, { box: wheel, wheel: true },
+  ].filter(volume => !volume.box.isEmpty()).map(volume => ({ ...volume, box: volume.box.expandByScalar(.015) })) };
 }
 
 export function flagCapeUv(artwork: Artwork) {
@@ -179,25 +190,31 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     if (clearance) {
       point.set(x, y, z).applyMatrix4(torsoToBike);
       let contact = false;
-      for (const box of clearance.boxes) {
+      for (const { box, wheel } of clearance.boxes) {
         if (!box.containsPoint(point)) continue;
+        if (wheel) {
+          const cy = (box.min.y + box.max.y) / 2, cz = (box.min.z + box.max.z) / 2;
+          const ry = (box.max.y - box.min.y) / 2, rz = (box.max.z - box.min.z) / 2;
+          const dy = point.y - cy, dz = point.z - cz;
+          const radial = Math.hypot(dy / ry, dz / rz);
+          if (radial >= 1) continue;
+          // A cape drapes across the round tread. Sending neighbouring middle
+          // columns to opposite thin X faces would split and stretch its seam.
+          if (radial > 1e-7) { point.y = cy + dy / radial; point.z = cz + dz / radial; }
+          else point.y = box.max.y;
+        } else {
+          // Rounded, separate footprints keep the seat's highest point from
+          // becoming a flat suspended bridge all the way to the rear tail.
+          const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
+          const rx = (box.max.x - box.min.x) / 2, rz = (box.max.z - box.min.z) / 2;
+          const footprint = ((point.x - cx) / rx) ** 2 + ((point.z - cz) / rz) ** 2;
+          if (footprint >= 1) continue;
+          const middleY = (box.min.y + box.max.y) / 2;
+          const surfaceY = middleY + (box.max.y - middleY) * Math.sqrt(1 - footprint);
+          if (point.y >= surfaceY) continue;
+          point.y = surfaceY;
+        }
         contact = true;
-        // The finite volume lets the hem fall beside or behind the motorcycle.
-        // Never stretch every lower vertex onto an infinite horizontal plane.
-        let face = 0, nearest = point.x - box.min.x;
-        const right = box.max.x - point.x, bottom = point.y - box.min.y;
-        const top = box.max.y - point.y, front = point.z - box.min.z, rear = box.max.z - point.z;
-        if (right < nearest) { face = 1; nearest = right; }
-        if (bottom < nearest) { face = 2; nearest = bottom; }
-        if (top < nearest) { face = 3; nearest = top; }
-        if (front < nearest) { face = 4; nearest = front; }
-        if (rear < nearest) face = 5;
-        if (face === 0) point.x = box.min.x;
-        else if (face === 1) point.x = box.max.x;
-        else if (face === 2) point.y = box.min.y;
-        else if (face === 3) point.y = box.max.y;
-        else if (face === 4) point.z = box.min.z;
-        else point.z = box.max.z;
       }
       if (contact) {
         point.applyMatrix4(bikeToTorso);
@@ -260,12 +277,6 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       points[i + 1] = anchor.y - length * t;
       points[i + 2] = anchor.z * (1 - spread) + (.165 + t * .08) * spread;
       if (!cloth.pinned[row * (columns + 1) + column]) {
-        if (clearance) {
-          point.fromArray(points, i).applyMatrix4(torsoToBike);
-          for (const box of clearance.boxes) if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)
-            point.y = Math.max(point.y, box.max.y + .005);
-          point.applyMatrix4(bikeToTorso).toArray(points, i);
-        }
         collide(row * (columns + 1) + column);
       }
     }
@@ -291,7 +302,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   };
   const settle = (speed: number) => {
     force.copy(down).multiplyScalar(9.81);
-    const wind = Math.min(24, speed * speed * .008);
+    const wind = windPressure(speed);
     for (let step = 0; step < 90; step++) cloth.step(force.x, force.y, force.z, back.x * wind, back.y * wind, back.z * wind, 0, 0, .82, collide);
     cloth.previous.set(points);
   };
@@ -321,7 +332,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       const i = vertex * 3;
       cloth.previous[i] += down.x * impulse; cloth.previous[i + 1] += down.y * impulse; cloth.previous[i + 2] += down.z * impulse;
     }
-    const wind = Math.min(24, speed * speed * .008);
+    const wind = windPressure(speed);
     const lateralTarget = clamp(input.lateralAcceleration, -20, 20);
     const forwardForce = clamp(input.longitudinalAcceleration, -20, 20) * .6;
     // Visual cloth never catches up a long browser stall: at most two small
@@ -346,7 +357,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
 
 
 /** Physical eyelets and the tied cloth corners, outside the unchanged printed artwork. */
-function addTiedEyelets(mesh: THREE.Mesh) {
+function addTiedEyelets(mesh: THREE.Mesh, torso: THREE.Group) {
   const hardware = new THREE.Group(); hardware.name = 'flag-cape-tied-eyelets';
   const metal = new THREE.MeshStandardMaterial({ color: '#aeb0ad', roughness: .4, metalness: .8 });
   const fabric = new THREE.MeshStandardMaterial({ color: '#292929', roughness: 1, metalness: 0 });
@@ -364,22 +375,47 @@ function addTiedEyelets(mesh: THREE.Mesh) {
     hardware.add(eye);
     eyes[i].copy(eye.position);
   }
-  const knot = new THREE.Vector3(0, .595, -.098);
+  // Follow the actual rigid garment shell once at assembly. A short tie rests
+  // over the shoulders and upper chest, rather than forming a floating neck
+  // hoop directly under the helmet. These samples share the torso's frame.
+  const garment = torso.getObjectByName('tailored-garment');
+  const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), direction = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  torso.updateWorldMatrix(true, true);
+  const onGarment = (angle: number) => {
+    const y = .535 - Math.sin(angle) * .022;
+    const outward = new THREE.Vector3(-Math.cos(angle), 0, -Math.sin(angle));
+    const point = outward.clone().multiplyScalar(.4); point.y = y;
+    if (garment instanceof THREE.Mesh) {
+      origin.copy(point); torso.localToWorld(origin);
+      center.set(0, y, 0); torso.localToWorld(center);
+      direction.subVectors(center, origin).normalize(); ray.set(origin, direction);
+      const hit = ray.intersectObject(garment, false)[0];
+      if (hit) {
+        torso.worldToLocal(hit.point);
+        return hit.point.addScaledVector(outward, .004);
+      }
+    }
+    // Small isolated test/preview torsos may have no garment mesh.
+    point.set(outward.x * .26, y, outward.z * .13);
+    return point.addScaledVector(outward, .004);
+  };
+  const shoulderTie = [left];
+  for (let sample = 0; sample <= 24; sample++) shoulderTie.push(onGarment(Math.PI * sample / 24));
+  shoulderTie.push(right);
+  const knot = shoulderTie[13].clone();
   const tie = (name: string, points: THREE.Vector3[]) => {
-    const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 14, .0045, 5, false), fabric);
+    const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 40, .0025, 5, false), fabric);
     cord.name = name; hardware.add(cord);
   };
-  tie('flag-eyelet-connecting-tie', [left, new THREE.Vector3(-.258, .572, .04),
-    new THREE.Vector3(-.118, .625, .012), new THREE.Vector3(-.075, .609, -.076), knot,
-    new THREE.Vector3(.075, .609, -.076), new THREE.Vector3(.118, .625, .012),
-    new THREE.Vector3(.258, .572, .04), right]);
+  tie('flag-eyelet-connecting-tie', shoulderTie);
   tie('flag-tie-loop', [knot, knot.clone().add(new THREE.Vector3(.02, .009, -.008)),
     knot.clone().add(new THREE.Vector3(.019, -.009, -.009)), knot]);
   tie('flag-tie-tail', [knot, knot.clone().add(new THREE.Vector3(-.003, -.024, -.004)),
     knot.clone().add(new THREE.Vector3(.009, -.04, .002))]);
-  const center = new THREE.Mesh(new THREE.SphereGeometry(.008, 8, 6), fabric);
-  center.name = 'flag-cape-knot'; center.position.copy(knot); center.scale.set(1.3, .8, 1);
-  hardware.add(center); mesh.add(hardware);
+  const knotMesh = new THREE.Mesh(new THREE.SphereGeometry(.006, 8, 6), fabric);
+  knotMesh.name = 'flag-cape-knot'; knotMesh.position.copy(knot); knotMesh.scale.set(1.3, .8, 1);
+  hardware.add(knotMesh); mesh.add(hardware);
 }
 
 /** Uses the central catalog image directly, never a replacement or recoloured print. */
@@ -400,7 +436,7 @@ export function addFlagCape(torso: THREE.Group, product: Product, loadTexture: T
   const mesh = new THREE.Mesh(createFlagCapeGeometry(), material);
   mesh.name = 'pfusch-flag-cape'; mesh.userData.productId = product.id;
   mesh.castShadow = false; mesh.receiveShadow = false;
-  addTiedEyelets(mesh);
+  addTiedEyelets(mesh, torso);
   torso.add(mesh);
   return { mesh, ...createFlagCapeMotion(mesh) };
 }

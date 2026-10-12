@@ -21,3 +21,25 @@
   right: 1.2%;
   bottom: 8%;
 }
+.pfusch-letter-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.pfusch-letter-row { display: flex; gap: 7px; }
+.pfusch-letter-row > b { color: #a6a6a3; font-weight: 700; }
+.pfusch-letter-row > b[data-collected="true"] { color: #f5f5f1; }
+.pfusch-daily-task .sign-set-v38 {
+  width: 100%;
+  max-width: 260px;
+  margin: 18px auto 14px;
+  padding: 0;
+  background: transparent;
+}
+.pfusch-daily-task .sign-set-v38 canvas { min-height: 0; max-height: none; }
+.pfusch-daily-task .pfusch-letter-progress { margin-top: 12px; font-size: 15px; }
+.pfusch-daily-task .pfusch-letter-row { gap: 14px; }

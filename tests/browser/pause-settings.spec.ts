@@ -22,6 +22,22 @@ test('settings retain the paused ride, accept controls and return to pause', asy
   await page.getByRole('button', { name: 'EINSTELLUNGEN', exact: true }).click();
   const settings = page.getByRole('dialog');
   await expect(settings.getByRole('heading', { name: 'EINSTELLUNGEN.', exact: true })).toBeVisible();
+  // The later mobile .standard-page.narrow stylesheet used to turn the inner
+  // page into a non-scrolling overflow:auto container. Its overscroll boundary
+  // trapped touch and wheel input even though keyboard scrolling still worked.
+  expect(await settings.locator('.standard-page').evaluate(node => getComputedStyle(node).overflowY)).toBe('visible');
+  const touch = await page.context().newCDPSession(page);
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 650 }] });
+  for (let step = 1; step <= 8; step++) {
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: 650 - step * 30 }] });
+    await page.waitForTimeout(35);
+  }
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(() => settings.evaluate(node => node.scrollTop)).toBeGreaterThan(20);
+  await expect(ride).toHaveAttribute('data-phase', 'paused');
+  await expect(ride).toHaveAttribute('data-distance', distance!);
+  await settings.evaluate(node => { node.scrollTop = 0; });
+  await touch.detach();
   await settings.getByRole('radio', { name: 'Wischen', exact: true }).check();
   await page.keyboard.press('p');
   await settings.getByRole('switch', { name: /Performance-Modus/ }).uncheck();

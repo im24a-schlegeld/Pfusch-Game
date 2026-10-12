@@ -11,6 +11,43 @@ const ride = () => {
 };
 
 describe('PFUSCH road sign pickups', () => {
+  it('chooses different first letters from the replay seed without consuming traffic randomness', () => {
+    const firstLetters = [];
+    for (let seed = 0; seed < SIGN_IDS.length; seed++) {
+      const engine = new Engine(BIKES[0], seed);
+      const untouched = new Engine(BIKES[0], seed);
+      expect(untouched.random()).toBe(((Math.imul(1664525, seed) + 1013904223) >>> 0) / 4294967296);
+      engine.start();
+      engine.distance = 320;
+      engine.score = 900;
+      for (let count = 0; count < 120 && !engine.signs.some(sign => sign.active); count++) engine.advance(STEP);
+      const pickup = engine.signs.find(sign => sign.active);
+      expect(pickup?.id).toBe(SIGN_IDS[seed]);
+      firstLetters.push(pickup?.id);
+      const replay = new Engine(BIKES[0], seed);
+      replay.start(); replay.distance = 320; replay.score = 900;
+      for (let count = 0; count < engine.fixedTicks; count += 2) replay.advance(STEP * 2);
+      expect(replay.signs).toEqual(engine.signs);
+      expect(replay.obstacles).toEqual(engine.obstacles);
+    }
+    expect(firstLetters).toEqual(SIGN_IDS);
+  });
+
+  it('retains each pickup identity within one frame and bounds the event history to eight slots', () => {
+    const engine = ride();
+    for (const id of SIGN_IDS) engine.spawnSign(id, 0, 0);
+    engine.advance(STEP);
+    expect(SIGN_IDS.map((_, index) => engine.signPickupId(index + 1))).toEqual(SIGN_IDS);
+    engine.collectedSigns = 0;
+    for (const id of SIGN_IDS) engine.spawnSign(id, 0, 0);
+    engine.advance(STEP);
+    expect(engine.signPickupSerial).toBe(12);
+    expect(engine.signPickupId(4)).toBeNull();
+    expect(engine.signPickupId(5)).toBe('C');
+    expect(engine.signPickupId(12)).toBe('H');
+    expect(engine.signPickupId(0)).toBeNull();
+    expect(engine.signPickupId(1.5)).toBeNull();
+  });
   it('collects six distinct signs once, rewards the complete set and keeps it complete', () => {
     const engine = ride();
     let expectedMask = 0;
@@ -101,6 +138,7 @@ describe('PFUSCH road sign pickups', () => {
         engine.collectedSigns,
         engine.signSetCount,
         engine.signPickupSerial,
+        SIGN_IDS.map((_, index) => engine.signPickupId(index + 1)),
         engine.obstacles,
       ];
     });

@@ -33,6 +33,8 @@ import {
 import { Coin, ScreenHeading, XpBar, fmt } from './shared';
 import { dayKey, normalizeLeaderboardName, refreshDaily } from '../domain/progression';
 import { dailyChallengesForDate } from '../domain/dailyChallenges';
+import { dailySignMask } from '../domain/dailySigns';
+import SignProgress from './SignProgress';
 import { useTouchInput } from './useTouchInput';
 import './ride-touch-controls.css';
 interface Base {
@@ -51,7 +53,7 @@ export function Challenges({
     return () => window.clearTimeout(timer);
   }, [date]);
   const daily = refreshDaily(player, date).challenges;
-  const challenges = dailyChallengesForDate(date);
+  const challenges = dailyChallengesForDate(date).sort((a, b) => Number(b.stat === 'signs') - Number(a.stat === 'signs'));
   const completed = challenges.filter((challenge) => daily.claimed.includes(challenge.id)).length;
   const remaining = challenges.filter((challenge) => !daily.claimed.includes(challenge.id));
   return (
@@ -77,11 +79,12 @@ export function Challenges({
           const value = Math.max(0, Math.min(c.target, daily.values[c.id] ?? 0));
           const complete = daily.claimed.includes(c.id);
           const Icon = c.stat === 'runs' ? Repeat2 : c.stat === 'distance' ? Route : c.stat === 'nearMisses' ? Zap : Target;
-          const unit = c.stat === 'runs' ? 'Fahrten' : c.stat === 'distance' || c.stat === 'wheelie' ? 'm' : c.stat === 'nearMisses' ? 'knappe Manöver' : c.stat === 'score' ? 'Punkte' : c.stat === 'signs' ? 'Schilder' : 'Sprünge';
+          const unit = c.stat === 'runs' ? 'Fahrten' : c.stat === 'distance' || c.stat === 'wheelie' ? 'm' : c.stat === 'nearMisses' ? 'knappe Manöver' : c.stat === 'score' ? 'Punkte' : c.stat === 'signs' ? 'Zeichen' : 'Sprünge';
           return (
             <article
               key={c.id}
-              className={`challenge-card ${complete ? 'complete' : ''}`}
+              className={`challenge-card ${complete ? 'complete' : ''} ${c.stat === 'signs' ? 'pfusch-daily-task' : ''}`}
+              data-testid={c.stat === 'signs' ? 'daily-pfusch-task' : undefined}
             >
               <div className="challenge-top">
                 <span>0{i + 1}</span>
@@ -89,7 +92,8 @@ export function Challenges({
               </div>
               <h2>{c.title}</h2>
               <p>{c.description}</p>
-              <div className="challenge-count">
+              {c.stat === 'signs' && <SignProgress mask={dailySignMask(daily, date)} />}
+              {c.stat !== 'signs' && <><div className="challenge-count">
                 <b>{fmt(value)}</b>
                 <span>/ {fmt(c.target)} {unit}</span>
               </div>
@@ -97,9 +101,11 @@ export function Challenges({
                 value={(value / c.target) * 100}
                 aria-label={`${c.title} Fortschritt`}
               />
-              <p className="mission-remaining">{complete ? 'Belohnung gutgeschrieben.' : `Noch ${fmt(c.target - value)} ${unit}.`}</p>
+              </>}
+              <p className="mission-remaining">{complete ? 'Belohnung gutgeschrieben.' : c.stat === 'signs' ? 'Jedes Zeichen einmal · über alle heutigen Fahrten.' : `Noch ${fmt(c.target - value)} ${unit}.`}</p>
               <div className="challenge-reward">
-                <span><Sparkles size={15} aria-hidden="true" /> +{c.xp} XP</span>
+                {c.xp > 0 && <span><Sparkles size={15} aria-hidden="true" /> +{c.xp} XP</span>}
+                {c.stat === 'signs' && <span>+45 Punkte je Zeichen</span>}
                 <Coin value={c.coins} />
                 {complete && <b>ERHALTEN</b>}
               </div>
@@ -108,7 +114,7 @@ export function Challenges({
         })}
       </div>
       <div className="challenge-footer">
-        <p>Signs zählen direkt beim Einsammeln. Die anderen Aufgaben werden nach einer Fahrt gutgeschrieben.</p>
+        <p>PFUSCH zählt direkt beim Einsammeln und bringt einmal pro Tag 120 Coins. Die anderen Aufgaben werden nach einer Fahrt gutgeschrieben.</p>
         <button className="button primary" onClick={start}>
           FAHRT STARTEN <ArrowRight />
         </button>
@@ -509,7 +515,7 @@ export function SettingsScreen({
           </span>
         </div>
         <p>
-          {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Schilder geben Punkte und zählen zur täglichen Signs-Aufgabe.
+          {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Jedes PFUSCH-Zeichen bringt 45 Punkte. Sammle täglich P, F, U, S, C und H für 120 Coins.
         </p>
       </section>
       <footer className="settings-section">

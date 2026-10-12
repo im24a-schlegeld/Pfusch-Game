@@ -1,14 +1,16 @@
 import { DAILY_CHALLENGE_POOL } from './config.js';
 import type { ChallengeDefinition, ChallengeProgress } from './types';
+import { SIGN_IDS, type SignId } from '../game/signCollectibles.js';
 
 const DAY_MS = 86_400_000;
 const slots = ['daily-rides', 'daily-skill', 'daily-focus', 'daily-distance'] as const;
 const legacySlots = ['three-rides', 'one-wheel', 'close-call', 'night-shift'] as const;
 export const DAILY_SIGN_CHALLENGE: ChallengeDefinition = {
-  id: 'daily-signs', title: 'Schilder sammeln', description: 'Sammle heute 6 Schilder',
+  id: 'daily-signs', title: 'PFUSCH sammeln', description: 'Sammle heute P, F, U, S, C und H.',
   stat: 'signs', target: 6, coins: 120, xp: 0, cadence: 'daily',
 };
-export const DAILY_SIGN_EVENT_PREFIX = 'daily-signs:event:';
+export const DAILY_SIGN_EVENT_PREFIX = 'daily-pfusch:event:';
+export const dailySignLetterKey = (id: SignId) => `daily-pfusch:${id}`;
 
 /** Run UUID plus serial stays below the server backup's 160-character key bound. */
 export function dailySignEventKey(eventId: string): string | null {
@@ -66,8 +68,27 @@ export function normalizeDailyProgress(progress: ChallengeProgress, date: string
     if (wasClaimed && !claimed.includes(mission.id)) claimed = [...claimed, mission.id];
   }
   const signId = DAILY_SIGN_CHALLENGE.id, target = DAILY_SIGN_CHALLENGE.target;
+  // Explicit schema-1 migration: the old counter never stored letter identity.
+  // Completed payouts remain completed; partial counts cannot invent letters.
+  const signClaimed = claimed.includes(signId);
+  let letterCount = 0;
+  for (const id of SIGN_IDS) {
+    const key = dailySignLetterKey(id);
+    if (signClaimed || values[key] === 1) {
+      letterCount++;
+      if (values[key] !== 1) values = { ...values, [key]: 1 };
+    } else if (values[key] !== undefined) {
+      if (values === progress.values) values = { ...values };
+      delete values[key];
+    }
+  }
   let eventCount = 0;
   for (const key of Object.keys(values)) {
+    if (key.startsWith('daily-signs:event:')) {
+      if (values === progress.values) values = { ...values };
+      delete values[key];
+      continue;
+    }
     if (!key.startsWith(DAILY_SIGN_EVENT_PREFIX)) continue;
     if (dailySignEventKey(key.slice(DAILY_SIGN_EVENT_PREFIX.length)) === key && values[key] === 1 && eventCount < target) {
       eventCount++;
@@ -76,10 +97,9 @@ export function normalizeDailyProgress(progress: ChallengeProgress, date: string
       delete values[key];
     }
   }
-  if (values[signId] !== undefined || eventCount > 0 || claimed.includes(signId)) {
+  if (values[signId] !== undefined || letterCount > 0 || eventCount > 0 || claimed.includes(signId)) {
     const value = values[signId];
-    const count = claimed.includes(signId) ? target : Math.max(eventCount,
-      Number.isFinite(value) ? Math.max(0, Math.min(target, Math.floor(value))) : 0);
+    const count = letterCount;
     if (value !== count) values = { ...values, [signId]: count };
   }
   return values === progress.values && claimed === progress.claimed ? progress : { date, values, claimed };
