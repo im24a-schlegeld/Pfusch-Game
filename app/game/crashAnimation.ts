@@ -157,7 +157,7 @@ function chassisPose(
       initialPitch * (1 - fall) + pitchImpulse * impact * (1 - fall * 0.4),
     travel:
       initialTravel * (1 - fall) +
-      (motion.direction === 'front' ? -0.018 : 0.01) * impact * severity,
+      (motion.direction === 'front' ? 0.018 : 0.01) * impact * severity,
   };
 }
 

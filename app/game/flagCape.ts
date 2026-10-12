@@ -14,6 +14,10 @@ type TextureFactory = (url: string) => THREE.Texture;
 const clamp = (value: number | undefined, min: number, max: number) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
+const SIDE_FOLLOW = .8;
+const SIDE_FORCE = .18;
+const SIDE_RESPONSE = 1 - Math.exp(-1 / (60 * .18));
+const MOTION_DAMPING = .92;
 // The cloth's upper edge follows the rear shoulders below the folded hood.
 // Only the light eyelet ties go around the neck; the fabric cannot climb
 // into the helmet opening as a fully wrapped neck loop could.
@@ -122,6 +126,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   const down = new THREE.Vector3(), back = new THREE.Vector3(), force = new THREE.Vector3();
   const point = new THREE.Vector3();
   let phase = 0, remainder = 0, hasWorld = false, hasBag = false, lastLanding = 0;
+  let lateralAcceleration = 0;
   let scaleChanged = false;
   let reducedKey = '', wasReduced = false;
   // A conservative fit around the real garment loft, not an oversized bubble
@@ -220,6 +225,13 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       }
       if (hasWorld && preserveInertia && !scaleChanged) {
         rebase.multiplyMatrices(inverse, lastWorld);
+        // A rapid lane move is exaggerated game motion. Carry most of that
+        // sideways translation with the rider instead of whipping the cloth
+        // through the whole lane. Preserve rotation, jumps and forward inertia.
+        const sideways = (lastWorld.elements[12] - world.elements[12]) * SIDE_FOLLOW;
+        rebase.elements[12] -= inverse.elements[0] * sideways;
+        rebase.elements[13] -= inverse.elements[1] * sideways;
+        rebase.elements[14] -= inverse.elements[2] * sideways;
         for (let vertex = 0; vertex < points.length / 3; vertex++) {
           if (cloth.pinned[vertex]) continue;
           const i = vertex * 3;
@@ -284,7 +296,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     cloth.previous.set(points);
   };
   const reset = () => {
-    phase = remainder = lastLanding = 0; hasWorld = false; reducedKey = ''; wasReduced = false;
+    phase = remainder = lastLanding = lateralAcceleration = 0; hasWorld = false; reducedKey = ''; wasReduced = false;
     if (!frame(false)) return;
     seed(); settle(0); publish();
   };
@@ -294,11 +306,11 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     if (!frame(!reduced)) return;
     // Imported bikes finish applying their inverse rider scale after assembly.
     // That construction transform is not a physical movement or an impulse.
-    if (scaleChanged) { if (!reduced) { seed(); settle(0); } reducedKey = ''; }
+    if (scaleChanged) { if (!reduced) { seed(); settle(0); } reducedKey = ''; lateralAcceleration = 0; }
     if (reduced) {
       const key = [down.x, down.y, down.z, speed, hasBag ? 1 : 0, ...torsoToBike.elements].map(value => Math.round(value * 10000)).join(',');
       if (!wasReduced || key !== reducedKey) { seed(); settle(speed); publish(); reducedKey = key; }
-      wasReduced = true; remainder = 0; lastLanding = clamp(input.landing, 0, 1);
+      wasReduced = true; remainder = lateralAcceleration = 0; lastLanding = clamp(input.landing, 0, 1);
       return;
     }
     wasReduced = false;
@@ -309,18 +321,22 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       const i = vertex * 3;
       cloth.previous[i] += down.x * impulse; cloth.previous[i + 1] += down.y * impulse; cloth.previous[i + 2] += down.z * impulse;
     }
-    force.copy(down).multiplyScalar(9.81);
     const wind = Math.min(24, speed * speed * .008);
-    point.set(-clamp(input.lateralAcceleration, -20, 20), 0, clamp(input.longitudinalAcceleration, -20, 20)).transformDirection(inverse);
-    // Acceleration amplitudes must survive the coordinate transform.
-    const acceleration = Math.hypot(clamp(input.lateralAcceleration, -20, 20), clamp(input.longitudinalAcceleration, -20, 20));
-    force.addScaledVector(point, acceleration * .6);
+    const lateralTarget = clamp(input.lateralAcceleration, -20, 20);
+    const forwardForce = clamp(input.longitudinalAcceleration, -20, 20) * .6;
     // Visual cloth never catches up a long browser stall: at most two small
     // simulation steps per rendered frame, with fixed buffers and no new mesh.
     remainder += Math.min(dt, 1 / 30);
     while (remainder + 1e-10 >= 1 / 60) {
       remainder = Math.max(0, remainder - 1 / 60); phase += 1 / 60;
-      cloth.step(force.x, force.y, force.z, back.x * wind, back.y * wind, back.z * wind, phase, speed / 60 * 2, .96, collide);
+      // Filter inside the fixed cloth step, so render rate cannot change how
+      // an acceleration spike or its release feeds the fabric.
+      lateralAcceleration += (lateralTarget - lateralAcceleration) * SIDE_RESPONSE;
+      point.set(-lateralAcceleration * SIDE_FORCE, 0, forwardForce);
+      const acceleration = point.length();
+      point.transformDirection(inverse);
+      force.copy(down).multiplyScalar(9.81).addScaledVector(point, acceleration);
+      cloth.step(force.x, force.y, force.z, back.x * wind, back.y * wind, back.z * wind, phase, speed / 60 * 2, MOTION_DAMPING, collide);
     }
     publish();
   };

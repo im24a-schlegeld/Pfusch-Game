@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DAILY_SIGN_CHALLENGE, DAILY_SIGN_EVENT_PREFIX, dailyChallengesForDate, normalizeDailyProgress } from '../app/domain/dailyChallenges';
 import { recordDailySign } from '../app/domain/dailySigns';
 import { dayKey, finishRun, newPlayer, refreshDaily } from '../app/domain/progression';
@@ -13,6 +13,8 @@ const run: RunStats = { id: 'sign-ride', score: 270, distance: 0, seconds: 10,
   bestCombo: 1, nearMisses: 0, jumps: 0, wheelieMeters: 0, maxSpeed: 40, cause: 'Traffic collision' };
 
 describe('immediately saved UTC sign collection', () => {
+  afterEach(() => { vi.useRealTimers(); });
+
   it('adds the same six-sign task daily without changing the rotating four slots', () => {
     const before = dailyChallengesForDate('2026-10-09');
     const after = dailyChallengesForDate(date);
@@ -50,6 +52,10 @@ describe('immediately saved UTC sign collection', () => {
   });
 
   it('keeps marker keys, immediate coins and claims through local and Shopify backup round trips', () => {
+    // Decoding intentionally discards an earlier UTC day's task progress.
+    // Keep this persistence case on its fixture day regardless of execution date.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(`${date}T12:00:00Z`));
     let player = fresh();
     for (let serial = 1; serial <= 6; serial++) {
       const event = `930a2188-157c-4ce6-a337-7ac46ccf1503:${serial}`;

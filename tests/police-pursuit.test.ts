@@ -194,16 +194,20 @@ describe('police pursuit gameplay', () => {
 
   it('settles an ordinary collision during a pursuit once without converting the NPC to police', () => {
     const engine = startPursuit();
+    const patrolPose = { ...engine.policeVehicle };
     const obstacle = engine.spawn('van', 0, 0)!;
     frame(engine, [obstacle]);
     expect(engine.phase).toBe('crashed');
     expect(engine.crashObstacle).toBe(obstacle);
     expect(obstacle.police).toBe(false);
     expect(engine.policeChase).toBe(false);
-    expect(engine.policeVehicle.visible).toBe(false);
+    expect(engine.policeRamRemaining).toBe(0);
+    expect(engine.policeVehicle).toEqual({ ...patrolPose, phase: 'idle' });
+    expect(engine.policeVehicle.visible).toBe(true);
     const serial = engine.policeOutcomeSerial;
     for (let count = 0; count < 120; count++) engine.advance(STEP);
     expect(engine.policeOutcomeSerial).toBe(serial);
+    expect(engine.policeVehicle).toEqual({ ...patrolPose, phase: 'idle' });
     expect(engine.crashObstacle).toBe(obstacle);
   });
 
@@ -581,6 +585,15 @@ describe('speed camera pursuit integration', () => {
     for (let count = 0; count < 10; count++) frame(engine);
     expect(engine.blitzerFlashSerial).toBe(1);
     expect(engine.policeOutcomeSerial).toBe(0);
+    const hiddenPolicePose = { ...engine.policeVehicle };
+    const obstacle = engine.spawn('van', 0, 0)!;
+    frame(engine, [obstacle]);
+    expect(engine.phase).toBe('crashed');
+    expect(engine.policeChase).toBe(false);
+    expect(engine.policeRamRemaining).toBe(0);
+    expect(engine.policeVehicle).toEqual({ ...hiddenPolicePose, phase: 'idle' });
+    expect(engine.policeVehicle.visible).toBe(false);
+    expect(engine.policeOutcomeSerial).toBe(1);
   });
 
   it('does not restart the same pursuit when a patrol and camera meet in one frame', () => {

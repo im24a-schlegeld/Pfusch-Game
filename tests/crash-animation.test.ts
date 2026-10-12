@@ -106,6 +106,10 @@ describe('bounded crash presentation', () => {
       const bike = makeBike({ ...newPlayer(), bike: '450' }, []);
       const scene = new Scene();
       scene.add(bike.root);
+      bike.root.updateMatrixWorld(true);
+      const restingFrontAxle = bike.body.worldToLocal(
+        bike.wheels[0].getWorldPosition(new Vector3()),
+      ).y;
       const animation = createCrashAnimation(bike, {
         cause: 'Traffic collision',
         pitch: 0,
@@ -115,14 +119,21 @@ describe('bounded crash presentation', () => {
         impactSpeed: speed,
       });
       animation.advance(0.1, true);
+      bike.root.updateMatrixWorld(true);
       return {
         pitch: bike.body.rotation.x,
         yaw: Math.abs(bike.root.rotation.y),
+        frontCompression: bike.body.worldToLocal(
+          bike.wheels[0].getWorldPosition(new Vector3()),
+        ).y - restingFrontAxle,
       };
     };
     const front = motionAtImpact('front', 28);
     const rear = motionAtImpact('rear', 28);
     expect(front.pitch).toBeLessThan(-0.15);
+    // The axle rises relative to the chassis when the imported fork compresses.
+    // Overall nose dive alone would also pass with the fork wrongly extending.
+    expect(front.frontCompression).toBeGreaterThan(0.002);
     expect(rear.pitch).toBeGreaterThan(0.1);
     expect(front.yaw).toBeGreaterThan(motionAtImpact('front', 5).yaw * 1.4);
   });

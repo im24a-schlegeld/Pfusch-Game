@@ -454,8 +454,9 @@ export class Engine {
       this.policeOutcomeSerial++;
     }
     if (this.policeVehicle.phase === 'chasing') {
+      // End pursuit logic without removing an existing car from the crash scene.
+      // Camera-triggered cars retain their existing hidden state as well.
       this.policeVehicle.phase = 'idle';
-      this.policeVehicle.visible = false;
     }
     this.policeJumpTarget = null;
     this.crashObstacle = obstacle;

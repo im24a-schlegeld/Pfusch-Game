@@ -220,6 +220,24 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(pointAt(mesh, 0).applyMatrix4(mesh.matrixWorld).distanceTo(worldPin)).toBeGreaterThan(.05);
     expect(pinIndices.map(vertex => pointAt(mesh, vertex).toArray())).toEqual(pins);
   });
+  it('softens lateral rider transport without suppressing vertical cloth inertia', () => {
+    const { torso, mesh, update } = cape();
+    const hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1) + FLAG_CAPE.columns / 2;
+    mesh.updateWorldMatrix(true, false);
+    const before = pointAt(mesh, hem).applyMatrix4(mesh.matrixWorld);
+    const pins = pinIndices.map(vertex => pointAt(mesh, vertex).toArray());
+    torso.position.x += .4;
+    torso.position.y += .2;
+    // Isolate frame transport from forces: the next fixed cloth step has not
+    // run yet. A lane change should carry most of the flag along with the rider.
+    update({ speed: 0 }, 1 / 120);
+    mesh.updateWorldMatrix(true, false);
+    const after = pointAt(mesh, hem).applyMatrix4(mesh.matrixWorld);
+    expect(after.x - before.x).toBeGreaterThan(.25);
+    expect(after.x - before.x).toBeLessThan(.39);
+    expect(Math.abs(after.y - before.y)).toBeLessThan(1e-6);
+    expect(pinIndices.map(vertex => pointAt(mesh, vertex).toArray())).toEqual(pins);
+  });
   it('does not lift cloth onto the height of a distant finite seat volume', () => {
     const body = new Group(), torso = new Group();
     body.userData.importedBike = '125';
