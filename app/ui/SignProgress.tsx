@@ -4,7 +4,7 @@ import { COMPLETE_SIGN_MASK } from '../game/signSet';
 import { SIGN_IDS } from '../game/signCollectibles';
 import StopSign from './StopSign';
 import './signs-lockup.css';
-export default function SignProgress({ mask }: { mask: number }) {
+export default function SignProgress({ mask, showCaption = true }: { mask: number; showCaption?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null),
     [art, setArt] = useState<SignArtwork | null>(null),
     [failed, setFailed] = useState(false);
@@ -55,12 +55,12 @@ export default function SignProgress({ mask }: { mask: number }) {
         <canvas className="signs-lockup-artwork" ref={ref} width={660} height={220} aria-hidden="true" />
         <StopSign active={complete} className="v42-sign-stop signs-lockup-stop" />
       </span>
-      <figcaption className="pfusch-letter-progress">
+      {showCaption && <figcaption className="pfusch-letter-progress">
         <span className="pfusch-letter-row" aria-hidden="true">
           {SIGN_IDS.map((id, index) => <b key={id} data-collected={!!(mask & (1 << index))}>{id}</b>)}
         </span>
         <span>{count} / 6</span>
-      </figcaption>
+      </figcaption>}
     </figure>
   );
 }

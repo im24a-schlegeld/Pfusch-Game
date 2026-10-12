@@ -56,8 +56,7 @@ export default function RideHud({
         <div className="v42-top-actions">
           <div className="v42-sign-slot">
             <span className="v42-daily-signs">
-              <small>PFUSCH · HEUTE</small>
-              <SignProgress mask={dailySignMask} />
+              <SignProgress mask={dailySignMask} showCaption={false} />
             </span>
           </div>
           <button
