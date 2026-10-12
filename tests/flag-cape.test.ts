@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Raycaster, Texture, TextureLoader, Vector3 } from 'three';
+import { BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Raycaster, Texture, TextureLoader, Vector3 } from 'three';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { addFlagCape, FLAG_CAPE, flagCapeUv } from '../app/game/flagCape';
@@ -68,7 +68,7 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(FLAG_CAPE.length / FLAG_CAPE.width).toBeCloseTo(1.04 / .626);
     expect(flagCapeUv({ ...product.preview!.artwork!, crop: { x: 0, y: 0, width: 3000, height: 1 } })).toBeNull();
   });
-  it('supports the original eyelet corners behind the shoulders and ties them at the chest', () => {
+  it('supports the original eyelet corners and joins them to a narrow closed neck tie', () => {
     const { mesh } = cape();
     const positions = mesh.geometry.getAttribute('position');
     const last = FLAG_CAPE.columns;
@@ -87,15 +87,17 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect(lastEye.position.x - positions.getX(last)).toBeLessThan(.005);
     expect(mesh.getObjectByName('flag-cape-knot')).toBeDefined();
     expect(mesh.getObjectByName('flag-cape-knot')!.position.x).toBeCloseTo(0, 8);
-    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.61);
-    expect(mesh.getObjectByName('flag-cape-knot')!.position.z).toBeLessThan(0);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeGreaterThan(.58);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.z).toBeGreaterThan(0);
     const tie = mesh.getObjectByName('flag-eyelet-connecting-tie') as Mesh;
     expect(tie).toBeDefined();
     tie.geometry.computeBoundingBox();
-    // A tie can rest over shoulders/chest; it must not form a high neck hoop
-    // immediately underneath the helmet's chin opening.
-    expect(tie.geometry.boundingBox!.max.y).toBeLessThan(.56);
-    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.55);
+    expect(tie.geometry.boundingBox!.max.y).toBeLessThan(.64);
+    const neckTie = mesh.getObjectByName('flag-neck-tie') as Mesh;
+    neckTie.geometry.computeBoundingBox();
+    expect(neckTie.geometry.boundingBox!.max.x).toBeLessThan(.125);
+    expect(neckTie.geometry.boundingBox!.min.x).toBeGreaterThan(-.125);
+    expect(mesh.getObjectByName('flag-cape-knot')!.position.y).toBeLessThan(.61);
   });
   it('keeps the same material dimensions on all five bikes after rest and riding', () => {
     const loader = vi.spyOn(TextureLoader.prototype, 'load').mockImplementation(() => new Texture());
@@ -154,6 +156,57 @@ describe('original PFUSCH flag as a neck cape', () => {
       }
       expect(checked).toBeGreaterThan(3);
     } finally { loader.mockRestore(); }
+  });
+  it('routes the narrow neck tie outside the real collar and folded hood', () => {
+    const loader = vi.spyOn(TextureLoader.prototype, 'load').mockImplementation(() => new Texture());
+    try {
+      const hoodie = catalog.find(item => item.handle === 'keep-up-hoodie') as Product;
+      const player = newPlayer(); player.bike = '450'; player.helmet = 'motocross';
+      player.equipped.cape = product.id; player.equipped.upper = hoodie.id;
+      const bike = makeBike(player, [product, hoodie]);
+      bike.animateRider({ wheelie: 0, steer: 0, landing: 0, bikePitch: 0 }, 1 / 60);
+      bike.animateAccessories({ speed: 0, reducedMotion: true }, 1 / 60);
+      bike.root.updateMatrixWorld(true);
+      const flag = bike.root.getObjectByName('pfusch-flag-cape') as Mesh;
+      const torso = flag.parent!;
+      const cord = flag.getObjectByName('flag-neck-tie') as Mesh;
+      const surfaces = ['tailored-garment', 'stand-collar', 'folded-hood'].flatMap(name => bike.root.getObjectsByProperty('name', name)) as Mesh[];
+      const centers = (cord.geometry as import('three').TubeGeometry).parameters.path;
+      const helmet = bike.root.getObjectByName('motocross-helmet')!;
+      const ray = new Raycaster(), radial = new Vector3(), origin = new Vector3(), target = new Vector3();
+      const up = new Vector3(0, 1, 0).transformDirection(torso.matrixWorld);
+      let checked = 0;
+      for (let sample = 1; sample < 100; sample++) {
+        const point = centers.getPoint(sample / 100);
+        radial.set(point.x, 0, point.z).normalize();
+        origin.copy(radial).multiplyScalar(.65); origin.y = point.y; torso.localToWorld(origin);
+        target.set(0, point.y, 0); torso.localToWorld(target);
+        ray.set(origin, target.sub(origin).normalize());
+        const hit = ray.intersectObjects(surfaces, false)[0];
+        if (!hit) continue;
+        const surface = torso.worldToLocal(hit.point);
+        expect(Math.hypot(point.x, point.z), `cord sample ${sample}`)
+          .toBeGreaterThan(Math.hypot(surface.x, surface.z) + .001);
+        ray.set(torso.localToWorld(new Vector3(point.x, 0, point.z)), up);
+        const helmetHit = ray.intersectObject(helmet, true)[0];
+        if (helmetHit) expect(point.y + .004, `tie below helmet sample ${sample}`)
+          .toBeLessThan(torso.worldToLocal(helmetHit.point).y);
+        checked++;
+      }
+      expect(checked).toBeGreaterThan(20);
+    } finally { loader.mockRestore(); }
+  });
+  it('blows the hem rearward at ordinary riding speed while speed zero still falls under gravity', () => {
+    const rest = cape(), ride = cape();
+    for (let step = 0; step < 360; step++) {
+      rest.update({ speed: 0 }, 1 / 60); ride.update({ speed: 22 }, 1 / 60);
+    }
+    const hem = FLAG_CAPE.rows * (FLAG_CAPE.columns + 1) + FLAG_CAPE.columns / 2;
+    rest.mesh.updateWorldMatrix(true, false); ride.mesh.updateWorldMatrix(true, false);
+    const still = pointAt(rest.mesh, hem).applyMatrix4(rest.mesh.matrixWorld);
+    const moving = pointAt(ride.mesh, hem).applyMatrix4(ride.mesh.matrixWorld);
+    expect(moving.z - still.z).toBeGreaterThan(.18);
+    expect(moving.y - still.y).toBeGreaterThan(.05);
   });
   it('keeps the eyelets and rear neck support fixed while collar fabric and hem can drape', () => {
     const { bike, torso, mesh, update } = cape();
@@ -279,6 +332,28 @@ describe('original PFUSCH flag as a neck cape', () => {
       return Array.from(controller.mesh.geometry.getAttribute('position').array);
     };
     expect(make(true)).toEqual(make(false));
+  });
+  it('keeps cloth faces outside rear plastic bodywork beyond the old seat/tail volumes', () => {
+    const body = new Group(), torso = new Group();
+    body.userData.importedBike = '450'; body.add(torso);
+    torso.position.set(0, .8, .2); torso.rotation.x = -.35;
+    const plastic = new Mesh(new BoxGeometry(.45, .08, .65), new MeshStandardMaterial());
+    plastic.position.set(0, .48, .7);
+    plastic.userData.importedPart = 'rear-black-plastic'; plastic.userData.importedRig = 'body'; body.add(plastic);
+    const { mesh, update } = addFlagCape(torso, product, () => new Texture())!;
+    update({ speed: 0, reducedMotion: true }, 1 / 60); mesh.updateWorldMatrix(true, false);
+    const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index!;
+    const center = new Vector3(), corner = new Vector3();
+    let supported = 0;
+    for (let triangle = 0; triangle < indices.count; triangle += 3) {
+      center.set(0, 0, 0);
+      for (let i = 0; i < 3; i++) center.add(corner.fromBufferAttribute(positions, indices.getX(triangle + i)));
+      center.multiplyScalar(1 / 3).applyMatrix4(mesh.matrixWorld);
+      if (Math.abs(center.x) >= .225 || center.z <= .375 || center.z >= 1.025) continue;
+      expect(center.y > .52 - .002 || center.y < .44 + .002, `cloth face ${triangle / 3}`).toBe(true);
+      if (center.y > .52 && center.y < .58) supported++;
+    }
+    expect(supported).toBeGreaterThan(2);
   });
   it('uses the current rider pose for gravity before the renderer updates world matrices', () => {
     const pending = cape(), rendered = cape();

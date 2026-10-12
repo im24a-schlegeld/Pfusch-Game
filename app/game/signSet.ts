@@ -11,8 +11,8 @@ export function nextMissingSign(
   return undefined;
 }
 export const SIGN_SCORE_MILESTONES = [900, 1800, 3000, 4500, 6500, 9000] as const;
-export const SIGN_DISTANCE_GAP = 400;
-export const SIGN_RETRY_DISTANCE = 200;
+export const SIGN_DISTANCE_GAP = 700;
+export const SIGN_RETRY_DISTANCE = 350;
 export function collectedSignCount(mask: number): number {
   let bits = mask & COMPLETE_SIGN_MASK, count = 0;
   while (bits) { count += bits & 1; bits >>>= 1; }

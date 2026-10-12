@@ -11,6 +11,36 @@ const ride = () => {
 };
 
 describe('PFUSCH road sign pickups', () => {
+  it('spaces new signs and missed-letter retries farther apart', () => {
+    const sample = (collect: boolean) => {
+      const engine = ride();
+      engine.distance = 320;
+      engine.score = 20_000;
+      const spawned: { distance: number; id: string }[] = [];
+      let hadActiveSign = false;
+      for (let frame = 0; frame < 6000 && spawned.length < 3; frame++) {
+        // Isolate sign pacing from collisions while retaining real wave timing.
+        for (const obstacle of engine.obstacles) obstacle.active = false;
+        engine.advance(STEP);
+        const sign = engine.signs.find(pickup => pickup.active);
+        if (sign && !hadActiveSign) {
+          spawned.push({ distance: engine.distance, id: sign.id });
+          sign.lane = engine.lane;
+          sign.z = collect ? 0 : -13;
+        }
+        hadActiveSign = !!sign;
+      }
+      expect(engine.phase).toBe('playing');
+      expect(spawned).toHaveLength(3);
+      return spawned;
+    };
+    const collected = sample(true), missed = sample(false);
+    for (let index = 1; index < 3; index++) {
+      expect(collected[index].distance - collected[index - 1].distance).toBeGreaterThanOrEqual(700);
+      expect(missed[index].distance - missed[index - 1].distance).toBeGreaterThanOrEqual(350);
+      expect(missed[index].id).toBe(missed[0].id);
+    }
+  });
   it('chooses different first letters from the replay seed without consuming traffic randomness', () => {
     const firstLetters = [];
     for (let seed = 0; seed < SIGN_IDS.length; seed++) {

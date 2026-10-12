@@ -174,6 +174,77 @@ const PRINT_PATHS = [
   'M 1107 65 L 1395 63 L 1400 347 L 1107 352 Z',
 ];
 const PRINT_DEPTH = [0, 1, 3, 2, 4, 5];
+interface SignPixelLayer {
+  pixels: Uint8ClampedArray;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+/** Contours identify letters, but never cut or attenuate the original alpha.
+ * Every visible print pixel belongs to one layer, including its supplied edge. */
+export function splitSignArtworkPixels(
+  width: number,
+  height: number,
+  source: Uint8ClampedArray,
+  masks: readonly Uint8ClampedArray[],
+): SignPixelLayer[] {
+  const count = width * height;
+  const owners = new Int8Array(count).fill(-1);
+  const queue = new Int32Array(count);
+  let end = 0;
+  for (let pixel = 0; pixel < count; pixel++) {
+    for (const index of PRINT_DEPTH)
+      if (masks[index]?.[pixel * 4 + 3]) owners[pixel] = index;
+    if (owners[pixel] >= 0) queue[end++] = pixel;
+  }
+  if (!end) throw new Error('Empty sign artwork contours');
+  // Multi-source nearest-contour fill restores outlines outside the approximate
+  // paths. It runs once during cached preparation, never during a ride frame.
+  const visit = (next: number, owner: number) => {
+    if (owners[next] !== -1) return;
+    owners[next] = owner;
+    queue[end++] = next;
+  };
+  for (let start = 0; start < end; start++) {
+    const pixel = queue[start], x = pixel % width, owner = owners[pixel];
+    if (x > 0) visit(pixel - 1, owner);
+    if (x + 1 < width) visit(pixel + 1, owner);
+    if (pixel >= width) visit(pixel - width, owner);
+    if (pixel + width < count) visit(pixel + width, owner);
+  }
+  // Approximate circular paths can include a thin strip of the red F/S behind
+  // them. Keep those unmistakably red original pixels with their red sign,
+  // rather than revealing a red fringe when only U or C is collected.
+  for (let pixel = 0; pixel < count; pixel++) {
+    const offset = pixel * 4, red = source[offset];
+    if ((owners[pixel] === 2 || owners[pixel] === 4) && red > 80 &&
+        red > source[offset + 1] * 1.6 && red > source[offset + 2] * 1.6)
+      owners[pixel] = (pixel % width) * 1401 / width < 580 ? 1 : 3;
+  }
+  const bounds = masks.map(() => ({ left: width, top: height, right: 0, bottom: 0 }));
+  for (let pixel = 0; pixel < count; pixel++) {
+    if (!source[pixel * 4 + 3]) continue;
+    const box = bounds[owners[pixel]], x = pixel % width, y = Math.floor(pixel / width);
+    box.left = Math.min(box.left, x);
+    box.top = Math.min(box.top, y);
+    box.right = Math.max(box.right, x + 1);
+    box.bottom = Math.max(box.bottom, y + 1);
+  }
+  const layers = bounds.map(({ left, top, right, bottom }) => {
+    const empty = right <= left || bottom <= top;
+    const x = empty ? 0 : left - 2, y = empty ? 0 : top - 2;
+    const w = empty ? 1 : right - left + 4, h = empty ? 1 : bottom - top + 4;
+    return { x, y, width: w, height: h, pixels: new Uint8ClampedArray(w * h * 4) };
+  });
+  for (let pixel = 0; pixel < count; pixel++) {
+    if (!source[pixel * 4 + 3]) continue;
+    const layer = layers[owners[pixel]];
+    const offset = ((Math.floor(pixel / width) - layer.y) * layer.width + pixel % width - layer.x) * 4;
+    for (let channel = 0; channel < 4; channel++) layer.pixels[offset + channel] = source[pixel * 4 + channel];
+  }
+  return layers;
+}
 async function suppliedPrint(): Promise<SignArtwork> {
   const source = await load('/images/artwork/signs.png');
   const width = 660,
@@ -185,38 +256,19 @@ async function suppliedPrint(): Promise<SignArtwork> {
       ctx = context(canvas);
     ctx.scale(width / 1401, height / 466);
     ctx.fill(new Path2D(path));
-    return canvas;
+    return ctx.getImageData(0, 0, width, height).data;
   });
-  const pieces = masks.map((mask, index) => {
-    const layer = makeCanvas(width, height),
-      ctx = context(layer);
-    ctx.drawImage(image, 0, 0);
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.drawImage(mask, 0, 0);
-    ctx.globalCompositeOperation = 'destination-out';
-    for (const upper of PRINT_DEPTH.slice(PRINT_DEPTH.indexOf(index) + 1))
-      ctx.drawImage(masks[upper], 0, 0);
-    // Trim the layer without stretching any artwork or its circular boundary.
-    const pixels = ctx.getImageData(0, 0, width, height).data;
-    let left = width,
-      top = height,
-      right = 0,
-      bottom = 0;
-    for (let y = 0; y < height; y++)
-      for (let x = 0; x < width; x++)
-        if (pixels[(y * width + x) * 4 + 3]) {
-          left = Math.min(left, x);
-          top = Math.min(top, y);
-          right = Math.max(right, x + 1);
-          bottom = Math.max(bottom, y + 1);
-        }
-    const canvas = makeCanvas(right - left, bottom - top);
-    context(canvas).drawImage(layer, -left, -top);
+  const sourcePixels = context(image).getImageData(0, 0, width, height).data;
+  const pieces = splitSignArtworkPixels(width, height, sourcePixels, masks).map((layer) => {
+    const canvas = makeCanvas(layer.width, layer.height), ctx = context(canvas);
+    const pixels = ctx.createImageData(canvas.width, canvas.height);
+    pixels.data.set(layer.pixels);
+    ctx.putImageData(pixels, 0, 0);
     return {
       canvas,
       dim: grayscale(canvas),
-      x: left,
-      y: top,
+      x: layer.x,
+      y: layer.y,
       width: canvas.width,
       height: canvas.height,
     };

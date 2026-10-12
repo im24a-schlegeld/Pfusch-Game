@@ -18,7 +18,7 @@ const SIDE_FOLLOW = .8;
 const SIDE_FORCE = .18;
 const SIDE_RESPONSE = 1 - Math.exp(-1 / (60 * .18));
 const MOTION_DAMPING = .92;
-const windPressure = (speed: number) => Math.min(32, speed * speed * .018);
+const windPressure = (speed: number) => Math.min(68, speed * speed * .055);
 // The cloth's upper edge follows the rear shoulders below the folded hood.
 // Only the light eyelet ties go around the neck; the fabric cannot climb
 // into the helmet opening as a fully wrapped neck loop could.
@@ -46,7 +46,7 @@ function hoodClearance(torso: THREE.Object3D | null) {
     .map(([y, x, front, rear]) => [y, x + .006, (rear - front) / 2 + .008, (rear + front) / 2]);
 }
 
-/** Finite seat/tail and rear-wheel volumes, in the actual bike's frame. */
+/** Rasterize actual rear bodywork once. Cloth contacts never raycast the bike. */
 function bikeClearance(torso: THREE.Object3D | null) {
   let body = torso;
   while (body && !body.userData.importedBike) body = body.parent;
@@ -54,34 +54,115 @@ function bikeClearance(torso: THREE.Object3D | null) {
   body.updateWorldMatrix(true, true);
   const inverse = new THREE.Matrix4().copy(body.matrixWorld).invert();
   const transform = new THREE.Matrix4(), bounds = new THREE.Box3(), point = new THREE.Vector3();
-  const seat = new THREE.Box3(), tailBox = new THREE.Box3(), wheel = new THREE.Box3();
+  const surfaceBounds = new THREE.Box3(), wheel = new THREE.Box3();
+  const triangles: number[] = [];
+  const tail = body.userData.tailContact as readonly number[] | undefined;
+  const rearStart = tail ? tail[2] - 1.05 : -.3;
   body.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
     const name = String(object.userData.importedPart ?? '');
-    const target = /seat|saddle/i.test(name) ? seat : /rearWheel/i.test(name) ? wheel : undefined;
-    if (!target) return;
+    const isWheel = object.userData.importedRig === 'rearWheel' || /rearWheel/i.test(name);
+    const isBody = object.userData.importedRig === 'body' || /seat|saddle/i.test(name);
+    if (!name || (!isWheel && !isBody)) return;
     const positions = object.geometry.getAttribute('position');
     if (!positions) return;
     // Imported part geometries can keep a shared position buffer while their
     // index selects only the seat or wheel triangles. Bounding every buffer
     // vertex makes a seat collider as tall as the complete motorcycle.
     const index = object.geometry.index;
+    transform.multiplyMatrices(inverse, object.matrixWorld);
     bounds.makeEmpty();
     for (let vertex = 0, count = index?.count ?? positions.count; vertex < count; vertex++)
-      bounds.expandByPoint(point.fromBufferAttribute(positions, index ? index.getX(vertex) : vertex));
+      bounds.expandByPoint(point.fromBufferAttribute(positions, index ? index.getX(vertex) : vertex).applyMatrix4(transform));
     if (bounds.isEmpty()) return;
-    transform.multiplyMatrices(inverse, object.matrixWorld);
-    bounds.applyMatrix4(transform);
-    target.union(bounds);
+    if (isWheel) { wheel.union(bounds); return; }
+    if (bounds.max.z < rearStart) return;
+    for (let vertex = 0, count = index?.count ?? positions.count; vertex + 2 < count; vertex += 3) {
+      const start = triangles.length;
+      let maximumZ = -Infinity;
+      for (let corner = 0; corner < 3; corner++) {
+        point.fromBufferAttribute(positions, index ? index.getX(vertex + corner) : vertex + corner).applyMatrix4(transform);
+        triangles.push(point.x, point.y, point.z); maximumZ = Math.max(maximumZ, point.z);
+      }
+      if (maximumZ < rearStart) triangles.length = start;
+      else for (let corner = 0; corner < 3; corner++) surfaceBounds.expandByPoint(point.fromArray(triangles, start + corner * 3));
+    }
   });
-  const tail = body.userData.tailContact as readonly number[] | undefined;
-  if (tail) {
-    tailBox.expandByPoint(new THREE.Vector3(tail[0] - .12, tail[1] - .045, tail[2] - .10));
-    tailBox.expandByPoint(new THREE.Vector3(tail[0] + .12, tail[1] + .015, tail[2] + .10));
+  const columns = 48, rows = 96;
+  const top = new Float32Array((columns + 1) * (rows + 1)).fill(-Infinity);
+  const bottom = new Float32Array(top.length).fill(Infinity);
+  if (!surfaceBounds.isEmpty()) {
+    surfaceBounds.min.z = Math.max(surfaceBounds.min.z, rearStart);
+    surfaceBounds.expandByScalar(.012);
+    const dx = (surfaceBounds.max.x - surfaceBounds.min.x) / columns;
+    const dz = (surfaceBounds.max.z - surfaceBounds.min.z) / rows;
+    for (let i = 0; i < triangles.length; i += 9) {
+      const ax = triangles[i], ay = triangles[i + 1], az = triangles[i + 2];
+      const bx = triangles[i + 3], by = triangles[i + 4], bz = triangles[i + 5];
+      const cx = triangles[i + 6], cy = triangles[i + 7], cz = triangles[i + 8];
+      const denominator = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+      if (Math.abs(denominator) < 1e-10) continue;
+      const x0 = Math.max(0, Math.floor((Math.min(ax, bx, cx) - surfaceBounds.min.x) / dx));
+      const x1 = Math.min(columns, Math.ceil((Math.max(ax, bx, cx) - surfaceBounds.min.x) / dx));
+      const z0 = Math.max(0, Math.floor((Math.min(az, bz, cz) - surfaceBounds.min.z) / dz));
+      const z1 = Math.min(rows, Math.ceil((Math.max(az, bz, cz) - surfaceBounds.min.z) / dz));
+      for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
+        const px = surfaceBounds.min.x + x * dx, pz = surfaceBounds.min.z + z * dz;
+        const a = ((bz - cz) * (px - cx) + (cx - bx) * (pz - cz)) / denominator;
+        const b = ((cz - az) * (px - cx) + (ax - cx) * (pz - cz)) / denominator;
+        const c = 1 - a - b;
+        if (Math.min(a, b, c) < -1e-5) continue;
+        const y = a * ay + b * by + c * cy, index = z * (columns + 1) + x;
+        top[index] = Math.max(top[index], y); bottom[index] = Math.min(bottom[index], y);
+      }
+    }
   }
-  return { body, boxes: [
-    { box: seat, wheel: false }, { box: tailBox, wheel: false }, { box: wheel, wheel: true },
-  ].filter(volume => !volume.box.isEmpty()).map(volume => ({ ...volume, box: volume.box.expandByScalar(.015) })) };
+  const wheelGroup = body.getObjectByName('rear-wheel');
+  const wheelSize = wheel.getSize(new THREE.Vector3()), wheelOffset = wheel.getCenter(new THREE.Vector3());
+  const wheelCenter = new THREE.Vector3();
+  if (wheelGroup && !wheel.isEmpty()) {
+    wheelGroup.getWorldPosition(wheelCenter).applyMatrix4(inverse);
+    wheelOffset.sub(wheelCenter);
+  }
+  const refresh = () => {
+    if (!wheelGroup || wheel.isEmpty()) return;
+    inverse.copy(body.matrixWorld).invert();
+    wheelGroup.updateWorldMatrix(true, false);
+    wheelGroup.getWorldPosition(wheelCenter).applyMatrix4(inverse).add(wheelOffset);
+    wheel.min.copy(wheelCenter).addScaledVector(wheelSize, -.5);
+    wheel.max.copy(wheelCenter).addScaledVector(wheelSize, .5);
+  };
+  const project = (point: THREE.Vector3) => {
+    let contact = false;
+    if (!surfaceBounds.isEmpty() && point.x >= surfaceBounds.min.x && point.x < surfaceBounds.max.x
+      && point.z >= surfaceBounds.min.z && point.z < surfaceBounds.max.z) {
+      const x = (point.x - surfaceBounds.min.x) / (surfaceBounds.max.x - surfaceBounds.min.x) * columns;
+      const z = (point.z - surfaceBounds.min.z) / (surfaceBounds.max.z - surfaceBounds.min.z) * rows;
+      const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
+      let height = 0, weight = 0, lower = Infinity;
+      for (let nz = 0; nz < 2; nz++) for (let nx = 0; nx < 2; nx++) {
+        const i = (iz + nz) * (columns + 1) + ix + nx;
+        if (!Number.isFinite(top[i])) continue;
+        const w = (nx ? fx : 1 - fx) * (nz ? fz : 1 - fz);
+        height += top[i] * w; weight += w; lower = Math.min(lower, bottom[i]);
+      }
+      if (weight > .05 && point.y > lower - .04 && point.y < height / weight + .014) {
+        point.y = height / weight + .014; contact = true;
+      }
+    }
+    if (!wheel.isEmpty() && point.x > wheel.min.x - .012 && point.x < wheel.max.x + .012) {
+      const cy = (wheel.min.y + wheel.max.y) / 2, cz = (wheel.min.z + wheel.max.z) / 2;
+      const ry = (wheel.max.y - wheel.min.y) / 2 + .012, rz = (wheel.max.z - wheel.min.z) / 2 + .012;
+      const dy = point.y - cy, dz = point.z - cz, radial = Math.hypot(dy / ry, dz / rz);
+      if (radial < 1) {
+        if (radial > 1e-7) { point.y = cy + dy / radial; point.z = cz + dz / radial; }
+        else point.y = cy + ry;
+        contact = true;
+      }
+    }
+    return contact;
+  };
+  return { body, project, refresh };
 }
 
 export function flagCapeUv(artwork: Artwork) {
@@ -123,7 +204,7 @@ export function createFlagCapeGeometry() {
 }
 
 /** Fixed material lengths, gravity and inertia; only the neck supports follow the rider. */
-export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
+export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>, fitTie?: () => void) {
   const geometry = mesh.geometry;
   const position = geometry.getAttribute('position') as THREE.BufferAttribute;
   const points = position.array as Float32Array;
@@ -135,9 +216,11 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
   const inverse = new THREE.Matrix4(), lastWorld = new THREE.Matrix4(), rebase = new THREE.Matrix4();
   const torsoToBike = new THREE.Matrix4(), bikeToTorso = new THREE.Matrix4();
   const down = new THREE.Vector3(), back = new THREE.Vector3(), force = new THREE.Vector3();
-  const point = new THREE.Vector3();
+  const point = new THREE.Vector3(), sample = new THREE.Vector3(), correction = new THREE.Vector3();
+  let seeded = false;
   let phase = 0, remainder = 0, hasWorld = false, hasBag = false, lastLanding = 0;
   let lateralAcceleration = 0;
+  let hardwareFitted = false;
   let scaleChanged = false;
   let reducedKey = '', wasReduced = false;
   // A conservative fit around the real garment loft, not an oversized bubble
@@ -148,6 +231,23 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     [.607, .116, .074], [.631, .082, .065], [.65, .064, .064], [.80, .064, .064],
   ];
   const hoodProfile = hoodClearance(mesh.parent);
+  const projectFace = (first: number, second: number, third: number) => {
+    if (!clearance) return;
+    sample.set((points[first * 3] + points[second * 3] + points[third * 3]) / 3,
+      (points[first * 3 + 1] + points[second * 3 + 1] + points[third * 3 + 1]) / 3,
+      (points[first * 3 + 2] + points[second * 3 + 2] + points[third * 3 + 2]) / 3);
+    point.copy(sample).applyMatrix4(torsoToBike);
+    if (!clearance.project(point)) return;
+    correction.copy(point).applyMatrix4(bikeToTorso).sub(sample);
+    const free = Number(!cloth.pinned[first]) + Number(!cloth.pinned[second]) + Number(!cloth.pinned[third]);
+    if (!free) return;
+    correction.multiplyScalar(3 / free);
+    for (let corner = 0; corner < 3; corner++) {
+      const index = corner === 0 ? first : corner === 1 ? second : third;
+      if (cloth.pinned[index]) continue;
+      points[index * 3] += correction.x; points[index * 3 + 1] += correction.y; points[index * 3 + 2] += correction.z;
+    }
+  };
   const collide = (vertex: number) => {
     const i = vertex * 3;
     let x = points[i], y = points[i + 1], z = points[i + 2];
@@ -189,39 +289,19 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     }
     if (clearance) {
       point.set(x, y, z).applyMatrix4(torsoToBike);
-      let contact = false;
-      for (const { box, wheel } of clearance.boxes) {
-        if (!box.containsPoint(point)) continue;
-        if (wheel) {
-          const cy = (box.min.y + box.max.y) / 2, cz = (box.min.z + box.max.z) / 2;
-          const ry = (box.max.y - box.min.y) / 2, rz = (box.max.z - box.min.z) / 2;
-          const dy = point.y - cy, dz = point.z - cz;
-          const radial = Math.hypot(dy / ry, dz / rz);
-          if (radial >= 1) continue;
-          // A cape drapes across the round tread. Sending neighbouring middle
-          // columns to opposite thin X faces would split and stretch its seam.
-          if (radial > 1e-7) { point.y = cy + dy / radial; point.z = cz + dz / radial; }
-          else point.y = box.max.y;
-        } else {
-          // Rounded, separate footprints keep the seat's highest point from
-          // becoming a flat suspended bridge all the way to the rear tail.
-          const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
-          const rx = (box.max.x - box.min.x) / 2, rz = (box.max.z - box.min.z) / 2;
-          const footprint = ((point.x - cx) / rx) ** 2 + ((point.z - cz) / rz) ** 2;
-          if (footprint >= 1) continue;
-          const middleY = (box.min.y + box.max.y) / 2;
-          const surfaceY = middleY + (box.max.y - middleY) * Math.sqrt(1 - footprint);
-          if (point.y >= surfaceY) continue;
-          point.y = surfaceY;
-        }
-        contact = true;
-      }
-      if (contact) {
+      if (clearance.project(point)) {
         point.applyMatrix4(bikeToTorso);
         x = point.x; y = point.y; z = point.z;
       }
     }
     points[i] = x; points[i + 1] = y; points[i + 2] = z;
+    // A coarse cloth triangle can straddle narrow rear plastics even though
+    // all three vertices are clear. Its two cell centres use the same cheap
+    // cached surface query; translating their free corners preserves the cloth.
+    if (clearance && seeded && vertex > columns && vertex % (columns + 1) > 0) {
+      const a = vertex - columns - 2, b = a + 1, c = vertex - 1;
+      projectFace(a, c, b); projectFace(b, c, vertex);
+    }
   };
   const frame = (preserveInertia: boolean) => {
     scaleChanged = false;
@@ -258,6 +338,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       }
       lastWorld.copy(world); hasWorld = true;
       if (clearance) {
+        clearance.refresh();
         bikeToTorso.multiplyMatrices(inverse, clearance.body.matrixWorld);
         torsoToBike.copy(bikeToTorso).invert();
       }
@@ -269,6 +350,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     return true;
   };
   const seed = () => {
+    seeded = false;
     for (let row = 0; row <= rows; row++) for (let column = 0; column <= columns; column++) {
       const u = column / columns, t = row / rows, spread = smooth(t / .30);
       const anchor = collarPoint(u), side = 2 * u - 1;
@@ -280,7 +362,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
         collide(row * (columns + 1) + column);
       }
     }
-    cloth.reset();
+    seeded = true; cloth.reset();
   };
   const publish = () => {
     normals.fill(0);
@@ -315,6 +397,9 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
     if (input.paused || !Number.isFinite(dt) || dt <= 0) return;
     const reduced = input.reducedMotion === true, speed = clamp(input.speed, 0, 60);
     if (!frame(!reduced)) return;
+    // Imported rider counter-scaling/initial IK finish after assembly. Fit the
+    // rigid tie once in that final pose, never by raycasting during the ride.
+    const needsHardwareFit = !hardwareFitted || scaleChanged;
     // Imported bikes finish applying their inverse rider scale after assembly.
     // That construction transform is not a physical movement or an impulse.
     if (scaleChanged) { if (!reduced) { seed(); settle(0); } reducedKey = ''; lateralAcceleration = 0; }
@@ -322,6 +407,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       const key = [down.x, down.y, down.z, speed, hasBag ? 1 : 0, ...torsoToBike.elements].map(value => Math.round(value * 10000)).join(',');
       if (!wasReduced || key !== reducedKey) { seed(); settle(speed); publish(); reducedKey = key; }
       wasReduced = true; remainder = lateralAcceleration = 0; lastLanding = clamp(input.landing, 0, 1);
+      if (needsHardwareFit) { fitTie?.(); hardwareFitted = true; }
       return;
     }
     wasReduced = false;
@@ -350,6 +436,7 @@ export function createFlagCapeMotion(mesh: THREE.Mesh<THREE.BufferGeometry>) {
       cloth.step(force.x, force.y, force.z, back.x * wind, back.y * wind, back.z * wind, phase, speed / 60 * 2, MOTION_DAMPING, collide);
     }
     publish();
+    if (needsHardwareFit) { fitTie?.(); hardwareFitted = true; }
   };
   reset();
   return { update, reset };
@@ -375,47 +462,111 @@ function addTiedEyelets(mesh: THREE.Mesh, torso: THREE.Group) {
     hardware.add(eye);
     eyes[i].copy(eye.position);
   }
-  // Follow the actual rigid garment shell once at assembly. A short tie rests
-  // over the shoulders and upper chest, rather than forming a floating neck
-  // hoop directly under the helmet. These samples share the torso's frame.
+  // The closed tie belongs around the collar base, not around the shoulders.
+  // Short rear connections join that neck tie to the flag's original eyelets.
   const garment = torso.getObjectByName('tailored-garment');
+  const sourceSurfaces: THREE.Mesh[] = [];
+  for (const object of [garment, torso.getObjectByName('stand-collar'), torso.getObjectByName('folded-hood')])
+    if (object instanceof THREE.Mesh) sourceSurfaces.push(object);
+  const surfaces: THREE.Mesh[] = [];
+  const rearSurfaces: THREE.Mesh[] = [];
+  const shoulders = (torso.parent?.getObjectsByProperty('name', 'garment-sleeve') ?? [])
+    .filter((object): object is THREE.SkinnedMesh => object instanceof THREE.SkinnedMesh);
   const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), direction = new THREE.Vector3();
   const center = new THREE.Vector3();
-  torso.updateWorldMatrix(true, true);
-  const onGarment = (angle: number) => {
-    const y = .535 - Math.sin(angle) * .022;
-    const outward = new THREE.Vector3(-Math.cos(angle), 0, -Math.sin(angle));
-    const point = outward.clone().multiplyScalar(.4); point.y = y;
-    if (garment instanceof THREE.Mesh) {
+  const onNeck = (angle: number) => {
+    const y = .59;
+    const outward = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
+    const point = outward.clone().multiplyScalar(.3); point.y = y;
+    if (surfaces.length) {
       origin.copy(point); torso.localToWorld(origin);
       center.set(0, y, 0); torso.localToWorld(center);
       direction.subVectors(center, origin).normalize(); ray.set(origin, direction);
-      const hit = ray.intersectObject(garment, false)[0];
+      const hit = ray.intersectObjects(surfaces, false)[0];
       if (hit) {
-        torso.worldToLocal(hit.point);
-        return hit.point.addScaledVector(outward, .004);
+        return point.copy(torso.worldToLocal(hit.point)).addScaledVector(outward, .009);
       }
     }
     // Small isolated test/preview torsos may have no garment mesh.
-    point.set(outward.x * .26, y, outward.z * .13);
-    return point.addScaledVector(outward, .004);
+    point.set(outward.x * .086, y, outward.z * .063);
+    return point.addScaledVector(outward, .009);
   };
-  const shoulderTie = [left];
-  for (let sample = 0; sample <= 24; sample++) shoulderTie.push(onGarment(Math.PI * sample / 24));
-  shoulderTie.push(right);
-  const knot = shoulderTie[13].clone();
+  const clearRear = (point: THREE.Vector3) => {
+    origin.set(point.x, point.y, .55); torso.localToWorld(origin);
+    direction.set(0, 0, -1).transformDirection(torso.matrixWorld); ray.set(origin, direction);
+    const hit = ray.intersectObjects(rearSurfaces, false)[0];
+    if (hit) point.z = Math.max(point.z, torso.worldToLocal(hit.point).z + .007);
+    return point;
+  };
+  const path = (points: THREE.Vector3[]) => {
+    const curve = new THREE.CurvePath<THREE.Vector3>();
+    for (let i = 1; i < points.length; i++) curve.add(new THREE.LineCurve3(points[i - 1], points[i]));
+    return curve;
+  };
   const tie = (name: string, points: THREE.Vector3[]) => {
-    const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 40, .0025, 5, false), fabric);
-    cord.name = name; hardware.add(cord);
+    const cord = new THREE.Mesh(new THREE.TubeGeometry(path(points), Math.max(6, points.length * 2), .0025, 5, false), fabric);
+    cord.name = name; hardware.add(cord); return cord;
   };
-  tie('flag-eyelet-connecting-tie', shoulderTie);
-  tie('flag-tie-loop', [knot, knot.clone().add(new THREE.Vector3(.02, .009, -.008)),
-    knot.clone().add(new THREE.Vector3(.019, -.009, -.009)), knot]);
-  tie('flag-tie-tail', [knot, knot.clone().add(new THREE.Vector3(-.003, -.024, -.004)),
-    knot.clone().add(new THREE.Vector3(.009, -.04, .002))]);
+  const connecting = tie('flag-eyelet-connecting-tie', [left, right]);
+  const necklace = tie('flag-neck-tie', [left, right]);
+  const loop = tie('flag-tie-loop', [left, right]);
+  const tail = tie('flag-tie-tail', [left, right]);
   const knotMesh = new THREE.Mesh(new THREE.SphereGeometry(.006, 8, 6), fabric);
-  knotMesh.name = 'flag-cape-knot'; knotMesh.position.copy(knot); knotMesh.scale.set(1.3, .8, 1);
+  knotMesh.name = 'flag-cape-knot'; knotMesh.scale.set(1.3, .8, 1);
   hardware.add(knotMesh); mesh.add(hardware);
+  const replace = (cord: THREE.Mesh, points: THREE.Vector3[]) => {
+    cord.geometry.dispose(); cord.geometry = new THREE.TubeGeometry(path(points), Math.max(6, points.length * 2), .0025, 5, false);
+  };
+  const fit = () => {
+    torso.parent?.updateMatrixWorld(true); torso.updateWorldMatrix(true, true);
+    // Reuse actual rigid collar/hood triangles for the bounded assembly fit.
+    // The cloth is included only after its first real pose exists.
+    const inverseTorso = new THREE.Matrix4().copy(torso.matrixWorld).invert();
+    const transform = new THREE.Matrix4(), vertex = new THREE.Vector3();
+    const candidates = mesh.parent === torso ? [...sourceSurfaces, mesh, ...shoulders] : [...sourceSurfaces, ...shoulders];
+    for (const source of candidates) {
+      if (source instanceof THREE.SkinnedMesh) { source.updateMatrixWorld(true); source.skeleton.update(); }
+      transform.multiplyMatrices(inverseTorso, source.matrixWorld);
+      const position = source.geometry.getAttribute('position');
+      const geometry = new THREE.BufferGeometry();
+      const points = new Float32Array(position.count * 3);
+      for (let i = 0; i < position.count; i++) source.getVertexPosition(i, vertex).applyMatrix4(transform).toArray(points, i * 3);
+      geometry.setAttribute('position', new THREE.BufferAttribute(points, 3));
+      geometry.setIndex(source.geometry.index); geometry.computeBoundingSphere();
+      const collider = new THREE.Mesh(geometry, source.material);
+      collider.matrixAutoUpdate = false; collider.matrix.copy(torso.matrixWorld); collider.updateMatrixWorld(true);
+      if (sourceSurfaces.includes(source)) surfaces.push(collider);
+      rearSurfaces.push(collider);
+    }
+    let neckTie: THREE.Vector3[] = [];
+    for (let sample = 0; sample <= 64; sample++) neckTie.push(onNeck(Math.PI * 2 * sample / 64));
+    // The hood/neck union has a sharp silhouette at its sides. Split only
+    // chords which enter that silhouette, keeping the closed line outside it.
+    for (let pass = 0; pass < 3; pass++) {
+      const fitted: THREE.Vector3[] = [neckTie[0]];
+      for (let i = 1; i < neckTie.length; i++) {
+        const middle = neckTie[i - 1].clone().add(neckTie[i]).multiplyScalar(.5);
+        const shell = onNeck(Math.atan2(middle.x, middle.z));
+        if (Math.hypot(middle.x, middle.z) < Math.hypot(shell.x, shell.z) - .001) fitted.push(shell);
+        fitted.push(neckTie[i]);
+      }
+      neckTie = fitted;
+    }
+    const knot = neckTie[0]; knotMesh.position.copy(knot); replace(necklace, neckTie);
+    const connection = (eye: THREE.Vector3) => {
+      const points: THREE.Vector3[] = [];
+      for (let sample = 0; sample <= 8; sample++) points.push(clearRear(eye.clone().lerp(knot, sample / 8)));
+      return points;
+    };
+    replace(connecting, [...connection(left), ...connection(right).reverse().slice(1)]);
+    replace(loop, [knot, clearRear(knot.clone().add(new THREE.Vector3(.02, .009, .008))),
+      clearRear(knot.clone().add(new THREE.Vector3(.019, -.009, .009))), knot]);
+    replace(tail, [knot, clearRear(knot.clone().add(new THREE.Vector3(-.003, -.024, .009))),
+      clearRear(knot.clone().add(new THREE.Vector3(.009, -.04, .012)))]);
+    for (const surface of rearSurfaces) surface.geometry.dispose();
+    surfaces.length = rearSurfaces.length = 0;
+  };
+  fit(); return fit;
 }
 
 /** Uses the central catalog image directly, never a replacement or recoloured print. */
@@ -436,7 +587,7 @@ export function addFlagCape(torso: THREE.Group, product: Product, loadTexture: T
   const mesh = new THREE.Mesh(createFlagCapeGeometry(), material);
   mesh.name = 'pfusch-flag-cape'; mesh.userData.productId = product.id;
   mesh.castShadow = false; mesh.receiveShadow = false;
-  addTiedEyelets(mesh, torso);
+  const fitTie = addTiedEyelets(mesh, torso);
   torso.add(mesh);
-  return { mesh, ...createFlagCapeMotion(mesh) };
+  return { mesh, ...createFlagCapeMotion(mesh, fitTie) };
 }

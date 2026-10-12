@@ -72,9 +72,9 @@ export function createFlagCloth(columns: number, rows: number, width: number, le
       // airflow. Constant thrust on a streamlined hem artificially stretches it.
       const pressure = wind > 1e-6 && normalLength > 1e-9 ? dot * Math.abs(dot) / (wind * normalLength) : 0;
       const exposed = Math.min(1, Math.max(0, (row - 2) / 4));
-      points[i] += (x - previous[i]) * damping + (ax + (nx * pressure + wx * .06 + ripple * .3) * exposed) * squaredStep;
-      points[i + 1] += (y - previous[i + 1]) * damping + (ay + (ny * pressure + wy * .06 + ripple) * exposed) * squaredStep;
-      points[i + 2] += (z - previous[i + 2]) * damping + (az + (nz * pressure + wz * .06) * exposed) * squaredStep;
+      points[i] += (x - previous[i]) * damping + (ax + (nx * pressure + wx * .14 + ripple * .3) * exposed) * squaredStep;
+      points[i + 1] += (y - previous[i + 1]) * damping + (ay + (ny * pressure + wy * .14 + ripple) * exposed) * squaredStep;
+      points[i + 2] += (z - previous[i + 2]) * damping + (az + (nz * pressure + wz * .14) * exposed) * squaredStep;
       previous[i] = x; previous[i + 1] = y; previous[i + 2] = z;
     }
     for (let pass = 0; pass < 20; pass++) {
