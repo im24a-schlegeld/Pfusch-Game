@@ -8,6 +8,7 @@ import { DARK_CARBON, finishSwatch } from '../domain/carbon';
 import { digitalLevel, digitalPrice, ownership } from '../domain/progression';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS, helmetOptionPrice, ownsHelmetOption } from '../domain/helmet';
 import { isSticker } from '../domain/stickers';
+import { getPantsColor, getShoesColor, RIDER_COLORS } from '../domain/riderColors';
 import { equipmentSlot, equippable, imagePath, initialConfiguration, productColors, supportsHood } from '../domain/preview';
 import { commitGarageEdit, commitStickerEdit, garageAppearance, garageEditChanged, garageOffer, type GarageEdit } from '../domain/garageEdit';
 import { colorName, perceptualDistance } from '../domain/paletteView';
@@ -17,11 +18,11 @@ import './garage-configurator.css';
 
 const StickerWorkshop = lazy(() => import('./StickerWorkshop'));
 const SELECTABLE_VISOR_COLORS = VISOR_COLORS.filter(color => color.value !== DARK_CARBON);
-type Part = 'model' | 'paint' | 'rims' | 'extras' | 'upper' | 'helmet' | 'head' | 'accessory';
+type Part = 'model' | 'paint' | 'rims' | 'extras' | 'upper' | 'pantsColor' | 'shoesColor' | 'helmet' | 'head' | 'accessory';
 type PaletteColor = { value: string; name: string; price?: number };
 const bikeParts = [{ id: 'model', name: 'Modell' }, { id: 'paint', name: 'Lack' }, { id: 'rims', name: 'Felgen' }, { id: 'extras', name: 'Extras' }] as const;
-const riderParts = [{ id: 'upper', name: 'Oberteil' }, { id: 'helmet', name: 'Kopf' }, { id: 'accessory', name: 'Accessoires' }] as const;
-const partNames: Record<Part, string> = { model: 'Dein Motorrad', paint: 'Lack', rims: 'Felgen', extras: 'Motorrad-Extras', upper: 'Oberteil', helmet: 'Helm & Caps', head: 'Helm & Caps', accessory: 'Accessoires' };
+const riderParts = [{ id: 'upper', name: 'Oberteil' }, { id: 'pantsColor', name: 'Hose' }, { id: 'shoesColor', name: 'Schuhe' }, { id: 'helmet', name: 'Kopf' }, { id: 'accessory', name: 'Accessoires' }] as const;
+const partNames: Record<Part, string> = { model: 'Dein Motorrad', paint: 'Lack', rims: 'Felgen', extras: 'Motorrad-Extras', upper: 'Oberteil', pantsColor: 'Hose', shoesColor: 'Schuhe', helmet: 'Helm & Caps', head: 'Helm & Caps', accessory: 'Accessoires' };
 
 /** Collapsing never hides the selected or equipped value. Expanding includes every original ID. */
 function Palette({ title, colors, value, valueLabel, equipped, status, onChange, compactCount = 12 }: {
@@ -106,6 +107,7 @@ export default function Garage({ player, products, update, services, notify, sta
   const placingSticker = Boolean(selectedProduct && isSticker(selectedProduct));
   const mockup = productView === 'back' ? selectedColor?.back ?? selectedColor?.front : selectedColor?.front ?? selectedColor?.back;
   const focus = part === 'model' || part === 'paint' || part === 'rims' || part === 'upper' ? part
+    : part === 'pantsColor' ? 'lower' : part === 'shoesColor' ? 'feet'
     : part === 'helmet' ? 'head' : part === 'head' ? 'cap' : part === 'extras' && selectedProduct?.handle === 'schlusselanhanger' ? 'keychain'
       : part === 'extras' ? 'model'
         : selectedProduct && equipmentSlot(selectedProduct) === 'cape' ? 'cape' : 'accessory';
@@ -166,6 +168,13 @@ export default function Garage({ player, products, update, services, notify, sta
       status={color => player[kind] === color.value ? 'Ausgerüstet' : player.ownedItems.includes(`${kind}:${color.value}`) ? 'In deinem Besitz' : `${color.price?.toLocaleString('de-CH')} Coins`}
       onChange={value => setEdit({ kind, value })} />;
   }
+  function riderPalette(kind: 'pantsColor' | 'shoesColor') {
+    const read = kind === 'pantsColor' ? getPantsColor : getShoesColor;
+    return <Palette title={kind === 'pantsColor' ? 'Hosenfarbe' : 'Schuhfarbe'} colors={RIDER_COLORS}
+      value={read(appearance)} equipped={read(player)}
+      status={color => read(player) === color.value ? 'Ausgerüstet' : 'Kostenlos'}
+      onChange={value => setEdit({ kind, value })} />;
+  }
   const productStatus = (product: Product, variantId?: string) => {
     const state = ownership(player, product, variantId);
     return state === 'EQUIPPED' ? 'Ausgerüstet' : state === 'OWNED_IRL' ? 'Dein PFUSCH-Artikel' : state === 'UNLOCKED_DIGITAL' ? 'In deinem Besitz' : `${digitalPrice(product)} Coins${digitalLevel(product) > 1 ? ` · Level ${digitalLevel(product)}` : ''}`;
@@ -207,7 +216,8 @@ export default function Garage({ player, products, update, services, notify, sta
         data-variant={configuration?.variantId ?? ''} data-product={selectedProduct?.id ?? appearance.equipped.upper ?? ''}
         data-number={appearance.customizations[appearance.equipped.upper ?? '']?.customNumber ?? ''}
         data-hood={appearance.customizations[appearance.equipped.upper ?? '']?.hoodEnabled === true}
-        data-helmet={appearance.helmet} data-helmet-color={appearance.helmetColor} data-helmet-visor={appearance.helmetVisor}>
+        data-helmet={appearance.helmet} data-helmet-color={appearance.helmetColor} data-helmet-visor={appearance.helmetVisor}
+        data-pants-color={getPantsColor(appearance)} data-shoes-color={getShoesColor(appearance)}>
         <Preview player={appearance} products={products} mode="garage" onReady={() => { setPreviewReady(true); onReady?.(); }}
           onLoadError={message => { setPreviewReady(false); onLoadError?.(message); }}
           inspectionFocus={focus} inspectionAngle={angle} inspectionRevision={inspectionRevision} />
@@ -229,6 +239,7 @@ export default function Garage({ player, products, update, services, notify, sta
           </button>;
         })}</div>}
         {(part === 'paint' || part === 'rims') && colorPalette(part)}
+        {(part === 'pantsColor' || part === 'shoesColor') && riderPalette(part)}
         {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps an der Hose</button></div>}
         {part === 'helmet' && <div className="gc-helmet-options">
           <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name} · {helmetStatus('helmet', helmet.id)}</button>)}</div></fieldset>

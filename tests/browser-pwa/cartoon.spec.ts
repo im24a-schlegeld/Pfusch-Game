@@ -13,6 +13,7 @@ declare global {
       renderer?: THREE.WebGLRenderer;
       scene?: THREE.Scene;
       camera?: THREE.Camera;
+      inspectionCamera?: THREE.Camera;
       frames: number;
     };
   }
@@ -44,11 +45,12 @@ async function startCartoonRide(page: Page) {
       if (!renderer.isWebGLRenderer) return;
       const render = renderer.render.bind(renderer);
       renderer.render = (scene, camera) => {
-        render(scene, camera);
+        const actualCamera = window.cartoonProbe.inspectionCamera ?? camera;
+        render(scene, actualCamera);
         if (scene.getObjectByName('streamed-world')) {
           window.cartoonProbe.renderer = renderer;
           window.cartoonProbe.scene = scene as THREE.Scene;
-          window.cartoonProbe.camera = camera;
+          window.cartoonProbe.camera = actualCamera;
           window.cartoonProbe.frames++;
         }
       };
@@ -118,11 +120,17 @@ async function showWorldView(page: Page, target: WorldViewTarget) {
   return page.evaluate(() => {
     const { scene, renderer } = window.cartoonProbe;
     if (!scene || !renderer) throw new Error('Cartoon scene was not rendered');
-    let meshes = 0, instances = 0, styledMaterials = 0;
+    let meshes = 0, instances = 0, styledMaterials = 0, heroOutlines = 0, skinnedOutlines = 0;
+    let sharedOutlineGeometry = true;
     const materials = new Set<THREE.Material>();
     scene.traverse((object) => {
       if (!(object as THREE.Mesh).isMesh) return;
       meshes++;
+      if (object.userData.cartoonOutline) {
+        heroOutlines++;
+        sharedOutlineGeometry &&= (object as THREE.Mesh).geometry === (object.parent as THREE.Mesh)?.geometry;
+        if ((object as THREE.SkinnedMesh).isSkinnedMesh) skinnedOutlines++;
+      }
       if ((object as THREE.InstancedMesh).isInstancedMesh)
         instances += (object as THREE.InstancedMesh).count;
       const material = (object as THREE.Mesh).material;
@@ -141,7 +149,7 @@ async function showWorldView(page: Page, target: WorldViewTarget) {
       environment: window.cartoonProbe.engine!.environment.kind,
       lighting: window.cartoonProbe.engine!.environment.lighting,
       tunnelStyle: window.cartoonProbe.engine!.environment.tunnel?.style,
-      meshes, instances, styledMaterials,
+      meshes, instances, styledMaterials, heroOutlines, skinnedOutlines, sharedOutlineGeometry,
       toonPrograms: programs.filter((program) => program.cacheKey?.includes(':pfusch-cartoon-v1:')).length,
       allProgramsLinked: programs.every((program) => gl.getProgramParameter(program.program, gl.LINK_STATUS)),
       contextLost: gl.isContextLost(),
@@ -177,6 +185,10 @@ for (const device of ['mobile', 'desktop'] as const) {
         expect(sample.style).toBe('cartoon');
         expect(sample.styledMaterials).toBeGreaterThan(15);
         expect(sample.toonPrograms).toBeGreaterThan(0);
+        expect(sample.heroOutlines).toBeGreaterThan(0);
+        expect(sample.heroOutlines).toBeLessThanOrEqual(32);
+        expect(sample.skinnedOutlines).toBeGreaterThan(0);
+        expect(sample.sharedOutlineGeometry).toBe(true);
         expect(sample.allProgramsLinked).toBe(true);
         expect(sample.contextLost).toBe(false);
         expect(sample.meshes).toBeLessThan(1900);
@@ -186,7 +198,8 @@ for (const device of ['mobile', 'desktop'] as const) {
         expect(sample.sky.visible).toBe(true);
         expect(sample.sky.cloudsVisible).toBe(true);
         expect(sample.sky.cloudCount).toBeGreaterThan(0);
-        expect(sample.sky.cloudCount).toBeLessThanOrEqual(12);
+        // Seven irregular clouds now share one bounded instanced puff mesh.
+        expect(sample.sky.cloudCount).toBeLessThanOrEqual(56);
         if (lighting === 'night') {
           expect(sample.headlight).toBeGreaterThan(50);
           expect(sample.sky.moonVisible).toBe(true);
@@ -255,6 +268,24 @@ test.describe('cartoon visual gallery', () => {
       sceneryImages.push({ label: entry.label, dataUrl: `data:image/png;base64,${screenshot.toString('base64')}` });
       samples.push({ label: entry.label, ...sample });
     }
+    await showWorldView(page, { kind: 'city', lighting: 'day' });
+    const heroFrame = await page.evaluate(() => {
+      const probe = window.cartoonProbe;
+      const camera = (probe.camera as THREE.PerspectiveCamera).clone();
+      // Only the test's observer substitutes this camera for a detail shot.
+      // The actual vehicle, immutable skeleton, materials and pose are intact.
+      camera.position.set(3.8, 2.7, -5.0);
+      camera.lookAt(0, 1.45, 0);
+      camera.fov = 36;
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      probe.inspectionCamera = camera;
+      window.dispatchEvent(new Event('focus'));
+      return probe.frames;
+    });
+    await expect.poll(() => page.evaluate(() => window.cartoonProbe.frames)).toBeGreaterThan(heroFrame);
+    await page.screenshot({ path: 'outputs/browser-pwa/hero-cartoon-closeup.png' });
+    await page.evaluate(() => { window.cartoonProbe.inspectionCamera = undefined; });
     const skies: { lighting: WorldLighting; label: string }[] = [
       { lighting: 'day', label: 'Tag · Sonne und Wolken' },
       { lighting: 'golden', label: 'Abend · warmes Licht' },

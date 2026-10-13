@@ -4,6 +4,7 @@ import { ownsProductColor, purchaseProductColor } from './productOwnership';
 import { equipConfiguration, equipmentSlot, equippable, previewLoadout, validConfiguration } from './preview';
 import { digitalLevel, digitalPrice, unlock } from './progression';
 import { colorName } from './paletteView';
+import { getPantsColor, getShoesColor, isRiderColor, RIDER_COLORS } from './riderColors';
 import { isSticker, saveStickerTargets } from './stickers';
 import type { Player, Product, ProductConfiguration, Slot, StickerPlacement } from './types';
 
@@ -11,6 +12,7 @@ import type { Player, Product, ProductConfiguration, Slot, StickerPlacement } fr
 export type GarageEdit =
   | { kind: 'model'; value: string }
   | { kind: 'paint' | 'rims'; value: string }
+  | { kind: 'pantsColor' | 'shoesColor'; value: string }
   | { kind: 'helmet'; helmet: Player['helmet']; helmetColor: string; helmetVisor: string }
   | { kind: 'product'; productId: string; configuration: ProductConfiguration }
   | { kind: 'remove'; slot: Slot };
@@ -28,6 +30,7 @@ export function garageAppearance(player: Player, edit: GarageEdit | null, produc
   if (!edit) return player;
   if (edit.kind === 'model') return { ...player, bike: edit.value };
   if (edit.kind === 'paint' || edit.kind === 'rims') return { ...player, [edit.kind]: edit.value };
+  if (edit.kind === 'pantsColor' || edit.kind === 'shoesColor') return { ...player, [edit.kind]: edit.value };
   if (edit.kind === 'helmet') return { ...player, helmet: edit.helmet, helmetColor: edit.helmetColor, helmetVisor: edit.helmetVisor };
   if (edit.kind === 'remove') {
     const equipped = { ...player.equipped };
@@ -42,6 +45,12 @@ export function garageAppearance(player: Player, edit: GarageEdit | null, produc
 }
 
 export function garageOffer(player: Player, edit: GarageEdit, products: Product[]): GarageOffer {
+  if (edit.kind === 'pantsColor' || edit.kind === 'shoesColor') {
+    const color = RIDER_COLORS.find(color => color.value === edit.value);
+    return { name: `${edit.kind === 'pantsColor' ? 'Hose' : 'Schuhe'} · ${color?.name ?? ''}`,
+      price: 0, owned: true, requiredLevel: 1, collectible: false,
+      blocked: isRiderColor(edit.value) ? null : 'Diese Farbe ist nicht verfügbar' };
+  }
   let id = '', name = '', price = 0, requiredLevel = 1, valid = true, collectible = false;
   if (edit.kind === 'model') {
     const bike = BIKES.find(b => b.id === edit.value);
@@ -87,6 +96,7 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
 export function commitGarageEdit(player: Player, edit: GarageEdit, products: Product[]): Player | null {
   const offer = garageOffer(player, edit, products);
   if (offer.blocked) return null;
+  if (edit.kind === 'pantsColor' || edit.kind === 'shoesColor') return garageAppearance(player, edit, products);
   if (edit.kind === 'helmet') return equipHelmet(player, edit);
   if (edit.kind === 'remove') return garageAppearance(player, edit, products);
   if (edit.kind === 'product') {
@@ -116,6 +126,8 @@ export function garageEditChanged(player: Player, edit: GarageEdit | null, produ
   if (!edit) return false;
   if (edit.kind === 'model') return player.bike !== edit.value;
   if (edit.kind === 'paint' || edit.kind === 'rims') return player[edit.kind] !== edit.value;
+  if (edit.kind === 'pantsColor') return getPantsColor(player) !== edit.value;
+  if (edit.kind === 'shoesColor') return getShoesColor(player) !== edit.value;
   if (edit.kind === 'helmet') return player.helmet !== edit.helmet || player.helmetColor !== edit.helmetColor || player.helmetVisor !== edit.helmetVisor;
   if (edit.kind === 'remove') return !!player.equipped[edit.slot];
   if (edit.kind === 'product') {

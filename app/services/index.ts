@@ -21,6 +21,7 @@ import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../domain/
 import { shadeClothingCatalog } from '../domain/appearanceColors';
 import { sanitizeSavedSetups } from '../domain/setups';
 import { normalizeTutorialHints } from '../domain/tutorial';
+import { getPantsColor, getShoesColor } from '../domain/riderColors';
 import catalog from '../../public/catalog/products.json';
 import { ShopifyParentTransport, shopifyParentOrigin } from './shopifyBridge';
 import { ShopifyCloudRepository } from './shopifyCloud';
@@ -140,6 +141,9 @@ export function decodePlayer(raw: string): Player {
   if (isHelmetColor(v.helmetColor)) p.helmetColor = v.helmetColor;
   // Additive v1 migration: previous saves have neither visor tint nor placements.
   if (isVisorColor(v.helmetVisor)) p.helmetVisor = v.helmetVisor;
+  // Optional schema-1 wardrobe colours recover independently of game progress.
+  p.pantsColor = getPantsColor({ pantsColor: typeof v.pantsColor === 'string' ? v.pantsColor : undefined });
+  p.shoesColor = getShoesColor({ shoesColor: typeof v.shoesColor === 'string' ? v.shoesColor : undefined });
   if (p.helmetColor === DARK_CARBON && !p.ownedItems.includes(`helmetColor:${DARK_CARBON}`)) p.helmetColor = newPlayer().helmetColor;
   if (p.helmetVisor === DARK_CARBON && !p.ownedItems.includes(`helmetVisor:${DARK_CARBON}`)) p.helmetVisor = newPlayer().helmetVisor;
   // Additive v1 migration: absent helmet target lists stay empty; bike paths are unchanged.

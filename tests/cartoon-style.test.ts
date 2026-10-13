@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
-import { applyCartoonMaterial, applyCartoonStyle, prepareCartoonGeometry } from '../app/game/cartoonStyle';
+import { applyCartoonHeroStyle, applyCartoonMaterial, applyCartoonStyle, prepareCartoonGeometry } from '../app/game/cartoonStyle';
 import { applyColorFinish } from '../app/game/carbonFinish';
 import { DARK_CARBON } from '../app/domain/carbon';
 import { addWorldSurfaceDetail } from '../app/game/worldSurface';
@@ -14,6 +14,18 @@ function compile(material: THREE.MeshStandardMaterial) {
   material.onBeforeCompile(shader as Parameters<THREE.Material['onBeforeCompile']>[0], {} as THREE.WebGLRenderer);
   return shader;
 }
+
+it('simplifies hero surface shading while keeping original garment and sticker artwork', () => {
+  const artwork = new THREE.Texture(), relief = new THREE.Texture();
+  const material = new THREE.MeshStandardMaterial({ map: artwork, normalMap: relief, bumpMap: relief });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(), material);
+  applyCartoonHeroStyle(mesh);
+  expect(material.map).toBe(artwork);
+  expect(material.normalMap).toBeNull();
+  expect(material.bumpMap).toBeNull();
+  expect(compile(material).fragmentShader).toContain('mix(0.36, 0.72');
+  expect(material.customProgramCacheKey()).toContain(':hero');
+});
 
 it('preserves artwork, alpha and geometry without adding outline draw calls', () => {
   const map = new THREE.Texture();

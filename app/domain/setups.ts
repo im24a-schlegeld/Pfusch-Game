@@ -1,6 +1,7 @@
 import { BIKES, PAINTS, RIMS } from './config.js';
 import { isHelmet, isHelmetColor, isVisorColor, unownedHelmetFinishes } from './helmet.js';
 import { canEquip, equipmentSlot, validConfiguration } from './preview.js';
+import { getPantsColor, getShoesColor, isRiderColor } from './riderColors.js';
 import { helmetStickerTarget, isSticker, MAX_STICKERS, validStickerForTarget } from './stickers.js';
 import type { Player, PlayerAppearance, Product, SavedSetup, Slot, StickerPlacement } from './types';
 
@@ -9,7 +10,7 @@ export const SETUP_NAME_MAX_LENGTH = 32;
 /** Leave space in the 128 KiB cloud request for inventory, history and live decals. */
 export const MAX_SAVED_SETUPS_BYTES = 49152;
 const slots: Slot[] = ['upper', 'lower', 'head', 'accessory', 'keychain', 'cape', 'collectible', 'bike'];
-const appearanceKeys = ['equipped', 'variants', 'customizations', 'bike', 'paint', 'rims', 'helmet', 'helmetColor', 'helmetVisor', 'stickers'];
+const appearanceKeys = ['equipped', 'variants', 'customizations', 'bike', 'paint', 'rims', 'helmet', 'helmetColor', 'helmetVisor', 'pantsColor', 'shoesColor', 'stickers'];
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const hasControlCharacter = (value: string) => [...value].some(character => {
@@ -33,6 +34,8 @@ function appearance(value: unknown): PlayerAppearance | null {
     !BIKES.some(bike => bike.id === value.bike) || !PAINTS.some(color => color.value === value.paint) ||
     !RIMS.some(color => color.value === value.rims) || !isHelmet(value.helmet) ||
     !isHelmetColor(value.helmetColor) || !isVisorColor(value.helmetVisor) ||
+    (value.pantsColor !== undefined && !isRiderColor(value.pantsColor)) ||
+    (value.shoesColor !== undefined && !isRiderColor(value.shoesColor)) ||
     !record(value.equipped) || Object.keys(value.equipped).length > slots.length ||
     !record(value.variants) || Object.keys(value.variants).length > slots.length ||
     !record(value.customizations) || Object.keys(value.customizations).length > slots.length || !record(value.stickers)) return null;
@@ -81,6 +84,8 @@ function appearance(value: unknown): PlayerAppearance | null {
   }
   return { bike: value.bike as string, paint: value.paint as string, rims: value.rims as string,
     helmet: value.helmet, helmetColor: value.helmetColor, helmetVisor: value.helmetVisor,
+    pantsColor: getPantsColor({ pantsColor: value.pantsColor as string | undefined }),
+    shoesColor: getShoesColor({ shoesColor: value.shoesColor as string | undefined }),
     equipped, variants, customizations, stickers };
 }
 
@@ -128,6 +133,7 @@ export function saveSetup(player: Player, name: string, id: string): Player | nu
   const helmetTarget = helmetStickerTarget(player.helmet);
   const selection = appearance({ bike: player.bike, paint: player.paint, rims: player.rims,
     helmet: player.helmet, helmetColor: player.helmetColor, helmetVisor: player.helmetVisor,
+    pantsColor: getPantsColor(player), shoesColor: getShoesColor(player),
     equipped: player.equipped, variants, customizations,
     stickers: { [player.bike]: player.stickers[player.bike] ?? [], [helmetTarget]: player.stickers[helmetTarget] ?? [] } });
   if (!selection || !available(player, selection)) return null;

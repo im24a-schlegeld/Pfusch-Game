@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { getPantsColor, getShoesColor } from '../domain/riderColors';
+import { createSneaker } from './sneaker';
 import { finishBaseColor } from '../domain/carbon';
 import { createPreviewColorUpdater } from './previewAppearance';
 import { makeImportedBike } from './importedBike';
@@ -2357,9 +2359,10 @@ function makeRider(
     '#394143';
   const color = productColor(upper),
     cloth = fabricMaterial(upper, player, color),
-    pants = material('#242d31', 0, 0.96),
+    pants = material(getPantsColor(player), 0, 0.96),
     boot = material('#141c20', 0, 0.82),
     skin = material('#987565', 0, 0.9);
+  pants.userData.appearanceColorSlot = 'pantsColor';
   const tee = !!upper && /shirt/i.test(upper.type),
     hoodie = !!upper && /hoodie|zipper/i.test(upper.type),
     zipper = !!upper && /zipper|windbreaker/i.test(upper.type);
@@ -2941,20 +2944,8 @@ function makeRider(
       ),
       leg: skinLimb(rider, [leg], rest.limbs[index].leg),
     });
-    const foot = loft(
-      rider,
-      [
-        [pose.peg[2] - 0.15, 0.022, 0.025, pose.peg[1] + 0.048],
-        [pose.peg[2] - 0.075, 0.055, 0.039, pose.peg[1] + 0.049],
-        [pose.peg[2] + 0.082, 0.058, 0.072, pose.peg[1] + 0.075],
-        [pose.peg[2] + 0.14, 0.031, 0.04, pose.peg[1] + 0.085],
-      ],
-      boot,
-      'z',
-      20,
-    );
-    foot.position.x = side * pose.peg[0];
-    foot.name = 'rider-boot';
+    const foot = createSneaker(getShoesColor(player), side);
+    foot.position.set(side * pose.peg[0], pose.peg[1] + 0.012, pose.peg[2] - 0.005);
     const bootPivot = new THREE.Group();
     rider.add(bootPivot);
     bootPivot.add(foot);

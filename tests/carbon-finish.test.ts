@@ -47,7 +47,7 @@ it.each(['125', 'moped', '450', '701', 'scooter'])('shares one carbon map and re
   const materials = new Set<THREE.MeshStandardMaterial>();
   bike.root.traverse(object => {
     if (object instanceof THREE.Mesh) for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      if (material instanceof THREE.MeshStandardMaterial && material.userData.appearanceColorSlot) materials.add(material);
+      if (material instanceof THREE.MeshStandardMaterial && ['paint', 'rims', 'helmetColor', 'helmetVisor'].includes(material.userData.appearanceColorSlot)) materials.add(material);
     }
   });
   const before = [...materials].map(material => ({ material, color: material.color.clone(), map: material.map, roughness: material.roughness, metalness: material.metalness }));

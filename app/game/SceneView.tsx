@@ -11,7 +11,8 @@ import { disposeUnique, makeTrafficVariants } from './models';
 import { makeBike } from './vehicle';
 import { makeWorldView } from './worldView';
 import { DAY_SKY, makeWorldLighting } from './worldLighting';
-import { applyCartoonStyle } from './cartoonStyle';
+import { applyCartoonHeroStyle, applyCartoonStyle } from './cartoonStyle';
+import { createCartoonOutline } from './cartoonOutline';
 import { makeCartoonSky } from './cartoonSky';
 import { createBikeHeadlightGlowUpdater, createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
@@ -39,7 +40,7 @@ import { createSceneInvalidation } from './sceneInvalidation';
 import { createRenderCadence } from './renderCadence';
 import { selectTutorialCue, visibleTutorialProjection, type TutorialCue, type TutorialTarget } from './tutorialCues';
 
-export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'cap' | 'accessory' | 'cape' | 'keychain';
+export type InspectionFocus = 'model' | 'paint' | 'rims' | 'upper' | 'head' | 'cap' | 'accessory' | 'cape' | 'keychain' | 'lower' | 'feet';
 
 export const preloadBikeAsset = preloadImportedBike;
 
@@ -224,7 +225,9 @@ export default function SceneView({
       return;
     }
     applyStickersSafely(bike, player);
-    applyCartoonStyle(bike.root);
+    applyCartoonHeroStyle(bike.root);
+    let heroOutline = createCartoonOutline(bike.root);
+    heroOutline.update(el.clientWidth, el.clientHeight);
     const invalidation = createSceneInvalidation();
     invalidation.track(bike.root);
     bike.root.name = 'player-bike';
@@ -268,6 +271,8 @@ export default function SceneView({
         accessory: [1.65, portrait ? 3.7 : 3, 0.28],
         cape: [2, portrait ? 4.2 : 3.5, 0.18],
         keychain: [1.1, portrait ? 2.7 : 2.3, 0.45],
+        lower: [1.15, portrait ? 3.6 : 3.0, 0.2],
+        feet: [0.65, portrait ? 2.4 : 1.9, 0.12],
       } satisfies Record<InspectionFocus, number[]>;
       const [y, distance, elevation] = defaults[focus];
       const look = new THREE.Vector3(0, y, 0);
@@ -287,7 +292,7 @@ export default function SceneView({
       }
       return { look, position: look.clone().add(new THREE.Vector3(0, elevation, distance * zoom)) };
     };
-    const focusAngles: Record<InspectionFocus, number> = { model: 2.35, paint: 1.65, rims: 1.55, upper: 2.45, head: 2.6, cap: 1.65, accessory: 3.75, cape: 0.3, keychain: 1.65 };
+    const focusAngles: Record<InspectionFocus, number> = { model: 2.35, paint: 1.65, rims: 1.55, upper: 2.45, head: 2.6, cap: 1.65, accessory: 3.75, cape: 0.3, keychain: 1.65, lower: 1.65, feet: 1.65 };
     const transitionPreview = (now: number, focus: InspectionFocus, angle = rotation) => {
       invalidation.invalidate();
       const target = previewTargets(focus, angle);
@@ -385,6 +390,7 @@ export default function SceneView({
       if (!w || !h) return;
       invalidation.invalidate();
       renderer.setSize(w, h, false);
+      heroOutline.update(w, h);
       particles?.setViewport(h, renderer.getPixelRatio());
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
@@ -555,15 +561,18 @@ export default function SceneView({
         try {
           replacement = makeBike(nextAppearance.player, nextAppearance.products);
           applyStickersSafely(replacement, nextAppearance.player);
-          applyCartoonStyle(replacement.root);
+          applyCartoonHeroStyle(replacement.root);
         } catch (reason) {
           graphicsAvailable = false;
           setError(reason instanceof Error ? reason.message : 'Vorschau konnte nicht aktualisiert werden.');
           return;
         }
         scene.remove(bike.root);
+        heroOutline.dispose();
         disposeVehicle(bike.root);
         bike = replacement;
+        heroOutline = createCartoonOutline(bike.root);
+        heroOutline.update(el.clientWidth, el.clientHeight);
         bike.root.name = 'player-bike';
         crash = undefined;
         crashTravel = undefined;
@@ -584,7 +593,7 @@ export default function SceneView({
         if (mode === 'garage') transitionPreview(now, appliedFocus);
       }
       if (latestAssetReady && updateColors(nextAppearance.player)) {
-        applyCartoonStyle(bike.root);
+        applyCartoonHeroStyle(bike.root);
         invalidation.track(bike.root);
       }
       if (mode === 'garage' && command.inspectionFocus !== appliedFocus) {
@@ -1110,6 +1119,7 @@ export default function SceneView({
       zoomPreview.current = () => {};
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       sky?.dispose();
+      heroOutline.dispose();
       disposeUnique(scene);
       disposeSkeletons(scene);
       particles?.dispose();

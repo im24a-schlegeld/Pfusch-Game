@@ -131,6 +131,8 @@ export interface PlayerAppearance {
   helmet: Helmet;
   helmetColor: string;
   helmetVisor: string;
+  pantsColor?: string;
+  shoesColor?: string;
   stickers: Record<string, StickerPlacement[]>;
 }
 export interface SavedSetup {
@@ -164,6 +166,9 @@ export interface Player {
   helmet: Helmet;
   helmetColor: string;
   helmetVisor: string;
+  /** Additive schema-1 wardrobe palettes; absent values use the authored defaults. */
+  pantsColor?: string;
+  shoesColor?: string;
   /** Bike IDs plus additive v1 keys helmet:fullface and helmet:motocross. */
   stickers: Record<string, StickerPlacement[]>;
   /** Additive v1 field; older saves migrate to an empty setup library. */

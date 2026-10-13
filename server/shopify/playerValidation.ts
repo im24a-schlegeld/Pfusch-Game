@@ -10,6 +10,7 @@ import catalog from '../../public/catalog/products.json';
 import type { Product } from '../../app/domain/types.js';
 import { migrateProductInventory, ownsProductColor } from '../../app/domain/productOwnership.js';
 import { migrateHelmetInventory } from '../../app/domain/helmet.js';
+import { isRiderColor } from '../../app/domain/riderColors.js';
 
 export const MAX_BODY_BYTES = 131072;
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -45,7 +46,7 @@ const digitalRewards = new Set<string>(REWARDS.filter(reward => reward.kind === 
  * purchase, a prize entitlement, or a verified competitive score. Reconstruct
  * every field rather than persisting arbitrary client properties. */
 export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifiedItems: string[] = []): Player {
-  const input = record(value, 33), player = newPlayer();
+  const input = record(value, 35), player = newPlayer();
   if (input.version !== 1 || Object.keys(input).some(key => !Object.prototype.hasOwnProperty.call(player, key))) invalid();
   player.id = `shopify:${customerId}`;
   if (input.leaderboardName !== undefined) {
@@ -81,6 +82,11 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifi
   if (input.helmet !== undefined) {
     if (input.helmet !== 'fullface' && input.helmet !== 'motocross') invalid();
     player.helmet = input.helmet as Player['helmet'];
+  }
+  for (const field of ['pantsColor', 'shoesColor'] as const) {
+    if (input[field] === undefined) continue;
+    if (!isRiderColor(input[field])) invalid();
+    player[field] = input[field] as string;
   }
   const equipped = record(input.equipped, slots.length);
   for (const [key, item] of Object.entries(equipped)) {

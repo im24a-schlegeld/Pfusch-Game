@@ -3,11 +3,12 @@ import type { Player } from '../domain/types';
 import { helmetStickerSurfaces, stickerHelmet } from './bikeStickers';
 import { finishBaseColor } from '../domain/carbon';
 import { applyColorFinish } from './carbonFinish';
+import { getPantsColor, getShoesColor } from '../domain/riderColors';
 
 type ColoredMaterial = THREE.MeshStandardMaterial;
-type ColorSlot = 'paint' | 'rims' | 'helmetColor' | 'helmetVisor';
+type ColorSlot = 'paint' | 'rims' | 'helmetColor' | 'helmetVisor' | 'pantsColor' | 'shoesColor';
 
-/** Geometry changes are separate from the four existing material palettes. */
+/** Geometry changes are separate from material palettes. */
 export function previewGeometryKey(player: Player) {
   return JSON.stringify([
     player.bike, player.helmet, player.stickers, player.equipped,
@@ -23,6 +24,7 @@ export function createPreviewColorUpdater(
 ) {
   const slots: Record<ColorSlot, Set<ColoredMaterial>> = {
     paint: new Set(), rims: new Set(), helmetColor: new Set(), helmetVisor: new Set(),
+    pantsColor: new Set(), shoesColor: new Set(),
   };
   const helmetShade = new Map<ColoredMaterial, number>();
   const initialPaint = new THREE.Color(finishBaseColor(player.paint));
@@ -60,6 +62,14 @@ export function createPreviewColorUpdater(
     object.children.forEach(visitBody);
   };
   visitBody(body);
+  rider.traverse(object => {
+    if (!(object instanceof THREE.Mesh)) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+      const slot = material.userData.appearanceColorSlot;
+      if (slot === 'pantsColor' || slot === 'shoesColor') slots[slot].add(material);
+    }
+  });
   for (const mesh of helmetStickerSurfaces(rider).values()) {
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     // Preserve the authored darker molded panels and painted edge shading.
@@ -90,6 +100,7 @@ export function createPreviewColorUpdater(
   const previous: Record<ColorSlot, string> = {
     paint: player.paint, rims: player.rims,
     helmetColor: player.helmetColor, helmetVisor: player.helmetVisor,
+    pantsColor: getPantsColor(player), shoesColor: getShoesColor(player),
   };
   const colorSlots = Object.keys(slots) as ColorSlot[];
   for (const slot of colorSlots) for (const material of slots[slot]) {
@@ -99,11 +110,13 @@ export function createPreviewColorUpdater(
   return (appearance: Pick<Player, ColorSlot>) => {
     let changed = false;
     for (const slot of colorSlots) {
-      if (appearance[slot] === previous[slot]) continue;
+      const value = slot === 'pantsColor' ? getPantsColor(appearance)
+        : slot === 'shoesColor' ? getShoesColor(appearance) : appearance[slot];
+      if (value === previous[slot]) continue;
       changed = true;
-      previous[slot] = appearance[slot];
+      previous[slot] = value;
       for (const material of slots[slot]) {
-        applyColorFinish(material, appearance[slot], slot === 'helmetColor' ? helmetShade.get(material) ?? 1 : 1);
+        applyColorFinish(material, value, slot === 'helmetColor' ? helmetShade.get(material) ?? 1 : 1);
       }
     }
     return changed;

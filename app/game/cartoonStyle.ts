@@ -15,6 +15,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
   const before = material.onBeforeCompile;
   const previousKey = material.customProgramCacheKey.call(material);
   const ink = material.transparent || !contour ? '0.0' : '0.92';
+  const hero = material.userData.pfuschCartoonHero === true;
   material.onBeforeCompile = (shader, renderer) => {
     before.call(material, shader, renderer);
     // Carbon/colour changes can wrap a previously styled shader. Never apply
@@ -35,6 +36,8 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       float cartoonBand = mix(0.24, 0.52, smoothstep(0.16, 0.21, cartoonLight));
       cartoonBand = mix(cartoonBand, 0.80, smoothstep(0.48, 0.54, cartoonLight));
       cartoonBand = mix(cartoonBand, 1.08, smoothstep(0.94, 1.02, cartoonLight));
+      ${hero ? `cartoonBand = mix(0.36, 0.72, smoothstep(0.27, 0.32, cartoonLight));
+      cartoonBand = mix(cartoonBand, 1.10, smoothstep(0.83, 0.90, cartoonLight));` : ''}
       vec3 cartoonTint = mix(vec3(1.0), cartoonDiffuse / max(max(cartoonDiffuse.r, cartoonDiffuse.g), max(cartoonDiffuse.b, 0.001)), 0.12);
       outgoingLight = diffuseColor.rgb * cartoonTint * cartoonBand + totalEmissiveRadiance;
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
@@ -52,7 +55,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}`;
+  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}`;
   material.userData.pfuschCartoon = true;
   material.needsUpdate = true;
   applied.set(material, material.onBeforeCompile);
@@ -63,6 +66,22 @@ export function applyCartoonStyle(root: THREE.Object3D) {
     if (!(object instanceof THREE.Mesh)) return;
     for (const material of Array.isArray(object.material) ? object.material : [object.material])
       applyCartoonMaterial(material);
+  });
+}
+
+/** Keep the actual clothing artwork, but remove microscopic surface relief and
+ * use three clear light bands on the foreground rider and motorcycle. */
+export function applyCartoonHeroStyle(root: THREE.Object3D) {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || object.userData.cartoonOutline) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+      material.userData.pfuschCartoonHero = true;
+      material.normalMap = null;
+      material.bumpMap = null;
+      if (material instanceof THREE.MeshPhysicalMaterial) material.clearcoatNormalMap = null;
+      applyCartoonMaterial(material);
+    }
   });
 }
 

@@ -3,6 +3,7 @@ import { DAILY_SIGN_CHALLENGE, dailyChallengesForDate, normalizeDailyProgress } 
 import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR, HELMET_INVENTORY_MIGRATION } from './helmet.js';
 import { ownsProductColor } from './productOwnership.js';
 import { equipmentSlot } from './preview.js';
+import { DEFAULT_PANTS_COLOR, DEFAULT_SHOES_COLOR } from './riderColors.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const LEADERBOARD_NAME_MAX_LENGTH = 24;
 export function normalizeLeaderboardName(value: unknown): string {
@@ -55,6 +56,8 @@ export function newPlayer(): Player {
     helmet: DEFAULT_HELMET,
     helmetColor: DEFAULT_HELMET_COLOR,
     helmetVisor: '#34454d',
+    pantsColor: DEFAULT_PANTS_COLOR,
+    shoesColor: DEFAULT_SHOES_COLOR,
     stickers: {},
     savedSetups: [],
     challenges: { date: dayKey(), values: {}, claimed: [] },
