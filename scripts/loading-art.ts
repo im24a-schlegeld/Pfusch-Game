@@ -79,13 +79,13 @@ Object.assign(player, { bike: '450', paint: '#7536c6', rims: '#ffffff', helmet: 
 player.equipped.upper = '10237061759305';
 player.variants['10237061759305'] = '54581933375817';
 const bike = makeBike(player, shadeClothingCatalog(catalog));
-const pitch = 0.2;
-bike.animateSuspension(pitch, 0, 0.3);
+const pitch = 0.17;
+bike.animateSuspension(pitch, 0, 0.2);
 for (let frame = 0; frame < 70; frame++)
-  bike.animateRider({ wheelie: 0.3, steer: -0.08, landing: 0, balance: 0.05, bikePitch: pitch, bikeRoll: 0 }, 1 / 60);
-bike.root.position.set(0.15, 1.9, 1.1);
+  bike.animateRider({ wheelie: 0.23, steer: -0.17, landing: 0, balance: 0.05, bikePitch: pitch, bikeRoll: 0 }, 1 / 60);
+bike.root.position.set(0.15, 1.95, 1.1);
 bike.root.rotation.y = 0.1;
-bike.root.rotation.z = -0.04;
+bike.root.rotation.z = -0.06;
 applyCartoonHeroStyle(bike.root);
 const outline = createCartoonOutline(bike.root);
 scene.add(bike.root);
@@ -126,24 +126,30 @@ function frame(isPortrait: boolean) {
   const width = isPortrait ? 900 : 1600, height = isPortrait ? 1600 : 900;
   renderer.setSize(width, height);
   camera.aspect = width / height;
-  camera.fov = isPortrait ? 58 : 40;
+  camera.fov = isPortrait ? 68 : 37;
   camera.updateProjectionMatrix();
   bike.root.updateMatrixWorld(true);
   bike.root.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.update(); });
+  // The first approved jump over the tow truck used this low front three-
+  // quarter camera. Preserve its exact positions, FOV and look-at offset.
+  const subject = new THREE.Box3().setFromObject(bike.root).getCenter(new THREE.Vector3());
+  subject.y -= 0.45;
+  camera.position.set(isPortrait ? -3.8 : -4.6, 3, isPortrait ? -7 : -6.4);
+  const reference = camera.position.clone();
+  const direction = reference.clone().sub(subject).normalize();
   const box = new THREE.Box3().setFromObject(bike.root, true);
-  const center = box.getCenter(new THREE.Vector3());
-  const direction = new THREE.Vector3(-1, 0.52, -1).normalize();
   const corners: THREE.Vector3[] = [];
   for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y])
     for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
-  // Centre the full current rider/bike and leave actual street below it, with
-  // clear space for the independently rendered brand and safe-area caption.
-  let distance = 5;
+  // Start at that exact composition. If the updated assets need more room,
+  // retreat only along the same sightline; never substitute an overhead view.
+  const initialDistance = reference.distanceTo(subject);
+  let distance = initialDistance;
   let bounds = [-1, -1, 1, 1];
   const verticalLimit = isPortrait ? 0.44 : 0.58;
   for (let attempt = 0; attempt < 40; attempt++, distance *= 1.06) {
-    camera.position.copy(center).addScaledVector(direction, distance);
-    camera.lookAt(center);
+    camera.position.copy(subject).addScaledVector(direction, distance);
+    camera.lookAt(subject);
     camera.updateMatrixWorld(true);
     const projected = corners.map(corner => corner.clone().project(camera));
     bounds = [Math.min(...projected.map(p => p.x)), Math.min(...projected.map(p => p.y)),
@@ -156,7 +162,8 @@ function frame(isPortrait: boolean) {
   renderer.render(scene, camera);
   return { width, height, bounds, cartoon: scene.userData.visualStyle, outlines: outline.count,
     ankle: Boolean(bike.rider.getObjectByName('rider-ankle')), street: Boolean(scene.getObjectByName('streamed-world')),
-    authoredImages: authoredImages.size };
+    authoredImages: authoredImages.size, referenceCamera: reference.toArray(), camera: camera.position.toArray(),
+    subject: subject.toArray(), backoff: distance / initialDistance };
 }
 
 // Texture completion is required, including supplied garment art. An arbitrary
