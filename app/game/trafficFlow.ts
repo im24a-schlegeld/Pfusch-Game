@@ -35,7 +35,8 @@ export function trafficArrivalGap(
   const nextClosing = Math.max(5, riderSpeed - nextSpeed);
   // A changing car can leave a different exit than the original wave planned.
   // Two adjacent swipes cover even the opposite edge; density never removes
-  // this physical escape budget, only the extra breathing room for beginners.
+  // this physical escape budget. Density grows through spawn spacing and the
+  // moving-traffic mix, without adding idle time to ordinary early waves.
   return Math.max(
     TRAFFIC_FLOW.minimumArrivalGap,
     TRAFFIC_FLOW.reactionSeconds +

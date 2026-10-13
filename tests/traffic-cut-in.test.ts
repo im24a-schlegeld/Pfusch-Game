@@ -85,7 +85,7 @@ describe('readable traffic cut-ins', () => {
 });
 
 describe('bounded progressive traffic density', () => {
-  it('gradually removes extra breathing room while retaining two swipes and reaction between contact windows', () => {
+  it('tightens spawn spacing while retaining two swipes and reaction between contact windows', () => {
     let previousGap = Infinity, previousSpacing = Infinity;
     for (const score of [0, 25_000, 50_000, 100_000, 150_000, 200_000, 1_000_000]) {
       const gap = trafficArrivalGap(45, 10, -14, 4, 7, score);
@@ -107,12 +107,17 @@ describe('bounded progressive traffic density', () => {
     const counts = [0, 0];
     for (const seed of [47, 1741, 8191]) for (const [index, score] of [0, 200_000].entries()) {
       const engine = new Engine(BIKES[3], seed);
+      const seen = new Set<number>();
       engine.start();
       for (let tick = 0; tick < 7200; tick++) {
         engine.score = score;
         engine.x = 100;
         engine.advance(STEP);
-        counts[index] += engine.obstacles.filter(obstacle => obstacle.active && obstacle.z === 145).length;
+        for (const obstacle of engine.obstacles) {
+          if (!obstacle.active || seen.has(obstacle.spawnId)) continue;
+          seen.add(obstacle.spawnId);
+          counts[index]++;
+        }
       }
       expect(engine.phase).toBe('playing');
       expect(engine.obstacles).toHaveLength(32);
