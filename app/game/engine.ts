@@ -564,7 +564,7 @@ export class Engine {
       const moving =
         !environment.kinds.includes('construction') &&
         this.distance > 220 &&
-        this.random() < 0.38 + this.difficulty * 0.24 + trafficIntensity(this.score) * 0.2;
+        this.random() < 0.38 + this.difficulty * 0.24;
       let velocity = moving
         ? Math.min(
             TRAFFIC_FLOW.maximumCarSpeed,
@@ -577,7 +577,13 @@ export class Engine {
       )
         ? environment.kinds
         : [...environment.kinds, 'car', 'car'];
-      let first: ObstacleKind = pool[Math.floor(this.random() * pool.length)];
+      // More compact cars allow more encounters within the same reaction
+      // budget. Merely raising slow-traffic speed/chance did the opposite:
+      // longer contact windows delayed every following wave. Keep all special
+      // encounters in the pool and draw once, even while waiting to spawn.
+      const extraCars = environment.kinds.includes('construction') ? 0 :
+        trafficIntensity(this.score) * TRAFFIC_PROGRESSION.additionalCarWeight;
+      let first: ObstacleKind = pool[Math.floor(this.random() * (pool.length + extraCars))] ?? 'car';
       if (first === 'towtruck' && this.distance < 500) first = 'car';
       if (first === 'construction' && this.random() < 0.28) first = 'ramp';
       kinds.push(first);

@@ -10,6 +10,7 @@ export const TRAFFIC_PROGRESSION = Object.freeze({
   minimumChangeArrival: 3.1,
   laneChangeApproach: 3.5,
   fullDensityScore: 200_000,
+  additionalCarWeight: 4,
   // The contact/reaction budget already protects the route. Extra idle time
   // here suppresses ordinary traffic and rare tow/car encounters too much.
   initialExtraHeadway: 0,
