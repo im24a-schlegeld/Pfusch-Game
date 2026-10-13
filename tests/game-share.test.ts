@@ -28,6 +28,12 @@ describe('public game sharing', () => {
       `?share=invite&name=${'a'.repeat(2100)}`,
     ]) expect(readGameShare(query)).toBeNull();
   });
+  it('keeps only well-formed referral codes in invitation links', () => {
+    const invite: GameShare = { kind: 'invite', name: 'Alex', referral: 'v1.1234567890abcdef.Signed_public_invite-code' };
+    expect(readGameShare(new URL(gameShareUrl(invite)).search)).toEqual(invite);
+    expect(readGameShare('?share=invite&ref=https://evil.test')).toEqual({ kind: 'invite', name: '' });
+    expect(gameShareUrl({ kind: 'invite', name: '', referral: 'invalid' })).not.toContain('ref=');
+  });
   it('never turns local best scores or absent players into a community rank', () => {
     const entries = [{ name: 'Alex', score: 500, you: false }, { name: 'DU', score: 200, you: true }];
     expect(rankedGameShare({ source: 'local', entries }, 'week', '2026-10-13')).toBeNull();

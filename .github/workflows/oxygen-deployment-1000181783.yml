@@ -36,11 +36,22 @@ jobs:
       - name: Check gameplay, sharing and purchase ownership
         run: npm test -- --maxWorkers=2
 
+      - name: Install browser for offline verification
+        run: npx playwright install --with-deps chromium
+
       - name: Build and publish to Oxygen
         id: deploy
         uses: shopify/oxygenctl-action@v4
         with:
           oxygen_deployment_token: ${{ secrets.OXYGEN_DEPLOYMENT_TOKEN_1000181783 }}
-          build_command: npm run build:oxygen
+          build_command: node scripts/verify-oxygen-build.mjs
           oxygen_client_dir: dist/client
           oxygen_worker_dir: dist/server
+
+      - name: Preserve browser verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-browser-check
+          path: outputs/browser-pwa
+          if-no-files-found: ignore

@@ -2,7 +2,7 @@
 export const GAME_SHARE_ORIGIN = 'https://game.pfusch-clothing.ch';
 export type SharePeriod = 'day' | 'week' | 'all';
 export type GameShare =
-  | { kind: 'invite'; name: string }
+  | { kind: 'invite'; name: string; referral?: string }
   | { kind: 'score'; name: string; score: number; date: string }
   | { kind: 'rank'; name: string; score: number; rank: number; period: SharePeriod; date: string };
 
@@ -12,13 +12,17 @@ const publicName = (value: string | null) => [...(value ?? '')]
 const validDate = (date: string | null): date is string => !!date && /^\d{4}-\d{2}-\d{2}$/.test(date)
   && Number.isFinite(Date.parse(`${date}T00:00:00Z`)) && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
 const scoreValue = (value: string | null) => value && /^\d{1,13}$/.test(value) && Number(value) <= 1e12 ? Number(value) : null;
+export const isReferralCode = (value: unknown): value is string => typeof value === 'string' && value.length <= 512 && /^v1\.[\w-]{16}\.[\w-]+$/.test(value);
 
 export function readGameShare(search: string): GameShare | null {
   if (search.length > 2048) return null;
   const params = new URLSearchParams(search);
   const kind = params.get('share');
   const name = publicName(params.get('name'));
-  if (kind === 'invite') return { kind, name };
+  if (kind === 'invite') {
+    const referral = params.get('ref');
+    return { kind, name, ...(isReferralCode(referral) ? { referral } : {}) };
+  }
   if (kind !== 'score' && kind !== 'rank') return null;
   const score = scoreValue(params.get('points'));
   const date = params.get('date');
@@ -35,6 +39,7 @@ export function gameShareUrl(share: GameShare): string {
   const url = new URL('/', GAME_SHARE_ORIGIN);
   url.searchParams.set('share', share.kind);
   if (publicName(share.name)) url.searchParams.set('name', publicName(share.name));
+  if (share.kind === 'invite' && isReferralCode(share.referral)) url.searchParams.set('ref', share.referral);
   if (share.kind !== 'invite') {
     url.searchParams.set('points', String(Math.max(0, Math.min(1e12, Math.floor(share.score)))));
     url.searchParams.set('date', share.date);

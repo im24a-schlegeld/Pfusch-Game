@@ -21,6 +21,7 @@ import {
 } from './trafficDomain';
 import { animateTraffic } from './trafficModels';
 import { trafficYaw } from './trafficProgression';
+import { captureRidePose } from './revivePresentation';
 import { createRideParticles, particleAnchors } from './rideParticles';
 import { createCrashTravel, type CrashDirection } from './crashTravel';
 import { makeSignCollectibleView } from './signCollectibleView';
@@ -304,6 +305,8 @@ export default function SceneView({
     let crash: ReturnType<typeof createCrashAnimation> | undefined;
     let crashTravel: ReturnType<typeof createCrashTravel> | undefined;
     let impactTraffic: THREE.Group | undefined;
+    let restoreRidePose: (() => void) | undefined;
+    let appliedReviveCount = engine?.reviveCount ?? 0;
     // Pursuit animation has its own vehicle. It can never transfer its pose to
     // an ordinary car when a traffic-pool entry is reused.
     const pursuitCar = new THREE.Group();
@@ -590,6 +593,27 @@ export default function SceneView({
         }
       }
       if (engine && mode === 'ride') {
+        if (engine.reviveCount !== appliedReviveCount) {
+          appliedReviveCount = engine.reviveCount;
+          restoreRidePose?.();
+          restoreRidePose = undefined;
+          crash = undefined;
+          crashTravel = undefined;
+          impactTraffic = undefined;
+          collisionTraffic.clear();
+          crashNotified = crashReported = false;
+          tilt = suspension = landing = launchPulse = 0;
+          previousSpeed = engine.speed;
+          previousXPosition = engine.x;
+          previousLateralSpeed = 0;
+          bike.root.position.set(engine.x, 0, 0);
+          bike.root.rotation.set(0, 0, 0);
+          bike.animateSuspension(0, 0);
+          bike.animateRider({ wheelie: 0, steer: 0, landing: 0 }, 1);
+          camera.position.set(engine.x * 0.27, 4.4, camera.aspect < 0.8 ? 10.4 : 8.4);
+          camera.lookAt(engine.x * 0.38, 1.4, -12);
+          hud = 1;
+        }
         engine.advance(dt);
         const moving = engine.phase === 'playing';
         const crashed =
@@ -835,6 +859,7 @@ export default function SceneView({
         });
         if (crashed) {
           if (!crash) {
+            restoreRidePose = captureRidePose(bike.root);
             tilt = Math.min(
               engine.wheelieAngle,
               TAIL_CONTACT[appearance.current.player.bike].angle,

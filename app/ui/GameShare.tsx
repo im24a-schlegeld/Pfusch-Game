@@ -5,12 +5,12 @@ import { shareGame } from '../services/gameShare';
 import { fmt } from './shared';
 import './game-share.css';
 
-export function ShareAction({ share, label }: { share: GameShare; label: string }) {
+export function ShareAction({ share, label, disabled = false }: { share: GameShare; label: string; disabled?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState('');
   const [manualUrl, setManualUrl] = useState('');
   async function openShare() {
-    if (busy) return;
+    if (busy || disabled) return;
     setBusy(true);
     setOutcome('');
     setManualUrl('');
@@ -21,7 +21,7 @@ export function ShareAction({ share, label }: { share: GameShare; label: string 
     } finally { setBusy(false); }
   }
   return <div className="game-share-action">
-    <button type="button" className="button small" disabled={busy} onClick={() => { void openShare(); }}>
+    <button type="button" className="button small" disabled={busy || disabled} onClick={() => { void openShare(); }}>
       {share.kind === 'invite' ? <UserPlus size={17} aria-hidden="true" /> : <Share2 size={17} aria-hidden="true" />}{label}
     </button>
     <output aria-live="polite">{outcome}</output>

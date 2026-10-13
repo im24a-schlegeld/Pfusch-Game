@@ -44,7 +44,7 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 function input(value: unknown): value is EngineInput {
   if (!record(value) || typeof value.type !== 'string') return false;
-  if (value.type === 'clear' || value.type === 'end') return Object.keys(value).length === 1;
+  if (value.type === 'clear' || value.type === 'end' || value.type === 'revive') return Object.keys(value).length === 1;
   if (Object.keys(value).length !== 2 || !Object.hasOwn(value, 'value')) return false;
   if (value.type === 'hold' || value.type === 'forward') return typeof value.value === 'boolean';
   if (value.type === 'move') return value.value === -1 || value.value === 1;
@@ -83,7 +83,7 @@ export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown):
   for (let tick = 0; tick <= proof.ticks; tick++) {
     while (eventIndex < events.length && events[eventIndex].tick === tick) {
       const command = events[eventIndex++].input;
-      if (engine.phase === 'crashed' && command.type !== 'clear') return null;
+      if (engine.phase === 'crashed' && command.type !== 'clear' && command.type !== 'revive') return null;
       switch (command.type) {
         case 'move': engine.move(command.value); break;
         case 'hold': engine.hold(command.value); break;
@@ -92,6 +92,7 @@ export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown):
         case 'excludeSigns': engine.excludeSigns(command.value); break;
         case 'clear': engine.clearInput(); break;
         case 'end': engine.endRide(); break;
+        case 'revive': if (!engine.revive()) return null; break;
       }
     }
     if (tick === proof.ticks) break;

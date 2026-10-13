@@ -17,6 +17,7 @@ import {
   Sparkles,
   Target,
   Trophy,
+  UserPlus,
   Zap,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -34,8 +35,9 @@ import { Coin, ScreenHeading, XpBar, fmt } from './shared';
 import { dayKey, normalizeLeaderboardName, refreshDaily } from '../domain/progression';
 import { dailyChallengesForDate } from '../domain/dailyChallenges';
 import { dailySignMask } from '../domain/dailySigns';
-import { rankedGameShare, type SharePeriod } from '../domain/gameShare';
+import { isReferralCode, rankedGameShare, sharePeriodLabel, type SharePeriod } from '../domain/gameShare';
 import { ShareAction } from './GameShare';
+import OfflineSettings from './OfflineSettings';
 import SignProgress from './SignProgress';
 import { useTouchInput } from './useTouchInput';
 import './ride-touch-controls.css';
@@ -287,6 +289,16 @@ export function Leaderboard({
   const [revision, setRevision] = useState(0);
   const saveRevision = useRef(0);
   const [draftName, setDraftName] = useState(player.leaderboardName);
+  const [invite, setInvite] = useState<{ code: string | null; loading: boolean }>({ code: null, loading: !!services.invites });
+  useEffect(() => {
+    let current = true;
+    setInvite({ code: null, loading: !!services.invites });
+    if (services.invites) void services.invites.getInvite().then((result) => {
+      const code = result?.code;
+      if (current) setInvite({ code: isReferralCode(code) ? code : null, loading: false });
+    }).catch(() => { if (current) setInvite({ code: null, loading: false }); });
+    return () => { current = false; };
+  }, [services.invites, player.id]);
   useEffect(() => setDraftName(player.leaderboardName), [player.leaderboardName]);
   useEffect(() => {
     let previous = services.players.syncStatus?.state;
@@ -340,13 +352,22 @@ export function Leaderboard({
         <div className="page-feature"><Trophy aria-hidden="true" /><p>{online ? 'Die besten Fahrten der Community.' : 'Deine Bestleistungen im gewählten Zeitraum.'}</p></div>
         <span className="tag">{online ? <Globe2 size={13} aria-hidden="true" /> : <Route size={13} aria-hidden="true" />}{online ? 'COMMUNITY' : 'DEINE BESTWERTE'}</span>
       </div>
-      <section className="game-share-section" aria-label="Bestleistung teilen und Freunde einladen">
-        <p>Dein Highscore <b>{fmt(player.highScore)}</b></p>
-        <div className="game-share-actions">
-          <ShareAction label="HIGHSCORE TEILEN" share={{ kind: 'score', score: player.highScore, name: player.leaderboardName, date: dayKey() }} />
-          {rankShare && <ShareAction label={`PLATZ ${rankShare.rank} TEILEN`} share={rankShare} />}
-          <ShareAction label="FREUNDE EINLADEN" share={{ kind: 'invite', name: player.leaderboardName }} />
+      <section className="game-share-section" aria-label="Bestleistung teilen">
+        <div className="game-share-record">
+          <div><span>DEIN HIGHSCORE</span><strong>{fmt(player.highScore)} <small>PUNKTE</small></strong></div>
+          <ShareAction label="TEILEN" share={{ kind: 'score', score: player.highScore, name: player.leaderboardName, date: dayKey() }} />
         </div>
+        {rankShare && <div className="game-share-record game-share-rank">
+          <p><b>Platz {rankShare.rank}</b><small>{sharePeriodLabel(rankShare.period, rankShare.date)}</small></p>
+          <ShareAction label="RANG TEILEN" share={rankShare} />
+        </div>}
+      </section>
+      <section className="game-invite-section" aria-labelledby="invite-heading">
+        <div className="game-invite-heading"><UserPlus size={22} aria-hidden="true" /><h2 id="invite-heading">Freunde einladen.</h2></div>
+        {invite.code ? <><p className="game-invite-offer">Aktuell <strong>150</strong> statt <s>100</s> Coins pro erfolgreicher Einladung.</p>
+          <p className="game-invite-detail">Wenn dein Freund sich anmeldet und seine erste Fahrt beendet.</p></>
+          : <p className="game-invite-detail">{invite.loading ? 'Dein persönlicher Einladungslink wird geladen …' : 'Mit Online-Anmeldung kannst du Einladungs-Coins verdienen. Im Moment teilst du ohne Belohnung.'}</p>}
+        <ShareAction label="FREUND EINLADEN" disabled={invite.loading} share={{ kind: 'invite', name: player.leaderboardName, ...(invite.code ? { referral: invite.code } : {}) }} />
       </section>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
         <TabsList className="ranking-tabs" variant="line">
@@ -533,6 +554,7 @@ export function SettingsScreen({
           {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Jedes PFUSCH-Zeichen bringt 45 Punkte. Sammle täglich P, F, U, S, C und H für 120 Coins.
         </p>
       </section>
+      {!duringRide && <OfflineSettings />}
       <footer className="settings-section">
         <span className="eyebrow">WHEELIE ESCAPE · PFUSCH · V1.0</span>
         <p>Echte Strassen sind keine Rennstrecke. Risiko bleibt im Spiel.</p>

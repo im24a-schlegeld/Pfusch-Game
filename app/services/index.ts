@@ -29,6 +29,8 @@ import { readOxygenRuntime, startOxygenLogin } from './oxygenRuntime';
 import { OxygenTransport } from './oxygenTransport';
 import { trialAccess, type PlayerAccess } from './playerAccess';
 import { OxygenVerifiedRewards, type VerifiedRewardsService } from './verifiedRewards';
+import { OxygenInvites, withInvitations, type InviteService } from './referrals';
+import { createAccountFetch } from './accountFetch';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
@@ -275,7 +277,15 @@ export class LocalPlayerRepository implements PlayerRepository {
       const raw = this.storage.getItem(key);
       if (!raw) return newPlayer();
       try {
+        const stored: unknown = JSON.parse(raw);
+        // Additive v1 recovery: a misplaced account snapshot must never become
+        // the logged-out inventory. Preserve it for recovery before resetting.
+        if (isRecord(stored) && typeof stored.id === 'string' && stored.id.startsWith('shopify:')) {
+          this.storage.setItem(`${key}:misplaced-account`, raw);
+          return newPlayer();
+        }
         const player = decodePlayer(raw);
+        player.irlItems = [];
         this.countRuns(player);
         return player;
       } catch {
@@ -373,6 +383,7 @@ export interface Services {
   rewards: RewardService;
   leaderboard: LeaderboardService;
   analytics: AnalyticsService;
+  invites?: InviteService;
 }
 export function createServices(): Services {
   const storage: StorageDriver = {
@@ -382,7 +393,10 @@ export function createServices(): Services {
   const local = new LocalPlayerRepository(storage);
   const oxygen = readOxygenRuntime(document);
   const parentOrigin = shopifyParentOrigin(window.parent !== window, document.referrer);
-  const transport = oxygen ? new OxygenTransport(window.fetch.bind(window)) : parentOrigin ? new ShopifyParentTransport(window, parentOrigin) : null;
+  const accountFetch = createAccountFetch(window.fetch.bind(window), window.location.origin, window.navigator.locks);
+  const invites = oxygen ? new OxygenInvites(storage, accountFetch) : undefined;
+  invites?.capture(window.location.search);
+  const transport = oxygen && invites ? withInvitations(new OxygenTransport(accountFetch), invites) : parentOrigin ? new ShopifyParentTransport(window, parentOrigin) : null;
   const cloud = transport
     ? new ShopifyCloudRepository(transport, storage, local, decodePlayer)
     : null;
@@ -397,8 +411,9 @@ export function createServices(): Services {
         : new GuestAuthService(),
     players: cloud ?? local,
     products: new LocalProductProvider(),
-    rewards: new MockRewardService(oxygen ? new OxygenVerifiedRewards(window.fetch.bind(window), undefined, () => cloud?.invalidateSession()) : undefined),
+    rewards: new MockRewardService(oxygen ? new OxygenVerifiedRewards(accountFetch, undefined, () => cloud?.invalidateSession()) : undefined),
     leaderboard: transport ? new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), cloud ?? undefined) : new LocalLeaderboardService(),
     analytics: new LocalAnalyticsService(),
+    invites,
   };
 }

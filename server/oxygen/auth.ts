@@ -2,6 +2,8 @@ import { ApiError, type CustomerIdentity } from '../shopify/auth.js';
 
 export const SHOP_ORIGINS = ['https://pfusch-clothing.ch', 'https://www.pfusch-clothing.ch'];
 export const SESSION_COOKIE = '__Host-wheelie_session';
+export const REFRESH_COOKIE = '__Host-wheelie_refresh';
+const SESSION_SECONDS = 30 * 24 * 60 * 60;
 const FLOW_COOKIE = '__Host-wheelie_flow';
 const encode = (value: Uint8Array) => btoa(String.fromCharCode(...value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const decode = (value: string) => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
@@ -52,6 +54,8 @@ function cookie(request: Request, name: string) {
   return matches.length === 1 ? matches[0].slice(name.length + 1) : null;
 }
 export const sessionCookie = (value: string, seconds: number) => `${SESSION_COOKIE}=${value}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=${seconds}`;
+const refreshCookie = (value: string, seconds: number) => `${REFRESH_COOKIE}=${value}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=${seconds}`;
+export const clearSessionCookies = () => [sessionCookie('', 0), refreshCookie('', 0)];
 const flowCookie = (value: string, seconds: number) => `${FLOW_COOKIE}=${value}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${seconds}`;
 export function safeReturn(value: string | null, config: OxygenAuthConfig) {
   if (!value) return config.origin + '/';
@@ -75,7 +79,8 @@ function trustedHost(host: string, config: OxygenAuthConfig) {
     || host === 'pfusch-clothing.ch' || host.endsWith('.pfusch-clothing.ch');
 }
 async function trustedRequest(url: string, config: OxygenAuthConfig, fetcher: typeof fetch, init: RequestInit) {
-  const response = await fetcher(url, { ...init, redirect: 'follow' });
+  // Never forward an OAuth token/body through a 307/308 before checking its destination.
+  const response = await fetcher(url, { ...init, redirect: 'manual' });
   if (response.url) {
     let final: URL;
     try { final = new URL(response.url); } catch { throw new ApiError(503, 'invalid_discovery'); }
@@ -83,8 +88,8 @@ async function trustedRequest(url: string, config: OxygenAuthConfig, fetcher: ty
   }
   return response;
 }
-async function objectResponse(response: Response) {
-  if (!response.ok) throw new ApiError(response.status === 401 ? 401 : 503, response.status === 401 ? 'login_required' : 'customer_account_unavailable');
+async function objectResponse(response: Response, oauthError = false) {
+  if (!response.ok && !(oauthError && response.status === 400)) throw new ApiError(response.status === 401 ? 401 : 503, response.status === 401 ? 'login_required' : 'customer_account_unavailable');
   const text = await response.text();
   if (text.length > 65536) throw new ApiError(503, 'invalid_customer_response');
   let value: unknown;
@@ -141,6 +146,65 @@ async function customerId(accessToken: string, config: OxygenAuthConfig, fetcher
   if (!match) throw new ApiError(401, 'login_required');
   return match[1];
 }
+function tokenHeaders(config: OxygenAuthConfig): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', Origin: config.origin, 'User-Agent': 'WheelieEscape/1.0' };
+  if (config.clientSecret) headers.Authorization = `Basic ${btoa(`${config.clientId}:${config.clientSecret}`)}`;
+  return headers;
+}
+function validTokens(tokens: Record<string, unknown>): tokens is Record<string, unknown> & { access_token: string; expires_in: number } {
+  return typeof tokens.access_token === 'string' && tokens.access_token.length > 0 && tokens.access_token.length <= 2300
+    && typeof tokens.expires_in === 'number' && Number.isFinite(tokens.expires_in) && tokens.expires_in >= 1;
+}
+async function loginCookies(tokens: Record<string, unknown>, customer: string, config: OxygenAuthConfig, now: number, previousRefresh?: string) {
+  if (!validTokens(tokens)) throw new ApiError(503, 'invalid_token_response');
+  const refresh = typeof tokens.refresh_token === 'string' && tokens.refresh_token ? tokens.refresh_token : previousRefresh;
+  if (refresh && refresh.length > 2300) throw new ApiError(503, 'invalid_token_response');
+  const accessSeconds = Math.min(SESSION_SECONDS, Math.floor(tokens.expires_in));
+  const seconds = refresh ? SESSION_SECONDS : accessSeconds;
+  const refreshId = refresh ? random() : undefined;
+  const sealed = await sealCookie(config, 'session', { accessToken: tokens.access_token, customerId: customer,
+    expires: now + accessSeconds * 1000, validUntil: now + seconds * 1000, ...(refreshId ? { refreshId } : {}) });
+  // Split encrypted cookies keep an access JWT plus refresh token below the browser's per-cookie limit.
+  const refreshed = refresh ? await sealCookie(config, 'refresh', { refreshToken: refresh, customerId: customer, refreshId, expires: now + seconds * 1000 }) : '';
+  return [sessionCookie(sealed, seconds), refreshCookie(refreshed, refresh ? seconds : 0)];
+}
+// Simultaneous player/ranking/reward requests share one rotation in this worker.
+// Only a short, bounded cache of successful rotations is retained server-side.
+const rotations = new Map<string, { until: number; promise: Promise<{ id: string; cookies: string[] }> }>();
+async function rotateSession(raw: string, refreshToken: string, customer: string, config: OxygenAuthConfig, fetcher: typeof fetch, now: number, accessExpires: number) {
+  const cacheKey = encode(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes(`${config.origin}:${config.clientId}:${raw}`))));
+  for (const [id, value] of rotations) if (value.until <= now) rotations.delete(id);
+  const cached = rotations.get(cacheKey);
+  if (cached) return cached.promise;
+  const promise = (async () => {
+    const info = await discovery(config, fetcher, 'openid-configuration');
+    const response = await trustedRequest(endpoint(info.token_endpoint, config), config, fetcher, { method: 'POST', headers: tokenHeaders(config),
+      body: new URLSearchParams({ grant_type: 'refresh_token', client_id: config.clientId, refresh_token: refreshToken }) });
+    if (response.status === 400) {
+      const error = await objectResponse(response, true);
+      if (['invalid_grant', 'invalid_token'].includes(String(error.error))) {
+        // A concurrent worker may already have rotated this token. Briefly keep
+        // the cookie so its successful response can arrive; never grant access
+        // on this error, and require login after the bounded one-minute grace.
+        if (accessExpires <= now + 30000 && now - accessExpires < 60000) throw new ApiError(503, 'customer_account_unavailable');
+        throw new ApiError(401, 'login_required');
+      }
+      throw new ApiError(503, 'customer_account_unavailable');
+    }
+    const tokens = await objectResponse(response);
+    if (!validTokens(tokens)) throw new ApiError(503, 'invalid_token_response');
+    const cachedRotation = rotations.get(cacheKey);
+    if (cachedRotation) cachedRotation.until = Math.min(cachedRotation.until, now + Math.floor(tokens.expires_in) * 1000);
+    // A successful OAuth refresh keeps the principal of this encrypted,
+    // session-bound refresh token. Identity was verified during the code flow;
+    // no browser or unverified JWT claim supplies it. Do not risk discarding a
+    // rotated token because a second, unrelated GraphQL request times out.
+    return { id: customer, cookies: await loginCookies(tokens, customer, config, now, refreshToken) };
+  })();
+  if (rotations.size >= 128) rotations.delete(rotations.keys().next().value!);
+  rotations.set(cacheKey, { until: now + 60000, promise });
+  try { return await promise; } catch (error) { rotations.delete(cacheKey); throw error; }
+}
 export async function finishLogin(request: Request, config: OxygenAuthConfig, fetcher: typeof fetch, now = Date.now()) {
   const params = new URL(request.url).searchParams, flow = await openCookie(config, 'flow', cookie(request, FLOW_COOKIE));
   if (!flow || typeof flow.expires !== 'number' || flow.expires < now || flow.expires > now + 600000
@@ -148,26 +212,37 @@ export async function finishLogin(request: Request, config: OxygenAuthConfig, fe
     || params.getAll('state').length !== 1 || params.getAll('code').length !== 1 || params.has('error')
     || params.get('state') !== flow.state || !params.get('code') || params.get('code')!.length > 4096) throw new ApiError(400, 'invalid_oauth_state');
   const info = await discovery(config, fetcher, 'openid-configuration');
-  const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', Origin: config.origin, 'User-Agent': 'WheelieEscape/1.0' };
-  if (config.clientSecret) headers.Authorization = `Basic ${btoa(`${config.clientId}:${config.clientSecret}`)}`;
-  const tokens = await objectResponse(await trustedRequest(endpoint(info.token_endpoint, config), config, fetcher, { method: 'POST', headers,
+  const tokens = await objectResponse(await trustedRequest(endpoint(info.token_endpoint, config), config, fetcher, { method: 'POST', headers: tokenHeaders(config),
     body: new URLSearchParams({ grant_type: 'authorization_code', client_id: config.clientId, redirect_uri: config.origin + '/auth/callback', code: params.get('code')!, code_verifier: flow.verifier }) }));
-  if (typeof tokens.access_token !== 'string' || tokens.access_token.length > 2300 || !tokens.access_token
-    || typeof tokens.expires_in !== 'number' || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) throw new ApiError(503, 'invalid_token_response');
+  if (!validTokens(tokens)) throw new ApiError(503, 'invalid_token_response');
   // Identity comes from the authenticated API, never an unverified ID-token claim.
   const id = await customerId(tokens.access_token, config, fetcher);
-  const seconds = Math.min(3600, Math.floor(tokens.expires_in));
-  const sealed = await sealCookie(config, 'session', { accessToken: tokens.access_token, customerId: id, expires: now + seconds * 1000 });
   const response = new Response(null, { status: 302, headers: { Location: safeReturn(flow.returnTo, config) } });
   response.headers.append('Set-Cookie', flowCookie('', 0));
-  response.headers.append('Set-Cookie', sessionCookie(sealed, seconds));
+  for (const value of await loginCookies(tokens, id, config, now)) response.headers.append('Set-Cookie', value);
   return response;
 }
-export async function authenticateOxygen(request: Request, config: OxygenAuthConfig, fetcher: typeof fetch, now = Date.now()): Promise<CustomerIdentity> {
+export async function authenticateOxygen(request: Request, config: OxygenAuthConfig, fetcher: typeof fetch, now = Date.now(), onCookies?: (cookies: string[]) => void): Promise<CustomerIdentity> {
   const session = await openCookie(config, 'session', cookie(request, SESSION_COOKIE));
-  if (!session || typeof session.accessToken !== 'string' || typeof session.expires !== 'number' || session.expires <= now
-    || session.expires > now + 3600000) throw new ApiError(401, 'login_required');
-  const id = await customerId(session.accessToken, config, fetcher);
+  const validUntil = session?.validUntil ?? session?.expires;
+  if (!session || typeof session.accessToken !== 'string' || typeof session.expires !== 'number'
+    || typeof session.customerId !== 'string' || typeof validUntil !== 'number' || validUntil <= now
+    || validUntil > now + SESSION_SECONDS * 1000 || session.expires > validUntil) throw new ApiError(401, 'login_required');
+  const rawRefresh = cookie(request, REFRESH_COOKIE);
+  const refresh = typeof session.refreshId === 'string' ? await openCookie(config, 'refresh', rawRefresh) : null;
+  const canRefresh = refresh && typeof refresh.refreshToken === 'string' && refresh.refreshToken.length > 0
+    && refresh.refreshToken.length <= 2300 && refresh.customerId === session.customerId && refresh.refreshId === session.refreshId
+    && typeof refresh.expires === 'number' && refresh.expires === validUntil;
+  const renew = async () => {
+    if (!canRefresh) throw new ApiError(401, 'login_required');
+    const rotated = await rotateSession(rawRefresh!, refresh.refreshToken as string, session.customerId as string, config, fetcher, now, session.expires as number);
+    onCookies?.(rotated.cookies);
+    return { shop: config.shop, customerId: rotated.id };
+  };
+  if (session.expires <= now || canRefresh && session.expires <= now + 30000) return renew();
+  let id: string;
+  try { id = await customerId(session.accessToken, config, fetcher); }
+  catch (error) { if (canRefresh && error instanceof ApiError && error.status === 401) return renew(); throw error; }
   if (id !== session.customerId) throw new ApiError(401, 'login_required');
   return { shop: config.shop, customerId: id };
 }

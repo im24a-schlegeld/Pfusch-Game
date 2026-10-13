@@ -20,6 +20,9 @@ import RideTutorialOverlay from './RideTutorialOverlay';
 import RideTouchButtons from './RideTouchButtons';
 import { RideHeldInput, type RideHoldAction } from './rideHeldInput';
 import { useTouchInput } from './useTouchInput';
+import { RideCompletion } from './rideCompletion';
+import { ShareReviveGate } from '../services/shareRevive';
+import RideRevive from './RideRevive';
 import './ride-guidance.css';
 import './ride-settings.css';
 interface Props {
@@ -62,6 +65,18 @@ export default function Ride({
     [player.bike, verifiedChallenge],
   );
   const verifier = useMemo(() => verifiedChallenge ? new VerifiedRunRecorder(engine) : null, [engine, verifiedChallenge]);
+  const completion = useMemo(() => new RideCompletion(engine,
+    typeof navigator !== 'undefined' && typeof navigator.share === 'function'), [engine]);
+  const reviveGate = useMemo(() => new ShareReviveGate(), [engine]);
+  const [reviveOpen, setReviveOpen] = useState(false);
+  const [reviveBusy, setReviveBusy] = useState(false);
+  const [reviveMessage, setReviveMessage] = useState('');
+  const reviveSharing = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const collectedDailySigns = dailySignMask(player.challenges, dayKey());
   useEffect(() => {
     // Apply after the recorder exists and before the ready countdown starts.
@@ -85,9 +100,7 @@ export default function Ride({
   const lastTutorialElapsed = useRef(-Infinity);
   const tutorialPointer = useRef<{ id: number; x: number; y: number; time: number } | null>(null);
   const gestureSurface = useRef<HTMLDivElement>(null);
-  const settled = useRef<RunStats | null>(null),
-    revealed = useRef(false),
-    lastEvent = useRef(0),
+  const lastEvent = useRef(0),
     eventTime = useRef(0),
     suppressClicksUntil = useRef(0);
   const finish = useRef(onFinish);
@@ -307,7 +320,7 @@ export default function Ride({
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (pauseSettingsOpen) return;
+      if (pauseSettingsOpen || engine.phase === 'crashed') return;
       // Escape belongs to the open pause dialog; avoid two competing resumes.
       if (k === 'escape' && engine.phase === 'paused' && engine.resumeRemaining === 0 && !tutorialRef.current) return;
       if (!['shift', 'control', 'alt', 'meta'].includes(k)) heldInput.clearPointers();
@@ -387,18 +400,50 @@ export default function Ride({
     audio.unlock();
     setTick(n => n + 1);
   }
-  function settle(e: Engine) {
-    if (e.phase !== 'crashed' || settled.current) return;
-    const run = e.stats();
-    settled.current = run;
-    const proof = verifier?.proof();
-    finish.current(run, proof && verifiedChallenge ? { token: verifiedChallenge.token, proof } : undefined);
+  function settle(declineRevive = false) {
+    completion.settle(run => {
+      const proof = verifier?.proof();
+      finish.current(run, proof && verifiedChallenge ? { token: verifiedChallenge.token, proof } : undefined);
+    }, declineRevive);
   }
   function revealResults() {
-    settle(engine);
-    if (!settled.current || revealed.current) return;
-    revealed.current = true;
-    resultsReady.current(settled.current.id);
+    if (completion.offersRevive) {
+      setReviveOpen(true);
+      return;
+    }
+    settle();
+    completion.reveal(runId => resultsReady.current(runId));
+  }
+  function declineRevive() {
+    reviveGate.close();
+    setReviveOpen(false);
+    settle(true);
+    completion.reveal(runId => resultsReady.current(runId));
+  }
+  async function shareAndRevive() {
+    if (reviveSharing.current || !completion.offersRevive) return;
+    reviveSharing.current = true;
+    setReviveBusy(true);
+    setReviveMessage('');
+    try {
+      const result = await reviveGate.request({ kind: 'score', name: player.leaderboardName,
+        score: Math.floor(engine.score), date: dayKey() }, navigator);
+      if (!mounted.current) return;
+      if (result === 'ready' && completion.revive()) {
+        clearGestures();
+        setReviveOpen(false);
+        engine.pause();
+        // Sharing may resolve while its target app is still in the foreground.
+        // Start the ordinary countdown only after returning to the game.
+        if (!document.hidden && document.hasFocus()) engine.resume();
+        audio.unlock();
+        setTick(n => n + 1);
+      } else if (result === 'cancelled') setReviveMessage('Teilen abgebrochen. Du kannst es erneut versuchen.');
+      else if (result !== 'ready') setReviveMessage('Teilen konnte nicht abgeschlossen werden. Versuche es erneut oder beende die Fahrt.');
+    } finally {
+      reviveSharing.current = false;
+      if (mounted.current) setReviveBusy(false);
+    }
   }
   function frame(e: Engine) {
     if (e.signPickupSerial > lastSignPickup.current) {
@@ -425,8 +470,8 @@ export default function Ride({
     }
     setTick((n) => n + 1);
     if (e.phase === 'crashed') {
-      settle(e);
-      if (settled.current?.cause === 'Ride ended') revealResults();
+      settle();
+      if (completion.run?.cause === 'Ride ended') revealResults();
     }
   }
   function pause() {
@@ -445,8 +490,8 @@ export default function Ride({
     if (engine.phase !== 'paused') return;
     clearGestures();
     engine.endRide();
-    settle(engine);
-    revealed.current = true;
+    settle();
+    reviveGate.close();
     onExit();
   }
   const resuming = engine.phase === 'paused' && engine.resumeRemaining > 0;
@@ -475,6 +520,7 @@ export default function Ride({
       data-wheelie={engine.wheelie}
       data-sign-mask={engine.collectedSigns}
       data-sign-sets={engine.signSetCount}
+      data-revives={engine.reviveCount}
       data-frame={tick}
       data-resume-countdown={Math.ceil(engine.resumeRemaining)}
       data-tutorial={tutorial?.id ?? ''}
@@ -579,6 +625,8 @@ export default function Ride({
           <span>WEITERFAHREN</span>
         </output>
       )}
+      <RideRevive open={reviveOpen} score={engine.score} busy={reviveBusy} message={reviveMessage}
+        share={() => { void shareAndRevive(); }} finish={declineRevive} />
       <Dialog
         open={engine.phase === 'paused' && !resuming && !tutorial}
         disablePointerDismissal

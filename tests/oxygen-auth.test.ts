@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { authenticateOxygen, finishLogin, openCookie, readOxygenAuth, safeReturn, sealCookie, SESSION_COOKIE, startLogin } from '../server/oxygen/auth';
+import { authenticateOxygen, finishLogin, openCookie, readOxygenAuth, REFRESH_COOKIE, safeReturn, sealCookie, SESSION_COOKIE, startLogin } from '../server/oxygen/auth';
 import { handleOxygenRequest } from '../server/oxygen/runtime';
 
 const env = { OXYGEN_APP_ORIGIN: 'https://game.pfusch-clothing.ch', SHOPIFY_STOREFRONT_ORIGIN: 'https://pfusch-clothing.ch',
@@ -102,6 +102,94 @@ describe('Oxygen Customer Account authentication', () => {
     const session = await sealCookie(config, 'session', { accessToken: 'secret', expires: now + 50000, customerId: '123' });
     expect(await authenticateOxygen(request('/api/player', `${SESSION_COOKIE}=${session}`), config, fetcher, now))
       .toEqual({ shop: config.shop, customerId: '123' });
+  });
+});
+
+describe('renewable Oxygen sessions', () => {
+  async function renewableCookies(id = '123', time = now) {
+    const refreshId = crypto.randomUUID(), validUntil = time + 86400000;
+    const session = await sealCookie(config, 'session', { accessToken: 'old-access', customerId: id,
+      expires: time - 1, validUntil, refreshId });
+    const refresh = await sealCookie(config, 'refresh', { refreshToken: 'rotating-refresh', customerId: id, expires: validUntil, refreshId });
+    return `${SESSION_COOKIE}=${session}; ${REFRESH_COOKIE}=${refresh}`;
+  }
+  function refreshingFetch(status = 200, customer = '123') {
+    return vi.fn<typeof fetch>(async input => {
+      const url = String(input);
+      if (url.endsWith('/.well-known/openid-configuration')) return Response.json({ token_endpoint: `${endpoint}/oauth/token` });
+      if (url.endsWith('/.well-known/customer-account-api')) return Response.json({ graphql_api: `${endpoint}/graphql` });
+      if (url.endsWith('/oauth/token')) return status === 200
+        ? Response.json({ access_token: 'new-access', refresh_token: 'new-refresh', expires_in: 3600 })
+        : Response.json({ error: status === 400 ? 'invalid_grant' : 'temporarily_unavailable' }, { status });
+      if (url.endsWith('/graphql')) return Response.json({ data: { customer: { id: `gid://shopify/Customer/${customer}` } } });
+      throw new Error('Unexpected auth request');
+    });
+  }
+  it('keeps refresh-capable login for 30 days while encrypting both tokens in separate HttpOnly cookies', async () => {
+    const fetcher = mockFetch();
+    const initial = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async (input, init) => String(input).endsWith('/oauth/token')
+      ? Response.json({ access_token: 'access-secret', refresh_token: 'refresh-secret', expires_in: 3600 }) : initial(input, init));
+    const start = await startLogin(request('/auth/login'), config, fetcher, now);
+    const state = new URL(start.headers.get('location')!).searchParams.get('state');
+    const finish = await finishLogin(request(`/auth/callback?code=code&state=${state}`, start.headers.getSetCookie()[0].split(';')[0]), config, fetcher, now);
+    const cookies = finish.headers.getSetCookie().filter(value => value.startsWith(SESSION_COOKIE + '=') || value.startsWith(REFRESH_COOKIE + '='));
+    expect(cookies).toHaveLength(2);
+    for (const value of cookies) {
+      expect(value).toContain('Secure; HttpOnly; SameSite=None; Max-Age=2592000');
+      expect(value).not.toContain('secret'); expect(value.length).toBeLessThan(4096);
+    }
+  });
+  it('renews expired access and shares one rotation across concurrent protected requests', async () => {
+    const cookies = await renewableCookies(), fetcher = refreshingFetch(), updateA = vi.fn(), updateB = vi.fn();
+    const [a, b] = await Promise.all([
+      authenticateOxygen(request('/api/player', cookies), config, fetcher, now, updateA),
+      authenticateOxygen(request('/api/leaderboard', cookies), config, fetcher, now, updateB),
+    ]);
+    expect(a).toEqual({ shop: config.shop, customerId: '123' }); expect(b).toEqual(a);
+    const exchanges = fetcher.mock.calls.filter(([url]) => String(url).endsWith('/oauth/token'));
+    expect(exchanges).toHaveLength(1);
+    expect(new URLSearchParams(String(exchanges[0][1]?.body)).get('grant_type')).toBe('refresh_token');
+    expect(updateA).toHaveBeenCalledWith(updateB.mock.calls[0][0]);
+    const updated = updateA.mock.calls[0][0] as string[];
+    const session = updated.find(value => value.startsWith(SESSION_COOKIE + '='))!.split(';')[0].slice(SESSION_COOKIE.length + 1);
+    expect(await openCookie(config, 'session', session)).toMatchObject({ customerId: '123', accessToken: 'new-access', expires: now + 3600000 });
+  });
+  it.each([400, 503])('distinguishes a revoked refresh from an upstream failure (%s)', async status => {
+    const update = vi.fn();
+    await expect(authenticateOxygen(request('/api/player', await renewableCookies()), config, refreshingFetch(status), now + 60001, update))
+      .rejects.toMatchObject({ status: status === 400 ? 401 : 503 });
+    expect(update).not.toHaveBeenCalled();
+  });
+  it('does not erase another worker\'s newly rotated cookie during a short concurrent-refresh race', async () => {
+    const update = vi.fn();
+    await expect(authenticateOxygen(request('/api/player', await renewableCookies()), config, refreshingFetch(400), now, update))
+      .rejects.toMatchObject({ status: 503 });
+    expect(update).not.toHaveBeenCalled();
+  });
+  it('rejects a refresh cookie belonging to another session', async () => {
+    const a = await renewableCookies(), b = await renewableCookies(), fetcher = refreshingFetch();
+    await expect(authenticateOxygen(request('/api/player', `${a.split('; ')[0]}; ${b.split('; ')[1]}`), config, fetcher, now))
+      .rejects.toMatchObject({ status: 401 });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('does not lose a successfully rotated token to an unrelated identity API outage', async () => {
+    const fetcher = refreshingFetch(), underlying = fetcher.getMockImplementation()!, update = vi.fn();
+    fetcher.mockImplementation(async (input, init) => String(input).includes('/graphql') || String(input).endsWith('/.well-known/customer-account-api')
+      ? Response.json({ errors: 'temporarily unavailable' }, { status: 503 }) : underlying(input, init));
+    expect(await authenticateOxygen(request('/api/player', await renewableCookies()), config, fetcher, now, update))
+      .toEqual({ shop: config.shop, customerId: '123' });
+    expect(update).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/graphql'))).toBe(false);
+  });
+  it('returns both rotated cookies even when the subsequent player service is unavailable', async () => {
+    const time = Date.now(), fetcher = refreshingFetch(), underlying = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async (input, init) => String(input).includes('/admin/api/')
+      ? Response.json({ errors: 'temporarily unavailable' }, { status: 503 }) : underlying(input, init));
+    const result = await handleOxygenRequest(request('/api/player', await renewableCookies('123', time)), env, '', fetcher);
+    expect(result.status).toBe(503);
+    expect(result.headers.getSetCookie()).toHaveLength(2);
+    expect(result.headers.getSetCookie().every(value => value.includes('Max-Age=2592000'))).toBe(true);
   });
 });
 

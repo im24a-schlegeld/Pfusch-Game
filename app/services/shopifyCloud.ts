@@ -1,5 +1,7 @@
-import type { Player } from '../domain/types';
+import type { Player, Product } from '../domain/types';
 import { newPlayer } from '../domain/progression';
+import { guestInventory } from '../domain/guestInventory';
+import catalog from '../../public/catalog/products.json';
 import { REWARDS } from '../domain/config';
 import type { AuthService, PlayerRepository, PlayerSyncStatus, StorageDriver } from './index';
 import type { CloudResponse, CloudTransport } from './shopifyBridge';
@@ -13,12 +15,22 @@ interface Snapshot {
   storage: PlayerAccess;
   purchases: { items: string[]; available: boolean; reason?: 'orders_scope_missing' | 'orders_unavailable'; history: 'all' | 'recent' };
 }
-interface Backup { player: Player; compareDigest: string | null; dirty: boolean }
+interface Backup { player: Player; compareDigest: string | null; dirty: boolean; attempted?: Player }
 type Decoder = (raw: string) => Player;
 const guestKey = 'pfusch:player:v1';
 const importedGuestKey = 'pfusch:player:v1:guest-imported';
+const offlineAccountKey = 'pfusch:player:v1:offline-account';
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const digest = (value: unknown): value is string | null => value === null || (typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value));
+const sameDigitalProgress = (left: Player, right: Player) => {
+  const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
+    : record(value) ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  return JSON.stringify(canonical({ ...left, irlItems: [], tickets: 0 })) === JSON.stringify(canonical({ ...right, irlItems: [], tickets: 0 }));
+};
+const serverCoinCredit = (before: Player, after: Player): number => {
+  const increase = after.coins - before.coins;
+  return Number.isSafeInteger(increase) && increase > 0 && sameDigitalProgress(before, { ...after, coins: before.coins }) ? increase : 0;
+};
 
 /** Cloud saves grant digital progress only, never purchase/reward authority. */
 export function digitalPlayer(player: Player, customerId: string): Player {
@@ -64,11 +76,15 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private blocked = false;
   private backupWritable = true;
   private recoveryPlayer: Player | null = null;
+  private offline = false;
+  private lastAttempt: Player | null = null;
+  private guestLoading: Promise<Player> | null = null;
 
   constructor(private transport: CloudTransport, private storage: StorageDriver,
-    private guest: PlayerRepository, private decode: Decoder, private debounceMs = 900) {}
+    private guest: PlayerRepository, private decode: Decoder, private debounceMs = 900,
+    private isOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false) {}
 
-  get purchaseStatus() { return this.session?.purchases; }
+  get purchaseStatus() { return this.authenticated ? this.session?.purchases : undefined; }
 
   getAccess = (): PlayerAccess => this.access;
   subscribeSync = (listener: () => void) => {
@@ -83,7 +99,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     for (const listener of this.listeners) listener();
   }
   private status(state: PlayerSyncStatus['state'], message: string) {
-    if (!this.session && this.guest.warning) { state = 'offline'; message = this.guest.warning; }
+    if (this.guestMode && this.guest.warning) { state = 'offline'; message = this.guest.warning; }
     this.syncStatus = { state, message };
     this.warning = ['offline', 'conflict', 'unavailable'].includes(state) ? message : this.guest.warning;
     for (const listener of this.listeners) listener();
@@ -95,23 +111,34 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
   private deny(access: PlayerAccess, message = accessMessage(access)) {
     this.cancelPending();
-    if (access.reason === 'unsubscribed' || access.reason === 'newsletter_required') this.clearOutbox();
+    // A refusal stops uploads, but never erases unsent runs or recovery data.
+    if ((access.reason === 'unsubscribed' || this.blocked) && this.read(offlineAccountKey)) this.store(offlineAccountKey, '');
     this.setAccess(access);
-    this.status('unavailable', message);
+    this.status(this.blocked ? 'conflict' : 'unavailable', message);
   }
   /** A retained save snapshot is not proof that the server session is still valid. */
   invalidateSession(): void {
     this.authenticated = false;
     this.authRevision++;
-    if (this.session) this.deny(unavailableAccess(this.localCompletedRuns),
-      `Deine Spielsitzung ist abgelaufen. Bitte erneut anmelden.${this.lastUnsaved ? ` ${this.recoveryMessage()}` : ''}`);
+    this.guestMode = true;
+    this.cancelPending();
+    this.store(offlineAccountKey, '');
+    this.setAccess(unavailableAccess(this.localCompletedRuns));
+    this.status('unavailable', 'Deine Spielsitzung ist abgelaufen. Bitte erneut anmelden. Dein Kontospielstand bleibt gesichert.');
+    // Account recovery stays in its own slot. Never show or save that equipment
+    // as a guest, even when a protected request rejects identity mid-session.
+    void this.useLocalGuest();
   }
   /** Keep the five-ride guest trial usable while Oxygen is being configured.
    * No account save is claimed here; a later successful login/bootstrap can
    * switch this repository to the server-backed session. */
   private async useLocalGuest(): Promise<Player> {
-    const local = this.guestPlayer ?? await this.guest.load();
+    const revision = this.authRevision;
+    const local = this.guestPlayer ?? guestInventory(await (this.guestLoading ??= this.guest.load()), catalog as Product[]);
+    if (revision !== this.authRevision || this.authenticated) return local;
+    this.guestPlayer = local;
     this.guestMode = true;
+    this.localCompletedRuns = local.runsPlayed;
     const access = this.guest.getAccess?.() ?? trialAccess(local.runsPlayed);
     this.setAccess(access);
     this.status(access.allowed ? 'guest' : 'unavailable', access.allowed
@@ -127,11 +154,57 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     catch { this.backupWritable = false; return null; }
   }
   private accountKey() { return `pfusch:player:v1:shopify:${this.session!.customer.id}`; }
+  private rememberOfflineAccount() {
+    if (this.session && this.authenticated && this.session.storage.allowed)
+      this.store(offlineAccountKey, JSON.stringify({ customerId: this.session.customer.id, storage: this.session.storage,
+        // Display cache only. digitalPlayer strips these keys from every upload.
+        items: this.session.purchases.items, history: this.session.purchases.history }));
+  }
+  private offlineStatus() {
+    this.offline = true;
+    this.cancelPending();
+    if (!this.session || !this.authenticated || this.blocked) return;
+    this.setAccess(this.session.storage);
+    if (!this.access.allowed) { this.status('unavailable', accessMessage(this.access)); return; }
+    this.status('offline', this.backupWritable
+      ? 'Offline: Spielstand auf diesem Gerät gespeichert. Punkte und Coins werden bei Verbindung ins Konto übertragen.'
+      : 'Offline: Änderungen bleiben nur in dieser Sitzung. Bitte Spielstand exportieren, bevor du das Spiel schliesst.');
+  }
+  /** This local identity is only an offline play context. Reconnection must
+   * authenticate the same customer and check the server digest before uploading. */
+  private restoreOfflineAccount(): Player | null {
+    const raw = this.read(offlineAccountKey);
+    if (!raw) return null;
+    try {
+      const saved: unknown = JSON.parse(raw);
+      if (!record(saved) || typeof saved.customerId !== 'string' || !/^[1-9]\d{0,30}$/.test(saved.customerId)) return null;
+      const access = serverAccess(saved.storage);
+      if (!access.allowed) return null;
+      const items = Array.isArray(saved.items) && saved.items.length <= 500 && saved.items.every(id => typeof id === 'string' && id.length <= 160)
+        ? saved.items as string[] : [];
+      this.session = { customer: { id: saved.customerId }, player: null, compareDigest: null, csrfToken: '', storage: access,
+        purchases: { items, available: false, reason: 'orders_unavailable', history: saved.history === 'all' ? 'all' : 'recent' } };
+      const accepted = this.readBackup(), pending = this.readBackup(`${this.accountKey()}:pending`);
+      const backup = pending?.dirty ? pending : accepted;
+      if (!backup) { this.session = null; return null; }
+      this.session.player = backup.dirty && accepted && accepted.compareDigest === backup.compareDigest ? accepted.player : backup.player;
+      this.session.compareDigest = backup.compareDigest;
+      this.authenticated = true;
+      this.guestMode = false;
+      this.localCompletedRuns = Math.max(access.completedRuns, backup.player.runsPlayed);
+      if (backup.dirty) {
+        this.outbox = backup; this.lastUnsaved = backup.player; this.lastAttempt = backup.attempted ?? null;
+      }
+      this.offlineStatus();
+      return backup.player;
+    } catch { this.session = null; return null; }
+  }
   private backup(player: Player) {
     this.store(this.accountKey(), JSON.stringify({ player, compareDigest: this.session!.compareDigest, dirty: false } satisfies Backup));
+    this.rememberOfflineAccount();
   }
   private storeOutbox(player: Player) {
-    this.outbox = { player, compareDigest: this.session!.compareDigest, dirty: true };
+    this.outbox = { player, compareDigest: this.session!.compareDigest, dirty: true, ...(this.lastAttempt ? { attempted: this.lastAttempt } : {}) };
     this.store(`${this.accountKey()}:pending`, JSON.stringify(this.outbox));
   }
   private clearOutbox() {
@@ -152,7 +225,9 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       const value: unknown = JSON.parse(raw);
       if (!record(value) || !digest(value.compareDigest) || typeof value.dirty !== 'boolean') throw new Error('Backup');
       const stored = record(value.player) ? value.player : {};
-      return { player: digitalPlayer(this.decode(JSON.stringify({ ...stored, irlItems: this.session!.purchases.items })), this.session!.customer.id), compareDigest: value.compareDigest, dirty: value.dirty };
+      const decodeBackup = (value: Record<string, unknown>) => digitalPlayer(this.decode(JSON.stringify({ ...value, irlItems: this.session!.purchases.items })), this.session!.customer.id);
+      return { player: decodeBackup(stored), compareDigest: value.compareDigest, dirty: value.dirty,
+        ...(record(value.attempted) ? { attempted: decodeBackup(value.attempted) } : {}) };
     } catch { this.store(`${key}:recovery`, raw); return null; }
   }
 
@@ -160,7 +235,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     const initial = await (this.initial ??= this.bootstrap());
     // Bootstrap is shared by auth and startup only. Focus/ride rechecks must
     // retain edits made since then, including changes still awaiting the server.
-    return this.session
+    if (this.guestMode) return this.guestPlayer ?? this.useLocalGuest();
+    return this.session && this.authenticated
       ? { ...(this.lastUnsaved ?? this.session.player ?? initial), irlItems: this.session.purchases.items }
       : this.guestPlayer ?? initial;
   }
@@ -172,10 +248,12 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private async adoptSession(next: Snapshot): Promise<Player> {
     this.session = next;
     this.authenticated = true;
+    this.offline = false;
     this.guestMode = false;
-    this.guestPlayer = null;
     this.localCompletedRuns = next.storage.completedRuns;
     this.setAccess(next.storage);
+    if (!next.storage.allowed && this.read(offlineAccountKey)) this.store(offlineAccountKey, '');
+    this.rememberOfflineAccount();
     if (!this.access.allowed) {
       this.deny(this.access);
       return next.player ?? digitalPlayer(newPlayer(), next.customer.id);
@@ -185,7 +263,24 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     // An outbox never grants ownership, permission, or authority over newer CAS.
     const pending = this.readBackup(`${this.accountKey()}:pending`);
     const backup = pending?.dirty ? pending : accepted;
-    if (backup?.dirty && backup.compareDigest === next.compareDigest) {
+    if (pending?.dirty && accepted && !accepted.dirty && pending.compareDigest === accepted.compareDigest && next.player
+      && !sameDigitalProgress(next.player, pending.player) && !(pending.attempted && sameDigitalProgress(next.player, pending.attempted))) {
+      const credit = serverCoinCredit(accepted.player, next.player);
+      if (credit && next.compareDigest !== pending.compareDigest) {
+        this.backup(next.player);
+        const recovered = { ...pending.player, coins: pending.player.coins + credit };
+        this.lastAttempt = null; this.save(recovered);
+        return recovered;
+      }
+    }
+    if (backup?.dirty && next.player && sameDigitalProgress(next.player, backup.player)) {
+      this.outbox = backup; this.clearOutbox(); this.lastUnsaved = null; this.lastAttempt = null;
+      this.backup(next.player); this.status('synced', 'Offline-Spielstand ist bereits im Konto gespeichert.');
+      return next.player;
+    }
+    if (backup?.dirty && (backup.compareDigest === next.compareDigest ||
+        next.player && backup.attempted && sameDigitalProgress(next.player, backup.attempted))) {
+      this.lastAttempt = null;
       this.save(backup.player);
       return backup.player;
     }
@@ -196,6 +291,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       if (archived && pending?.dirty) this.store(`${this.accountKey()}:pending`, '');
       this.recoveryPlayer = backup.player;
       this.blocked = true;
+      this.store(offlineAccountKey, '');
       this.setAccess(unavailableAccess(this.localCompletedRuns));
       this.status('conflict', 'Konto und lokale Sicherung unterscheiden sich. Kontostand geladen; lokale Sicherung behalten. Bitte Spielstand exportieren und neu laden.');
       return next.player ?? backup.player;
@@ -222,18 +318,15 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
   private async bootstrap(): Promise<Player> {
     let response: CloudResponse;
+    if (!this.isOnline()) return this.restoreOfflineAccount() ?? this.useLocalGuest();
     try { response = await this.transport.request('GET'); }
-    catch { return this.useLocalGuest(); }
+    catch { return this.restoreOfflineAccount() ?? this.useLocalGuest(); }
     if (response.status !== 200) {
       if (response.status === 401) {
-        const local = await this.guest.load();
-        this.guestMode = true;
-        this.setAccess(this.guest.getAccess?.() ?? trialAccess(local.runsPlayed));
-        this.status(this.access.allowed ? 'guest' : 'unavailable', this.access.allowed
-          ? 'Gastspielstand auf diesem Gerät. Fünf Gratisfahrten ohne Newsletter.' : accessMessage(this.access));
-        return local;
+        this.store(offlineAccountKey, '');
+        return this.useLocalGuest();
       }
-      return this.useLocalGuest();
+      return response.status >= 500 ? this.restoreOfflineAccount() ?? this.useLocalGuest() : this.useLocalGuest();
     }
     let next: Snapshot;
     try { next = snapshot(response.data, this.decode); }
@@ -246,8 +339,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   }
 
   save(player: Player): void {
-    if (!this.session) {
-      if (!this.guestMode || !this.access.allowed) return;
+    if (this.guestMode || !this.session) {
+      if (!this.guestMode || !this.access.allowed || player.id !== 'guest-local') return;
       this.guest.save(player);
       this.guestPlayer = player;
       this.setAccess(this.guest.getAccess?.() ?? trialAccess(player.runsPlayed));
@@ -255,6 +348,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       else if (!this.access.allowed) this.status('unavailable', accessMessage(this.access));
       return;
     }
+    if (!this.authenticated) return;
     const copy = digitalPlayer(this.decode(JSON.stringify(player)), this.session.customer.id);
     this.lastUnsaved = copy;
     const mayQueue = this.access.allowed && !this.blocked
@@ -272,6 +366,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.pending = player;
     this.storeOutbox(player);
     if (this.timer) clearTimeout(this.timer);
+    if (this.offline || !this.isOnline()) { this.offlineStatus(); return; }
     this.status('saving', 'Spielstand und Newsletter-Freigabe werden im Shop geprüft …');
     this.timer = setTimeout(() => { void this.flush(); }, this.debounceMs);
   }
@@ -279,6 +374,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   /** Flush the fifth completed trial before checking permission for another ride. */
   async flush(): Promise<void> {
     if (this.timer) { clearTimeout(this.timer); this.timer = undefined; }
+    if (this.session && (this.offline || !this.isOnline())) { this.offlineStatus(); return; }
     if (this.inFlight) { await this.inFlight; return this.flush(); }
     while (this.session && this.pending && !this.blocked) {
       const player = this.pending;
@@ -297,23 +393,55 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.deny(access);
     return true;
   }
-  private async write(player: Player): Promise<void> {
+  private adoptCoinCredit(next: Snapshot): boolean {
+    if (this.blocked || !this.session || !next.player || !this.session.player || next.customer.id !== this.session.customer.id
+      || next.compareDigest === this.session.compareDigest || !next.storage.allowed) return false;
+    if (this.lastAttempt && sameDigitalProgress(next.player, this.lastAttempt)) return false;
+    const credit = serverCoinCredit(this.session.player, next.player);
+    if (!credit) return false;
+    this.session.compareDigest = next.compareDigest;
+    this.session.player = next.player;
+    this.session.storage = next.storage;
+    this.session.csrfToken = next.csrfToken;
+    this.session.purchases = next.purchases;
+    if (this.lastUnsaved) this.lastUnsaved = { ...this.lastUnsaved, coins: this.lastUnsaved.coins + credit };
+    if (this.pending) this.pending = this.lastUnsaved ?? { ...this.pending, coins: this.pending.coins + credit };
+    this.lastAttempt = null;
+    if (this.outbox) this.storeOutbox(this.lastUnsaved ?? { ...this.outbox.player, coins: this.outbox.player.coins + credit });
+    this.backup(next.player);
+    return true;
+  }
+  private async write(player: Player, creditRetried = false): Promise<void> {
     const session = this.session!;
     const authRevision = this.authRevision;
+    this.lastAttempt = player;
+    if (this.outbox) this.storeOutbox(this.outbox.player);
+    let networkFailure = true;
     try {
       let response = await this.transport.request('POST', { player, compareDigest: session.compareDigest, csrfToken: session.csrfToken });
+      if (response.status >= 500) throw new Error('Shop nicht erreichbar');
+      networkFailure = false;
       if (this.newsletterDenial(response)) return;
       if (response.status === 403 && record(response.data) && response.data.error === 'csrf') {
+        networkFailure = true;
         const refresh = await this.transport.request('GET');
         if (refresh.status !== 200) {
           if (refresh.status === 401) this.invalidateSession();
+          else if (refresh.status >= 500) this.offlineStatus();
           else this.deny(unavailableAccess(this.localCompletedRuns), `Shop-Anmeldung prüfen. ${this.recoveryMessage()}`);
           return;
         }
+        networkFailure = false;
         if (authRevision !== this.authRevision) return;
         const next = snapshot(refresh.data, this.decode);
         if (next.customer.id !== session.customer.id || next.compareDigest !== session.compareDigest) {
-          if (next.customer.id !== session.customer.id) this.authenticated = false;
+          if (next.customer.id !== session.customer.id) { this.invalidateSession(); await this.useLocalGuest(); return; }
+          if (!creditRetried && this.adoptCoinCredit(next)) {
+            const rebased = this.lastUnsaved!;
+            this.pending = null;
+            await this.write(rebased, true);
+            return;
+          }
           this.blocked = true;
           this.setAccess(unavailableAccess(this.localCompletedRuns));
           this.status('conflict', 'Konto oder Kontostand geändert. Vorhandene Sicherung behalten; bitte neu laden.');
@@ -322,11 +450,29 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         session.csrfToken = next.csrfToken;
         session.storage = next.storage;
         if (!next.storage.allowed) { this.deny(next.storage); return; }
+        networkFailure = true;
         response = await this.transport.request('POST', { player, compareDigest: session.compareDigest, csrfToken: session.csrfToken });
+        if (response.status >= 500) throw new Error('Shop nicht erreichbar');
+        networkFailure = false;
         if (this.newsletterDenial(response)) return;
       }
       if (response.status === 409) {
+        if (!creditRetried) {
+          networkFailure = true;
+          const refresh = await this.transport.request('GET');
+          if (refresh.status >= 500) throw new Error('Shop nicht erreichbar');
+          networkFailure = false;
+          if (refresh.status === 401) { this.invalidateSession(); return; }
+          if (authRevision !== this.authRevision) return;
+          if (refresh.status === 200 && this.adoptCoinCredit(snapshot(refresh.data, this.decode))) {
+            const rebased = this.lastUnsaved!;
+            this.pending = null;
+            await this.write(rebased, true);
+            return;
+          }
+        }
         this.blocked = true;
+        this.store(offlineAccountKey, '');
         this.setAccess(unavailableAccess(this.localCompletedRuns));
         this.status('conflict', `Auf einem anderen Gerät wurde gespeichert. ${this.recoveryMessage()} Bitte exportieren und neu laden.`);
         return;
@@ -344,7 +490,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       session.player = result.player;
       session.storage = result.storage;
       session.purchases = result.purchases;
-      this.localCompletedRuns = Math.max(this.localCompletedRuns, result.storage.completedRuns);
+      this.lastAttempt = null;
       // Persist only the exact snapshot the server just accepted. This includes
       // the fifth trial result, never later queued edits or a denied POST.
       this.backup(result.player);
@@ -356,37 +502,40 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       // A concurrent protected request may already have rejected this session.
       // Keep an acknowledged save, but do not revive its stale login or access.
       if (authRevision !== this.authRevision) return;
+      this.localCompletedRuns = Math.max(this.localCompletedRuns, result.storage.completedRuns);
       this.authenticated = true;
+      this.offline = false;
+      this.rememberOfflineAccount();
       this.setAccess(result.storage);
       if (!result.storage.allowed) { this.deny(result.storage); return; }
       if (!this.pending) this.status('synced', this.backupWritable ? 'Im Kundenkonto gespeichert.' : 'Im Kundenkonto gespeichert; lokale Sicherung nicht verfügbar.');
     } catch {
-      this.cancelPending();
-      this.setAccess(unavailableAccess(this.localCompletedRuns));
-      this.status('offline', `Shop-Freigabe nicht bestätigt. ${this.recoveryMessage()}`);
+      if (networkFailure) this.offlineStatus();
+      else this.deny(unavailableAccess(this.localCompletedRuns), `Kontodaten konnten nicht sicher bestätigt werden. ${this.recoveryMessage()}`);
     }
   }
 
   refreshAccess(): Promise<PlayerAccess> {
     return this.refreshing ??= this.checkAccess().finally(() => { this.refreshing = null; });
   }
-  private async checkAccess(): Promise<PlayerAccess> {
+  private async checkAccess(rechecks = 0): Promise<PlayerAccess> {
     await this.load();
     await this.flush();
+    if (!this.isOnline()) { this.offlineStatus(); return this.access; }
+    let receivedResponse = false;
     try {
       const authRevision = this.authRevision;
       const requestedDigest = this.session?.compareDigest;
       const response = await this.transport.request('GET');
+      receivedResponse = true;
       if (response.status === 401 && !this.session) {
-        this.guestMode = true;
-        this.setAccess(await this.guest.refreshAccess?.() ?? trialAccess((await this.guest.load()).runsPlayed));
-        this.status(this.access.allowed ? 'guest' : 'unavailable', this.access.allowed
-          ? 'Gastspielstand auf diesem Gerät. Fünf Gratisfahrten ohne Newsletter.' : accessMessage(this.access));
+        await this.useLocalGuest();
         return this.access;
       }
       if (response.status !== 200) {
         if (!this.session) return this.useLocalGuest().then(() => this.access);
-        if (response.status === 401) this.invalidateSession();
+        if (response.status === 401) { this.invalidateSession(); await this.useLocalGuest(); }
+        else if (response.status >= 500) this.offlineStatus();
         else this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
         return this.access;
       }
@@ -398,14 +547,38 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         return this.access;
       }
       if (next.customer.id !== this.session.customer.id) {
-        this.authenticated = false;
-        this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Anmeldung geändert. Bitte neu laden.');
+        this.invalidateSession();
+        await this.useLocalGuest();
         return this.access;
       }
+      if (!this.authenticated) this.localCompletedRuns = Math.max(next.storage.completedRuns, this.lastUnsaved?.runsPlayed ?? 0);
       this.authenticated = true;
+      this.guestMode = false;
+      this.offline = false;
       // A save can finish while this GET is in flight. Its old digest is no
       // evidence of another device changing progress; check the current base.
-      if (requestedDigest !== this.session.compareDigest) return this.checkAccess();
+      if (requestedDigest !== this.session.compareDigest) return rechecks < 1 ? this.checkAccess(rechecks + 1) : this.access;
+      this.adoptCoinCredit(next);
+      // With no local edits, a newer server snapshot (another device or a
+      // referral payout) is safe to adopt. Dirty progress still requires CAS.
+      if (!this.blocked && !this.lastUnsaved && !this.outbox && next.compareDigest !== this.session.compareDigest) {
+        this.session.compareDigest = next.compareDigest;
+        this.session.player = next.player;
+        if (next.player) this.backup(next.player);
+      }
+      if (!this.blocked && next.compareDigest !== this.session.compareDigest && next.player &&
+          ((this.lastUnsaved && sameDigitalProgress(next.player, this.lastUnsaved)) ||
+           (this.lastAttempt && sameDigitalProgress(next.player, this.lastAttempt)))) {
+        // The previous POST reached Shopify but its response was lost. Rebase
+        // only when the server exactly acknowledges a snapshot we sent.
+        this.session.compareDigest = next.compareDigest;
+        this.session.player = next.player;
+        this.lastAttempt = null;
+        if (this.lastUnsaved && sameDigitalProgress(next.player, this.lastUnsaved)) {
+          this.lastUnsaved = null; this.clearOutbox();
+        } else if (this.outbox) this.storeOutbox(this.outbox.player);
+        this.backup(next.player);
+      }
       if (next.compareDigest !== this.session.compareDigest || this.blocked) {
         this.blocked = true;
         this.deny(unavailableAccess(this.localCompletedRuns), 'Kontostand hat sich geändert. Vor weiteren Fahrten bitte neu laden.');
@@ -414,6 +587,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       this.session.storage = next.storage;
       this.session.purchases = next.purchases;
       this.session.csrfToken = next.csrfToken;
+      this.rememberOfflineAccount();
       this.localCompletedRuns = Math.max(this.localCompletedRuns, next.storage.completedRuns);
       this.setAccess(next.storage);
       if (!next.storage.allowed) this.deny(next.storage);
@@ -425,9 +599,10 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       return this.access;
     } catch {
       if (!this.session) return this.useLocalGuest().then(() => this.access);
-      this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
+      if (receivedResponse) this.deny(unavailableAccess(this.localCompletedRuns), 'Kontodaten konnten nicht sicher bestätigt werden. Bitte erneut prüfen.');
+      else this.offlineStatus();
       return this.access;
     }
   }
-  export(player: Player): string { return JSON.stringify(this.recoveryPlayer ?? player, null, 2); }
+  export(player: Player): string { return JSON.stringify(this.guestMode ? player : this.recoveryPlayer ?? player, null, 2); }
 }

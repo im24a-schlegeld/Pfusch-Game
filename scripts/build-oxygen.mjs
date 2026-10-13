@@ -1,6 +1,7 @@
 import { readFile, rm, stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { writeOfflineBundle } from './offline-assets.mjs';
 
 // Build the existing game unchanged and package only its server adapter for Oxygen.
 // --verify uses this workspace's isolated dependency installation, never for deploys.
@@ -17,6 +18,7 @@ await build({
   base: '/',
   build: { outDir: clientDirectory, emptyOutDir: true, sourcemap: false },
 });
+await writeOfflineBundle(clientDirectory, { oxygen: true });
 const shell = await readFile(shellFile, 'utf8');
 await build({
   root,

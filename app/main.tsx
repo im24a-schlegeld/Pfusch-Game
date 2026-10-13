@@ -5,6 +5,7 @@ import './globals.css';
 import './preview.css';
 import './pfusch-shop-ui.css';
 import './ride-update-v38.css';
+import { registerOfflineApp } from './services/offlineApp';
 
 interface AppErrorBoundaryState {
   error: Error | null;
@@ -55,6 +56,7 @@ createRoot(rootElement).render(
     </AppErrorBoundary>
   </React.StrictMode>,
 );
+if ((import.meta as ImportMeta & { env: { PROD: boolean } }).env.PROD) registerOfflineApp();
 
 import './refinement-v40.css';
 

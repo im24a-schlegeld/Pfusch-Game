@@ -44,6 +44,7 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
   constructor(private requestFetch: typeof fetch, private timeoutMs = 30000, private onUnauthorized?: () => void) {}
 
   private async request(path: string, payload?: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new VerifiedRewardsError('network_error');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {

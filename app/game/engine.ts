@@ -63,7 +63,7 @@ export type EngineInput =
   | { type: 'weight'; value: number }
   | { type: 'move'; value: -1 | 1 }
   | { type: 'excludeSigns'; value: number }
-  | { type: 'clear' | 'end' };
+  | { type: 'clear' | 'end' | 'revive' };
 export type ObstacleKind = TrafficKind | RoadEventKind;
 export interface Obstacle {
   spawnId: number;
@@ -239,6 +239,8 @@ export class Engine {
   private transferAge = 0;
   private transferOriginX = 0;
   resumeRemaining = 0;
+  reviveCount = 0;
+  reviveProtection = 0;
   private towWarningFor: Obstacle | null = null;
   private policeTargetId = 0;
   private policeImpactEndZ = 0;
@@ -412,6 +414,55 @@ export class Engine {
     this.phase = 'playing';
     this.crash('Ride ended');
   }
+  get canRevive() {
+    return this.phase === 'crashed' && this.event.text !== 'Ride ended' && this.reviveCount === 0;
+  }
+  /** One continuation of the same logical run. Sharing is a browser interaction,
+   * never evidence for the server: replay independently enforces this limit. */
+  revive() {
+    if (!this.canRevive) return false;
+    this.onInput?.({ type: 'revive' }, this.fixedTicks);
+    this.reviveCount++;
+    this.reviveProtection = 1.5;
+    this.phase = 'playing';
+    this.accumulator = 0;
+    this.resumeRemaining = 0;
+    this.clearInput();
+    this.lane = 0;
+    this.x = 0;
+    this.height = this.velocityY = this.wheelieAngle = this.wheelieAngularVelocity = 0;
+    this.throttleLoad = this.forwardLoad = this.liftPull = this.balanceQuality = 0;
+    this.towPitch = this.scrapeIntensity = this.balancedSeconds = 0;
+    this.wheelie = this.towJumpActive = this.constructionJumpActive = this.airLaneChangeUsed = false;
+    this.liftArmed = true;
+    this.scrapeMaterial = null;
+    this.crashObstacle = null;
+    this.towCarrier = null;
+    this.towSafeObstacles.clear();
+    this.towTransferCars.clear();
+    this.towWarningFor = null;
+    this.rampEntryRemaining = this.transferAge = this.transferOriginX = 0;
+    this.laneChangeAge = 1;
+    this.laneChangeDirection = 0;
+    this.roadRoughness = 0;
+    this.surfaceGrip = 1;
+    this.scoreGains.length = 0;
+    this.policeChase = false;
+    this.policeRamRemaining = this.policeProgress = 0;
+    this.policeOutcome = 'none';
+    Object.assign(this.policeVehicle, createPoliceVehicle());
+    this.clearPoliceVehicle();
+    this.policeRamObstacle = null;
+    this.blitzerFlashRemaining = 0;
+    // Keep distant encounters, collected signs, score, elapsed time and ID.
+    // The short empty corridor covers both stationary and incoming cars.
+    const clearAhead = Math.max(75, (this.speed + TRAFFIC_PROGRESSION.oncomingSpeed) * 2);
+    for (const obstacle of this.obstacles)
+      if (obstacle.active && obstacle.z > -25 && obstacle.z < clearAhead) obstacle.active = false;
+    this.spawnIn = Math.max(this.spawnIn, this.speed * 1.5);
+    this.event = { text: 'ZWEITE CHANCE', kind: 'skill', serial: this.event.serial + 1 };
+    return true;
+  }
   clearInput() {
     if (this.wheelieHeld || this.forwardHeld || this.touchWeight)
       this.onInput?.({ type: 'clear' }, this.fixedTicks);
@@ -454,7 +505,7 @@ export class Engine {
     this.event = { text, kind: 'skill', serial: this.event.serial + 1 };
   }
   crash(cause = 'Traffic collision', obstacle: Obstacle | null = null) {
-    if (this.phase !== 'playing') return;
+    if (this.phase !== 'playing' || (this.reviveProtection > 0 && cause !== 'Ride ended')) return;
     this.phase = 'crashed';
     this.blitzerFlashRemaining = 0;
     if (this.policeChase) {
@@ -1243,6 +1294,7 @@ export class Engine {
   }
   private tick(dt: number) {
     this.fixedTicks++;
+    this.reviveProtection = Math.max(0, this.reviveProtection - dt);
     const previousElapsed = this.elapsed;
     this.elapsed += dt;
     this.speed = speedAtTime(this.elapsed, this.bike);

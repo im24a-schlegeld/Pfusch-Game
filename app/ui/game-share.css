@@ -1,6 +1,21 @@
-.game-share-section { margin: 24px 0; padding: 20px 0; border-block: 1px solid #ffffff30; }
-.game-share-section > p { margin: 0 0 14px; color: #c9c9c9; }
-.game-share-section > p b { color: #f3f3f3; font-variant-numeric: tabular-nums; }
+.game-share-section { margin: 24px 0 0; padding: 18px 0; border-block: 1px solid #ffffff30; }
+.game-share-record { display: flex; align-items: center; gap: 18px; }
+.game-share-record > div:first-child, .game-share-record > p { flex: 1; min-width: 0; margin: 0; }
+.game-share-record > div:first-child > span { display: block; color: #bbb; font-size: 10px; letter-spacing: .1em; margin-bottom: 5px; }
+.game-share-record > div:first-child > strong { display: block; color: #f3f3f3; font: 800 clamp(25px, 6vw, 38px)/1.15 'Barlow Condensed', sans-serif; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.game-share-record > div:first-child > strong small { font-size: 9px; color: #aaa; letter-spacing: .06em; }
+.game-share-record > .game-share-action { flex: 0 1 140px; }
+.game-share-rank { padding-top: 16px; margin-top: 16px; border-top: 1px solid #ffffff20; }
+.game-share-rank > p b { display: block; font-size: 17px; }
+.game-share-rank > p small { display: block; color: #bdbdbd; font-size: 10px; line-height: 1.5; margin-top: 4px; }
+.game-invite-section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid #ffffff30; }
+.game-invite-heading { display: flex; gap: 10px; align-items: center; }
+.game-invite-heading > h2 { margin: 0; font-size: 24px; }
+.game-invite-offer { color: #ddd; margin: 12px 0 5px; font-size: 14px; line-height: 1.5; }
+.game-invite-offer > strong { color: #fff; font-size: 21px; }
+.game-invite-offer > s { color: #999; text-decoration-thickness: 1px; }
+.game-invite-detail { color: #b6b6b6; font-size: 11px; line-height: 1.5; margin: 0 0 14px; }
+.game-invite-section > .game-share-action { max-width: 280px; }
 .game-share-actions { display: flex; flex-wrap: wrap; align-items: start; gap: 10px; }
 .game-share-action { flex: 1 1 150px; min-width: 0; }
 .game-share-action > .button { width: 100%; min-height: 44px; white-space: normal; }
@@ -16,3 +31,4 @@
 .shared-game-score > span { font-size: 11px; letter-spacing: .12em; }
 .shared-game-score > small { color: #bdbdbd; font-size: 11px; }
 .result-footer-v38 > .game-share-action { margin-top: 12px; }
+@media (max-width: 360px) { .game-share-record { gap: 10px; } .game-share-record > .game-share-action { flex-basis: 112px; } .game-share-record > .game-share-action > .button { padding-inline: 8px; font-size: 10px; } }

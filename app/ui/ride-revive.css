@@ -1,0 +1,9 @@
+.game-dialog.ride-revive{width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;padding:24px;background:#323232;color:#f3f3f3;gap:14px;text-align:left}
+.ride-revive h2{margin:0;font-size:30px;line-height:1.1}
+.ride-revive p{margin:0}
+.ride-revive-score{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.ride-revive-score span{font:400 12px/1.4 Arial,sans-serif;color:#c9c9c9}
+.ride-revive .ride-revive-detail,.ride-revive output{font:400 12px/1.5 Arial,sans-serif;color:#c9c9c9}
+.ride-revive .button{min-height:48px;width:100%;justify-content:center}
+.ride-revive output:empty{display:none}
+@media(max-height:420px){.game-dialog.ride-revive{padding:16px;gap:9px}.ride-revive h2{font-size:24px}.ride-revive .ride-revive-detail{display:none}}

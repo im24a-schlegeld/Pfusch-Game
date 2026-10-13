@@ -120,14 +120,14 @@ describe('Shopify account saves', () => {
     const other = repository([response('456')], driver);
     expect((await other.repo.load()).coins).toBe(newPlayer().coins);
     expect(other.transport.request).toHaveBeenCalledTimes(1);
-    const conflict = repository([response('123', { ...newPlayer(), coins: 222 }, nextHash)], driver);
+    const conflict = repository([response('123', { ...newPlayer(), coins: 222, xp: 1 }, nextHash)], driver);
     expect((await conflict.repo.load()).coins).toBe(222);
     expect(conflict.repo.syncStatus.state).toBe('conflict');
     expect(JSON.parse(conflict.repo.export(await conflict.repo.load())).coins).toBe(333);
     expect(driver.getItem('pfusch:player:v1:shopify:123:conflict')).toBe(pending);
     expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
     expect(conflict.transport.request).toHaveBeenCalledTimes(1);
-    const reloaded = repository([response('123', { ...newPlayer(), coins: 222 }, nextHash)], driver);
+    const reloaded = repository([response('123', { ...newPlayer(), coins: 222, xp: 1 }, nextHash)], driver);
     expect((await reloaded.repo.load()).coins).toBe(222);
     expect(reloaded.repo.syncStatus.state).toBe('synced');
     expect(driver.getItem('pfusch:player:v1:shopify:123:conflict')).toBe(pending);
@@ -176,7 +176,8 @@ describe('Shopify account saves', () => {
     await repo.flush();
     expect((await repo.load()).helmetColor).toBe('#202324');
     expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123')!).player.helmetColor).toBe(player.helmetColor);
-    expect(repo.getAccess().allowed).toBe(false);
+    expect(repo.getAccess().allowed).toBe(true);
+    expect(repo.syncStatus.state).toBe('offline');
   });
 
   it('falls back to guest on connection failure without opening another account backup', async () => {
@@ -215,14 +216,14 @@ describe('Shopify account saves', () => {
   it('keeps existing conflict backups untouched and never retries over a newer cloud save', async () => {
     vi.useFakeTimers();
     const driver = storage();
-    const { repo, transport } = repository([response(), { status: 409, data: { error: 'conflict' } }], driver);
+    const { repo, transport } = repository([response(), { status: 409, data: { error: 'conflict' } }, response('123', { ...newPlayer(), xp: 1 }, nextHash)], driver);
     const player = await repo.load();
     repo.save({ ...player, coins: 555 });
     await repo.flush();
     repo.save({ ...player, coins: 556 });
     await repo.flush();
     expect(repo.syncStatus.state).toBe('conflict');
-    expect(transport.request).toHaveBeenCalledTimes(2);
+    expect(transport.request).toHaveBeenCalledTimes(3);
     expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123')!).player.coins).toBe(newPlayer().coins);
   });
 
@@ -247,7 +248,8 @@ describe('Shopify account saves', () => {
     repo.save({ ...player, coins: 200 });
     await repo.flush();
     expect(transport.request).toHaveBeenCalledTimes(3);
-    expect(repo.syncStatus.state).toBe('conflict');
+    expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
+    expect((await repo.load()).id).toBe('guest-local');
   });
 
   it('refreshes expired CSRF only for the unchanged account and digest', async () => {
@@ -279,8 +281,8 @@ describe('Shopify account saves', () => {
     repo.save(updated);
     await repo.flush();
     expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
-    expect(await repo.load()).toMatchObject({ id: 'shopify:123', coins: 333, helmetColor: '#202324' });
-    expect(repo.syncStatus.message).toContain('Bitte erneut anmelden');
+    expect(await repo.load()).toMatchObject({ id: 'guest-local', coins: newPlayer().coins, helmetColor: newPlayer().helmetColor });
+    expect(repo.syncStatus.message).toContain('Gastspielstand');
     expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123:pending')!)).toMatchObject({ player: updated, dirty: true });
     expect(driver.getItem('pfusch:player:v1')).toBeNull();
   });
@@ -298,7 +300,7 @@ describe('Shopify account saves', () => {
     repo.invalidateSession();
     expect(listener).toHaveBeenCalled();
     expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
-    expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    expect(repo.getAccess()).toMatchObject({ allowed: true, reason: 'trial' });
     await repo.flush();
     expect(transport.request).toHaveBeenCalledTimes(1);
     expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe(pending);
@@ -311,7 +313,7 @@ describe('Shopify account saves', () => {
   it('keeps a network failure distinct from an expired session', async () => {
     const { repo } = repository([response(), { status: 503, data: { error: 'admin_unavailable' } }]);
     await repo.load();
-    expect((await repo.refreshAccess()).allowed).toBe(false);
+    expect((await repo.refreshAccess()).allowed).toBe(true);
     expect(await repo.getUser()).toEqual({ id: '123', kind: 'customer' });
     expect(repo.syncStatus.message).not.toContain('erneut anmelden');
   });
@@ -333,8 +335,8 @@ describe('Shopify account saves', () => {
     resolve(response('123', player, method === 'write' ? nextHash : hash));
     await work;
     expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
-    expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
-    expect((await repo.load()).id).toBe('shopify:123');
+    expect(repo.getAccess()).toMatchObject({ allowed: true, reason: 'trial' });
+    expect((await repo.load()).id).toBe('guest-local');
   });
 
   it('does not claim a guest backup when the embedded browser denies storage', async () => {
@@ -402,7 +404,7 @@ describe('newsletter ride and persistence gate', () => {
     expect(transport.request).toHaveBeenCalledTimes(1);
   });
 
-  it('treats newsletter denial separately from CSRF and never saves denied changes locally', async () => {
+  it('treats newsletter denial separately from CSRF and retains the unsent recovery snapshot', async () => {
     vi.useFakeTimers();
     const driver = storage();
     const { repo, transport } = repository([response(), { status: 403, data: { error: 'newsletter_unsubscribed', storage: unsubscribed() } }], driver);
@@ -415,7 +417,7 @@ describe('newsletter ride and persistence gate', () => {
     repo.save({ ...player, coins: 1000 });
     expect(repo.getAccess()).toEqual(unsubscribed());
     expect(driver.getItem('pfusch:player:v1:shopify:123')).toBe(accepted);
-    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe('');
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123:pending')!).player.coins).toBe(999);
     expect(transport.request).toHaveBeenCalledTimes(2);
   });
 
@@ -427,7 +429,7 @@ describe('newsletter ride and persistence gate', () => {
     expect(transport.request).toHaveBeenCalledTimes(3);
   });
 
-  it('does not reopen cached consent or persist new backups after a network failure', async () => {
+  it('keeps locally played progress in the pending backup after a network failure', async () => {
     vi.useFakeTimers();
     const driver = storage();
     const { repo } = repository([response(), new Error('offline')], driver);
@@ -436,9 +438,9 @@ describe('newsletter ride and persistence gate', () => {
     await repo.flush();
     const pending = driver.getItem('pfusch:player:v1:shopify:123:pending');
     repo.save({ ...player, coins: 300 });
-    expect(repo.getAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    expect(repo.getAccess()).toMatchObject({ allowed: true, reason: 'subscribed' });
     expect(driver.getItem('pfusch:player:v1:shopify:123')).toBe(original);
-    expect(driver.getItem('pfusch:player:v1:shopify:123:pending')).toBe(pending);
+    expect(JSON.parse(driver.getItem('pfusch:player:v1:shopify:123:pending')!).player.coins).toBe(300);
     expect(JSON.parse(pending!).player.coins).toBe(200);
   });
 
@@ -461,15 +463,15 @@ describe('newsletter ride and persistence gate', () => {
     expect((await repo.load()).id).toBe('shopify:456');
   });
 
-  it('never downgrades an established customer to a fresh guest trial on a later guest response', async () => {
+  it('loads the existing independent guest trial and refuses late account edits after logout', async () => {
     const driver = storage();
     const { repo } = repository([response(), { status: 401, data: { error: 'guest' } }], driver);
     const player = await repo.load();
     const before = [...driver.values];
-    expect(await repo.refreshAccess()).toMatchObject({ allowed: false, reason: 'unavailable' });
+    expect(await repo.refreshAccess()).toMatchObject({ allowed: true, reason: 'trial' });
     expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
     repo.save({ ...player, coins: player.coins + 100 });
-    expect([...driver.values]).toEqual(before);
+    expect([...driver.values]).toEqual(before.map(([key, value]) => [key, key === 'pfusch:player:v1:offline-account' ? '' : value]));
     expect(driver.getItem('pfusch:player:v1')).toBeNull();
   });
 

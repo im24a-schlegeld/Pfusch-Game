@@ -131,6 +131,9 @@ export default function GameApp() {
   }, [notice]);
   const update = useCallback(
     (p: Player) => {
+      // A late edit/result from the previous identity must not replace the
+      // independent guest or account inventory after a session transition.
+      if (current.current && current.current.id !== p.id) return;
       current.current = p;
       setPlayer(p);
       services.players.save(p);
@@ -148,11 +151,18 @@ export default function GameApp() {
   }, [services]);
   useEffect(() => {
     let alive = true;
+    let refresh = 0;
     // Reward/player responses can reject a session while this tab stays open.
-    // Update the account button without replacing the retained player snapshot.
+    // Swap the displayed inventory too; account recovery stays in its own store.
     const unsubscribe = services.players.subscribeSync?.(() => {
-      void services.auth.getUser().then(user => {
-        if (alive) setAccountKind(user.kind);
+      const observed = current.current, request = ++refresh;
+      void Promise.all([services.auth.getUser(), services.players.load()]).then(([user, latest]) => {
+        if (!alive || request !== refresh || latest.id !== (user.kind === 'customer' ? `shopify:${user.id}` : 'guest-local')) return;
+        setAccountKind(user.kind);
+        if (current.current && (current.current === observed || current.current.id !== latest.id)) {
+          current.current = latest;
+          setPlayer(latest);
+        }
       }).catch(() => {});
     });
     return () => { alive = false; unsubscribe?.(); };
