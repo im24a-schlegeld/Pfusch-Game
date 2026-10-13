@@ -116,13 +116,18 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
         object.userData.cartoonOutline || object.userData.bikeSticker || object.userData.helmetSticker) return;
     const name = `${object.name} ${object.userData.importedPart ?? ''}`.toLowerCase();
     const goggleFrame = object.name === 'motocross-goggle-frame';
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
     // Older Töffli/sport rim lips are intentionally unnamed. Their topology
     // and wheel parent identify them without promoting the thin wire spokes.
-    const rim = /(^|-)rim(-|\s|$)/.test(name) ||
+    const importedRim = materials.some(entry => entry.userData.rimPalette === true) ||
+      /(^|[_\s-])rim(?=\d|$|[_\s:-])/.test(name);
+    // FS450 separates its outer hoop from the remaining wheel metal. Spend
+    // the fixed contour budget on that hoop rather than every rim component.
+    const separateHoop = object.parent?.children.some(child => /rim[_-]hoop/.test(child.name));
+    const rim = (importedRim && (!separateHoop || /rim[_-]hoop/.test(name))) ||
       (object.geometry instanceof THREE.TorusGeometry && /^(front|rear)-wheel$/.test(object.parent?.name ?? ''));
     if (/sticker|decal|shadow|glass|reflector|glow|lens|wire|cable|hose|spoke|spring|chain|bolt|zipper|screw|stitch|cape|flag/.test(name) ||
         (/goggle/.test(name) && !goggleFrame)) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
     if (!materials.length || materials.some((entry) => !entry.visible || entry.transparent || entry.opacity < 0.98 ||
         entry.alphaTest > 0 || (entry as THREE.MeshStandardMaterial).alphaMap)) return;
     if (!object.geometry.getAttribute('normal')) return;
@@ -135,13 +140,18 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     if (extents[0] < 0.09 || extents[1] < 0.035) return;
     const rider = object instanceof THREE.SkinnedMesh ||
       /garment|hood|helmet|motocross-peak|trouser|rider-(glove|boot)|stand-collar|imported-cap-shell|carried-crossbody-bag/.test(name) || goggleFrame;
+    const paintedBodywork = object.userData.bikePaintSurface === true;
+    // Imported models batch the FS450 mask into generic painted steering
+    // bodywork. Its paint/rig metadata identifies the real shell reliably.
+    const headlightMask = /headlight[-_](mask|bezel|recess)/.test(name) ||
+      (paintedBodywork && object.userData.importedRig === 'steering');
     const bodywork = object.userData.bikePaintSurface || rim ||
       /tire|tyre|seat|fairing|fender|mudguard|mudflap|side-cover|bodywork|shroud|tank|swingarm|crankcase|engine|fork-guard|fork-slider|stanchion|main-frame|headlight-(mask|bezel|recess)|tail-shell|rear-hugger|single-exhaust|silencer|muffler|carried-cap/.test(name);
     if (!rider && !bodywork && !object.userData.importedPart) return;
     const essential = rim || goggleFrame || /helmet|motocross-peak|garment|mudflap/.test(name);
     const hardForm = !(object instanceof THREE.SkinnedMesh) &&
-      (rim || goggleFrame || /helmet|motocross-peak|fairing|fender|mudflap|side-cover|shroud|headlight-(mask|bezel|recess)|tank|tail-shell|rear-hugger/.test(name));
-    candidates.push({ mesh: object, priority: essential ? 3 : rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1], hardForm });
+      (paintedBodywork || headlightMask || rim || goggleFrame || /helmet|motocross-peak|fairing|fender|mudflap|side-cover|shroud|tank|tail-shell|rear-hugger/.test(name));
+    candidates.push({ mesh: object, priority: headlightMask ? 4 : essential ? 3 : rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1], hardForm });
   });
   candidates.sort((a, b) => b.priority - a.priority || b.size - a.size);
   const outlines: THREE.Mesh[] = [];

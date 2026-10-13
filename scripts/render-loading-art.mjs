@@ -25,7 +25,8 @@ try {
     const art = await page.evaluate(isPortrait => window.exportLoadingArt(isPortrait), portrait);
     const { proof } = art;
     const verticalLimit = portrait ? 0.44 : 0.58;
-    if (proof.cartoon !== 'cartoon' || proof.outlines < 1 || !proof.ankle || !proof.street ||
+    if (proof.cartoon !== 'cartoon' || proof.outlines < 1 || proof.outlines > 32 || proof.contours > 10 ||
+      !proof.headlightMaskContour || !proof.ankle || !proof.street ||
       proof.bounds[0] < -0.76 || proof.bounds[2] > 0.76 || proof.bounds[1] < -verticalLimit || proof.bounds[3] > verticalLimit)
       throw new Error('Loading artwork did not fit the current cartoon rider/street: ' + JSON.stringify(proof));
     const webp = Buffer.from(art.webp.split(',')[1], 'base64');

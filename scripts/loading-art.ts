@@ -160,7 +160,12 @@ function frame(isPortrait: boolean) {
   sky.resize(width, height, 1);
   sky.update(world, 72, 9.5);
   renderer.render(scene, camera);
+  const headlightMask = bike.root.getObjectByName('fs450_bodywork_paint:steering');
+  const headlightMaskContour = headlightMask?.children.some(object =>
+    object instanceof THREE.LineSegments && object.userData.cartoonContour &&
+    object.geometry.getAttribute('position').count > 0) ?? false;
   return { width, height, bounds, cartoon: scene.userData.visualStyle, outlines: outline.count,
+    contours: outline.contourCount, headlightMaskContour,
     ankle: Boolean(bike.rider.getObjectByName('rider-ankle')), street: Boolean(scene.getObjectByName('streamed-world')),
     authoredImages: authoredImages.size, referenceCamera: reference.toArray(), camera: camera.position.toArray(),
     subject: subject.toArray(), backoff: distance / initialDistance };
