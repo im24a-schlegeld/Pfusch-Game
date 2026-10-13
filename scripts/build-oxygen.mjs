@@ -2,6 +2,7 @@ import { readFile, rm, stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { writeOfflineBundle } from './offline-assets.mjs';
+import { loadingArtworkPlugin } from './loading-art-assets.mjs';
 
 // Build the existing game unchanged and package only its server adapter for Oxygen.
 // --verify uses this workspace's isolated dependency installation, never for deploys.
@@ -15,6 +16,7 @@ const shellFile = resolve(clientDirectory, 'index.html');
 await build({
   root,
   configFile: resolve(root, verify ? '.build-check/vite.app.verify.config.ts' : 'vite.config.ts'),
+  ...(verify ? { plugins: [loadingArtworkPlugin()] } : {}),
   base: '/',
   build: { outDir: clientDirectory, emptyOutDir: true, sourcemap: false },
 });

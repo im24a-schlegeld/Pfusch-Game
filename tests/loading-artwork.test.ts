@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
 import LoadingScreen from '../app/ui/LoadingScreen';
 import artwork from '../app/ui/loadingArtwork.json';
 import { artworkReferences, replaceLoadingArtwork } from '../scripts/loading-art-assets.mjs';
@@ -27,7 +28,7 @@ describe('one current loading artwork for every entry point', () => {
       expect(path).toContain(`.${hash}.webp`);
       expect(bytes.subarray(0, 4).toString()).toBe('RIFF');
     }
-    const react = renderToStaticMarkup(<LoadingScreen fullScreen />);
+    const react = renderToStaticMarkup(createElement(LoadingScreen, { fullScreen: true }));
     const html = replaceLoadingArtwork(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), artwork);
     expect(react).toContain(`src="${artwork.desktop}"`);
     expect(react.toLowerCase()).toContain(`srcset="${artwork.portrait}"`);
