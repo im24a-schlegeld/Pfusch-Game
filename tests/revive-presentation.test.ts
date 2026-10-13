@@ -17,7 +17,7 @@ it('restores the same chassis and adult bones without creating replacement objec
   restore();
   expect(root.children).toEqual([steering, torso]);
   expect(root.position.toArray()).toEqual([2, 0, 0]);
-  expect(root.rotation.z).toBe(0);
+  expect(root.rotation.z).toBeCloseTo(0, 12);
   expect(torso.position.toArray()).toEqual([0, 1.2, 0]);
   expect(torso.scale.toArray()).toEqual([1, 1, 1]);
   expect(arm.position.toArray()).toEqual([.3, .4, 0]);

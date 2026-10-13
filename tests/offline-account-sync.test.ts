@@ -142,8 +142,8 @@ describe('offline account progress', () => {
     const f = fixture();
     const guest = { ...newPlayer(), coins: 400, runsPlayed: 2, paint: '#202324', ownedItems: [...newPlayer().ownedItems, 'paint:#202324'] };
     f.driver.setItem('pfusch:player:v1', JSON.stringify(guest));
-    f.state.player = { ...newPlayer(), coins: 2000, bike: 'sport', helmet: 'motocross',
-      ownedItems: [...newPlayer().ownedItems, 'bike:sport', 'helmet:motocross'] };
+    f.state.player = { ...newPlayer(), coins: 2000, bike: '701', helmet: 'motocross',
+      ownedItems: [...newPlayer().ownedItems, 'bike:701', 'helmet:motocross'] };
     const repo = f.reopen(), account = await repo.load();
     f.state.online = false;
     const finished = finishRun(account, run('private'))!.player;
@@ -161,7 +161,7 @@ describe('offline account progress', () => {
     f.state.unauthorized = false;
     await repo.refreshAccess();
     expect(await repo.getUser()).toMatchObject({ id: '123', kind: 'customer' });
-    expect(await repo.load()).toMatchObject({ bike: 'sport', helmet: 'motocross', coins: finished.coins, processedRuns: ['private'] });
+    expect(await repo.load()).toMatchObject({ bike: '701', helmet: 'motocross', coins: finished.coins, processedRuns: ['private'] });
     expect(JSON.parse(f.driver.getItem('pfusch:player:v1')!).coins).toBe(360);
   });
 

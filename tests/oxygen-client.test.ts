@@ -24,7 +24,7 @@ describe('Oxygen runtime selection and login', () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () => response(401, { error: 'login_required' }));
     const postMessage = vi.fn();
     const values = new Map<string, string>();
-    vi.stubGlobal('window', { parent: { postMessage }, fetch, localStorage: {
+    vi.stubGlobal('window', { parent: { postMessage }, fetch, location: { origin: 'https://game.pfusch-clothing.ch', search: '' }, navigator: {}, localStorage: {
       getItem: (key: string) => values.get(key) ?? null,
       setItem: (key: string, value: string) => { values.set(key, value); },
     } });
