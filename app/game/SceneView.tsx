@@ -392,6 +392,7 @@ export default function SceneView({
       invalidation.invalidate();
       renderer.setSize(w, h, false);
       heroOutline.update(w, h);
+      sky?.resize(w, h, renderer.getPixelRatio());
       particles?.setViewport(h, renderer.getPixelRatio());
       camera.aspect = w / h;
       camera.updateProjectionMatrix();

@@ -63,13 +63,25 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   await expect(footerAction(page)).toHaveText('Sticker platzieren');
   await expect(footerAction(page)).toBeDisabled();
   await expect(page.locator('.sticker-more')).not.toHaveAttribute('open');
+  const size = page.locator('input[aria-label="Stickergröße"]');
+  await expect(size).toHaveValue('0.09');
   await expect(page.locator('.sticker-targets').getByRole('button', { name: 'HELM', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await placeOnSurface(page);
   await expect(placedButtons(page)).toHaveCount(1);
   await expect(footerAction(page)).toHaveText(`Für ${digitalPrice(product)} Coins kaufen & speichern`);
   expect(await saved(page)).toEqual(before);
+  await page.locator('.sticker-more > summary').click();
+  await size.press('ArrowRight');
+  await size.press('ArrowRight');
+  await size.press('ArrowRight');
+  await expect(size).toHaveValue('0.12');
+  await page.getByRole('button', { name: '+ WEITERER STICKER', exact: true }).click();
+  await expect(size).toHaveValue('0.09');
+  await placedButtons(page).first().click();
+  await expect(size).toHaveValue('0.12');
 
   await page.locator('.sticker-targets').getByRole('button', { name: 'MOTORRAD', exact: true }).click();
+  await expect(size).toHaveValue('0.09');
   await expect(placedButtons(page)).toHaveCount(0);
   await placeOnSurface(page);
   await expect(placedButtons(page)).toHaveCount(1);
@@ -88,7 +100,7 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   const actionBox = (await footerAction(page).boundingBox())!;
   expect(actionBox.height).toBeGreaterThanOrEqual(44);
   expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(844);
-  await page.screenshot({ path: 'outputs/sticker-workshop-mobile.png' });
+  await page.screenshot({ path: test.info().outputPath('sticker-workshop-mobile.png') });
   // Two immediate events must still produce only one complete local transaction.
   await footerAction(page).evaluate(button => { (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click(); });
   await expect(page.locator('.sticker-workshop')).toHaveCount(0);
@@ -97,6 +109,8 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   expect(confirmed.ownedItems.filter(id => id === product.id)).toHaveLength(1);
   expect(confirmed.stickers['125']).toHaveLength(1);
   expect(confirmed.stickers['helmet:fullface']).toHaveLength(1);
+  expect(confirmed.stickers['125'][0].size).toBe(0.09);
+  expect(confirmed.stickers['helmet:fullface'][0].size).toBe(0.12);
   expect(confirmed.helmetColor).toBe(before.helmetColor);
   expect(confirmed.helmetVisor).toBe(before.helmetVisor);
 
@@ -105,8 +119,10 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   expect((await saved(page)).stickers).toEqual(confirmed.stickers);
   await expect(placedButtons(page)).toHaveCount(1);
   await placedButtons(page).first().click();
+  await expect(size).toHaveValue('0.12');
   await page.getByRole('button', { name: 'Ausgewählten Sticker entfernen', exact: true }).click();
   await expect(placedButtons(page)).toHaveCount(0);
+  await expect(size).toHaveValue('0.09');
   await expect(footerAction(page)).toHaveText('Speichern');
   await footerAction(page).click();
   const removed = await saved(page);

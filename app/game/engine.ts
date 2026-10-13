@@ -45,7 +45,7 @@ import {
   trafficSeparatedUntilPass,
   trafficWaveSpacing,
 } from './trafficFlow';
-import { TRAFFIC_PROGRESSION, trafficCutInTarget, trafficIntensity, trafficLaneProgress, type TrafficLaneShift } from './trafficProgression';
+import { TRAFFIC_PROGRESSION, oncomingTrafficChance, trafficCutInTarget, trafficIntensity, trafficLaneProgress, type TrafficLaneShift } from './trafficProgression';
 import { SPEED_CAMERA, SpeedCameraSchedule } from './speedCamera';
 import {
   POLICE,
@@ -232,6 +232,7 @@ export class Engine {
   private scoreGainSerial = 0;
   private accumulator = 0;
   private towCarrier: Obstacle | null = null;
+  private constructionCarrier: Obstacle | null = null;
   private towSafeObstacles = new Set<Obstacle>();
   private towTransferCars = new Set<Obstacle>();
   private signSequence = 0;
@@ -439,6 +440,7 @@ export class Engine {
     this.scrapeMaterial = null;
     this.crashObstacle = null;
     this.towCarrier = null;
+    this.constructionCarrier = null;
     this.towSafeObstacles.clear();
     this.towTransferCars.clear();
     this.towWarningFor = null;
@@ -528,6 +530,7 @@ export class Engine {
     this.towJumpActive = false;
     this.constructionJumpActive = false;
     this.towCarrier = null;
+    this.constructionCarrier = null;
     this.towSafeObstacles.clear();
     this.towTransferCars.clear();
     this.event = { text: cause, kind: 'crash', serial: this.event.serial + 1 };
@@ -601,7 +604,7 @@ export class Engine {
       // One seeded decision per wave; retries preserve it. Oncoming vehicles
       // use the same pool, spacing checks and collision path as other cars.
       if (first === 'car' && this.score >= TRAFFIC_PROGRESSION.oncomingScore &&
-        this.random() < TRAFFIC_PROGRESSION.oncomingChance)
+        this.random() < oncomingTrafficChance(this.score))
         velocity = -TRAFFIC_PROGRESSION.oncomingSpeed;
       this.pendingWave = { section, kinds, velocity };
     }
@@ -848,6 +851,7 @@ export class Engine {
       return;
     const o = this.obstacles.find((x) => !x.active);
     if (o) {
+      if (this.constructionCarrier === o) this.constructionCarrier = null;
       this.towSafeObstacles.delete(o);
       this.towTransferCars.delete(o);
       if (this.towWarningFor === o) this.towWarningFor = null;
@@ -1343,6 +1347,7 @@ export class Engine {
       this.height > 0 || this.wheelie
         ? 1
         : Math.max(0, Math.min(1, (this.laneChangeAge - 0.055) / 0.06));
+    const previousX = this.x;
     if (this.towJumpActive) {
       this.transferAge += dt;
       this.x = transferX(
@@ -1386,11 +1391,14 @@ export class Engine {
         const localZ = o.z - (travel - o.velocity * dt);
         const front =
           RAMP_FRONT_CONTACT[this.bike.id] ?? RAMP_FRONT_CONTACT['450'];
+        const entryZ = TOW_RAMP.rearZ - front.axle + front.radius;
+        const centerX = o.lane * LANE + o.offsetX;
+        const alignedWidth = TOW_RAMP.halfWidth - 0.12;
         return (
           localZ >= towDeckPosition(this.bike.id) &&
-          localZ + front.axle - front.radius <= TOW_RAMP.rearZ &&
-          Math.abs(this.x - (o.lane * LANE + o.offsetX)) <=
-            TRAFFIC_SHAPES.towtruck.contactHalfWidth
+          o.z >= entryZ && localZ <= entryZ &&
+          Math.abs(previousX - centerX) < alignedWidth &&
+          Math.abs(this.x - centerX) < alignedWidth
         );
       });
       if (ramp) {
@@ -1423,17 +1431,26 @@ export class Engine {
       if (queuedTowLane !== null) this.move(queuedTowLane - this.lane, false);
     } else this.towPitch *= Math.exp(-dt * 8);
     let supportedConstruction = false;
+    if (this.constructionCarrier && (!this.constructionCarrier.active || this.constructionCarrier.rampUsed ||
+      Math.abs(this.x - (this.constructionCarrier.lane * LANE + this.constructionCarrier.offsetX)) >= CONSTRUCTION_RAMP.width / 2 - 0.12))
+      this.constructionCarrier = null;
     if (!this.towCarrier && !this.towJumpActive && !this.constructionJumpActive && this.velocityY === 0) {
-      const ramp = this.obstacles.find(o => o.active && o.kind === 'ramp' && !o.rampUsed
-        && o.z > CONSTRUCTION_RAMP.lipZ
-        && o.z - travel < CONSTRUCTION_RAMP.entryZ + 2
-        && Math.abs(this.x - (o.lane * LANE + o.offsetX)) < CONSTRUCTION_RAMP.width / 2 - 0.12);
+      const entryZ = CONSTRUCTION_RAMP.entryZ + trafficFrontReach(this.bike.id);
+      const ramp = this.constructionCarrier ?? (this.height === 0 ? this.obstacles.find(o => {
+        const centerX = o.lane * LANE + o.offsetX;
+        return o.active && o.kind === 'ramp' && !o.rampUsed
+          && o.z >= entryZ && o.z - travel <= entryZ
+          && Math.abs(previousX - centerX) < CONSTRUCTION_RAMP.width / 2 - 0.12
+          && Math.abs(this.x - centerX) < CONSTRUCTION_RAMP.width / 2 - 0.12;
+      }) : undefined);
       if (ramp) {
+        this.constructionCarrier = ramp;
         const localZ = ramp.z - travel;
         const pose = constructionRampPose(this.bike.id, localZ, this.wheelieAngle);
         this.height = pose.height; this.towPitch = pose.pitch;
         if (localZ <= CONSTRUCTION_RAMP.lipZ) {
           ramp.rampUsed = true;
+          this.constructionCarrier = null;
           this.velocityY = CONSTRUCTION_RAMP.launchVelocity;
           this.constructionJumpActive = true;
           this.airLaneChangeUsed = false;
@@ -1589,6 +1606,14 @@ export class Engine {
       const contactWidth = road?.contactHalfWidth ?? traffic!.contactHalfWidth;
       if (o.kind === 'ramp') {
         const inLane = dx < CONSTRUCTION_RAMP.width / 2 - 0.12;
+        // Acquiring support requires a rear-edge crossing. A sideways impact
+        // with the raised entry remains solid; a genuinely clear jump passes.
+        if (dx < contactWidth && !o.rampUsed && o !== this.constructionCarrier &&
+          o.z > CONSTRUCTION_RAMP.lipZ && o.z < CONSTRUCTION_RAMP.entryZ + trafficFrontReach(this.bike.id) &&
+          this.height + 0.015 < constructionRampPose(this.bike.id, o.z, contactPitch).height) {
+          this.crash('Rampe nur von hinten befahren', o);
+          break;
+        }
         if (inLane && o.z < CONSTRUCTION_RAMP.lipZ && o.z > CONSTRUCTION_RAMP.gapEndZ && this.height < 0.12) {
           this.crash('Baustellenlücke verfehlt', o);
           break;

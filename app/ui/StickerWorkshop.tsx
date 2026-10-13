@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Player, Product, StickerPlacement } from '../domain/types';
 import { BIKES } from '../domain/config';
-import { helmetStickerTarget, isSticker, MAX_STICKERS, ownsStickerTarget, stickerMaxSize } from '../domain/stickers';
+import { DEFAULT_STICKER_SIZE, helmetStickerTarget, isSticker, MAX_STICKERS, ownsStickerTarget, stickerMaxSize } from '../domain/stickers';
 import { HELMETS } from '../domain/helmet';
 import { imagePath } from '../domain/preview';
 import { digitalPrice } from '../domain/progression';
@@ -27,12 +27,12 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savePending = useRef(false);
-  const [size, setSize] = useState(initialTarget === 'helmet' ? 0.07 : 0.18);
+  const [size, setSize] = useState(DEFAULT_STICKER_SIZE);
   const [rotation, setRotation] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [assetRevision, setAssetRevision] = useState(0);
-  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Tippe auf die Helmschale. Ziehen dreht die Ansicht.' : 'Tippe auf Verkleidung, Tank oder Heckplastik. Ziehen dreht die Ansicht.');
+  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Tippe auf die Helmschale. Ziehen dreht die Ansicht.' : 'Tippe auf Verkleidung, Tank, Heckplastik oder Mudflap. Ziehen dreht die Ansicht.');
   const state = useRef({ placements, drafts, target, targetKey, size, rotation, selected });
   state.current = { placements, drafts, target, targetKey, size, rotation, selected };
   const view = useRef<((angle: number) => void) | null>(null);
@@ -125,9 +125,9 @@ export default function StickerWorkshop({ player, account, products, initialTarg
       };
       if (helmetView && helmet) collect(helmet); else collect(bike.body);
       const hit = ray.intersectObjects(visible, false)[0];
-      if (!hit?.face) { setHint(helmetView ? 'Bitte die feste Helmschale antippen.' : 'Bitte Verkleidung, Tank oder Heckplastik antippen.'); return; }
+      if (!hit?.face) { setHint(helmetView ? 'Bitte die feste Helmschale antippen.' : 'Bitte Verkleidung, Tank, Heckplastik oder Mudflap antippen.'); return; }
       const surface = [...surfaces].find(([, mesh]) => mesh === hit.object)?.[0];
-      if (!surface || (helmetView && hit.face.materialIndex !== 0)) { setHint(helmetView ? 'Visier, Brille und Polster bleiben frei. Wähle eine Stelle auf der Helmschale.' : 'Wähle eine freie Stelle auf Verkleidung, Tank oder Heckplastik.'); return; }
+      if (!surface || (helmetView && hit.face.materialIndex !== 0)) { setHint(helmetView ? 'Visier, Brille und Polster bleiben frei. Wähle eine Stelle auf der Helmschale.' : 'Wähle eine freie Stelle auf Verkleidung, Tank, Heckplastik oder Mudflap.'); return; }
       if (!current.selected && current.placements.length >= MAX_STICKERS) { setHint(`Maximal ${MAX_STICKERS} Sticker pro ${helmetView ? 'Helm' : 'Fahrzeug'}.`); return; }
       const id = current.selected ?? crypto.randomUUID();
       const placement: StickerPlacement = { id, productId: product.id, surface, point: hit.object.worldToLocal(hit.point.clone()).toArray(), normal: hit.face.normal.clone().normalize().toArray(), size: current.size, rotation: current.rotation };
@@ -176,8 +176,8 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   }
   function selectTarget(next: Target) {
     if (next === target || savePending.current) return;
-    setTarget(next); setSelected(null); setSize(next === 'helmet' ? 0.07 : 0.18); setRotation(0);
-    setHint(next === 'helmet' ? 'Tippe auf die Helmschale. Deine Motorrad-Sticker bleiben erhalten.' : 'Tippe auf Verkleidung, Tank oder Heckplastik. Deine Helm-Sticker bleiben erhalten.');
+    setTarget(next); setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0);
+    setHint(next === 'helmet' ? 'Tippe auf die Helmschale. Deine Motorrad-Sticker bleiben erhalten.' : 'Tippe auf Verkleidung, Tank, Heckplastik oder Mudflap. Deine Helm-Sticker bleiben erhalten.');
   }
   function change(value: number, field: 'size' | 'rotation') {
     if (field === 'size') setSize(value); else setRotation(value);
@@ -204,8 +204,8 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     <section className="sticker-tools">
       <output className="sticker-hint">{hint}</output>
       <div className="sticker-items" aria-label="Platzierte Sticker">{placements.map((p, index) => <button key={p.id} disabled={saving} aria-pressed={selected === p.id} onClick={() => { setSelected(p.id); setSize(p.size); setRotation(p.rotation); setHint(`Sticker ${index + 1} ausgewählt. Tippen verschiebt ihn.`); }}>STICKER {index + 1}</button>)}
-        {placements.length > 0 && <button disabled={saving || placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ WEITERER STICKER</button>}
-        {selected && <button disabled={saving} aria-label="Ausgewählten Sticker entfernen" onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); setHint('Sticker entfernt. Speichern übernimmt die Änderung.'); }}>ENTFERNEN</button>}
+        {placements.length > 0 && <button disabled={saving || placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ WEITERER STICKER</button>}
+        {selected && <button disabled={saving} aria-label="Ausgewählten Sticker entfernen" onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0); setHint('Sticker entfernt. Speichern übernimmt die Änderung.'); }}>ENTFERNEN</button>}
       </div>
       <details className="sticker-more"><summary>Weitere Optionen</summary><div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input disabled={saving} aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input disabled={saving} aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label></div></details>
       <p className="sticker-save-note">Erst Speichern übernimmt deine Sticker auf Helm und Motorrad.</p>

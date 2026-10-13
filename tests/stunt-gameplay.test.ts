@@ -114,21 +114,19 @@ describe('ride onto the tow truck, then swipe to jump', () => {
           }
     },
   );
-  it('can merge onto the rear ramp before swiping again to leave', () => {
+  it('rejects a late sideways merge onto the ramp instead of lifting the rider onto it', () => {
     const engine = ride(BIKES.find(bike => bike.id === '450')!);
     engine.elapsed = 25;
-    engine.spawn('towtruck', 1, 10, 0, 6)!;
+    const tow = engine.spawn('towtruck', 1, 10, 0, 6)!;
     engine.move(1);
     for (let frame = 0; frame < 60 && engine.height < 1; frame++)
       steps(engine, 1);
-    expect(engine.phase).toBe('playing');
-    expect(engine.onTowTruck).toBe(true);
+    expect(engine.phase).toBe('crashed');
+    expect(engine.onTowTruck).toBe(false);
+    expect(engine.crashObstacle).toBe(tow);
+    expect(tow.rampUsed).toBe(false);
     expect(engine.launchSerial).toBe(0);
-    engine.move(-1);
-    steps(engine, 90);
-    expect(engine.phase, engine.event.text).toBe('playing');
-    expect(engine.jumps).toBe(1);
-    expect(engine.lane).toBe(0);
+    expect(engine.jumps).toBe(0);
   });
   it('pauses on the deck and requires a valid side swipe before the cab', () => {
     const engine = ride();

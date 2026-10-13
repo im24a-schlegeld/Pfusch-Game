@@ -58,6 +58,48 @@ function decal(shell: THREE.Mesh, id = 'chrome-1') {
 }
 
 describe('bike sticker geometry', () => {
+  it('places a complete 9 cm sticker on the actual black rear Supermoto mudflap and keeps its other side blank', () => {
+    const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
+    bike.root.updateMatrixWorld(true);
+    const flap = bike.body.getObjectByName('supermoto-mudflap');
+    expect(flap).toBeInstanceOf(THREE.Mesh);
+    const shell = flap as THREE.Mesh;
+    const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
+    const surface = [...surfaces].find(([, mesh]) => mesh === shell)?.[0];
+    expect(surface).toBeDefined();
+    const center = new THREE.Box3().setFromObject(shell).getCenter(new THREE.Vector3());
+    const rearRay = new THREE.Raycaster(center.clone().add(new THREE.Vector3(0, 0, 2)), new THREE.Vector3(0, 0, -1));
+    // The workshop hits the nearest visible mesh, so a decal-only test must not
+    // accidentally bless a mudflap hidden behind unrelated vehicle parts.
+    const visible: THREE.Mesh[] = [];
+    bike.body.traverse(object => {
+      if (object instanceof THREE.Mesh && object.visible && !object.userData.bikeSticker) visible.push(object);
+    });
+    const hit = rearRay.intersectObjects(visible, false)[0];
+    expect(hit?.object).toBe(shell);
+    expect(hit?.face).toBeTruthy();
+    const saved: StickerPlacement = {
+      id: 'rear-mudflap', productId: 'chrome-product', surface: surface!,
+      point: shell.worldToLocal(hit.point.clone()).toArray(), normal: hit.face!.normal.clone().normalize().toArray(),
+      size: 0.09, rotation: 0,
+    };
+    const original = structuredClone(saved);
+    applyBikeStickers(bike.body, bike.rider, paint, [saved]);
+    bike.root.updateMatrixWorld(true);
+    const sticker = decal(shell, saved.id), index = sticker.geometry.getIndex()!, uv = sticker.geometry.getAttribute('uv');
+    expect(sticker.parent).toBe(shell);
+    expect(index.count).toBeGreaterThan(0);
+    for (const coordinate of ['x', 'y'] as const) {
+      const values = Array.from({ length: index.count }, (_, i) => coordinate === 'x' ? uv.getX(index.getX(i)) : uv.getY(index.getX(i)));
+      expect(Math.min(...values)).toBeCloseTo(0, 4);
+      expect(Math.max(...values)).toBeCloseTo(1, 4);
+    }
+    expect(rearRay.intersectObject(sticker, false).length).toBeGreaterThan(0);
+    const frontRay = new THREE.Raycaster(center.clone().add(new THREE.Vector3(0, 0, -2)), new THREE.Vector3(0, 0, 1));
+    expect(frontRay.intersectObject(sticker, false)).toHaveLength(0);
+    expect(saved).toEqual(original);
+  });
+
   it('admits the original black Supermoto plastics without admitting painted mechanical parts', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
     const surfaces = stickerSurfaces(bike.body, bike.rider, paint);

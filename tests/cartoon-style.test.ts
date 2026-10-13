@@ -52,6 +52,8 @@ it('inks the garment cuff in the existing skinned surface without touching artwo
   expect(material.map).toBe(artwork);
   expect(sleeve.children).toHaveLength(0);
   const shader = compile(material);
+  expect(shader.uniforms.cartoonFacingInkStrength.value).toBe(0);
+  expect(shader.uniforms.cartoonGarmentInkStrength.value).toBe(0.92);
   expect(shader.vertexShader).toContain('vCartoonGarmentEdge = cartoonGarmentEdge');
   expect(shader.fragmentShader).toContain('fwidth(vCartoonGarmentEdge)');
   applyCartoonHeroStyle(root);
@@ -63,8 +65,30 @@ it('keeps a sneaker outer contour without amplifying decimated sole normals into
   const boot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), material);
   boot.name = 'rider-boot';
   applyCartoonHeroStyle(boot);
-  expect(compile(material).fragmentShader).toContain('cartoonInk * 0.0');
+  expect(compile(material).uniforms.cartoonFacingInkStrength.value).toBe(0);
   expect(material.color.getHexString()).toBe('7461a5');
+});
+
+it.each(['tailored-garment', 'folded-garment-hem', 'folded-hood', 'stand-collar', 'continuous-trouser-seat', 'rider-glove', ''])
+('does not draw camera-angle bands through the interior of rider surface %s', (name) => {
+  const material = new THREE.MeshStandardMaterial();
+  const geometry = new THREE.CylinderGeometry(0.09, 0.1, 0.4, 16);
+  const surface = name ? new THREE.Mesh(geometry, material) : new THREE.SkinnedMesh(geometry, material);
+  surface.name = name;
+  applyCartoonHeroStyle(surface);
+  const shader = compile(material);
+  expect(shader.uniforms.cartoonFacingInkStrength.value).toBe(0);
+  expect(shader.uniforms.cartoonGarmentInkStrength.value).toBe(0.92);
+  expect(material.customProgramCacheKey()).toContain(':0.0:hero');
+});
+
+it('retains the existing surface ink on world shapes and rigid motorcycle forms', () => {
+  const world = new THREE.MeshStandardMaterial(), bike = new THREE.MeshStandardMaterial();
+  applyCartoonMaterial(world);
+  const tank = new THREE.Mesh(new THREE.SphereGeometry(), bike); tank.name = 'sport-fuel-tank';
+  applyCartoonHeroStyle(tank);
+  expect(compile(world).uniforms.cartoonFacingInkStrength.value).toBe(0.92);
+  expect(compile(bike).uniforms.cartoonFacingInkStrength.value).toBe(0.92);
 });
 
 it('preserves artwork, alpha and geometry without adding outline draw calls', () => {

@@ -136,11 +136,11 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     const rider = object instanceof THREE.SkinnedMesh ||
       /garment|hood|helmet|motocross-peak|trouser|rider-(glove|boot)|stand-collar|imported-cap-shell|carried-crossbody-bag/.test(name) || goggleFrame;
     const bodywork = object.userData.bikePaintSurface || rim ||
-      /tire|tyre|seat|fairing|fender|mudguard|side-cover|bodywork|shroud|tank|swingarm|crankcase|engine|fork-guard|fork-slider|stanchion|main-frame|headlight-(mask|bezel|recess)|tail-shell|rear-hugger|single-exhaust|silencer|muffler|carried-cap/.test(name);
+      /tire|tyre|seat|fairing|fender|mudguard|mudflap|side-cover|bodywork|shroud|tank|swingarm|crankcase|engine|fork-guard|fork-slider|stanchion|main-frame|headlight-(mask|bezel|recess)|tail-shell|rear-hugger|single-exhaust|silencer|muffler|carried-cap/.test(name);
     if (!rider && !bodywork && !object.userData.importedPart) return;
-    const essential = rim || goggleFrame || /helmet|motocross-peak|garment/.test(name);
+    const essential = rim || goggleFrame || /helmet|motocross-peak|garment|mudflap/.test(name);
     const hardForm = !(object instanceof THREE.SkinnedMesh) &&
-      (rim || goggleFrame || /helmet|motocross-peak|fairing|fender|side-cover|shroud|headlight-(mask|bezel|recess)|tank|tail-shell|rear-hugger/.test(name));
+      (rim || goggleFrame || /helmet|motocross-peak|fairing|fender|mudflap|side-cover|shroud|headlight-(mask|bezel|recess)|tank|tail-shell|rear-hugger/.test(name));
     candidates.push({ mesh: object, priority: essential ? 3 : rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1], hardForm });
   });
   candidates.sort((a, b) => b.priority - a.priority || b.size - a.size);

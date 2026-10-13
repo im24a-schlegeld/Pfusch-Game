@@ -3,7 +3,7 @@ import { BIKES } from '../app/domain/config';
 import { Engine, LANE, STEP, STUNT_POINTS } from '../app/game/engine';
 import { RAMP_FRONT_CONTACT, TRAFFIC_SHAPES } from '../app/game/trafficDomain';
 import { carJumpClearance } from '../app/game/carClearance';
-import { TRAFFIC_PROGRESSION, trafficYaw } from '../app/game/trafficProgression';
+import { TRAFFIC_PROGRESSION, oncomingTrafficChance, trafficYaw } from '../app/game/trafficProgression';
 import { TAIL_RECOVERY_ANGLE } from '../app/game/tailContact';
 
 function observe(score: number, seed = 8191) {
@@ -18,7 +18,7 @@ function observe(score: number, seed = 8191) {
 }
 
 describe('score-based traffic progression', () => {
-  it.each([0, 50_000, 100_000])('preserves a reachable lane and separated traffic at %i points', score => {
+  it.each([0, 50_000, 100_000, 200_000, 400_000])('preserves a reachable lane and separated traffic at %i points', score => {
     const engine = observe(score);
     const changing = new Set<number>(), oncoming = new Set<number>();
     for (let tick = 0; tick < 14_400; tick++) {
@@ -64,6 +64,31 @@ describe('score-based traffic progression', () => {
     else expect(changing.size).toBe(0);
     if (score >= 100_000) expect(oncoming.size).toBeGreaterThan(0);
     else expect(oncoming.size).toBe(0);
+  });
+
+  it('increases incoming traffic after 100k without removing ordinary traffic', () => {
+    expect(oncomingTrafficChance(99_999)).toBe(0);
+    expect(oncomingTrafficChance(100_000)).toBe(0.16);
+    expect(oncomingTrafficChance(200_000)).toBeGreaterThan(oncomingTrafficChance(150_000));
+    expect(oncomingTrafficChance(300_000)).toBeGreaterThan(oncomingTrafficChance(200_000));
+    expect(oncomingTrafficChance(400_000)).toBe(0.5);
+    expect(oncomingTrafficChance(1_000_000)).toBe(0.5);
+    const incoming = [0, 0];
+    for (const seed of [47, 1741, 8191]) for (const [index, score] of [100_000, 400_000].entries()) {
+      const engine = observe(score, seed), seen = new Set<number>();
+      for (let tick = 0; tick < 7200; tick++) {
+        engine.score = score;
+        engine.advance(STEP);
+        for (const car of engine.obstacles) if (car.active && car.velocity < 0 && !seen.has(car.spawnId)) {
+          seen.add(car.spawnId);
+          incoming[index]++;
+        }
+      }
+      expect(engine.phase).toBe('playing');
+      expect(engine.obstacles).toHaveLength(32);
+    }
+    expect(incoming[0]).toBeGreaterThan(0);
+    expect(incoming[1]).toBeGreaterThan(incoming[0]);
   });
 
   it('replays high-score traffic identically with different render frame sizes', () => {

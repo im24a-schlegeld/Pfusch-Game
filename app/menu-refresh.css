@@ -266,7 +266,7 @@
   .app-shell .ranking-page .game-share-record > .game-share-action { flex: 0 0 100%; }
 }
 @media (max-height: 620px) and (max-width: 760px) {
-  .app-shell .gc-preview { height: 244px; grid-template-rows: 40px minmax(0, 1fr) auto; }
+  .app-shell .gc-preview { height: 244px; grid-template-rows: 44px minmax(0, 1fr) auto; }
   .app-shell .gc-angles { display: none; }
   .app-shell .gc-preview-footer { padding-bottom: 12px; }
   .game-dialog.ride-pause-v38 { padding: 18px !important; gap: 8px !important; }

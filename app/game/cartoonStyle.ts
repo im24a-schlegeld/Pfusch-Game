@@ -21,6 +21,10 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
     // Carbon/colour changes can wrap a previously styled shader. Never apply
     // cel shading twice, and never replace that artwork's existing hook.
     if (shader.fragmentShader.includes('// PFUSCH_CARTOON')) return;
+    shader.uniforms.cartoonFacingInkStrength = { value: Number(ink) };
+    shader.uniforms.cartoonGarmentInkStrength = { value: hero && !material.transparent ? 0.92 : 0 };
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+      '#include <common>\nuniform float cartoonFacingInkStrength;\nuniform float cartoonGarmentInkStrength;');
     if (hero) {
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
         '#include <common>\nattribute float cartoonGarmentEdge;\nvarying float vCartoonGarmentEdge;')
@@ -49,22 +53,22 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       outgoingLight = diffuseColor.rgb * cartoonTint * cartoonBand + totalEmissiveRadiance;
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
       float cartoonWidth = min(0.12, max(0.025, fwidth(cartoonFacing) * 1.15));
-      float cartoonInk = 1.0 - smoothstep(0.045, 0.045 + cartoonWidth, cartoonFacing);
+      float cartoonInk = (1.0 - smoothstep(0.045, 0.045 + cartoonWidth, cartoonFacing)) * cartoonFacingInkStrength;
       ${hero ? `
       // The cuff is a real fabric/skin boundary even when it faces the camera.
       // Screen derivatives keep this surface stroke narrow on every bike pose.
       float garmentEdgeWidth = max(fwidth(vCartoonGarmentEdge), 0.00001);
-      cartoonInk = max(cartoonInk, 1.0 - smoothstep(garmentEdgeWidth * 0.35, garmentEdgeWidth * 1.35, vCartoonGarmentEdge));
+      cartoonInk = max(cartoonInk, (1.0 - smoothstep(garmentEdgeWidth * 0.35, garmentEdgeWidth * 1.35, vCartoonGarmentEdge)) * cartoonGarmentInkStrength);
       ` : ''}
       ${boxInk ? `
       vec3 cartoonFace = max(vec3(0.5) - abs(vCartoonBox.xyz), vec3(0.0));
       float cartoonEdge = min(max(cartoonFace.x, cartoonFace.y), min(max(cartoonFace.y, cartoonFace.z), max(cartoonFace.z, cartoonFace.x)));
       float cartoonEdgeWidth = max(fwidth(cartoonEdge) * 0.85, 0.00001);
-      cartoonInk = max(cartoonInk, (1.0 - smoothstep(cartoonEdgeWidth * 0.35, cartoonEdgeWidth * 1.35, cartoonEdge)) * vCartoonBox.w);
+      cartoonInk = max(cartoonInk, (1.0 - smoothstep(cartoonEdgeWidth * 0.35, cartoonEdgeWidth * 1.35, cartoonEdge)) * vCartoonBox.w * cartoonFacingInkStrength);
       ` : ''}
       // Emissive lamps retain their signal colours; ink never masks a light.
       float cartoonEmission = clamp(max(totalEmissiveRadiance.r, max(totalEmissiveRadiance.g, totalEmissiveRadiance.b)), 0.0, 1.0);
-      outgoingLight = mix(outgoingLight, vec3(0.004, 0.006, 0.009), cartoonInk * ${ink} * (1.0 - cartoonEmission));
+      outgoingLight = mix(outgoingLight, vec3(0.004, 0.006, 0.009), cartoonInk * (1.0 - cartoonEmission));
       #include <opaque_fragment>
     `);
   };
@@ -101,10 +105,14 @@ export function applyCartoonHeroStyle(root: THREE.Object3D) {
       material.normalMap = null;
       material.bumpMap = null;
       if (material instanceof THREE.MeshPhysicalMaterial) material.clearcoatNormalMap = null;
-      // The decimated sneaker has disconnected upper/sole/lace surfaces.
-      // Their retained local normals are unsuitable for facing-angle ink;
-      // its outer backface shell still provides the readable shoe silhouette.
-      applyCartoonMaterial(material, false, object.name !== 'rider-boot');
+      // A bent sleeve, trouser fold or overlapping shoulder can face away from
+      // the camera while still lying inside the visible garment. Facing-angle
+      // ink mislabelled these smooth interiors as black seams, especially on
+      // the Sport's leaning rear pose. Keep the actual outer shells and authored
+      // cuff/hem ink; the original printed texture is unaffected.
+      const smoothRiderSurface = object instanceof THREE.SkinnedMesh ||
+        /garment|hood|trouser|stand-collar|rider-(boot|glove)|imported-cap-shell|carried-crossbody-bag/.test(object.name);
+      applyCartoonMaterial(material, false, !smoothRiderSurface);
     }
   });
 }

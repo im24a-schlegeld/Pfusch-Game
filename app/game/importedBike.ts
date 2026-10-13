@@ -10,6 +10,7 @@ import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { getImportedBikeAsset, type ImportedBikeId, type ImportedBikeMaterial } from './importedBikeAsset';
 import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
 import { createImportedHardwareFinisher } from './importedHardwareFinish';
+import { addImportedSupermotoMudflap } from './supermotoMudflap';
 
 interface ImportedRiderController {
   group: THREE.Group;
@@ -115,6 +116,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     mesh.castShadow = true; mesh.receiveShadow = true;
     parent.add(mesh);
   }
+  if (id === '450') addImportedSupermotoMudflap(body, point(source.tail));
   const exhaust = new THREE.Object3D();
   exhaust.name = 'open-silencer-outlet'; exhaust.position.copy(point(source.exhaust)); body.add(exhaust);
   body.userData.tailContact = point(source.tail).toArray();

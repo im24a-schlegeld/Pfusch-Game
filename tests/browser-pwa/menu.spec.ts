@@ -1,8 +1,32 @@
 import { expect, test, type Page } from '@playwright/test';
+import type * as THREE from 'three';
 import { newPlayer } from '../../app/domain/progression';
 import { TUTORIAL_HINTS } from '../../app/domain/tutorial';
 
 const destinations = ['GARAGE', 'AUFGABEN', 'BELOHNUNGEN', 'RANG'] as const;
+
+declare global {
+  interface Window {
+    menuPreviewProbe: {
+      frames: number;
+      capture: boolean;
+      canvas?: HTMLCanvasElement;
+      paint?: {
+        frame: number;
+        width: number;
+        height: number;
+        cssWidth: number;
+        cssHeight: number;
+        pixelRatio: number;
+        colors: number;
+        meshes: number;
+        riderMeshes: number;
+        visibleVertices: number;
+        projectedBounds: number[];
+      };
+    };
+  }
+}
 
 async function prepareMenu(page: Page) {
   const player = newPlayer();
@@ -16,6 +40,60 @@ async function prepareMenu(page: Page) {
   player.history = [{ score: 7723, date: new Date().toISOString().slice(0, 10) }];
   await page.addInitScript(saved => {
     if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
+    window.menuPreviewProbe = { frames: 0, capture: false };
+    window.__THREE_DEVTOOLS__ = new EventTarget();
+    window.__THREE_DEVTOOLS__.addEventListener('observe', event => {
+      const renderer = (event as CustomEvent).detail as THREE.WebGLRenderer & { isWebGLRenderer?: boolean };
+      if (!renderer.isWebGLRenderer) return;
+      const render = renderer.render.bind(renderer);
+      renderer.render = (scene, camera) => {
+        render(scene, camera);
+        const canvas = renderer.domElement;
+        if (!canvas.closest('.scene-garage')) return;
+        const probe = window.menuPreviewProbe;
+        probe.frames++;
+        probe.canvas = canvas;
+        if (!probe.capture) return;
+        const gl = renderer.getContext();
+        const pixelRatio = renderer.getPixelRatio();
+        const width = gl.drawingBufferWidth, height = gl.drawingBufferHeight;
+        // A footer becoming ready can resize the stage after its first render.
+        // Only inspect a real frame drawn at the stage's current dimensions.
+        if (Math.abs(width - canvas.clientWidth * pixelRatio) > 1 ||
+            Math.abs(height - canvas.clientHeight * pixelRatio) > 1) return;
+        const pixels = new Uint8Array(width * height * 4);
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        const colors = new Set<number>();
+        for (let row = 0; row < 32; row++) for (let column = 0; column < 32; column++) {
+          const offset = (Math.floor((row + .5) * height / 32) * width + Math.floor((column + .5) * width / 32)) * 4;
+          colors.add((pixels[offset] << 16) | (pixels[offset + 1] << 8) | pixels[offset + 2]);
+        }
+        let meshes = 0, riderMeshes = 0, visibleVertices = 0;
+        const projectedBounds = [Infinity, Infinity, -Infinity, -Infinity];
+        scene.getObjectByName('player-bike')?.traverse(object => {
+          const mesh = object as THREE.Mesh;
+          if (!mesh.isMesh || mesh.userData.cartoonOutline) return;
+          const position = mesh.geometry.getAttribute('position');
+          if (!position?.count) return;
+          meshes++;
+          for (let ancestor: THREE.Object3D | null = mesh; ancestor; ancestor = ancestor.parent) {
+            if (ancestor.userData.skeleton) { riderMeshes++; break; }
+          }
+          for (const index of [0, Math.floor(position.count / 2), position.count - 1]) {
+            const point = mesh.getVertexPosition(index, camera.position.clone()).applyMatrix4(mesh.matrixWorld).project(camera);
+            if (![point.x, point.y, point.z].every(Number.isFinite)) continue;
+            projectedBounds[0] = Math.min(projectedBounds[0], point.x);
+            projectedBounds[1] = Math.min(projectedBounds[1], point.y);
+            projectedBounds[2] = Math.max(projectedBounds[2], point.x);
+            projectedBounds[3] = Math.max(projectedBounds[3], point.y);
+            if (Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1 && Math.abs(point.z) <= 1) visibleVertices++;
+          }
+        });
+        probe.paint = { frame: probe.frames, width, height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight,
+          pixelRatio, colors: colors.size, meshes, riderMeshes, visibleVertices, projectedBounds };
+        probe.capture = false;
+      };
+    });
   }, player);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -63,6 +141,42 @@ async function expectGaragePreviewFits(page: Page) {
   await expect(preview.getByRole('heading', { name: 'Töffli', exact: true })).toBeVisible();
   await expect(page.locator('.gc-bike[aria-pressed="true"]')).toContainText('Ausgerüstet');
   await expect(page.getByRole('button', { name: 'Fahrt starten', exact: true })).toBeEnabled();
+  const firstFrame = await page.evaluate(() => {
+    const probe = window.menuPreviewProbe;
+    probe.capture = true;
+    // Request an ordinary idle redraw, without calling renderer.render in the test.
+    window.dispatchEvent(new Event('focus'));
+    return probe.frames;
+  });
+  await expect.poll(() => page.evaluate(firstFrame => {
+    const { paint, canvas, frames } = window.menuPreviewProbe;
+    if (!paint || !canvas) return { painted: false, frames, paint };
+    const painted = paint.frame > firstFrame && paint.width === canvas.width && paint.height === canvas.height &&
+      paint.cssWidth === canvas.clientWidth && paint.cssHeight === canvas.clientHeight &&
+      paint.meshes > 0 && paint.riderMeshes > 0 && paint.visibleVertices > 0 && paint.colors >= 8;
+    return { painted, frames, paint };
+  }, firstFrame), { message: 'The garage must paint the bike and rider at its current canvas size' }).toMatchObject({ painted: true });
+  // Check the composited canvas too: layout and a populated scene alone cannot
+  // catch an entirely blank grey preview in the screenshots we review.
+  const screenshot = await preview.locator('canvas').screenshot();
+  const colors = await page.evaluate(async base64 => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const sample = document.createElement('canvas');
+    sample.width = image.width; sample.height = image.height;
+    const context = sample.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const { data } = context.getImageData(0, 0, image.width, image.height);
+    const colors = new Set<number>();
+    for (let row = 0; row < 32; row++) for (let column = 0; column < 32; column++) {
+      const offset = (Math.floor((row + .5) * image.height / 32) * image.width + Math.floor((column + .5) * image.width / 32)) * 4;
+      colors.add((data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2]);
+    }
+    return colors.size;
+  }, screenshot.toString('base64'));
+  expect(colors, `Composited garage canvas; render probe: ${JSON.stringify(await page.evaluate(() => window.menuPreviewProbe.paint))}`)
+    .toBeGreaterThanOrEqual(8);
 }
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 1440, height: 900 }]) {

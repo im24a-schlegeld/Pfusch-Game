@@ -4,6 +4,8 @@ export const TRAFFIC_PROGRESSION = Object.freeze({
   oncomingScore: 100_000,
   laneChangeChance: 0.65,
   oncomingChance: 0.16,
+  maximumOncomingChance: 0.5,
+  fullOncomingScore: 400_000,
   oncomingSpeed: 14,
   laneChangeDelay: 0.30,
   laneChangeSeconds: 0.90,
@@ -28,6 +30,16 @@ export interface TrafficLaneShift {
 
 export function trafficIntensity(score: number) {
   return Math.max(0, Math.min(1, score / TRAFFIC_PROGRESSION.fullDensityScore));
+}
+
+/** Incoming traffic grows after 100k, while ordinary traffic and safe exits remain. */
+export function oncomingTrafficChance(score: number) {
+  if (score < TRAFFIC_PROGRESSION.oncomingScore) return 0;
+  const progress = Math.max(0, Math.min(1,
+    (score - TRAFFIC_PROGRESSION.oncomingScore) /
+    (TRAFFIC_PROGRESSION.fullOncomingScore - TRAFFIC_PROGRESSION.oncomingScore)));
+  return TRAFFIC_PROGRESSION.oncomingChance +
+    (TRAFFIC_PROGRESSION.maximumOncomingChance - TRAFFIC_PROGRESSION.oncomingChance) * progress;
 }
 
 /** Close a currently open adjacent route, while the old lane becomes its exit.

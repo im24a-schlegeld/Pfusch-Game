@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import type { World, WorldLighting } from './world';
 import { readWorldLighting, type WorldLightBlend } from './worldLighting';
 
-// One cloud draw, one star draw, two celestial discs and two small halo draws.
+// Two shared-buffer cloud draws, one star draw, two discs and two halo draws.
 // Geometry is made once. No canvas textures, lighting, shadow passes or particles.
-export const CARTOON_SKY = { clouds: 7, maxPuffs: 56, stars: 36, maxDraws: 6 } as const;
+export const CARTOON_SKY = { clouds: 7, maxPuffs: 56, stars: 36, maxDraws: 7 } as const;
 const DEPTH = 175;
 const cloudLayout = [
   // x, y, size, width, height, yaw, roll, speed, puff count
@@ -142,6 +142,88 @@ function skyMaterial(vertexColors = true) {
   });
 }
 
+/** Mark only the authored disc perimeter. The internal triangulation remains
+ * uninked, including the crescent's curved inner border. Built once. */
+function discContourGeometry(source: THREE.BufferGeometry) {
+  const index = source.index!;
+  const positions = source.getAttribute('position');
+  const vertices = Array.from({ length: positions.count }, (_, i) =>
+    `${Math.round(positions.getX(i) * 100000)},${Math.round(positions.getY(i) * 100000)},${Math.round(positions.getZ(i) * 100000)}`);
+  const edges = new Map<string, number>();
+  const key = (a: number, b: number) => vertices[a] < vertices[b] ? `${vertices[a]}:${vertices[b]}` : `${vertices[b]}:${vertices[a]}`;
+  for (let i = 0; i < index.count; i += 3)
+    for (let j = 0; j < 3; j++) {
+      const edge = key(index.getX(i + j), index.getX(i + (j + 1) % 3));
+      edges.set(edge, (edges.get(edge) ?? 0) + 1);
+    }
+  const geometry = source.toNonIndexed();
+  const barycentric = new Float32Array(index.count * 3), boundary = new Float32Array(index.count * 3);
+  for (let i = 0; i < index.count; i += 3) {
+    const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
+    const flags = [edges.get(key(b, c)) === 1 ? 1 : 0, edges.get(key(c, a)) === 1 ? 1 : 0, edges.get(key(a, b)) === 1 ? 1 : 0];
+    for (let j = 0; j < 3; j++) {
+      barycentric[(i + j) * 3 + j] = 1;
+      boundary.set(flags, (i + j) * 3);
+    }
+  }
+  geometry.setAttribute('cartoonSkyBarycentric', new THREE.BufferAttribute(barycentric, 3));
+  geometry.setAttribute('cartoonSkyBoundary', new THREE.BufferAttribute(boundary, 3));
+  source.dispose();
+  return geometry;
+}
+
+function applyDiscContour(material: THREE.MeshBasicMaterial, pixelRatio: { value: number }) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.cartoonSkyPixelRatio = pixelRatio;
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
+      attribute vec3 cartoonSkyBarycentric;
+      attribute vec3 cartoonSkyBoundary;
+      varying vec3 vSkyBarycentric;
+      varying vec3 vSkyBoundary;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+      vSkyBarycentric = cartoonSkyBarycentric;
+      vSkyBoundary = cartoonSkyBoundary;`);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
+      uniform float cartoonSkyPixelRatio;
+      varying vec3 vSkyBarycentric;
+      varying vec3 vSkyBoundary;`)
+      .replace('#include <opaque_fragment>', `
+      vec3 skyEdgeWidth = max(fwidth(vSkyBarycentric) * cartoonSkyPixelRatio, vec3(0.00001));
+      vec3 skyEdgeInk = (1.0 - smoothstep(skyEdgeWidth * 0.2, skyEdgeWidth * 1.15, vSkyBarycentric)) * vSkyBoundary;
+      float skyBorder = max(skyEdgeInk.x, max(skyEdgeInk.y, skyEdgeInk.z));
+      outgoingLight = mix(outgoingLight, vec3(0.0006, 0.0009, 0.0012), skyBorder);
+      #include <opaque_fragment>`);
+  };
+  material.customProgramCacheKey = () => 'pfusch-sky-disc-border-v1';
+}
+
+function cloudContourMaterial(viewport: THREE.Vector2) {
+  const material = skyMaterial(false);
+  material.color.set('#020304');
+  material.side = THREE.BackSide;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.cartoonSkyViewport = { value: viewport };
+    shader.uniforms.cartoonSkyStroke = { value: 1.05 };
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
+      uniform vec2 cartoonSkyViewport;
+      uniform float cartoonSkyStroke;`)
+      .replace('#include <project_vertex>', `#include <project_vertex>
+      // Puffs are unit spheres. Position normals keep duplicated coloured
+      // faces smooth without modifying the original geometry or face shades.
+      vec3 skyNormal = normalize(position);
+      mat3 skyInstance = mat3(instanceMatrix);
+      skyNormal /= vec3(dot(skyInstance[0], skyInstance[0]), dot(skyInstance[1], skyInstance[1]), dot(skyInstance[2], skyInstance[2]));
+      skyNormal = normalize(normalMatrix * skyInstance * skyNormal);
+      vec2 projectedNormal = (projectionMatrix * vec4(skyNormal, 0.0)).xy;
+      vec2 direction = projectedNormal * cartoonSkyViewport;
+      direction /= max(length(direction), 0.00001);
+      gl_Position.xy += direction * smoothstep(0.025, 0.12, length(projectedNormal)) * (2.0 * cartoonSkyStroke / cartoonSkyViewport) * gl_Position.w;
+      gl_Position.z += 0.00001 * gl_Position.w;`);
+  };
+  material.customProgramCacheKey = () => 'pfusch-sky-cloud-border-v1';
+  return material;
+}
+
 /** Camera-following backdrop. Call after the ride camera has been positioned. */
 export function makeCartoonSky(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
   const root = new THREE.Group();
@@ -156,12 +238,25 @@ export function makeCartoonSky(scene: THREE.Scene, camera: THREE.PerspectiveCame
   clouds.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   clouds.frustumCulled = false;
   clouds.renderOrder = -100;
+  const viewport = new THREE.Vector2(390, 844);
+  const pixelRatio = { value: 1 };
+  const cloudOutline = new THREE.InstancedMesh(clouds.geometry, cloudContourMaterial(viewport), puffCount);
+  cloudOutline.name = 'cartoon-cloud-outline';
+  cloudOutline.userData.cartoonSkyOutline = true;
+  cloudOutline.instanceMatrix = clouds.instanceMatrix;
+  cloudOutline.frustumCulled = false;
+  // Coloured puffs first write their complete depth union. The outline then
+  // appears only outside that volume, never between its overlapping puffs.
+  cloudOutline.renderOrder = -99;
+  cloudOutline.raycast = () => {};
   const sunMaterial = skyMaterial();
-  const sun = new THREE.Mesh(makeSunGeometry(), sunMaterial);
+  applyDiscContour(sunMaterial, pixelRatio);
+  const sun = new THREE.Mesh(discContourGeometry(makeSunGeometry()), sunMaterial);
   sun.name = 'cartoon-sun';
   sun.renderOrder = -101;
   const moonMaterial = skyMaterial();
-  const moon = new THREE.Mesh(makeMoonGeometry(), moonMaterial);
+  applyDiscContour(moonMaterial, pixelRatio);
+  const moon = new THREE.Mesh(discContourGeometry(makeMoonGeometry()), moonMaterial);
   moon.name = 'cartoon-moon';
   moon.renderOrder = -101;
   const sunHaloMaterial = skyMaterial();
@@ -179,7 +274,7 @@ export function makeCartoonSky(scene: THREE.Scene, camera: THREE.PerspectiveCame
   stars.name = 'cartoon-stars';
   stars.renderOrder = -103;
   for (const object of [sun, moon, stars, sunHalo, moonHalo]) object.frustumCulled = false;
-  root.add(clouds, sun, moon, stars, sunHalo, moonHalo);
+  root.add(clouds, cloudOutline, sun, moon, stars, sunHalo, moonHalo);
   scene.add(root);
   const matrix = new THREE.Matrix4();
   const clusterMatrix = new THREE.Matrix4();
@@ -201,6 +296,7 @@ export function makeCartoonSky(scene: THREE.Scene, camera: THREE.PerspectiveCame
     const night = THREE.MathUtils.lerp(from === 'night' ? 1 : 0, to === 'night' ? 1 : 0, blend);
     cloudMaterial.color.copy(cloudColors[from]).lerp(cloudColors[to], blend);
     cloudMaterial.opacity = outside;
+    cloudOutline.material.opacity = outside;
     sunMaterial.color.copy(sunColors[from]).lerp(sunColors[to], blend);
     sunMaterial.opacity = (1 - night) * outside;
     moonMaterial.opacity = night * outside;
@@ -250,11 +346,16 @@ export function makeCartoonSky(scene: THREE.Scene, camera: THREE.PerspectiveCame
     if (disposed) return;
     disposed = true;
     root.removeFromParent();
-    for (const object of [clouds, sun, moon, stars, sunHalo, moonHalo]) {
-      object.geometry.dispose();
-      object.material.dispose();
-    }
+    const objects = [clouds, cloudOutline, sun, moon, stars, sunHalo, moonHalo];
+    for (const geometry of new Set(objects.map(object => object.geometry))) geometry.dispose();
+    for (const material of new Set(objects.map(object => object.material))) material.dispose();
     clouds.dispose();
+    cloudOutline.dispose();
   };
-  return { root, update, dispose };
+  const resize = (width: number, height: number, ratio = 1) => {
+    if (disposed || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
+    viewport.set(width, height);
+    if (Number.isFinite(ratio) && ratio > 0) pixelRatio.value = ratio;
+  };
+  return { root, update, resize, dispose };
 }

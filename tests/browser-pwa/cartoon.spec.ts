@@ -3,6 +3,7 @@ import type * as THREE from 'three';
 import { newPlayer } from '../../app/domain/progression';
 import type { Engine } from '../../app/game/engine';
 import type { WorldKind, WorldLighting } from '../../app/game/world';
+import type { Product } from '../../app/domain/types';
 
 type WorldViewTarget = { kind: WorldKind; lighting?: WorldLighting; tunnelStyle?: 'modern' | 'weathered' };
 
@@ -19,7 +20,7 @@ declare global {
   }
 }
 
-async function startCartoonRide(page: Page) {
+async function startCartoonRide(page: Page, gear?: { bike: string; upper: Product; variantId: string }) {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -32,9 +33,14 @@ async function startCartoonRide(page: Page) {
   const player = newPlayer();
   player.settings.tutorialSeen = true;
   player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
-  player.bike = '450';
+  player.bike = gear?.bike ?? '450';
   player.paint = '#7461a5';
-  player.ownedItems.push('bike:450', 'paint:#7461a5');
+  player.ownedItems.push(`bike:${player.bike}`, 'paint:#7461a5');
+  if (gear) {
+    player.ownedItems.push(gear.upper.id);
+    player.equipped.upper = gear.upper.id;
+    player.variants[gear.upper.id] = gear.variantId;
+  }
   await page.addInitScript((saved) => {
     localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
     Math.random = () => 5489 / 0xffffffff;
@@ -237,6 +243,64 @@ async function contactSheet(page: Page, title: string, description: string, imag
 
 test.describe('cartoon visual gallery', () => {
   test.use({ viewport: { width: 960, height: 600 }, isMobile: false, hasTouch: false });
+  test('captures the real Sport T-shirt from behind without camera-angle ink through the sleeves', async ({ page, request }, info) => {
+    const products = await (await request.get('/catalog/products.json')).json() as Product[];
+    const product = products.find((entry) => entry.handle === 'keep-up-t-shirt')!;
+    expect(product).toBeDefined();
+    const color = product.preview!.colors.find((entry) => entry.id === 'hellblau')!;
+    expect(color).toBeDefined();
+    const errors = await startCartoonRide(page, { bike: '701', upper: product, variantId: color.variantIds[0] });
+    const sample = await showWorldLighting(page, 'day');
+    expect(sample.allProgramsLinked).toBe(true);
+    await expect.poll(() => page.evaluate(() => {
+      const torso = window.cartoonProbe.scene!.getObjectByName('tailored-garment') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+      return torso.material.map?.version ?? 0;
+    })).toBeGreaterThan(1);
+    const cloth = await page.evaluate(() => {
+      const scene = window.cartoonProbe.scene!;
+      return ['tailored-garment', 'garment-sleeve'].flatMap((name) => scene.getObjectsByProperty('name', name))
+        .map((object) => {
+          const mesh = object as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+          const shell = mesh.children.find((child) => child.userData.cartoonOutline) as THREE.Mesh | undefined;
+          const edge = mesh.geometry.getAttribute('cartoonGarmentEdge');
+          return {
+            name: mesh.name,
+            surfaceInkDisabled: mesh.material.customProgramCacheKey().includes(':0.0:hero'),
+            cuffOrHemRetained: Array.from({ length: edge.count }, (_, i) => edge.getX(i)).some((value) => value === 0),
+            artworkRetained: !!mesh.material.map,
+            sharedOutlineGeometry: shell?.geometry === mesh.geometry,
+            hardInteriorLines: mesh.children.some((child) => child.userData.cartoonContour),
+          };
+        });
+    });
+    expect(cloth).toHaveLength(3);
+    for (const surface of cloth) {
+      expect(surface.surfaceInkDisabled).toBe(true);
+      expect(surface.cuffOrHemRetained).toBe(true);
+      expect(surface.artworkRetained).toBe(true);
+      expect(surface.sharedOutlineGeometry).toBe(true);
+      expect(surface.hardInteriorLines).toBe(false);
+    }
+    for (const angle of [{ name: 'rear', x: 0 }, { name: 'rear-quarter', x: 2.0 }]) {
+      const frame = await page.evaluate((x) => {
+        const probe = window.cartoonProbe;
+        const camera = (probe.camera as THREE.PerspectiveCamera).clone();
+        camera.position.set(x, 2.5, 4.5);
+        camera.lookAt(0, 1.5, 0);
+        camera.fov = 30;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld(true);
+        probe.inspectionCamera = camera;
+        window.dispatchEvent(new Event('focus'));
+        return probe.frames;
+      }, angle.x);
+      await expect.poll(() => page.evaluate(() => window.cartoonProbe.frames)).toBeGreaterThan(frame);
+      await page.screenshot({ path: `outputs/browser-pwa/sport-tshirt-${angle.name}.png` });
+    }
+    await page.evaluate(() => { window.cartoonProbe.inspectionCamera = undefined; });
+    await info.attach('sport-tshirt-contours', { body: JSON.stringify(cloth, null, 2), contentType: 'application/json' });
+    expect(errors).toEqual([]);
+  });
   test('captures every authored environment and all four sky states from the real game', async ({ page, context }, info) => {
     test.setTimeout(240000);
     const errors = await startCartoonRide(page);

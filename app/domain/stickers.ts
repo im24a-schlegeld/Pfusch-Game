@@ -3,6 +3,8 @@ import { BIKES } from './config.js';
 import { HELMETS } from './helmet.js';
 
 export const MAX_STICKERS = 8;
+/** New workshop placements start at 9 cm; existing saved sizes stay unchanged. */
+export const DEFAULT_STICKER_SIZE = 0.09;
 export const helmetStickerTarget = (helmet: Helmet) => `helmet:${helmet}`;
 export const STICKER_TARGETS = [...BIKES.map((bike) => bike.id), ...HELMETS.map((helmet) => helmetStickerTarget(helmet.id))];
 export const isHelmetStickerTarget = (target: string) => HELMETS.some((helmet) => helmetStickerTarget(helmet.id) === target);

@@ -11,7 +11,7 @@ export function stickerArtwork() {
   if (!artwork) {
     // Match the supplied nearly-square decal with deeply rounded corners.
     // Keep the official chrome wordmark smaller and centered on the black
-    // 6 × 6 cm backing instead of stretching it to the sticker's silhouette.
+    // rounded backing instead of stretching it to the sticker's silhouette.
     artwork = new THREE.TextureLoader().load(
       '/branding/pfusch-logo.webp',
       (texture: THREE.Texture) => {
@@ -61,13 +61,14 @@ export function stickerSurfaces(
         : [object.material];
       if (
         object.userData.bikePaintSurface ||
+        object.userData.bikeStickerSurface === true ||
         importedStickerPlastics.has(object.userData.importedPart) ||
         (object.userData.bikePaintSurface === undefined &&
           materials.some(
             (m) => m instanceof THREE.MeshStandardMaterial &&
               (m.userData.appearanceColorSlot === 'paint' || m.color.equals(color)),
           )) ||
-        /tank|fairing|shroud|apron|leg-shield|fender|tail-shell|open-back-fork-guard/.test(
+        /tank|fairing|shroud|apron|leg-shield|fender|tail-shell|open-back-fork-guard|mudflap/.test(
           object.name,
         )
       )

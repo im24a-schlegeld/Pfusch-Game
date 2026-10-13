@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Box3, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, Vector3 } from 'three';
-import { makeCartoonSky } from '../app/game/cartoonSky';
+import { BackSide, Box3, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, ShaderLib, UniformsUtils, Vector3 } from 'three';
+import { CARTOON_SKY, makeCartoonSky } from '../app/game/cartoonSky';
 import { World, type WorldLighting, type WorldSegment } from '../app/game/world';
 
 function fixture() {
@@ -31,7 +31,7 @@ describe('cartoon sky', () => {
   it('uses a bounded reusable pool, unlit geometry and no extra shadow rendering', () => {
     const { sky, world, mesh } = fixture();
     const geometries = sky.root.children.map(object => (object as Mesh).geometry);
-    expect(sky.root.children.length).toBeLessThanOrEqual(6);
+    expect(sky.root.children.length).toBeLessThanOrEqual(CARTOON_SKY.maxDraws);
     const clouds = mesh('clouds') as InstancedMesh;
     expect(clouds.count).toBeGreaterThan(0);
     expect(clouds.count).toBeLessThanOrEqual(56);
@@ -48,6 +48,66 @@ describe('cartoon sky', () => {
       expect(material.toneMapped).toBe(false);
     }
     expect(geometries.reduce((sum, geometry) => sum + geometry.getAttribute('position').count, 0)).toBeLessThan(4000);
+    sky.dispose();
+  });
+
+  it('adds only one exterior cloud shell and shares the geometry and moving instance buffer', () => {
+    const { sky, world, mesh } = fixture();
+    const clouds = mesh('clouds') as InstancedMesh, contour = mesh('cloud-outline') as InstancedMesh;
+    expect(contour).toBeInstanceOf(InstancedMesh);
+    expect(contour.geometry).toBe(clouds.geometry);
+    expect(contour.instanceMatrix).toBe(clouds.instanceMatrix);
+    expect(contour.count).toBe(clouds.count);
+    expect(contour.userData.cartoonOutline).toBeUndefined();
+    expect((contour.material as MeshBasicMaterial).side).toBe(BackSide);
+    expect((contour.material as MeshBasicMaterial).depthWrite).toBe(false);
+    expect(contour.renderOrder).toBeGreaterThan(clouds.renderOrder);
+    const duplicateWrite = vi.spyOn(contour, 'setMatrixAt');
+    sky.update(world, 150, 0);
+    sky.update(world, 150, 5);
+    expect(duplicateWrite).not.toHaveBeenCalled();
+    expect(contour.instanceMatrix.version).toBe(clouds.instanceMatrix.version);
+    expect(sky.root.children).toHaveLength(7);
+    sky.dispose();
+  });
+
+  it('keeps disc borders on the true sun/moon perimeter instead of their triangle diagonals', () => {
+    const { sky, mesh } = fixture();
+    for (const name of ['sun', 'moon']) {
+      const geometry = mesh(name).geometry;
+      const barycentric = geometry.getAttribute('cartoonSkyBarycentric');
+      const boundary = geometry.getAttribute('cartoonSkyBoundary');
+      expect(barycentric.count).toBe(geometry.getAttribute('position').count);
+      expect(boundary.count).toBe(barycentric.count);
+      let borderEdges = 0, omittedEdges = 0;
+      for (let i = 0; i < boundary.count; i += 3) {
+        expect([barycentric.getX(i), barycentric.getY(i), barycentric.getZ(i)]).toEqual([1, 0, 0]);
+        for (const flag of [boundary.getX(i), boundary.getY(i), boundary.getZ(i)])
+          if (flag === 1) borderEdges++; else omittedEdges++;
+      }
+      expect(borderEdges).toBeGreaterThan(20);
+      expect(omittedEdges).toBeGreaterThan(borderEdges);
+      // A closed 48-sided sun has exactly 48 perimeter edges. The duplicated
+      // first/last circle vertex must not leave a black radial seam to its centre.
+      if (name === 'sun') expect(borderEdges).toBe(48);
+    }
+    expect(mesh('sun-halo').geometry.getAttribute('cartoonSkyBoundary')).toBeUndefined();
+    expect(mesh('moon-halo').geometry.getAttribute('cartoonSkyBoundary')).toBeUndefined();
+    sky.dispose();
+  });
+
+  it('sizes the shared cloud stroke in CSS pixels and ignores invalid resize dimensions', () => {
+    const { sky, mesh } = fixture();
+    const material = mesh('cloud-outline').material as MeshBasicMaterial;
+    const shader = { vertexShader: ShaderLib.basic.vertexShader, fragmentShader: ShaderLib.basic.fragmentShader,
+      uniforms: UniformsUtils.clone(ShaderLib.basic.uniforms) };
+    material.onBeforeCompile(shader as Parameters<MeshBasicMaterial['onBeforeCompile']>[0], {} as never);
+    sky.resize(1440, 900);
+    expect(shader.uniforms.cartoonSkyViewport.value.toArray()).toEqual([1440, 900]);
+    sky.resize(0, NaN);
+    expect(shader.uniforms.cartoonSkyViewport.value.toArray()).toEqual([1440, 900]);
+    expect(shader.uniforms.cartoonSkyStroke.value).toBeGreaterThanOrEqual(0.75);
+    expect(shader.uniforms.cartoonSkyStroke.value).toBeLessThanOrEqual(1.25);
     sky.dispose();
   });
 
@@ -157,10 +217,14 @@ describe('cartoon sky', () => {
 
   it('detaches and releases its resources once', () => {
     const { scene, sky } = fixture();
-    const disposals = sky.root.children.map(object => vi.spyOn((object as Mesh).geometry, 'dispose'));
+    const geometries = new Set(sky.root.children.map(object => (object as Mesh).geometry));
+    const materials = new Set(sky.root.children.map(object => (object as Mesh).material as MeshBasicMaterial));
+    const disposals = [...geometries].map(geometry => vi.spyOn(geometry, 'dispose'));
+    const materialDisposals = [...materials].map(material => vi.spyOn(material, 'dispose'));
     sky.dispose();
     sky.dispose();
     expect(scene.getObjectByName('cartoon-sky')).toBeUndefined();
     for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
+    for (const dispose of materialDisposals) expect(dispose).toHaveBeenCalledTimes(1);
   });
 });
