@@ -93,6 +93,16 @@ describe('Oxygen Customer Account authentication', () => {
     const fetcher = vi.fn<typeof fetch>(async () => Response.json({ authorization_endpoint: 'https://evil.example/authorize' }));
     await expect(startLogin(request('/auth/login'), config, fetcher, now)).rejects.toMatchObject({ code: 'invalid_discovery' });
   });
+
+  it('accepts an empty GraphQL errors list only with a verified customer', async () => {
+    const fetcher = mockFetch();
+    fetcher.mockImplementation(async (input) => String(input).endsWith('/.well-known/customer-account-api')
+      ? Response.json({ graphql_api: `${endpoint}/customer/api/2026-10/graphql` })
+      : Response.json({ errors: [], data: { customer: { id: 'gid://shopify/Customer/123' } } }));
+    const session = await sealCookie(config, 'session', { accessToken: 'secret', expires: now + 50000, customerId: '123' });
+    expect(await authenticateOxygen(request('/api/player', `${SESSION_COOKIE}=${session}`), config, fetcher, now))
+      .toEqual({ shop: config.shop, customerId: '123' });
+  });
 });
 
 describe('Oxygen worker route boundaries', () => {
@@ -111,6 +121,36 @@ describe('Oxygen worker route boundaries', () => {
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: 'login_required' });
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each(['THROTTLED', 'INTERNAL_SERVER_ERROR', 'SHOP_INACTIVE', 'UNEXPECTED_UPSTREAM_ERROR'])
+    ('retains the login cookie and fails closed on a GraphQL %s error', async (code) => {
+      const session = await sealCookie(config, 'session', { accessToken: 'valid-customer-token', expires: Date.now() + 60000, customerId: '123' });
+      const fetcher = vi.fn<typeof fetch>(async (input) => {
+        if (String(input).endsWith('/.well-known/customer-account-api'))
+          return Response.json({ graphql_api: `${endpoint}/customer/api/2026-10/graphql` });
+        if (String(input).endsWith('/graphql'))
+          return Response.json({ errors: [{ message: 'Customer API could not complete the query', extensions: { code } }] });
+        throw new Error(`Unexpected fetch: ${input}`);
+      });
+      const response = await handleOxygenRequest(request('/api/player', `${SESSION_COOKIE}=${session}`), env, '', fetcher);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: 'customer_account_unavailable' });
+      expect(response.headers.get('set-cookie')).toBeNull();
+      // No customer save or reward request may follow an unverified identity.
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+
+  it('clears the login cookie when the Customer Account API rejects credentials with HTTP 401', async () => {
+    const session = await sealCookie(config, 'session', { accessToken: 'rejected-customer-token', expires: Date.now() + 60000, customerId: '123' });
+    const fetcher = vi.fn<typeof fetch>(async (input) => String(input).endsWith('/.well-known/customer-account-api')
+      ? Response.json({ graphql_api: `${endpoint}/customer/api/2026-10/graphql` })
+      : Response.json({ errors: 'User does not have access' }, { status: 401 }));
+    const response = await handleOxygenRequest(request('/api/player', `${SESSION_COOKIE}=${session}`), env, '', fetcher);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'login_required' });
+    expect(response.headers.get('set-cookie')).toContain(`${SESSION_COOKIE}=;`);
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
   });
 
   it('rejects cross-origin saves and logout before calling Shopify', async () => {

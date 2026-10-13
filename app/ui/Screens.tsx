@@ -404,7 +404,8 @@ export function SettingsScreen({
   loginHref,
   backLabel,
   duringRide = false,
-}: Base & { services: Services; update: (p: Player) => void; onTutorial?: () => void; onAccess?: () => void; loginHref?: string; backLabel?: string; duringRide?: boolean }) {
+  accountKind = 'guest',
+}: Base & { services: Services; update: (p: Player) => void; onTutorial?: () => void; onAccess?: () => void; loginHref?: string; backLabel?: string; duringRide?: boolean; accountKind?: 'guest' | 'customer' }) {
   const { touchCapable } = useTouchInput();
   const buttonMode = player.settings.touchControls === 'buttons';
   const syncStatus = services.players.syncStatus;
@@ -478,7 +479,7 @@ export function SettingsScreen({
         </p>
         {access && access.reason !== 'subscribed' && <p>{Math.min(access.completedRuns, access.freeRuns)} von {access.freeRuns} freien Fahrten abgeschlossen. Danach ist ein aktives PFUSCH-Newsletter-Abo für weitere Fahrten und neue Spielstände nötig.</p>}
         {onAccess && <button className="button mb-3" onClick={onAccess}><Mail size={18} aria-hidden="true" /> NEWSLETTER-STATUS</button>}
-        {!duringRide && !player.id.startsWith('shopify:') && (loginHref ? <a className="button mb-3" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN</a>
+        {!duringRide && accountKind === 'guest' && (loginHref ? <a className="button mb-3" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN</a>
           : services.auth.login && <button className="button mb-3" onClick={services.auth.login}>MIT PFUSCH-KONTO ANMELDEN</button>)}
         <button className="button" onClick={exportSave}>
           <Download size={18} /> SPIELSTAND EXPORTIEREN

@@ -191,9 +191,13 @@ export default function GameApp() {
         void services.players.refreshAccess?.().then(() => syncAccount()).catch(() => {});
     };
     window.addEventListener('focus', recheck);
+    window.addEventListener('pageshow', recheck);
+    window.addEventListener('online', recheck);
     document.addEventListener('visibilitychange', recheck);
     return () => {
       window.removeEventListener('focus', recheck);
+      window.removeEventListener('pageshow', recheck);
+      window.removeEventListener('online', recheck);
       document.removeEventListener('visibilitychange', recheck);
     };
   }, [services, syncAccount]);
@@ -505,6 +509,7 @@ export default function GameApp() {
           update={update}
           back={back}
           loginHref={oxygenLoginHref}
+          accountKind={accountKind}
           onTutorial={() => {
             update({ ...player, settings: { ...player.settings, tutorialHintsSeen: [] } });
             start();

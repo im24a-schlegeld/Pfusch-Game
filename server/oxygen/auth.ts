@@ -132,9 +132,13 @@ async function customerId(accessToken: string, config: OxygenAuthConfig, fetcher
   const data = await objectResponse(await trustedRequest(endpoint(info.graphql_api, config), config, fetcher, { method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: accessToken, Origin: config.origin, 'User-Agent': 'WheelieEscape/1.0' },
     body: JSON.stringify({ query: 'query WheelieIdentity { customer { id } }' }) }));
+  // Shopify can return throttling and internal failures as GraphQL 200 errors.
+  // They cannot establish identity, but must not expire a valid login cookie.
+  if (data.errors !== undefined && (!Array.isArray(data.errors) || data.errors.length > 0))
+    throw new ApiError(503, 'customer_account_unavailable');
   const customer = record(data.data) && record(data.data.customer) ? data.data.customer : null;
   const match = typeof customer?.id === 'string' && /^gid:\/\/shopify\/Customer\/([1-9]\d{0,19})$/.exec(customer.id);
-  if (data.errors || !match) throw new ApiError(401, 'login_required');
+  if (!match) throw new ApiError(401, 'login_required');
   return match[1];
 }
 export async function finishLogin(request: Request, config: OxygenAuthConfig, fetcher: typeof fetch, now = Date.now()) {
