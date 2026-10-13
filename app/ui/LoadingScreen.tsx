@@ -1,5 +1,6 @@
 import { Motorbike } from 'lucide-react';
 import GameBrand from './GameBrand';
+import artwork from './loadingArtwork.json';
 import '../loading-screen.css';
 
 /** Asset changes inside the garage keep its controls visible and do not restart the game artwork. */
@@ -20,8 +21,8 @@ export default function LoadingScreen({
   return (
     <output className={`ride-loading${fullScreen ? ' ride-loading-full' : ''}${embedded ? ' ride-loading-embedded' : ''}`} data-reduced-motion={reducedMotion} aria-label={label}>
       <picture>
-        <source media="(max-aspect-ratio: 3/4)" srcSet="/branding/loading-trailer-portrait.5040e2a548.webp" />
-        <img className="ride-loading-art" src="/branding/loading-trailer.8d1469db74.webp" alt="" fetchPriority="high" />
+        <source media="(max-aspect-ratio: 3/4)" srcSet={artwork.portrait} />
+        <img className="ride-loading-art" src={artwork.desktop} alt="" fetchPriority="high" />
       </picture>
       <div className="ride-loading-brand">
         <GameBrand wordmark />

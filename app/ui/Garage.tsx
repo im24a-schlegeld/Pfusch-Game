@@ -8,7 +8,7 @@ import { DARK_CARBON, finishSwatch } from '../domain/carbon';
 import { digitalLevel, digitalPrice, ownership } from '../domain/progression';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS, helmetOptionPrice, ownsHelmetOption } from '../domain/helmet';
 import { isSticker } from '../domain/stickers';
-import { getPantsColor, getShoesColor, RIDER_COLORS } from '../domain/riderColors';
+import { getPantsColor, getShoesColor, PANTS_COLORS, RIDER_COLORS } from '../domain/riderColors';
 import { equipmentSlot, equippable, imagePath, initialConfiguration, productColors, supportsHood } from '../domain/preview';
 import { commitGarageEdit, commitStickerEdit, garageAppearance, garageEditChanged, garageOffer, type GarageEdit } from '../domain/garageEdit';
 import { colorName, perceptualDistance } from '../domain/paletteView';
@@ -170,7 +170,7 @@ export default function Garage({ player, products, update, services, notify, sta
   }
   function riderPalette(kind: 'pantsColor' | 'shoesColor') {
     const read = kind === 'pantsColor' ? getPantsColor : getShoesColor;
-    return <Palette title={kind === 'pantsColor' ? 'Hosenfarbe' : 'Schuhfarbe'} colors={RIDER_COLORS}
+    return <Palette title={kind === 'pantsColor' ? 'Hosenfarbe' : 'Schuhfarbe'} colors={kind === 'pantsColor' ? PANTS_COLORS : RIDER_COLORS}
       value={read(appearance)} equipped={read(player)}
       status={color => read(player) === color.value ? 'Ausgerüstet' : 'Kostenlos'}
       onChange={value => setEdit({ kind, value })} />;

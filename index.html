@@ -17,15 +17,15 @@
     <meta property="og:title" content="PFUSCH · Wheelie Escape" />
     <meta property="og:description" content="Zeig deinen Highscore. Fahre Wheelies, sammle Punkte und fordere deine Freunde heraus." />
     <meta property="og:url" content="https://game.pfusch-clothing.ch/" />
-    <meta property="og:image" content="https://game.pfusch-clothing.ch/branding/loading-trailer.8d1469db74.webp" />
+    <meta property="og:image" content="https://game.pfusch-clothing.ch__PFUSCH_LOADING_DESKTOP__" />
     <meta property="og:image:alt" content="PFUSCH Wheelie Escape: Supermoto auf der Strasse" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="PFUSCH · Wheelie Escape" />
     <meta name="twitter:description" content="Zeig deinen Highscore und fordere deine Freunde heraus." />
-    <meta name="twitter:image" content="https://game.pfusch-clothing.ch/branding/loading-trailer.8d1469db74.webp" />
+    <meta name="twitter:image" content="https://game.pfusch-clothing.ch__PFUSCH_LOADING_DESKTOP__" />
     <link rel="icon" type="image/png" href="https://pfusch-clothing.ch/cdn/shop/files/Design_ohne_Titel_28_-modified.png" />
-    <link rel="preload" as="image" href="/branding/loading-trailer.8d1469db74.webp" media="(aspect-ratio > 3/4)" fetchpriority="high" />
-    <link rel="preload" as="image" href="/branding/loading-trailer-portrait.5040e2a548.webp" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="__PFUSCH_LOADING_DESKTOP__" media="(aspect-ratio > 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="__PFUSCH_LOADING_PORTRAIT__" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
     <style>
       /* Keep a useful recovery surface visible if the app bundle or WebGL boot
          fails before React can render its own loading/error screen. React
@@ -52,7 +52,7 @@
         text-align: left;
       }
       #boot-fallback picture { position: absolute; inset: 0; z-index: -2; }
-      #boot-fallback .boot-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
+      #boot-fallback .boot-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
       #boot-fallback::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg,#0b0b0b29,transparent 30%,transparent 61%,#0b0b0be6); }
       #boot-fallback .boot-status { display: flex; align-items: center; gap: 10px; color: #ddd; font-size: 9px; letter-spacing: .12em; }
       #boot-fallback .boot-caption { width: 100%; max-width: 420px; min-width: 0; }
@@ -95,8 +95,8 @@
     <div id="root">
       <main id="boot-fallback" aria-live="polite">
         <picture>
-          <source media="(max-aspect-ratio: 3/4)" srcset="/branding/loading-trailer-portrait.5040e2a548.webp" />
-          <img class="boot-art" src="/branding/loading-trailer.8d1469db74.webp" alt="" fetchpriority="high" />
+          <source media="(max-aspect-ratio: 3/4)" srcset="__PFUSCH_LOADING_PORTRAIT__" />
+          <img class="boot-art" src="__PFUSCH_LOADING_DESKTOP__" alt="" fetchpriority="high" />
         </picture>
         <span class="boot-brand" role="img" aria-label="PFUSCH Wheelie Escape">
           <span class="boot-brand-signs">

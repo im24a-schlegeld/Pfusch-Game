@@ -14,8 +14,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build:oxygen
       - run: npx playwright install --with-deps chromium
+      - run: node scripts/render-loading-art.mjs
+      - run: npm run build:oxygen
       - run: npx playwright test --config=playwright.offline.config.ts cartoon.spec.ts
       - uses: actions/upload-artifact@v4
         if: always()
@@ -23,3 +24,9 @@ jobs:
           name: game-visual-preview
           path: outputs/browser-pwa
           if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loading-artwork
+          path: outputs/loading-art
+          if-no-files-found: ignore

@@ -55,3 +55,11 @@ jobs:
           name: offline-browser-check
           path: outputs/browser-pwa
           if-no-files-found: ignore
+
+      - name: Preserve current loading artwork
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loading-artwork
+          path: outputs/loading-art
+          if-no-files-found: ignore

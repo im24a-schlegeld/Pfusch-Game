@@ -255,6 +255,19 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
       }
       await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
       await expect(page.getByRole('switch', { name: /Performance-Modus/ })).toBeVisible();
+      const sound = page.getByRole('switch', { name: /Motor & Soundeffekte/ });
+      const wasChecked = await sound.isChecked();
+      for (const checked of [false, true]) {
+        await sound.setChecked(checked);
+        await expect.poll(async () => {
+          const track = await sound.boundingBox();
+          const thumb = await sound.locator('[data-slot="switch-thumb"]').boundingBox();
+          if (!track || !thumb) return false;
+          return thumb.x >= track.x + 2 && thumb.x + thumb.width <= track.x + track.width - 2 &&
+            Math.abs(thumb.y + thumb.height / 2 - track.y - track.height / 2) < 1;
+        }).toBe(true);
+      }
+      await sound.setChecked(wasChecked);
       if (viewport.width < 760) await expect(page.getByRole('radio', { name: 'Tasten', exact: true })).toBeChecked();
       await expectMenuFits(page);
       await page.screenshot({ path: `outputs/browser-pwa/menu-settings-${size}.png` });

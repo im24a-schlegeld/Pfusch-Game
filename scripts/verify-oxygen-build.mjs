@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 
 // Oxygen deploys these exact built files only after the real offline browser check.
 for (const [command, args] of [
+  ['node', ['scripts/render-loading-art.mjs']],
   ['npm', ['run', 'build:oxygen']],
   ['npx', ['playwright', 'test', '--config=playwright.offline.config.ts']],
 ]) {

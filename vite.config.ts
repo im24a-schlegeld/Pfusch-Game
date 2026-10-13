@@ -3,8 +3,9 @@ import tailwindcss from '@tailwindcss/postcss';
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { offlineAssetsPlugin } from './scripts/offline-assets.mjs';
+import { loadingArtworkPlugin } from './scripts/loading-art-assets.mjs';
 export default defineConfig({
-  plugins: [react(), offlineAssetsPlugin()],
+  plugins: [react(), loadingArtworkPlugin(), offlineAssetsPlugin()],
   resolve: { alias: { '@': fileURLToPath(new URL('.', import.meta.url)) } },
   css: { postcss: { plugins: [tailwindcss()] } },
   server: {

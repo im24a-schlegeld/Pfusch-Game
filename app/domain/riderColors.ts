@@ -16,11 +16,18 @@ export const RIDER_COLORS = [
   { value: '#d1b345', name: 'Gelb' },
 ] as const;
 
+const pantsValues = new Set<string>([DEFAULT_PANTS_COLOR, '#141c20', '#7a8389', '#315877', '#627dac']);
+/** Trousers retain conventional black, gray and denim finishes; shoes keep the full palette. */
+export const PANTS_COLORS = RIDER_COLORS.filter(color => pantsValues.has(color.value));
+
 export function isRiderColor(value: unknown): value is string {
   return typeof value === 'string' && RIDER_COLORS.some(color => color.value === value);
 }
+export function isPantsColor(value: unknown): value is string {
+  return typeof value === 'string' && PANTS_COLORS.some(color => color.value === value);
+}
 export function getPantsColor(player: { pantsColor?: string }) {
-  return isRiderColor(player.pantsColor) ? player.pantsColor : DEFAULT_PANTS_COLOR;
+  return isPantsColor(player.pantsColor) ? player.pantsColor : DEFAULT_PANTS_COLOR;
 }
 export function getShoesColor(player: { shoesColor?: string }) {
   return isRiderColor(player.shoesColor) ? player.shoesColor : DEFAULT_SHOES_COLOR;

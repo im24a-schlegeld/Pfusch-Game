@@ -2887,21 +2887,26 @@ function makeRider(
       ],
       knee: Point = [side * pose.knee[0], pose.knee[1], pose.knee[2]],
       ankle: Point = [side * pose.ankle[0], pose.ankle[1], pose.ankle[2]];
+    // Expose the lower shin above the supplied low-top collar. This changes
+    // only the cloth coverage: the same fixed ankle joint and footpeg remain.
+    const shinDirection = V(knee).sub(V(ankle)).normalize();
+    const cuff = V(ankle).addScaledVector(shinDirection, 0.075).toArray() as Point;
     const leg = tube(
       rider,
       [
         hip,
         V(hip).lerp(V(knee), 0.65).toArray() as Point,
         knee,
-        V(knee).lerp(V(ankle), 0.5).toArray() as Point,
-        ankle,
+        V(knee).lerp(V(cuff), 0.5).toArray() as Point,
+        cuff,
       ],
-      [0.116, 0.11, 0.092, 0.096, 0.085],
+      [0.116, 0.11, 0.092, 0.096, 0.072],
       pants,
       40,
       20,
       0.96,
     );
+    leg.name = 'continuous-trouser-leg';
     const lp = leg.geometry.getAttribute('position');
     for (let ring = 0; ring <= 40; ring++) {
       const t = ring / 40,
@@ -2929,6 +2934,20 @@ function makeRider(
       }
     }
     leg.geometry.computeVertexNormals();
+    const exposedAnkle = tube(
+      rider,
+      [
+        V(cuff).addScaledVector(shinDirection, 0.008).toArray() as Point,
+        V(ankle).addScaledVector(shinDirection, 0.025).toArray() as Point,
+        V(ankle).addScaledVector(shinDirection, -0.012).toArray() as Point,
+      ],
+      [0.047, 0.042, 0.039],
+      skin,
+      8,
+      16,
+      0.92,
+    );
+    exposedAnkle.name = 'rider-ankle';
     const index = side === -1 ? 0 : 1;
     limbs.push({
       arm: skinGarmentArm(
@@ -2942,7 +2961,8 @@ function makeRider(
         outerwear,
         tee,
       ),
-      leg: skinLimb(rider, [leg], rest.limbs[index].leg),
+      // Both surfaces share the original leg bones, including crash poses.
+      leg: skinLimb(rider, [leg, exposedAnkle], rest.limbs[index].leg),
     });
     const foot = createSneaker(getShoesColor(player), side);
     foot.position.set(side * pose.peg[0], pose.peg[1] + 0.012, pose.peg[2] - 0.005);

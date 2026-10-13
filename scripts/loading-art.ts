@@ -1,4 +1,4 @@
-/** Open /scripts/loading-art.html in Vite to export the actual game assets. */
+/** Authoring only: one actual game scene exports both static loading crops. */
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { makeBike } from '../app/game/vehicle';
@@ -6,162 +6,186 @@ import { makeTraffic } from '../app/game/models';
 import { World } from '../app/game/world';
 import { makeWorldView } from '../app/game/worldView';
 import { makeWorldLighting, DAY_SKY } from '../app/game/worldLighting';
+import { makeCartoonSky } from '../app/game/cartoonSky';
+import { applyCartoonHeroStyle, applyCartoonStyle } from '../app/game/cartoonStyle';
+import { createCartoonOutline } from '../app/game/cartoonOutline';
 import { preloadImportedBike } from '../app/game/importedBikeAsset';
 import { policeRampPose } from '../app/game/policePursuit';
 import { newPlayer } from '../app/domain/progression';
 import { shadeClothingCatalog } from '../app/domain/appearanceColors';
 import type { Product } from '../app/domain/types';
 
+let seed = 42976;
+Math.random = () => {
+  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+  return seed / 4294967296;
+};
 await preloadImportedBike('450');
-// Public catalog data is served as an asset, never imported into Vite's module graph.
 const catalog = await fetch('/catalog/products.json').then((response) => {
-  if (!response.ok) throw new Error(`Loading artwork catalog: ${response.status}`);
+  if (!response.ok) throw new Error('Loading artwork catalog: ' + response.status);
   return response.json() as Promise<Product[]>;
 });
-const params = new URLSearchParams(location.search);
-const portrait = params.has('portrait');
-const trailerScene = params.get('scene') === 'trailer';
-const width = portrait ? 900 : 1600;
-const height = portrait ? 1600 : 900;
+let pendingTextures = 0;
+const failedTextures: string[] = [];
+// Garment artwork intentionally uses raw Image/CanvasTexture promises rather
+// than THREE's manager. Observe those only in this authoring page as well.
+const authoredImages = new Set<HTMLImageElement>();
+const NativeImage = window.Image;
+window.Image = class extends NativeImage {
+  constructor(width?: number, height?: number) {
+    super(width, height);
+    authoredImages.add(this);
+    this.addEventListener('error', () => failedTextures.push(this.src), { once: true });
+  }
+};
+THREE.DefaultLoadingManager.onStart = (_, loaded, total) => { pendingTextures = total - loaded; };
+THREE.DefaultLoadingManager.onProgress = (_, loaded, total) => { pendingTextures = total - loaded; };
+THREE.DefaultLoadingManager.onLoad = () => { pendingTextures = 0; };
+THREE.DefaultLoadingManager.onError = (url) => { failedTextures.push(url); };
+
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setSize(width, height);
 renderer.setPixelRatio(1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMapping = THREE.LinearToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(DAY_SKY, 35, 105);
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = .48;
+scene.userData.visualStyle = 'cartoon';
+scene.fog = new THREE.Fog(DAY_SKY, 55, 158);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const environment = new RoomEnvironment();
+scene.environment = pmrem.fromScene(environment, 0.04).texture;
+pmrem.dispose();
+environment.dispose();
 const hemisphere = new THREE.HemisphereLight('#e3f0f2', '#343a2f', 1.4);
-scene.add(hemisphere);
-const key = new THREE.DirectionalLight('#fff3e5', 3);
-key.position.set(-5, 8, -4); key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-Object.assign(key.shadow.camera, { left: -9, right: 9, top: 12, bottom: -9 });
-key.shadow.normalBias = .03;
-scene.add(key);
-const rim = new THREE.DirectionalLight('#a4bcd1', .9);
-rim.position.set(12, 8, -10); scene.add(rim);
-const world = new World(42, { acceleration: .6, maxSpeed: 38 });
+const sunlight = new THREE.DirectionalLight('#fff5e6', 3.4);
+sunlight.position.set(-3, 7, 4);
+sunlight.castShadow = true;
+sunlight.shadow.mapSize.set(1024, 1024);
+Object.assign(sunlight.shadow.camera, { left: -9, right: 12, top: 12, bottom: -9, far: 40 });
+sunlight.shadow.normalBias = 0.015;
+sunlight.shadow.bias = -0.00015;
+const fill = new THREE.DirectionalLight('#a4bcd1', 0.9);
+fill.position.set(12, 8, -10);
+scene.add(hemisphere, sunlight, fill);
+const world = new World(42, { acceleration: 0.6, maxSpeed: 38 });
 world.advance(72);
 makeWorldView(scene, false).update(world, 72);
-makeWorldLighting(scene, renderer, hemisphere, key, rim).update(world, 72, 0, 1);
+makeWorldLighting(scene, renderer, hemisphere, sunlight, fill).update(world, 72, 0, 1);
+
 const player = newPlayer();
 Object.assign(player, { bike: '450', paint: '#7536c6', rims: '#ffffff', helmet: 'motocross', helmetColor: '#7536c6', helmetVisor: '#ffffff' });
 player.equipped.upper = '10237061759305';
 player.variants['10237061759305'] = '54581933375817';
 const bike = makeBike(player, shadeClothingCatalog(catalog));
+const pitch = 0.2;
+bike.animateSuspension(pitch, 0, 0.3);
+for (let frame = 0; frame < 70; frame++)
+  bike.animateRider({ wheelie: 0.3, steer: -0.08, landing: 0, balance: 0.05, bikePitch: pitch, bikeRoll: 0 }, 1 / 60);
+bike.root.position.set(0.15, 1.9, 1.1);
+bike.root.rotation.y = 0.1;
+bike.root.rotation.z = -0.04;
+applyCartoonHeroStyle(bike.root);
+const outline = createCartoonOutline(bike.root);
 scene.add(bike.root);
-const pitch = trailerScene ? .17 : .56;
-bike.animateSuspension(pitch, 0, trailerScene ? .2 : .7);
-for (let frame = 0; frame < 70; frame++) bike.animateRider({ wheelie: trailerScene ? .23 : .75, steer: trailerScene ? -.17 : 0, landing: 0, balance: .05, bikePitch: pitch, bikeRoll: 0 }, 1 / 60);
-bike.root.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = true; o.receiveShadow = true; } });
+const tow = makeTraffic('towtruck', 0);
+tow.position.set(3.5, 0, 7.5);
 const police = makeTraffic('police', 0);
-scene.add(police);
-const camera = new THREE.PerspectiveCamera(portrait ? 61 : 36, width / height, .05, 100);
-function frameTrailerCamera(isPortrait: boolean) {
-  const subject = new THREE.Box3().setFromObject(bike.root).getCenter(new THREE.Vector3());
-  // The visible helmet/wheel silhouette sits below the full mesh bounds.
-  subject.y -= .45;
-  camera.fov = isPortrait ? 68 : 39;
-  // Front-left three-quarter view, looking slightly down across the street.
-  // Keep the bike vertically centred while showing asphalt below the complete
-  // motorcycle and chase instead of filling the upper frame with empty sky.
-  camera.position.set(isPortrait ? -5.2 : -6.1, 4.3, isPortrait ? -6.7 : -5.8);
-  camera.lookAt(subject);
+const policePose = policeRampPose(7.2);
+police.position.set(tow.position.x, policePose.y, tow.position.z + 7.2);
+police.rotation.x = policePose.pitch;
+applyCartoonStyle(tow);
+applyCartoonStyle(police);
+scene.add(tow, police);
+
+// The actual optical lightbar gets one static halo per colour in this artwork.
+const glowCanvas = document.createElement('canvas');
+glowCanvas.width = glowCanvas.height = 128;
+const context = glowCanvas.getContext('2d')!;
+const glow = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+glow.addColorStop(0, '#ffffff');
+glow.addColorStop(0.1, '#ffffffd9');
+glow.addColorStop(0.25, '#ffffff40');
+glow.addColorStop(1, '#ffffff00');
+context.fillStyle = glow;
+context.fillRect(0, 0, 128, 128);
+const glowTexture = new THREE.CanvasTexture(glowCanvas);
+for (const [x, color] of [[-0.18, '#ff294f'], [0.18, '#3f78ff']] as const) {
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color, transparent: true,
+    opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  halo.position.set(x, 2.06, 0.08);
+  halo.scale.setScalar(1.35);
+  police.add(halo);
+}
+
+const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.05, 240);
+const sky = makeCartoonSky(scene, camera);
+
+function frame(isPortrait: boolean) {
+  const width = isPortrait ? 900 : 1600, height = isPortrait ? 1600 : 900;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.fov = isPortrait ? 58 : 40;
   camera.updateProjectionMatrix();
-}
-if (trailerScene) {
-  // The right lane's real traffic asset retains its exact gameplay dimensions.
-  // Only its front-axle ramp contact lifts the pursuing police car.
-  const tow = makeTraffic('towtruck', 0);
-  tow.position.set(3.5, 0, 7.5);
-  scene.add(tow);
-  const policeLocalZ = 7.2;
-  const policePose = policeRampPose(policeLocalZ);
-  police.position.set(tow.position.x, policePose.y, tow.position.z + policeLocalZ);
-  police.rotation.x = policePose.pitch;
-  // One unchanged adult skeleton, airborne beyond the deck's left edge.
-  bike.root.position.set(.15, 1.95, 1.1);
-  bike.root.rotation.y = .1;
-  bike.root.rotation.z = -.06;
-
-  // Camera-facing light halos are photographic glow, not replacement models.
-  const glowCanvas = document.createElement('canvas');
-  glowCanvas.width = glowCanvas.height = 128;
-  const ctx = glowCanvas.getContext('2d')!;
-  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gradient.addColorStop(0, 'rgba(255,255,255,1)');
-  gradient.addColorStop(.08, 'rgba(255,255,255,.95)');
-  gradient.addColorStop(.23, 'rgba(255,255,255,.25)');
-  gradient.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 128, 128);
-  const glowTexture = new THREE.CanvasTexture(glowCanvas);
-  const lamp = (position: THREE.Vector3, color: string, size: number, intensity: number) => {
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glowTexture, color, transparent: true, opacity: .84,
-      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
-    }));
-    glow.position.copy(position);
-    glow.scale.setScalar(size);
-    police.add(glow);
-    const light = new THREE.PointLight(color, intensity, 6, 2);
-    light.position.copy(position);
-    police.add(light);
-  };
-  lamp(new THREE.Vector3(-.18, 2.06, .08), '#ff294f', 1.5, 13);
-  lamp(new THREE.Vector3(.18, 2.06, .08), '#3f78ff', 1.5, 16);
-  for (const side of [-1, 1])
-    lamp(new THREE.Vector3(side * 2.35 * .32, .78, -2.97), '#e4f4ff', 1.05, 8);
-
-  // The motorcycle, not the empty roadway, defines the composition. The low
-  // three-quarter camera keeps the entire fixed rider rig at the image centre;
-  // the chase remains behind it, with extra lateral room for portrait crops.
-  frameTrailerCamera(portrait);
-} else {
-  police.position.set(2.8, 0, 9.1);
-  for (const [x, color] of [[2.62, '#fc365a'], [2.98, '#6581ff']] as const) {
-    const light = new THREE.PointLight(color, 14, 8, 2);
-    light.position.set(x, 2.1, 9.1); scene.add(light);
+  bike.root.updateMatrixWorld(true);
+  bike.root.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.update(); });
+  const box = new THREE.Box3().setFromObject(bike.root, true);
+  const center = box.getCenter(new THREE.Vector3());
+  const direction = new THREE.Vector3(-1, 0.52, -1).normalize();
+  const corners: THREE.Vector3[] = [];
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y])
+    for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+  // Centre the full current rider/bike and leave actual street below it, with
+  // clear space for the independently rendered brand and safe-area caption.
+  let distance = 5;
+  let bounds = [-1, -1, 1, 1];
+  const verticalLimit = isPortrait ? 0.44 : 0.58;
+  for (let attempt = 0; attempt < 40; attempt++, distance *= 1.06) {
+    camera.position.copy(center).addScaledVector(direction, distance);
+    camera.lookAt(center);
+    camera.updateMatrixWorld(true);
+    const projected = corners.map(corner => corner.clone().project(camera));
+    bounds = [Math.min(...projected.map(p => p.x)), Math.min(...projected.map(p => p.y)),
+      Math.max(...projected.map(p => p.x)), Math.max(...projected.map(p => p.y))];
+    if (bounds[0] >= -0.76 && bounds[2] <= 0.76 && bounds[1] >= -verticalLimit && bounds[3] <= verticalLimit) break;
   }
-  camera.position.set(-5.4, 2.85, -5.4);
-  camera.lookAt(.3, 1.55, 1.0);
+  outline.update(width, height);
+  sky.resize(width, height, 1);
+  sky.update(world, 72, 9.5);
+  renderer.render(scene, camera);
+  return { width, height, bounds, cartoon: scene.userData.visualStyle, outlines: outline.count,
+    ankle: Boolean(bike.rider.getObjectByName('rider-ankle')), street: Boolean(scene.getObjectByName('streamed-world')),
+    authoredImages: authoredImages.size };
 }
-const save = document.createElement('a');
-save.textContent = 'Ladebild als WebP speichern';
-save.download = `loading-${trailerScene ? 'trailer' : 'wheelie'}${portrait ? '-portrait' : ''}.webp`;
-document.body.appendChild(save);
-// Garment artwork textures load asynchronously. Rendering continues only in
-// this authoring fixture; the shipped loading screen is one lightweight image.
-// Export only after all authored garment maps have settled; static art needs no
-// continuous gameplay loop. A second frame resolves browser texture uploads.
-THREE.DefaultLoadingManager.onLoad = () => { void finish(); };
-let finished = false;
-async function finish() {
-  if (finished) return;
-  finished = true;
-  renderer.render(scene, camera);
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  renderer.render(scene, camera);
-  save.href = renderer.domElement.toDataURL('image/webp', .9);
-  document.body.dataset.ready = 'true';
-  // Batch authoring can export both crops without creating a second WebGL
-  // context or rebuilding the large native world/vehicle asset graph.
-  if (trailerScene) Object.assign(window, {
-    exportLoadingArt(isPortrait: boolean) {
-      const w = isPortrait ? 900 : 1600, h = isPortrait ? 1600 : 900;
-      renderer.setSize(w, h);
-      camera.aspect = w / h;
-      frameTrailerCamera(isPortrait);
-      renderer.render(scene, camera);
-      return renderer.domElement.toDataURL('image/webp', .9);
-    },
+
+// Texture completion is required, including supplied garment art. An arbitrary
+// timer must not export a previous/blank outfit on a slower CI renderer.
+const deadline = performance.now() + 60000;
+let stable = 0, previous = '';
+while (stable < 3) {
+  if (performance.now() > deadline) throw new Error('Loading artwork textures did not settle.');
+  await new Promise(resolve => setTimeout(resolve, 30));
+  await document.fonts.ready;
+  if (pendingTextures > 0 || [...authoredImages].some(image => !image.complete)) { stable = 0; continue; }
+  const versions: string[] = [];
+  scene.traverse(object => {
+    if (!(object instanceof THREE.Mesh)) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material])
+      for (const value of Object.values(material))
+        if (value instanceof THREE.Texture) versions.push(value.uuid + ':' + value.version + ':' + value.source.version);
   });
+  const current = versions.join('|');
+  stable = current === previous ? stable + 1 : 0;
+  previous = current;
 }
-// Cached assets may already have completed before the scene was assembled.
-setTimeout(() => { void finish(); }, 2500);
+if (failedTextures.length) throw new Error('Loading artwork textures failed: ' + failedTextures.join(', '));
+frame(false);
+await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+Object.assign(window, {
+  exportLoadingArt(isPortrait: boolean) {
+    const proof = frame(isPortrait);
+    return { webp: renderer.domElement.toDataURL('image/webp', 0.91), png: renderer.domElement.toDataURL('image/png'), proof };
+  },
+});
+document.body.dataset.ready = 'true';

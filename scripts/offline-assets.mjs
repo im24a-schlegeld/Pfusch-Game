@@ -6,11 +6,11 @@ import { initWasm, Resvg } from '@resvg/resvg-wasm';
 
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex').slice(0, 20);
 const publicAsset = /\.(?:js|css|woff2|png|jpe?g|webp|svg|json|bin|webmanifest)$/i;
-export function isCoreOfflineAsset(url) {
+export function isCoreOfflineAsset(url, loadingImages) {
   return /^\/assets\/.*\.(js|css)$/.test(url) || /^\/fonts\/.*\.woff2$/.test(url)
     || /^\/models\/(ciao|moped|fs450|r6|nitro)\/.*\.(json|bin|png|jpe?g|webp)$/.test(url)
     || /^\/assets\/signs\/.*\.png$/.test(url)
-    || /^\/branding\/loading-trailer(?:-portrait)?\.[a-f0-9]+\.webp$/.test(url)
+    || (/^\/branding\/loading-trailer(?:-portrait)?\.[a-f0-9]+\.webp$/.test(url) && (!loadingImages || loadingImages.has(url)))
     || ['/offline.html', '/manifest.webmanifest', '/app-icon-192.png', '/app-icon-512.png', '/branding/pfusch-logo.webp',
       '/branding/wheelie-escape-wordmark-a.png', '/images/artwork/signs.png', '/images/stop-sign.png',
       '/textures/carbon-dark.jpg', '/catalog/products.json'].includes(url);
@@ -47,10 +47,14 @@ export async function writeOfflineBundle(directory, { oxygen = false } = {}) {
     rendered.free(); image.free();
   }
   const core = [], optional = [];
+  // Keep only the two crops actually shipped in the shell, even when the public
+  // directory retains older immutable exports for existing deployments.
+  const loadingImages = new Set(html.match(/\/branding\/loading-trailer(?:-portrait)?\.[a-f0-9]+\.webp/g) ?? []);
+  if (loadingImages.size !== 2) throw new Error('Offline shell must reference both current loading crops.');
   for (const path of await files(directory)) {
     const url = '/' + relative(directory, path).split(sep).join('/');
     if (!publicAsset.test(url) && url !== '/offline.html') continue;
-    const target = isCoreOfflineAsset(url) ? core : isOptionalOfflineAsset(url) ? optional : null;
+    const target = isCoreOfflineAsset(url, loadingImages) ? core : isOptionalOfflineAsset(url) ? optional : null;
     if (!target) continue;
     const bytes = await readFile(path);
     target.push({ url, revision: hash(bytes), bytes: bytes.length });

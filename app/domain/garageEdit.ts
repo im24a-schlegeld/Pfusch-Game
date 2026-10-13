@@ -4,7 +4,7 @@ import { ownsProductColor, purchaseProductColor } from './productOwnership';
 import { equipConfiguration, equipmentSlot, equippable, previewLoadout, validConfiguration } from './preview';
 import { digitalLevel, digitalPrice, unlock } from './progression';
 import { colorName } from './paletteView';
-import { getPantsColor, getShoesColor, isRiderColor, RIDER_COLORS } from './riderColors';
+import { getPantsColor, getShoesColor, isPantsColor, isRiderColor, RIDER_COLORS } from './riderColors';
 import { isSticker, saveStickerTargets } from './stickers';
 import type { Player, Product, ProductConfiguration, Slot, StickerPlacement } from './types';
 
@@ -49,7 +49,7 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
     const color = RIDER_COLORS.find(color => color.value === edit.value);
     return { name: `${edit.kind === 'pantsColor' ? 'Hose' : 'Schuhe'} · ${color?.name ?? ''}`,
       price: 0, owned: true, requiredLevel: 1, collectible: false,
-      blocked: isRiderColor(edit.value) ? null : 'Diese Farbe ist nicht verfügbar' };
+      blocked: (edit.kind === 'pantsColor' ? isPantsColor(edit.value) : isRiderColor(edit.value)) ? null : 'Diese Farbe ist nicht verfügbar' };
   }
   let id = '', name = '', price = 0, requiredLevel = 1, valid = true, collectible = false;
   if (edit.kind === 'model') {
