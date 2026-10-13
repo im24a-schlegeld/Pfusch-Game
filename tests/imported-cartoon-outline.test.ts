@@ -4,6 +4,8 @@ import { newPlayer } from '../app/domain/progression';
 import { makeBike } from '../app/game/vehicle';
 import { createCartoonOutline, CARTOON_OUTLINE_MAX_MESHES, CARTOON_CONTOUR_MAX_MESHES } from '../app/game/cartoonOutline';
 import { installImportedBikeFixtures } from './importedBikeFixture';
+import { getImportedBikeAsset } from '../app/game/importedBikeAsset';
+import { hardwareComponents } from '../app/game/importedHardwareFinish';
 
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new THREE.MeshStandardMaterial(),
@@ -12,6 +14,11 @@ vi.mock('../app/game/garmentTexture', () => ({
   accessoryMaterial: () => new THREE.MeshStandardMaterial(),
 }));
 installImportedBikeFixtures();
+
+function vertexKey(positions: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, vertex: number) {
+  return [positions.getX(vertex), positions.getY(vertex), positions.getZ(vertex)]
+    .map(value => Math.round(value * 100000)).join(',');
+}
 
 it.each(['125', 'moped', '450', '701', 'scooter'])(
   'traces the real rigid painted bodywork of imported %s while keeping its optics clear', id => {
@@ -46,6 +53,42 @@ it.each(['125', 'moped', '450', '701', 'scooter'])(
       expect(optic.children.some(child => child.userData.cartoonContour || child.userData.cartoonOutline)).toBe(false);
     expect(outlines.count).toBeLessThanOrEqual(CARTOON_OUTLINE_MAX_MESHES);
     expect(outlines.contourCount).toBeLessThanOrEqual(CARTOON_CONTOUR_MAX_MESHES);
+    outlines.dispose();
+  },
+);
+
+it.each(['450', 'scooter'] as const)(
+  'preserves real component seams across the shared painted panels of %s', id => {
+    const bike = makeBike({ ...newPlayer(), bike: id }, []);
+    const asset = getImportedBikeAsset(id);
+    const paints: THREE.Mesh[] = [];
+    bike.body.traverse(object => {
+      if (object instanceof THREE.Mesh && object.userData.bikePaintSurface === true) paints.push(object);
+    });
+    const outlines = createCartoonOutline(bike.root);
+    let coveredPanels = 0;
+    for (const paint of paints) {
+      const part = asset.manifest.parts.find(part => part.name === paint.userData.importedPart)!;
+      const contour = paint.children.find(child => child.userData.cartoonContour) as THREE.LineSegments;
+      expect(contour).toBeDefined();
+      const lines = contour.geometry.getAttribute('position');
+      const positions = paint.geometry.getAttribute('position');
+      const index = paint.geometry.index!;
+      // Connected authored shells identify actual panels even when the USD
+      // batches them into one paint material. UV duplicates are welded first.
+      for (const component of hardwareComponents(part, asset.binary)) {
+        const extents = component.min.map((min, axis) => component.max[axis] - min).sort((a, b) => b - a);
+        if (extents[0] < 0.15 || extents[1] < 0.06 || component.triangles.length < 20) continue;
+        const panelVertices = new Set(component.triangles.flatMap(triangle =>
+          [0, 1, 2].map(corner => vertexKey(positions, index.getX(triangle * 3 + corner)))));
+        let physicalEdges = 0;
+        for (let i = 0; i < lines.count; i += 2)
+          if (panelVertices.has(vertexKey(lines, i)) && panelVertices.has(vertexKey(lines, i + 1))) physicalEdges++;
+        expect(physicalEdges).toBeGreaterThan(8);
+        coveredPanels++;
+      }
+    }
+    expect(coveredPanels).toBe(id === '450' ? 13 : 4);
     outlines.dispose();
   },
 );

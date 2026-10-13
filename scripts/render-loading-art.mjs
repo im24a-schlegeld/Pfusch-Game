@@ -36,6 +36,18 @@ try {
   if (errors.length) throw new Error('Loading artwork renderer failed: ' + errors.join('; '));
   const references = await writeLoadingArtwork(exports[0].webp, exports[1].webp, output);
   await writeFile(resolve(output, 'render-proof.json'), JSON.stringify({ references, crops: exports.map(art => art.proof) }, null, 2) + '\n');
+  const details = [];
+  for (const id of ['450', 'scooter']) for (const view of ['front', 'side']) {
+    const detail = await page.evaluate(({ id, view }) => window.exportBikeDetail(id, view), { id, view });
+    if (detail.proof.panels.some(panel => panel.segments < 1) || detail.proof.outlines > 32 || detail.proof.contours > 10 ||
+      !detail.proof.stockGuard || detail.proof.rims.length !== 2 ||
+      detail.proof.rims.some(rim => !rim.shaded || !rim.recess || rim.color !== 'b9e3f2'))
+      throw new Error('Imported motorcycle detail lost its panel contours or rim finish: ' + JSON.stringify(detail.proof));
+    await writeFile(resolve(output, `bike-${id}-${view}.png`), Buffer.from(detail.png.split(',')[1], 'base64'));
+    details.push(detail.proof);
+  }
+  if (errors.length) throw new Error('Motorcycle detail renderer failed: ' + errors.join('; '));
+  await writeFile(resolve(output, 'bike-detail-proof.json'), JSON.stringify(details, null, 2) + '\n');
   console.log('Current cartoon loading artwork:', references);
 } finally {
   await browser?.close();

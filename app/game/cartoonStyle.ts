@@ -2,6 +2,23 @@ import * as THREE from 'three';
 
 const applied = new WeakMap<THREE.Material, THREE.Material['onBeforeCompile']>();
 
+/** Imported wheels revolve around local X. Only the inward radial wall gets
+ * the recess shade; axial cast faces and the outward rim lip stay untouched.
+ * Use the supplied smooth normals, without changing them or the wheel mesh. */
+function prepareRimShading(geometry: THREE.BufferGeometry) {
+  if (geometry.getAttribute('cartoonRimRecess')) return;
+  const position = geometry.getAttribute('position'), normal = geometry.getAttribute('normal');
+  const recess = new THREE.BufferAttribute(new Float32Array(position.count), 1);
+  if (normal) for (let i = 0; i < position.count; i++) {
+    const y = position.getY(i), z = position.getZ(i);
+    const nx = normal.getX(i), ny = normal.getY(i), nz = normal.getZ(i);
+    const length = Math.hypot(y, z) * Math.hypot(nx, ny, nz);
+    const inward = length > 0.00001 ? -(ny * y + nz * z) / length : 0;
+    recess.setX(i, THREE.MathUtils.smoothstep(inward, 0.2, 0.65));
+  }
+  geometry.setAttribute('cartoonRimRecess', recess);
+}
+
 /** Cel light and ink are part of the existing material pass: no fullscreen
  * effects, outline copies, extra lights or per-frame geometry allocations.
  * Keep texture/alpha channels intact so real clothing prints stay recognizable.
@@ -14,8 +31,11 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
   if (applied.get(material) === material.onBeforeCompile) return;
   const before = material.onBeforeCompile;
   const previousKey = material.customProgramCacheKey.call(material);
-  const ink = material.transparent || !contour ? '0.0' : '0.92';
   const hero = material.userData.pfuschCartoonHero === true;
+  const rim = hero && material.userData.rimPalette === true;
+  // The rim's shape is shaded below; grazing-angle ink on its narrow bevels
+  // produced irregular black patches. The existing geometry outline remains.
+  const ink = material.transparent || !contour || rim ? '0.0' : '0.92';
   material.onBeforeCompile = (shader, renderer) => {
     before.call(material, shader, renderer);
     // Carbon/colour changes can wrap a previously styled shader. Never apply
@@ -31,6 +51,13 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCartoonGarmentEdge = cartoonGarmentEdge;');
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
         '#include <common>\nvarying float vCartoonGarmentEdge;');
+    }
+    if (rim) {
+      shader.vertexShader = shader.vertexShader.replace('#include <common>',
+        '#include <common>\nattribute float cartoonRimRecess;\nvarying float vCartoonRimRecess;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCartoonRimRecess = cartoonRimRecess;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+        '#include <common>\nvarying float vCartoonRimRecess;');
     }
     if (boxInk) {
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
@@ -49,6 +76,19 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       cartoonBand = mix(cartoonBand, 1.08, smoothstep(0.94, 1.02, cartoonLight));
       ${hero ? `cartoonBand = mix(0.36, 0.72, smoothstep(0.27, 0.32, cartoonLight));
       cartoonBand = mix(cartoonBand, 1.10, smoothstep(0.83, 0.90, cartoonLight));` : ''}
+      ${rim ? `
+      // Ambient light can saturate every normal into the brightest hero band.
+      // Keep rim form readable using the existing key light's direction, then
+      // darken only its inward barrel. Broad transitions avoid triangle noise.
+      vec3 cartoonRimDirection = normalize((viewMatrix * vec4(-0.35, 0.88, 0.32, 0.0)).xyz);
+      #if NUM_DIR_LIGHTS > 0
+        cartoonRimDirection = normalize(directionalLights[ 0 ].direction);
+      #endif
+      float cartoonRimDirectional = dot(normal, cartoonRimDirection);
+      float cartoonRimBand = mix(0.48, 0.76, smoothstep(-0.10, 0.18, cartoonRimDirectional));
+      cartoonRimBand = mix(cartoonRimBand, 1.04, smoothstep(0.45, 0.70, cartoonRimDirectional));
+      cartoonBand = min(cartoonBand, 1.0) * cartoonRimBand * mix(1.0, 0.70, vCartoonRimRecess);
+      ` : ''}
       vec3 cartoonTint = mix(vec3(1.0), cartoonDiffuse / max(max(cartoonDiffuse.r, cartoonDiffuse.g), max(cartoonDiffuse.b, 0.001)), 0.12);
       outgoingLight = diffuseColor.rgb * cartoonTint * cartoonBand + totalEmissiveRadiance;
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
@@ -72,8 +112,9 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}`;
+  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}`;
   material.userData.pfuschCartoon = true;
+  material.userData.pfuschCartoonRimShading = rim;
   material.needsUpdate = true;
   applied.set(material, material.onBeforeCompile);
 }
@@ -91,6 +132,8 @@ export function applyCartoonStyle(root: THREE.Object3D) {
 export function applyCartoonHeroStyle(root: THREE.Object3D) {
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object.userData.cartoonOutline) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.some(material => material.userData.rimPalette === true)) prepareRimShading(object.geometry);
     if (!object.geometry.getAttribute('cartoonGarmentEdge')) {
       const positions = object.geometry.getAttribute('position');
       const edge = new THREE.BufferAttribute(new Float32Array(positions.count).fill(1), 1);
@@ -99,7 +142,7 @@ export function applyCartoonHeroStyle(root: THREE.Object3D) {
         for (let i = 0; i < edge.count; i++) edge.setX(i, Math.max(0, uv.getY(i)));
       object.geometry.setAttribute('cartoonGarmentEdge', edge);
     }
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+    for (const material of materials) {
       if (!(material instanceof THREE.MeshStandardMaterial)) continue;
       material.userData.pfuschCartoonHero = true;
       material.normalMap = null;

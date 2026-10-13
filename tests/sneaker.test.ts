@@ -2,6 +2,20 @@ import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { createSneaker } from '../app/game/sneaker';
 
+it('places the wider big-toe tip toward the rider centre on both feet', () => {
+  for (const side of [-1, 1]) {
+    const shoe = createSneaker('#e6e4dd', side);
+    const positions = shoe.geometry.attributes.position;
+    const tip = new THREE.Box3(), point = new THREE.Vector3();
+    for (let i = 0; i < positions.count; i++)
+      if (positions.getZ(i) < -0.13) tip.expandByPoint(point.fromBufferAttribute(positions, i));
+    expect(tip.isEmpty()).toBe(false);
+    // +X is inside the left foot; -X is inside the right foot. This is the
+    // source shoe's asymmetric toe shape, not a test of its mirror flag.
+    expect(side * tip.getCenter(point).x).toBeLessThan(-0.002);
+  }
+});
+
 it('points the low toe and laces forward with the tall heel behind on both feet', () => {
   for (const side of [-1, 1]) {
     const shoe = createSneaker('#e6e4dd', side);

@@ -58,12 +58,14 @@ function decal(shell: THREE.Mesh, id = 'chrome-1') {
 }
 
 describe('bike sticker geometry', () => {
-  it('places a complete 9 cm sticker on the actual black rear Supermoto mudflap and keeps its other side blank', () => {
+  it('places a 9 cm sticker on the authored black Supermoto rear guard without adding a tail plate', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
     bike.root.updateMatrixWorld(true);
-    const flap = bike.body.getObjectByName('supermoto-mudflap');
+    expect(bike.body.getObjectByName('supermoto-mudflap')).toBeUndefined();
+    const flap = bike.body.getObjectByName('fs450_inner_trim:body');
     expect(flap).toBeInstanceOf(THREE.Mesh);
     const shell = flap as THREE.Mesh;
+    expect(shell.userData.bikeStickerSurface).toBe(true);
     const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
     const surface = [...surfaces].find(([, mesh]) => mesh === shell)?.[0];
     expect(surface).toBeDefined();

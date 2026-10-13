@@ -173,31 +173,94 @@ function frame(isPortrait: boolean) {
 
 // Texture completion is required, including supplied garment art. An arbitrary
 // timer must not export a previous/blank outfit on a slower CI renderer.
-const deadline = performance.now() + 60000;
-let stable = 0, previous = '';
-while (stable < 3) {
-  if (performance.now() > deadline) throw new Error('Loading artwork textures did not settle.');
-  await new Promise(resolve => setTimeout(resolve, 30));
-  await document.fonts.ready;
-  if (pendingTextures > 0 || [...authoredImages].some(image => !image.complete)) { stable = 0; continue; }
-  const versions: string[] = [];
-  scene.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
-    for (const material of Array.isArray(object.material) ? object.material : [object.material])
-      for (const value of Object.values(material))
-        if (value instanceof THREE.Texture) versions.push(value.uuid + ':' + value.version + ':' + value.source.version);
-  });
-  const current = versions.join('|');
-  stable = current === previous ? stable + 1 : 0;
-  previous = current;
+async function waitForArtwork() {
+  const deadline = performance.now() + 60000;
+  let stable = 0, previous = '';
+  while (stable < 3) {
+    if (performance.now() > deadline) throw new Error('Loading artwork textures did not settle.');
+    await new Promise(resolve => setTimeout(resolve, 30));
+    await document.fonts.ready;
+    if (pendingTextures > 0 || [...authoredImages].some(image => !image.complete)) { stable = 0; continue; }
+    const versions: string[] = [];
+    scene.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material])
+        for (const value of Object.values(material))
+          if (value instanceof THREE.Texture) versions.push(value.uuid + ':' + value.version + ':' + value.source.version);
+    });
+    const current = versions.join('|');
+    stable = current === previous ? stable + 1 : 0;
+    previous = current;
+  }
+  if (failedTextures.length) throw new Error('Loading artwork textures failed: ' + failedTextures.join(', '));
 }
-if (failedTextures.length) throw new Error('Loading artwork textures failed: ' + failedTextures.join(', '));
+await waitForArtwork();
 frame(false);
 await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 Object.assign(window, {
   exportLoadingArt(isPortrait: boolean) {
     const proof = frame(isPortrait);
     return { webp: renderer.domElement.toDataURL('image/webp', 0.91), png: renderer.domElement.toDataURL('image/png'), proof };
+  },
+  async exportBikeDetail(id: '450' | 'scooter', view: 'front' | 'side') {
+    await preloadImportedBike(id);
+    const detail = makeBike({ ...player, bike: id, paint: '#19324f', rims: '#b9e3f2' }, shadeClothingCatalog(catalog));
+    detail.animateSuspension(0, 0);
+    detail.animateRider({ wheelie: 0, steer: 0, landing: 0 }, 1 / 60);
+    applyCartoonHeroStyle(detail.root);
+    const ink = createCartoonOutline(detail.root);
+    scene.remove(bike.root);
+    scene.add(detail.root);
+    try {
+      await waitForArtwork();
+      renderer.setSize(1200, 900);
+      camera.aspect = 4 / 3;
+      camera.fov = 32;
+      camera.updateProjectionMatrix();
+      detail.root.updateMatrixWorld(true);
+      detail.root.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.update(); });
+      const box = new THREE.Box3().setFromObject(detail.root, true);
+      const subject = box.getCenter(new THREE.Vector3());
+      camera.position.set(view === 'front' ? 3.8 : 4.5, 2.4, view === 'front' ? -5 : 0);
+      const direction = camera.position.clone().sub(subject).normalize();
+      const corners: THREE.Vector3[] = [];
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y])
+        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      let distance = camera.position.distanceTo(subject);
+      for (let attempt = 0; attempt < 30; attempt++, distance *= 1.06) {
+        camera.position.copy(subject).addScaledVector(direction, distance);
+        camera.lookAt(subject);
+        camera.updateMatrixWorld(true);
+        const projected = corners.map(corner => corner.clone().project(camera));
+        if (projected.every(point => Math.abs(point.x) < 0.88 && Math.abs(point.y) < 0.86)) break;
+      }
+      ink.update(1200, 900);
+      sky.resize(1200, 900, 1);
+      sky.update(world, 72, 9.5);
+      renderer.render(scene, camera);
+      const panels: { name: string; segments: number }[] = [];
+      const rims: { name: string; shaded: boolean; recess: boolean; color: string }[] = [];
+      detail.root.traverse(object => {
+        if (!(object instanceof THREE.Mesh)) return;
+        if (object.userData.bikePaintSurface === true) {
+          const contour = object.children.find(child => child.userData.cartoonContour) as THREE.LineSegments | undefined;
+          panels.push({ name: object.name, segments: (contour?.geometry.getAttribute('position').count ?? 0) / 2 });
+        }
+        for (const material of Array.isArray(object.material) ? object.material : [object.material])
+          if (material instanceof THREE.MeshStandardMaterial && material.userData.rimPalette === true)
+            rims.push({ name: object.name, shaded: material.userData.pfuschCartoonRimShading === true,
+              recess: Boolean(object.geometry.getAttribute('cartoonRimRecess')), color: material.color.getHexString() });
+      });
+      const stockGuard = id !== '450' ||
+        (detail.body.getObjectByName('fs450_inner_trim:body')?.userData.bikeStickerSurface === true &&
+          !detail.body.getObjectByName('supermoto-mudflap'));
+      return { png: renderer.domElement.toDataURL('image/png'),
+        proof: { id, view, panels, rims, stockGuard, outlines: ink.count, contours: ink.contourCount } };
+    } finally {
+      ink.dispose();
+      scene.remove(detail.root);
+      scene.add(bike.root);
+    }
   },
 });
 document.body.dataset.ready = 'true';

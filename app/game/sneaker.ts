@@ -28,8 +28,10 @@ export function createSneaker(color: string, side: number) {
   geometry.setAttribute('position', new THREE.BufferAttribute(decoded.positions.slice(), 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(decoded.normals.slice(), 3));
   geometry.setIndex(new THREE.BufferAttribute(decoded.indices.slice(), 1));
-  // Mirror the supplied shoe, including winding, so both normals point out.
-  if (side < 0) {
+  // The forward-facing source is the left shoe: its wider big-toe tip is +X,
+  // toward the rider centre on the -X foot. Mirror it for the right foot,
+  // including winding, while preserving the same forward -Z toe direction.
+  if (side > 0) {
     geometry.scale(-1, 1, 1);
     const index = geometry.index!;
     for (let i = 0; i < index.count; i += 3) {
