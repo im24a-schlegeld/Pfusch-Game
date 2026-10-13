@@ -724,7 +724,7 @@ export function makeDetailedTraffic(
     // One pooled lamp moves to the committed side; no lights or glow passes.
     const signalMaterial = amber.clone();
     signalMaterial.emissiveIntensity = 1.7;
-    const signal = box('traffic-turn-signal', [0.24, 0.15, 0.025], [0, 0.78, 2.925], signalMaterial, root);
+    const signal = box('traffic-turn-signal', [0.24, 0.15, 0.025], [0, 0.78, 2.915], signalMaterial, root);
     signal.visible = false;
   }
   // One tiny alpha texture and one plane replace costly per-vehicle shadowmaps.

@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import type * as THREE from 'three';
 import { newPlayer } from '../../app/domain/progression';
 import type { Engine } from '../../app/game/engine';
+import type { WorldKind, WorldLighting } from '../../app/game/world';
+
+type WorldViewTarget = { kind: WorldKind; lighting?: WorldLighting; tunnelStyle?: 'modern' | 'weathered' };
 
 declare global {
   interface Window {
@@ -37,7 +40,7 @@ async function startCartoonRide(page: Page) {
     window.cartoonProbe = { frames: 0 };
     window.__THREE_DEVTOOLS__ = new EventTarget();
     window.__THREE_DEVTOOLS__.addEventListener('observe', (event) => {
-      const renderer = (event as CustomEvent).detail as THREE.WebGLRenderer;
+      const renderer = (event as CustomEvent).detail as THREE.WebGLRenderer & { isWebGLRenderer?: boolean };
       if (!renderer.isWebGLRenderer) return;
       const render = renderer.render.bind(renderer);
       renderer.render = (scene, camera) => {
@@ -78,22 +81,27 @@ async function startCartoonRide(page: Page) {
   return errors;
 }
 
-async function showWorldLighting(page: Page, target: 'day' | 'night') {
+async function showWorldLighting(page: Page, lighting: 'day' | 'night') {
+  return showWorldView(page, { kind: lighting === 'day' ? 'city' : 'open', lighting });
+}
+
+async function showWorldView(page: Page, target: WorldViewTarget) {
   const frame = await page.evaluate((target) => {
     const probe = window.cartoonProbe;
     const engine = probe.engine!;
     // Use authored seeded segments: lighting, sky and scenery all follow the
     // normal production renderer. Only freeze simulation for visual inspection.
     const matches = (segment: Engine['environment']) => segment.end > engine.distance + 80 &&
-      segment.lighting === target && segment.kind === (target === 'day' ? 'city' : 'open');
+      segment.kind === target.kind && (!target.lighting || segment.lighting === target.lighting) &&
+      (!target.tunnelStyle || segment.tunnel?.style === target.tunnelStyle);
     let segment = engine.world.segments.find(matches);
-    for (let i = 0; !segment && i < 1200; i++) {
+    for (let i = 0; !segment && i < 2400; i++) {
       engine.distance = engine.world.segments.at(-1)!.end - 1;
       engine.world.advance(engine.distance);
       segment = engine.world.segments.find(matches);
     }
-    if (!segment) throw new Error(`No ${target} segment in the seeded world`);
-    engine.distance = Math.max(engine.distance, segment.start + 60);
+    if (!segment) throw new Error(`No ${JSON.stringify(target)} segment in the seeded world`);
+    engine.distance = Math.max(engine.distance, segment.start + Math.min(60, (segment.end - segment.start) * 0.45));
     engine.world.advance(engine.distance);
     engine.clearInput();
     engine.phase = 'ready';
@@ -130,6 +138,9 @@ async function showWorldLighting(page: Page, target: 'day' | 'night') {
     const clouds = scene.getObjectByName('cartoon-clouds') as THREE.InstancedMesh | undefined;
     return {
       style: scene.userData.visualStyle,
+      environment: window.cartoonProbe.engine!.environment.kind,
+      lighting: window.cartoonProbe.engine!.environment.lighting,
+      tunnelStyle: window.cartoonProbe.engine!.environment.tunnel?.style,
       meshes, instances, styledMaterials,
       toonPrograms: programs.filter((program) => program.cacheKey?.includes(':pfusch-cartoon-v1:')).length,
       allProgramsLinked: programs.every((program) => gl.getProgramParameter(program.program, gl.LINK_STATUS)),
@@ -194,3 +205,82 @@ for (const device of ['mobile', 'desktop'] as const) {
     });
   });
 }
+
+type GalleryImage = { label: string; dataUrl: string };
+
+async function contactSheet(page: Page, title: string, description: string, images: GalleryImage[], columns: number, path: string) {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.setContent(`<!doctype html><html lang="de"><head><meta charset="utf-8"><style>
+    * { box-sizing: border-box; } body { margin: 0; padding: 28px; background: #24282d; color: #fff; font-family: Arial, sans-serif; }
+    h1 { margin: 0 0 8px; font-size: 29px; } p { margin: 0 0 24px; color: #c5ccd4; font-size: 17px; }
+    main { display: grid; grid-template-columns: repeat(${columns}, minmax(0, 1fr)); gap: 18px; }
+    figure { margin: 0; background: #111820; border: 1px solid #4b5662; overflow: hidden; }
+    img { display: block; width: 100%; height: auto; } figcaption { padding: 13px 15px; font-size: 18px; font-weight: 700; }
+  </style></head><body><h1>${title}</h1><p>${description}</p><main>${images.map((image) =>
+    `<figure><img src="${image.dataUrl}" alt="${image.label}"><figcaption>${image.label}</figcaption></figure>`).join('')}</main></body></html>`);
+  await page.evaluate(() => Promise.all(Array.from(document.images, (image) => image.decode())));
+  await page.screenshot({ path, fullPage: true });
+}
+
+test.describe('cartoon visual gallery', () => {
+  test.use({ viewport: { width: 960, height: 600 }, isMobile: false, hasTouch: false });
+  test('captures every authored environment and all four sky states from the real game', async ({ page, context }, info) => {
+    test.setTimeout(240000);
+    const errors = await startCartoonRide(page);
+    const environments: { label: string; slug: string; target: WorldViewTarget }[] = [
+      { label: 'Stadt', slug: 'city', target: { kind: 'city' } },
+      { label: 'Industrie', slug: 'industrial', target: { kind: 'industrial' } },
+      { label: 'Baustelle', slug: 'construction', target: { kind: 'construction' } },
+      { label: 'Landstrasse', slug: 'open', target: { kind: 'open' } },
+      { label: 'Am Wasser', slug: 'waterfront', target: { kind: 'waterfront' } },
+      { label: 'Tunneleinfahrt', slug: 'tunnel-approach', target: { kind: 'tunnel-approach' } },
+      { label: 'Tunnel · modern', slug: 'tunnel-modern', target: { kind: 'tunnel', tunnelStyle: 'modern' } },
+      { label: 'Tunnel · verwittert', slug: 'tunnel-weathered', target: { kind: 'tunnel', tunnelStyle: 'weathered' } },
+      { label: 'Tunnelausfahrt', slug: 'tunnel-exit', target: { kind: 'tunnel-exit' } },
+      { label: 'Brückenauffahrt', slug: 'bridge-approach', target: { kind: 'bridge-approach' } },
+      { label: 'Brücke', slug: 'bridge', target: { kind: 'bridge' } },
+      { label: 'Brückenabfahrt', slug: 'bridge-exit', target: { kind: 'bridge-exit' } },
+    ];
+    const sceneryImages: GalleryImage[] = [];
+    const skyImages: GalleryImage[] = [];
+    const samples = [];
+    for (const entry of environments) {
+      const sample = await showWorldView(page, { ...entry.target, lighting: 'day' });
+      expect(sample.environment).toBe(entry.target.kind);
+      if (entry.target.tunnelStyle) expect(sample.tunnelStyle).toBe(entry.target.tunnelStyle);
+      expect(sample.allProgramsLinked).toBe(true);
+      expect(sample.contextLost).toBe(false);
+      await expect(page.locator('.graphics-error')).toHaveCount(0);
+      const screenshot = await page.screenshot({ path: `outputs/browser-pwa/environment-${entry.slug}.png` });
+      sceneryImages.push({ label: entry.label, dataUrl: `data:image/png;base64,${screenshot.toString('base64')}` });
+      samples.push({ label: entry.label, ...sample });
+    }
+    const skies: { lighting: WorldLighting; label: string }[] = [
+      { lighting: 'day', label: 'Tag · Sonne und Wolken' },
+      { lighting: 'golden', label: 'Abend · warmes Licht' },
+      { lighting: 'night', label: 'Nacht · Mond und Sterne' },
+      { lighting: 'dawn', label: 'Morgendämmerung' },
+    ];
+    for (const entry of skies) {
+      const sample = await showWorldView(page, { kind: 'open', lighting: entry.lighting });
+      expect(sample.lighting).toBe(entry.lighting);
+      expect(sample.sky.visible).toBe(true);
+      expect(sample.allProgramsLinked).toBe(true);
+      const screenshot = await page.screenshot({ path: `outputs/browser-pwa/sky-${entry.lighting}.png` });
+      skyImages.push({ label: entry.label, dataUrl: `data:image/png;base64,${screenshot.toString('base64')}` });
+      samples.push({ label: entry.label, ...sample });
+    }
+    // This is a labelled layout of actual screenshots, not replacement artwork.
+    // The mounted game remains unchanged; no extra WebGL context is required.
+    const gallery = await context.newPage();
+    await contactSheet(gallery, 'PFUSCH · alle Streckenabschnitte',
+      'Echte Spielansichten · 11 Umgebungen, mit beiden Tunnelvarianten',
+      sceneryImages, 3, 'outputs/browser-pwa/overview-environments.png');
+    await contactSheet(gallery, 'PFUSCH · Himmel und Tageszeiten',
+      'Alle vier vorhandenen Lichtstimmungen · Regen und Schnee sind derzeit nicht im Spiel',
+      skyImages, 2, 'outputs/browser-pwa/overview-sky.png');
+    await gallery.close();
+    await info.attach('environment-gallery-measurements', { body: JSON.stringify(samples, null, 2), contentType: 'application/json' });
+    expect(errors).toEqual([]);
+  });
+});
