@@ -173,7 +173,7 @@ for (const device of ['mobile', 'desktop'] as const) {
       const samples = [];
       for (const lighting of device === 'mobile' ? ['day', 'night'] as const : ['day'] as const) {
         const sample = await showWorldLighting(page, lighting);
-        samples.push({ lighting, ...sample });
+        samples.push(sample);
         expect(sample.style).toBe('cartoon');
         expect(sample.styledMaterials).toBeGreaterThan(15);
         expect(sample.toonPrograms).toBeGreaterThan(0);

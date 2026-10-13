@@ -11,7 +11,7 @@ function compile(material: THREE.MeshStandardMaterial) {
     fragmentShader: THREE.ShaderLib.standard.fragmentShader,
     uniforms: THREE.UniformsUtils.clone(THREE.ShaderLib.standard.uniforms),
   };
-  material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+  material.onBeforeCompile(shader as Parameters<THREE.Material['onBeforeCompile']>[0], {} as THREE.WebGLRenderer);
   return shader;
 }
 
