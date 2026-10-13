@@ -1,6 +1,7 @@
 import { LEVELS } from './config.js';
 import { DAILY_SIGN_CHALLENGE, dailyChallengesForDate, normalizeDailyProgress } from './dailyChallenges.js';
-import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR } from './helmet.js';
+import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR, HELMET_INVENTORY_MIGRATION } from './helmet.js';
+import { ownsProductColor } from './productOwnership.js';
 import { equipmentSlot } from './preview.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const LEADERBOARD_NAME_MAX_LENGTH = 24;
@@ -43,7 +44,7 @@ export function newPlayer(): Player {
     runsPlayed: 0,
     totalNearMisses: 0,
     totalWheelieMeters: 0,
-    ownedItems: ['bike:125', 'paint:#e7e7df', 'rims:#a6acb0'],
+    ownedItems: ['bike:125', 'paint:#e7e7df', 'rims:#a6acb0', HELMET_INVENTORY_MIGRATION],
     irlItems: [],
     equipped: {},
     variants: {},
@@ -154,10 +155,12 @@ export function finishRun(
     },
   };
 }
-export function ownership(p: Player, product: Product): Ownership {
-  if (p.equipped[equipmentSlot(product)] === product.id) return 'EQUIPPED';
-  if (p.irlItems.includes(product.id)) return 'OWNED_IRL';
-  return p.ownedItems.includes(product.id) ? 'UNLOCKED_DIGITAL' : 'LOCKED';
+export function ownership(p: Player, product: Product, variantId = p.variants[product.id] ?? product.variants[0]?.id ?? ''): Ownership {
+  if (!ownsProductColor(p, product, variantId)) return 'LOCKED';
+  if (p.equipped[equipmentSlot(product)] === product.id &&
+      (p.variants[product.id] ?? product.variants[0]?.id) === variantId) return 'EQUIPPED';
+  if (ownsProductColor(p, product, variantId, p.irlItems)) return 'OWNED_IRL';
+  return 'UNLOCKED_DIGITAL';
 }
 export const digitalPrice = (p: Product) =>
   p.category === 'cape' ? 5000 : p.category === 'upper' ? 150 : p.category === 'head' ? 90 : 75;

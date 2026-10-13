@@ -76,7 +76,7 @@ The final targeted checks used the installed `.build-check` tools and dependency
 - The known broader-suite baseline still contains 19 pre-existing failing tests. That full-suite baseline was not rerun for this final targeted check; these results do not claim that the entire repository test suite is green.
 - The Vite production build passed with 2,128 modules. It still reports chunks above 500 kB: approximately 571 kB for the main chunk and 620 kB for Three.js before gzip. Both separately emitted Node ESM handlers also loaded successfully in the local runtime smoke check.
 
-The portrait and landscape loading artwork were exported from the game scene with the updated rider head pose. Final live Shopify form/account checks and browser visual verification remain separate from the automated checks above. No shop page, theme or deployment was published by this local validation.
+The portrait and landscape loading artwork were exported from the game scene with the updated rider head pose. Runtime, HTML boot fallback and Shopify hero use the versioned assets `loading-trailer.8d1469db74.webp` and `loading-trailer-portrait.5040e2a548.webp` so old phone caches cannot retain the previous image at those URLs. Keep the unversioned files for older clients; future image changes require new versioned filenames and matching preload references. Final live Shopify form/account checks and browser visual verification remain separate from the automated checks above. No shop page, theme or deployment was published by this local validation.
 
 ## Repair pass status
 

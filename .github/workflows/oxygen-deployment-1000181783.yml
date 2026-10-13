@@ -33,8 +33,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check daily signs and verified points
-        run: npm test -- tests/sign-daily-spawning.test.ts tests/sign-pickups.test.ts tests/daily-signs.test.ts tests/verified-run.test.ts tests/verified-rewards-server.test.ts --maxWorkers=1
+      - name: Check gameplay, sharing and purchase ownership
+        run: npm test -- --maxWorkers=2
 
       - name: Build and publish to Oxygen
         id: deploy

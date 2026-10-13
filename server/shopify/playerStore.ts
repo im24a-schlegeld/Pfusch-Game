@@ -47,7 +47,7 @@ export async function shopifyGraphql(config: ShopifyConfig, query: string, varia
   }
 }
 
-export async function loadCustomerPlayer(config: ShopifyConfig, customerId: string, request: ShopifyFetch): Promise<CustomerPlayer> {
+export async function loadCustomerPlayer(config: ShopifyConfig, customerId: string, request: ShopifyFetch, verifiedItems: string[] = []): Promise<CustomerPlayer> {
   const data = await shopifyGraphql(config, `query GamePlayer($id: ID!, $namespace: String!, $key: String!) {
     customer(id: $id) {
       id emailMarketingConsent { marketingState }
@@ -62,7 +62,7 @@ export async function loadCustomerPlayer(config: ShopifyConfig, customerId: stri
   if (!isRecord(field) || typeof field.value !== 'string' || !digest(field.compareDigest) || byteLength(field.value) > MAX_BODY_BYTES)
     throw new ApiError(502, 'invalid_saved_player');
   try {
-    return { player: sanitizeDigitalPlayer(JSON.parse(field.value), customerId), compareDigest: field.compareDigest, marketingState };
+    return { player: sanitizeDigitalPlayer(JSON.parse(field.value), customerId, verifiedItems), compareDigest: field.compareDigest, marketingState };
   } catch { throw new ApiError(502, 'invalid_saved_player'); }
 }
 
@@ -71,7 +71,7 @@ export async function saveCustomerPlayer(config: ShopifyConfig, customerId: stri
   const data = await shopifyGraphql(config, `mutation SaveGamePlayer($metafields: [MetafieldsSetInput!]!) {
     metafieldsSet(metafields: $metafields) { metafields { compareDigest } userErrors { code } }
   }`, { metafields: [{ ownerId: ownerId(customerId), namespace: PLAYER_NAMESPACE, key: PLAYER_KEY,
-    type: 'json', value: JSON.stringify(player), compareDigest }] }, request);
+    type: 'json', value: JSON.stringify({ ...player, irlItems: [] }), compareDigest }] }, request);
   const result = data.metafieldsSet;
   if (!isRecord(result) || !Array.isArray(result.userErrors)) throw new ApiError(502, 'invalid_shopify_response');
   if (result.userErrors.some(value => isRecord(value) && ['STALE_OBJECT', 'INVALID_COMPARE_DIGEST'].includes(String(value.code))))

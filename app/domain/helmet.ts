@@ -5,9 +5,9 @@ import { colorName } from './paletteView.js';
 import { unlock } from './progression.js';
 
 export const HELMETS = [
-  { id: 'fullface', name: 'Integralhelm' },
-  { id: 'motocross', name: 'Motocross' },
-] as const satisfies readonly { id: Helmet; name: string }[];
+  { id: 'fullface', name: 'Integralhelm', price: 0 },
+  { id: 'motocross', name: 'Motocross', price: 150 },
+] as const satisfies readonly { id: Helmet; name: string; price: number }[];
 
 export const HELMET_COLORS = [
   { name: 'Kreide', value: '#d7dbd7' },
@@ -42,12 +42,29 @@ export const isHelmet = (value: unknown): value is Helmet =>
 export const isHelmetColor = (value: unknown): value is string =>
   HELMET_COLORS.some((color) => color.value === value);
 
-export function unownedHelmetFinishes(player: Player, selection: { helmetColor: string; helmetVisor?: string }) {
-  return (['helmetColor', 'helmetVisor'] as const).filter(slot => selection[slot] === DARK_CARBON)
-    .map(slot => `${slot}:${DARK_CARBON}`).filter(id => !player.ownedItems.includes(id) && !player.irlItems.includes(id));
+export const HELMET_INVENTORY_MIGRATION = 'helmet:priced-v1';
+export function helmetOptionPrice(slot: 'helmet' | 'helmetColor' | 'helmetVisor', value: string): number {
+  if (slot === 'helmet') return HELMETS.find(item => item.id === value)?.price ?? 0;
+  if (value === DARK_CARBON) return CARBON_PRICE;
+  return value === (slot === 'helmetColor' ? DEFAULT_HELMET_COLOR : DEFAULT_VISOR_COLOR) ? 0 : slot === 'helmetColor' ? 40 : 60;
+}
+export function ownsHelmetOption(player: Player, slot: 'helmet' | 'helmetColor' | 'helmetVisor', value: string): boolean {
+  return helmetOptionPrice(slot, value) === 0 || player.ownedItems.includes(`${slot}:${value}`);
+}
+export function unownedHelmetFinishes(player: Player, selection: { helmet?: Helmet; helmetColor: string; helmetVisor?: string }) {
+  return (['helmet', 'helmetColor', 'helmetVisor'] as const)
+    .filter(slot => selection[slot] !== undefined && !ownsHelmetOption(player, slot, selection[slot]!))
+    .map(slot => ({ id: `${slot}:${selection[slot]}`, price: helmetOptionPrice(slot, selection[slot]!) }));
 }
 
-/** Stock colors are free; premium finishes are purchased atomically on explicit Equip. */
+/** Additive schema-1 migration preserves already committed equipment once. */
+export function migrateHelmetInventory(player: Player): Player {
+  if (player.ownedItems.includes(HELMET_INVENTORY_MIGRATION)) return player;
+  const grants = unownedHelmetFinishes(player, player).filter(item => !item.id.endsWith(`:${DARK_CARBON}`));
+  return { ...player, ownedItems: [...player.ownedItems, HELMET_INVENTORY_MIGRATION, ...grants.map(item => item.id)] };
+}
+
+/** The free base helmet and all paid options commit atomically on explicit Equip. */
 export function equipHelmet(
   player: Player,
   selection: Pick<Player, 'helmet' | 'helmetColor'> & Partial<Pick<Player, 'helmetVisor'>>,
@@ -56,10 +73,10 @@ export function equipHelmet(
     (selection.helmetVisor !== undefined && !isVisorColor(selection.helmetVisor)))
     return null;
   const purchases = unownedHelmetFinishes(player, selection);
-  if (player.coins < purchases.length * CARBON_PRICE || (purchases.length > 0 && player.level < 1)) return null;
+  if (player.coins < purchases.reduce((total, item) => total + item.price, 0) || (purchases.length > 0 && player.level < 1)) return null;
   let purchased = player;
-  for (const id of purchases) {
-    const next = unlock(purchased, id, CARBON_PRICE);
+  for (const { id, price } of purchases) {
+    const next = unlock(purchased, id, price);
     if (!next) return null;
     purchased = next;
   }

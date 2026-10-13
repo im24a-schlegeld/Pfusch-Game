@@ -107,7 +107,7 @@ describe('progression and storage', () => {
           'rims:#a6acb0',
         ],
       };
-      expect(decodePlayer(JSON.stringify(legacy))).toEqual(legacy);
+      expect(decodePlayer(JSON.stringify(legacy))).toEqual({ ...legacy, ownedItems: [...legacy.ownedItems, 'helmet:priced-v1'] });
       expect(decodePlayer(JSON.stringify(legacy)).ownedItems).not.toContain(
         'bike:scooter',
       );

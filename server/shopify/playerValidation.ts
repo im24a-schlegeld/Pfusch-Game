@@ -6,6 +6,10 @@ import { DARK_CARBON } from '../../app/domain/carbon.js';
 import { MAX_SAVED_SETUPS, MAX_SAVED_SETUPS_BYTES, sanitizeSavedSetups } from '../../app/domain/setups.js';
 import { isTutorialHint, normalizeTutorialHints, TUTORIAL_HINTS } from '../../app/domain/tutorial.js';
 import { ApiError } from './auth.js';
+import catalog from '../../public/catalog/products.json';
+import type { Product } from '../../app/domain/types.js';
+import { migrateProductInventory, ownsProductColor } from '../../app/domain/productOwnership.js';
+import { migrateHelmetInventory } from '../../app/domain/helmet.js';
 
 export const MAX_BODY_BYTES = 131072;
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -40,7 +44,7 @@ const digitalRewards = new Set<string>(REWARDS.filter(reward => reward.kind === 
 /** This is a backup of untrusted digital game progress, never proof of a
  * purchase, a prize entitlement, or a verified competitive score. Reconstruct
  * every field rather than persisting arbitrary client properties. */
-export function sanitizeDigitalPlayer(value: unknown, customerId: string): Player {
+export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifiedItems: string[] = []): Player {
   const input = record(value, 33), player = newPlayer();
   if (input.version !== 1 || Object.keys(input).some(key => !Object.prototype.hasOwnProperty.call(player, key))) invalid();
   player.id = `shopify:${customerId}`;
@@ -58,7 +62,7 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   // purchase/reward adapter. They are never imported from this digital backup.
   stringList(input.irlItems, 500);
   numeric(input.tickets);
-  player.irlItems = []; player.tickets = 0;
+  player.irlItems = [...verifiedItems]; player.tickets = 0;
   player.redeemedRewards = stringList(input.redeemedRewards, 100).filter(id => digitalRewards.has(id));
   player.processedRuns = stringList(input.processedRuns, 100);
   const bikeId = text(input.bike);
@@ -82,9 +86,14 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
   for (const [key, item] of Object.entries(equipped)) {
     if (!slots.includes(key as Slot)) invalid();
     const id = text(item);
-    if (player.ownedItems.includes(id)) player.equipped[key as Slot] = id;
+    if (player.ownedItems.includes(id) || player.irlItems.includes(id)) player.equipped[key as Slot] = id;
   }
   for (const [id, variant] of Object.entries(record(input.variants, 500))) player.variants[id] = text(variant);
+  player.ownedItems = migrateProductInventory(migrateHelmetInventory(player), catalog as Product[]).ownedItems;
+  for (const [slot, id] of Object.entries(player.equipped)) {
+    const product = (catalog as Product[]).find(product => product.id === id);
+    if (product && !ownsProductColor(player, product, player.variants[id] ?? product.variants[0]?.id ?? '')) delete player.equipped[slot as Slot];
+  }
   if (input.customizations !== undefined)
     for (const [id, value] of Object.entries(record(input.customizations, 500))) {
       const config = record(value, 2);
@@ -107,7 +116,7 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string): Playe
       for (const item of value as unknown[]) {
         if (!validStickerForTarget(target, item)) invalid();
         const s = item as StickerPlacement;
-        if (!player.ownedItems.includes(s.productId)) continue;
+        if (!player.ownedItems.includes(s.productId) && !player.irlItems.includes(s.productId)) continue;
         if (placements.some(placement => placement.id === s.id)) invalid();
         placements.push({ id: s.id, productId: s.productId, surface: s.surface,
           point: [...s.point], normal: [...s.normal], size: s.size, rotation: s.rotation });

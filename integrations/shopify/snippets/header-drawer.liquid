@@ -21,11 +21,8 @@
         <div class="menu-drawer__navigation-container">
           <nav class="menu-drawer__navigation">
             <ul class="menu-drawer__menu has-submenu list-menu" role="list">
-              <li>
-                <a id="HeaderDrawer-wheelie-escape" href="https://game.pfusch-clothing.ch/" class="menu-drawer__menu-item list-menu__item link link--text focus-inset">Wheelie Escape</a>
-              </li>
               {%- for link in section.settings.menu.links -%}
-                {%- unless link.handle == 'wheelie-escape' or link.url contains 'view=wheelie-escape' -%}
+                {%- unless link.handle == 'wheelie-escape' or link.url contains 'view=wheelie-escape' or link.url contains 'game.pfusch-clothing.ch' -%}
                   <li>
                   {%- if link.links != blank -%}
                     <details id="Details-menu-drawer-menu-item-{{ forloop.index }}">

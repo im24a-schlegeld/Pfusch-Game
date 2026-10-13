@@ -50,18 +50,19 @@ export function carRearReach(bikeId: string, pitch: number): number {
 }
 
 /** World-space tire envelope at the existing ballistic height; never changes the arc. */
-export function carJumpClearance(bikeId: string, height: number, pitch: number, carZ: number, lateral: number, police = false): number {
+export function carJumpClearance(bikeId: string, height: number, pitch: number, carZ: number, lateral: number, police = false, oncoming = false): number {
   const front = RAMP_FRONT_CONTACT[bikeId] ?? RAMP_FRONT_CONTACT['450'];
   const rear = RAMP_REAR_CONTACT[bikeId] ?? RAMP_REAR_CONTACT['450'];
   const sin = Math.sin(pitch), cos = Math.cos(pitch);
   const lift = rear.radius * (1 - cos) + rear.axle * sin;
+  const direction = oncoming ? -1 : 1;
   let clearance = Infinity;
   for (const tire of [front, rear]) {
     const centerY = height + tire.radius * cos - tire.axle * sin + lift;
     const centerZ = tire.radius * sin + tire.axle * cos;
     for (let sample = -8; sample <= 8; sample++) {
       const dz = tire.radius * sample / 8;
-      const roof = carSurfaceHeight(lateral, carZ + centerZ + dz, police);
+      const roof = carSurfaceHeight(lateral, direction * (carZ + centerZ + dz), police);
       if (roof > 0) clearance = Math.min(clearance, centerY - Math.sqrt(Math.max(0, tire.radius ** 2 - dz ** 2)) - roof);
     }
   }
@@ -69,7 +70,7 @@ export function carJumpClearance(bikeId: string, height: number, pitch: number, 
   for (let sample = 1; sample < 8; sample++) {
     const t = sample / 8, z = front.axle + (rear.axle - front.axle) * t;
     const y = .22;
-    const roof = carSurfaceHeight(lateral, carZ + y * sin + z * cos, police);
+    const roof = carSurfaceHeight(lateral, direction * (carZ + y * sin + z * cos), police);
     if (roof > 0) clearance = Math.min(clearance, height + y * cos - z * sin + lift - roof);
   }
   return clearance;

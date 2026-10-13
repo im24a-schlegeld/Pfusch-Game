@@ -11,6 +11,7 @@ import {
 import {
   DEFAULT_VISOR_COLOR,
   equipHelmet,
+  helmetOptionPrice,
   HELMETS,
   HELMET_COLORS,
   VISOR_COLORS,
@@ -62,7 +63,7 @@ describe('additive accessory and visor migration', () => {
       xp: 480, coins: 815, tickets: 3, highScore: 2390,
       runsPlayed: 7, totalDistance: 2146,
       equipped: player.equipped,
-      ownedItems: player.ownedItems,
+      ownedItems: expect.arrayContaining(player.ownedItems),
       variants: player.variants,
       helmetVisor: DEFAULT_VISOR_COLOR,
       stickers: {},
@@ -120,7 +121,7 @@ describe('additive accessory and visor migration', () => {
   });
 
   it('round trips every stock visor on either helmet and changes no other loadout', () => {
-    const player = stickerOwner();
+    const player = { ...stickerOwner(), coins: 500 };
     player.equipped = { accessory: bag.id, keychain: keychain.id, head: cap.id };
     player.stickers = { '125': [placement()] };
     for (const helmet of HELMETS)
@@ -134,7 +135,7 @@ describe('additive accessory and visor migration', () => {
         expect(equipped.helmetVisor).toBe(color.value);
         expect(equipped.equipped).toEqual(player.equipped);
         expect(equipped.stickers).toEqual(player.stickers);
-        expect(equipped.coins).toBe(player.coins);
+        expect(equipped.coins).toBe(player.coins - helmetOptionPrice('helmet', helmet.id) - helmetOptionPrice('helmetVisor', color.value));
         expect(decodePlayer(JSON.stringify(equipped))).toEqual(equipped);
       }
     expect(player.helmetVisor).toBe(DEFAULT_VISOR_COLOR);

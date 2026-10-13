@@ -20,8 +20,8 @@ export default function LoadingScreen({
   return (
     <output className={`ride-loading${fullScreen ? ' ride-loading-full' : ''}${embedded ? ' ride-loading-embedded' : ''}`} data-reduced-motion={reducedMotion} aria-label={label}>
       <picture>
-        <source media="(max-aspect-ratio: 3/4)" srcSet="/branding/loading-trailer-portrait.webp" />
-        <img className="ride-loading-art" src="/branding/loading-trailer.webp" alt="" fetchPriority="high" />
+        <source media="(max-aspect-ratio: 3/4)" srcSet="/branding/loading-trailer-portrait.5040e2a548.webp" />
+        <img className="ride-loading-art" src="/branding/loading-trailer.8d1469db74.webp" alt="" fetchPriority="high" />
       </picture>
       <div className="ride-loading-brand">
         <GameBrand wordmark />

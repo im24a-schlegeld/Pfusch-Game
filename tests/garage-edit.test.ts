@@ -9,7 +9,7 @@ import type { Product, StickerPlacement } from '../app/domain/types';
 const products = catalog as Product[];
 describe('one-part garage edits and atomic purchases', () => {
   it('keeps helmet type, color and visor together and discards only the draft on part change', () => {
-    const player = newPlayer();
+    const player = { ...newPlayer(), coins: 500 };
     const edit: GarageEdit = { kind: 'helmet', helmet: 'motocross', helmetColor: '#202324', helmetVisor: '#287a9d' };
     const preview = garageAppearance(player, edit, products);
     expect(preview.helmetColor).toBe('#202324'); expect(preview.helmetVisor).toBe('#287a9d');

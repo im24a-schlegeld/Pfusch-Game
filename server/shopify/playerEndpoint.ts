@@ -3,6 +3,7 @@ import { loadCustomerPlayer, saveCustomerPlayer, type ShopifyFetch } from './pla
 import { isRecord, sanitizeDigitalPlayer } from './playerValidation.js';
 import type { Player } from '../../app/domain/types.js';
 import { canSave, retainRunCount, storageAccess, type StorageAccess } from './storagePolicy.js';
+import type { VerifiedPurchases } from './purchaseStore.js';
 
 export interface PlayerRequest {
   method: string;
@@ -16,6 +17,7 @@ export interface PlayerEndpointDependencies {
   now?: () => number;
   afterSave?: (customerId: string, player: Player) => Promise<void>;
   authenticate?: CustomerAuthenticator;
+  purchases?: (customerId: string) => Promise<VerifiedPurchases>;
 }
 export interface JsonResult { status: number; body: Record<string, unknown> }
 
@@ -26,9 +28,12 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
     if (!config) throw new ApiError(503, 'not_configured');
     const now = (dependencies.now ?? Date.now)();
     const identity = assertCustomerIdentity(await (dependencies.authenticate ?? authenticateProxy)(input.url, config, now), config);
+    // Independent read-only adapter: missing order permission never blocks game saves.
+    const purchases = await dependencies.purchases?.(identity.customerId).catch((): VerifiedPurchases =>
+      ({ items: [], available: false, reason: 'orders_unavailable', history: 'recent' }));
     let result, storage: StorageAccess;
     if (input.method === 'GET') {
-      const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request);
+      const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request, purchases?.items);
       result = { player: current.player, compareDigest: current.compareDigest };
       storage = storageAccess(current.marketingState, current.player?.runsPlayed ?? 0);
     }
@@ -42,10 +47,10 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       await verifyCsrf(body.csrfToken, identity, config.secret, now);
       if (body.compareDigest !== null && (typeof body.compareDigest !== 'string' || !/^[a-f0-9]{64}$/i.test(body.compareDigest)))
         throw new ApiError(400, 'invalid_compare_digest');
-      const incoming = sanitizeDigitalPlayer(body.player, identity.customerId);
+      const incoming = sanitizeDigitalPlayer(body.player, identity.customerId, purchases?.items);
       // Re-read live consent on every save, including for a previously granted
       // session. Never write consent or accept it from a browser field.
-      const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request);
+      const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request, purchases?.items);
       const player = retainRunCount(incoming, current.player);
       storage = storageAccess(current.marketingState, player.runsPlayed);
       if (!canSave(current.marketingState, current.player?.runsPlayed ?? 0, player.runsPlayed))
@@ -57,7 +62,7 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       // cloud save into a failed save or cause a client to overwrite it again.
       try { await dependencies.afterSave?.(identity.customerId, result.player); } catch { /* Save is already durable. */ }
     }
-    return { status: 200, body: { customer: { id: identity.customerId }, ...result, storage,
+    return { status: 200, body: { customer: { id: identity.customerId }, ...result, storage, ...(purchases ? { purchases } : {}),
       csrfToken: await createCsrf(identity, config.secret, now) } };
   } catch (error) {
     return error instanceof ApiError ? { status: error.status, body: { error: error.code } }

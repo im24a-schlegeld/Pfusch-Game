@@ -2,6 +2,8 @@ import { ArrowRight, Wrench } from 'lucide-react';
 import { speedometerKmh } from '../domain/speedometer';
 import type { Player, RunReward, RunStats } from '../domain/types';
 import { fmt, gameText } from './shared';
+import { dayKey } from '../domain/progression';
+import { ShareAction } from './GameShare';
 export default function RideResult({
   player,
   run,
@@ -83,6 +85,7 @@ export default function RideResult({
               ZUR GARAGE <Wrench size={18} />
             </button>
           </div>
+          <ShareAction label="HIGHSCORE TEILEN" share={{ kind: 'score', name: player.leaderboardName, score: player.highScore, date: dayKey() }} />
         </footer>
       </section>
     </main>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HELMETS, HELMET_COLORS, equipHelmet } from '../app/domain/helmet';
+import { HELMETS, HELMET_COLORS, equipHelmet, helmetOptionPrice } from '../app/domain/helmet';
 import { DARK_CARBON } from '../app/domain/carbon';
 import { newPlayer } from '../app/domain/progression';
 import type { Helmet } from '../app/domain/types';
@@ -27,8 +27,8 @@ describe('stock helmet options', () => {
     });
   });
 
-  it('round trips every supported style and color without purchasing anything', () => {
-    const player = { ...newPlayer(), coins: 0 };
+  it('round trips every supported style and color after its explicit purchase', () => {
+    const player = { ...newPlayer(), coins: 2000 };
     for (const helmet of HELMETS) {
       for (const color of HELMET_COLORS.filter(color => color.value !== DARK_CARBON)) {
         const equipped = equipHelmet(player, {
@@ -36,8 +36,8 @@ describe('stock helmet options', () => {
           helmetColor: color.value,
         })!;
         expect(decodePlayer(JSON.stringify(equipped))).toEqual(equipped);
-        expect(equipped.coins).toBe(0);
-        expect(equipped.ownedItems).toEqual(player.ownedItems);
+        expect(equipped.coins).toBe(player.coins - helmetOptionPrice('helmet', helmet.id) - helmetOptionPrice('helmetColor', color.value));
+        expect(equipHelmet(equipped, { helmet: helmet.id, helmetColor: color.value })!.coins).toBe(equipped.coins);
       }
     }
   });
@@ -80,6 +80,7 @@ describe('stock helmet options', () => {
   it('Equip Helmet saves only the helmet even when a locked bike and garment are previewed', async () => {
     const player = {
       ...newPlayer(),
+      coins: 500,
       equipped: { head: 'owned-cap' },
       ownedItems: [...newPlayer().ownedItems, 'owned-cap'],
     };
@@ -99,6 +100,8 @@ describe('stock helmet options', () => {
     const equipped = equipHelmet(player, preview)!;
     expect(equipped).toEqual({
       ...player,
+      coins: 310,
+      ownedItems: [...player.ownedItems, 'helmet:motocross', 'helmetColor:#202324'],
       helmet: 'motocross',
       helmetColor: '#202324',
     });

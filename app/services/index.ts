@@ -15,7 +15,8 @@ import {
   refreshDaily,
 } from '../domain/progression';
 import { BIKES, REWARDS } from '../domain/config';
-import { isHelmet, isHelmetColor, isVisorColor } from '../domain/helmet';
+import { isHelmet, isHelmetColor, isVisorColor, migrateHelmetInventory } from '../domain/helmet';
+import { migrateProductInventory } from '../domain/productOwnership';
 import { MAX_STICKERS, STICKER_TARGETS, validStickerForTarget } from '../domain/stickers';
 import { shadeClothingCatalog } from '../domain/appearanceColors';
 import { sanitizeSavedSetups } from '../domain/setups';
@@ -44,6 +45,7 @@ export interface PlayerRepository {
   flush?(): Promise<void>;
   getAccess?(): PlayerAccess;
   refreshAccess?(): Promise<PlayerAccess>;
+  readonly purchaseStatus?: { available: boolean; reason?: 'orders_scope_missing' | 'orders_unavailable'; history: 'all' | 'recent' };
 }
 export interface PlayerSyncStatus {
   state: 'local' | 'loading' | 'synced' | 'saving' | 'offline' | 'conflict' | 'guest' | 'unavailable';
@@ -242,6 +244,7 @@ export function decodePlayer(raw: string): Player {
       )
       .slice(-200);
   p.level = levelForXp(p.xp);
+  p.ownedItems = migrateProductInventory(migrateHelmetInventory(p), catalog as Product[]).ownedItems;
   // Additive v1 migration: a setup library is optional in existing local/account saves.
   p.savedSetups = sanitizeSavedSetups(v.savedSetups, p);
   return refreshDaily(p);

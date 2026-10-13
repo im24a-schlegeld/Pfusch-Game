@@ -37,6 +37,8 @@ import LoadingScreen from './LoadingScreen';
 import GameBrand from './GameBrand';
 import SaveAccessGate from './SaveAccessGate';
 import './account-header.css';
+import { readGameShare } from '../domain/gameShare';
+import { SharedGame } from './GameShare';
 type Screen =
   | 'ride'
   | 'results'
@@ -45,6 +47,7 @@ type Screen =
   | 'progress'
   | 'rewards'
   | 'leaderboard'
+  | 'invitation'
   | 'settings';
 export default function GameApp() {
   const embedded = window.parent !== window;
@@ -64,7 +67,8 @@ export default function GameApp() {
   const loginPending = useRef(false);
   const current = useRef<Player | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [screen, setScreen] = useState<Screen>('garage');
+  const [sharedGame] = useState(() => readGameShare(window.location.search));
+  const [screen, setScreen] = useState<Screen>(sharedGame ? 'invitation' : 'garage');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [accessOpen, setAccessOpen] = useState(false);
@@ -472,6 +476,7 @@ export default function GameApp() {
           onProgress={() => navigate('progress')}
         />
       )}
+      {screen === 'invitation' && sharedGame && <SharedGame share={sharedGame} start={start} garage={back} />}
       {screen === 'results' && result && (
         <RideResult player={player} run={result.run} reward={result.reward}
           start={start} startLocked={!access.allowed} garage={() => navigate('garage')} />

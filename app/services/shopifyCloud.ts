@@ -11,6 +11,7 @@ interface Snapshot {
   compareDigest: string | null;
   csrfToken: string;
   storage: PlayerAccess;
+  purchases: { items: string[]; available: boolean; reason?: 'orders_scope_missing' | 'orders_unavailable'; history: 'all' | 'recent' };
 }
 interface Backup { player: Player; compareDigest: string | null; dirty: boolean }
 type Decoder = (raw: string) => Player;
@@ -28,7 +29,16 @@ function snapshot(data: unknown, decode: Decoder): Snapshot {
   if (!record(data) || !record(data.customer) || typeof data.customer.id !== 'string' || !/^[1-9]\d{0,30}$/.test(data.customer.id)
     || !digest(data.compareDigest) || typeof data.csrfToken !== 'string' || data.csrfToken.length < 16 || data.csrfToken.length > 4096
     || (data.player === null) !== (data.compareDigest === null)) throw new Error('Ungültige Kontodaten');
-  return { customer: { id: data.customer.id }, player: data.player === null ? null : digitalPlayer(decode(JSON.stringify(data.player)), data.customer.id),
+  const input = data.purchases;
+  const purchases: Snapshot['purchases'] = { items: [], available: false, reason: 'orders_unavailable', history: 'recent' };
+  if (record(input) && typeof input.available === 'boolean' && ['all', 'recent'].includes(String(input.history)) &&
+      Array.isArray(input.items) && input.items.length <= 500 && input.items.every(id => typeof id === 'string' && id.length <= 160)) {
+    purchases.available = input.available; purchases.history = input.history as 'all' | 'recent';
+    purchases.reason = input.reason === 'orders_scope_missing' ? input.reason : input.available ? undefined : 'orders_unavailable';
+    purchases.items = input.available ? input.items as string[] : [];
+  }
+  const player = data.player === null ? null : { ...digitalPlayer(decode(JSON.stringify({ ...(record(data.player) ? data.player : {}), irlItems: purchases.items })), data.customer.id), irlItems: purchases.items };
+  return { customer: { id: data.customer.id }, player, purchases,
     compareDigest: data.compareDigest, csrfToken: data.csrfToken, storage: serverAccess(data.storage) };
 }
 
@@ -57,6 +67,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
 
   constructor(private transport: CloudTransport, private storage: StorageDriver,
     private guest: PlayerRepository, private decode: Decoder, private debounceMs = 900) {}
+
+  get purchaseStatus() { return this.session?.purchases; }
 
   getAccess = (): PlayerAccess => this.access;
   subscribeSync = (listener: () => void) => {
@@ -139,7 +151,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     try {
       const value: unknown = JSON.parse(raw);
       if (!record(value) || !digest(value.compareDigest) || typeof value.dirty !== 'boolean') throw new Error('Backup');
-      return { player: digitalPlayer(this.decode(JSON.stringify(value.player)), this.session!.customer.id), compareDigest: value.compareDigest, dirty: value.dirty };
+      const stored = record(value.player) ? value.player : {};
+      return { player: digitalPlayer(this.decode(JSON.stringify({ ...stored, irlItems: this.session!.purchases.items })), this.session!.customer.id), compareDigest: value.compareDigest, dirty: value.dirty };
     } catch { this.store(`${key}:recovery`, raw); return null; }
   }
 
@@ -148,7 +161,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     // Bootstrap is shared by auth and startup only. Focus/ride rechecks must
     // retain edits made since then, including changes still awaiting the server.
     return this.session
-      ? this.lastUnsaved ?? this.session.player ?? initial
+      ? { ...(this.lastUnsaved ?? this.session.player ?? initial), irlItems: this.session.purchases.items }
       : this.guestPlayer ?? initial;
   }
   async getUser() {
@@ -330,6 +343,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       session.csrfToken = result.csrfToken;
       session.player = result.player;
       session.storage = result.storage;
+      session.purchases = result.purchases;
       this.localCompletedRuns = Math.max(this.localCompletedRuns, result.storage.completedRuns);
       // Persist only the exact snapshot the server just accepted. This includes
       // the fifth trial result, never later queued edits or a denied POST.
@@ -398,6 +412,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         return this.access;
       }
       this.session.storage = next.storage;
+      this.session.purchases = next.purchases;
       this.session.csrfToken = next.csrfToken;
       this.localCompletedRuns = Math.max(this.localCompletedRuns, next.storage.completedRuns);
       this.setAccess(next.storage);

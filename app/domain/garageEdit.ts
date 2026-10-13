@@ -1,6 +1,6 @@
 import { BIKES, PAINTS, RIMS } from './config';
 import { equipHelmet, isHelmet, isHelmetColor, isVisorColor, unownedHelmetFinishes } from './helmet';
-import { CARBON_PRICE } from './carbon';
+import { ownsProductColor, purchaseProductColor } from './productOwnership';
 import { equipConfiguration, equipmentSlot, equippable, previewLoadout, validConfiguration } from './preview';
 import { digitalLevel, digitalPrice, unlock } from './progression';
 import { colorName } from './paletteView';
@@ -58,9 +58,9 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
     valid = !!color || (player.ownedItems.includes(id) && /^#[\da-f]{6}$/i.test(edit.value));
   } else if (edit.kind === 'helmet') {
     const purchases = unownedHelmetFinishes(player, edit);
-    price = purchases.length * CARBON_PRICE;
+    price = purchases.reduce((total, item) => total + item.price, 0);
     valid = isHelmet(edit.helmet) && isHelmetColor(edit.helmetColor) && isVisorColor(edit.helmetVisor);
-    return { name: purchases.length ? 'Dunkles Karbon · Helm' : 'Helm', price, owned: purchases.length === 0, requiredLevel: 1, collectible: false,
+    return { name: 'Helm & Visier', price, owned: purchases.length === 0, requiredLevel: 1, collectible: false,
       blocked: !valid ? 'Diese Auswahl ist nicht verfügbar' : purchases.length && player.level < 1 ? 'Ab Level 1 verfügbar' : player.coins < price ? `Dir fehlen ${price - player.coins} Coins` : null };
   } else if (edit.kind === 'remove') name = 'Standard / ohne Artikel';
   else if (edit.kind === 'product') {
@@ -70,8 +70,12 @@ export function garageOffer(player: Player, edit: GarageEdit, products: Product[
     valid = !!product && validConfiguration(product, edit.configuration);
     collectible = !!product && !equippable(product);
     if (product?.preview?.numberCustomization && !/^\d{1,2}$/.test(edit.configuration.customNumber ?? '')) {
-      return { name, price, owned: player.ownedItems.includes(id) || player.irlItems.includes(id), requiredLevel, blocked: 'Nummer mit 1–2 Ziffern eingeben', collectible };
+      return { name, price, owned: ownsProductColor(player, product, edit.configuration.variantId), requiredLevel, blocked: 'Nummer mit 1–2 Ziffern eingeben', collectible };
     }
+    const owned = !!product && ownsProductColor(player, product, edit.configuration.variantId);
+    return { name, price, owned, requiredLevel, collectible,
+      blocked: !valid ? 'Diese Auswahl ist nicht verfügbar' : !owned && player.level < requiredLevel ? `Ab Level ${requiredLevel} verfügbar`
+        : !owned && player.coins < price ? `Dir fehlen ${price - player.coins} Coins` : null };
   }
   const owned = !id || player.ownedItems.includes(id) || player.irlItems.includes(id);
   const blocked = !valid ? 'Diese Auswahl ist nicht verfügbar' : player.level < requiredLevel && (!owned || edit.kind === 'model') ? `Ab Level ${requiredLevel} verfügbar`
@@ -85,14 +89,16 @@ export function commitGarageEdit(player: Player, edit: GarageEdit, products: Pro
   if (offer.blocked) return null;
   if (edit.kind === 'helmet') return equipHelmet(player, edit);
   if (edit.kind === 'remove') return garageAppearance(player, edit, products);
-  const id = edit.kind === 'model' ? `bike:${edit.value}` : edit.kind === 'product' ? edit.productId : `${edit.kind}:${edit.value}`;
-  const unlocked = unlock(player, id, offer.price, offer.requiredLevel);
-  if (!unlocked) return null;
   if (edit.kind === 'product') {
     const product = products.find(p => p.id === edit.productId);
     if (!product) return null;
+    const unlocked = purchaseProductColor(player, product, edit.configuration.variantId, offer.price, offer.requiredLevel);
+    if (!unlocked) return null;
     return equippable(product) ? equipConfiguration(unlocked, product, edit.configuration) : unlocked;
   }
+  const id = edit.kind === 'model' ? `bike:${edit.value}` : `${edit.kind}:${edit.value}`;
+  const unlocked = unlock(player, id, offer.price, offer.requiredLevel);
+  if (!unlocked) return null;
   return garageAppearance(unlocked, edit, products);
 }
 
@@ -115,7 +121,7 @@ export function garageEditChanged(player: Player, edit: GarageEdit | null, produ
   if (edit.kind === 'product') {
     const p = products.find(value => value.id === edit.productId);
     if (!p) return true;
-    if (!equippable(p)) return !player.ownedItems.includes(p.id) && !player.irlItems.includes(p.id);
+    if (!equippable(p)) return !ownsProductColor(player, p, edit.configuration.variantId);
     const c = edit.configuration, saved = player.customizations[p.id];
     return player.equipped[equipmentSlot(p)] !== p.id || player.variants[p.id] !== c.variantId ||
       (saved?.customNumber ?? '') !== (c.customNumber ?? '') || (saved?.hoodEnabled === true) !== (c.hoodEnabled === true);

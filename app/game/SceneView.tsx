@@ -20,6 +20,7 @@ import {
   trafficFrontReach,
 } from './trafficDomain';
 import { animateTraffic } from './trafficModels';
+import { trafficYaw } from './trafficProgression';
 import { createRideParticles, particleAnchors } from './rideParticles';
 import { createCrashTravel, type CrashDirection } from './crashTravel';
 import { makeSignCollectibleView } from './signCollectibleView';
@@ -164,7 +165,8 @@ export default function SceneView({
     const low = player.settings.quality === 'low';
     // Cap render resolution before it can multiply the Three.js workload on
     // high-DPI desktop displays. Gameplay uses the same fixed-step engine.
-    const pixelCap = low ? 1 : mode === 'ride' ? 1.35 : 1.2;
+    const mobileViewport = window.matchMedia('(pointer: coarse)').matches;
+    const pixelCap = low ? 1 : mobileViewport ? 2 : mode === 'ride' ? 1.35 : 1.2;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelCap));
     renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#323232');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -791,7 +793,7 @@ export default function SceneView({
             group.userData.spawnId = o.spawnId;
           }
           group.visible = o.active;
-          group.rotation.set(0, 0, 0);
+          group.rotation.set(0, trafficYaw(o.velocity, o.laneShift), 0);
           group.scale.set(1, 1, 1);
           if (!o.active) {
             // Pooled groups may later represent a different vehicle. Never
@@ -827,7 +829,7 @@ export default function SceneView({
           }
           animateTraffic(
             group,
-            o.velocity,
+            Math.abs(o.velocity),
             moving || (crashed && crashActive) ? dt : 0,
           );
         });

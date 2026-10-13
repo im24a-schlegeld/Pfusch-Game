@@ -6,9 +6,22 @@
     <meta name="theme-color" content="#101112" />
     <meta name="description" content="Wheelie Escape von PFUSCH. Fahre Wheelies, weiche dem Verkehr aus und baue deine Garage auf." />
     <title>Wheelie Escape</title>
+    <link rel="canonical" href="https://game.pfusch-clothing.ch/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PFUSCH" />
+    <meta property="og:locale" content="de_CH" />
+    <meta property="og:title" content="PFUSCH · Wheelie Escape" />
+    <meta property="og:description" content="Zeig deinen Highscore. Fahre Wheelies, sammle Punkte und fordere deine Freunde heraus." />
+    <meta property="og:url" content="https://game.pfusch-clothing.ch/" />
+    <meta property="og:image" content="https://game.pfusch-clothing.ch/branding/loading-trailer.8d1469db74.webp" />
+    <meta property="og:image:alt" content="PFUSCH Wheelie Escape: Supermoto auf der Strasse" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PFUSCH · Wheelie Escape" />
+    <meta name="twitter:description" content="Zeig deinen Highscore und fordere deine Freunde heraus." />
+    <meta name="twitter:image" content="https://game.pfusch-clothing.ch/branding/loading-trailer.8d1469db74.webp" />
     <link rel="icon" type="image/png" href="https://pfusch-clothing.ch/cdn/shop/files/Design_ohne_Titel_28_-modified.png" />
-    <link rel="preload" as="image" href="/branding/loading-trailer.webp" media="(aspect-ratio > 3/4)" fetchpriority="high" />
-    <link rel="preload" as="image" href="/branding/loading-trailer-portrait.webp" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/branding/loading-trailer.8d1469db74.webp" media="(aspect-ratio > 3/4)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/branding/loading-trailer-portrait.5040e2a548.webp" media="(max-aspect-ratio: 3/4)" fetchpriority="high" />
     <style>
       /* Keep a useful recovery surface visible if the app bundle or WebGL boot
          fails before React can render its own loading/error screen. React
@@ -38,18 +51,23 @@
       #boot-fallback .boot-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
       #boot-fallback::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg,#0b0b0b29,transparent 30%,transparent 61%,#0b0b0be6); }
       #boot-fallback .boot-status { display: flex; align-items: center; gap: 10px; color: #ddd; font-size: 9px; letter-spacing: .12em; }
+      #boot-fallback .boot-caption { width: 100%; max-width: 420px; min-width: 0; }
+      #boot-fallback .boot-kicker { display: block; font: 900 clamp(23px,3vw,36px)/1.05 Arial,sans-serif; letter-spacing: -.045em; margin-bottom: 15px; }
+      #boot-fallback .boot-track { display: block; margin-top: 14px; height: 3px; background: #ffffff25; overflow: hidden; }
+      #boot-fallback .boot-track i { display: block; height: 100%; width: 35%; background: #dedede; animation: boot-slide 1.35s ease-in-out infinite alternate; }
       #boot-fallback .boot-brand { position: absolute; left: calc(env(safe-area-inset-left,0px) + clamp(20px,4vw,52px)); top: calc(env(safe-area-inset-top,0px) + clamp(18px,4dvh,42px)); display: inline-flex; width: 240px; max-width: calc(100% - 40px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)); flex-direction: column; align-items: center; }
       #boot-fallback .boot-brand-signs { position: relative; display: block; width: 100%; aspect-ratio: 2.85; }
       #boot-fallback .boot-brand-signs > img { position: absolute; inset: 0 5% 0 0; width: 95%; max-width: none; height: 100%; object-fit: contain; transform: rotate(6deg); }
       #boot-fallback .boot-brand-stop { position: absolute; width: 6.2%; height: auto; right: 0; bottom: 8%; }
       #boot-fallback .boot-brand-title { display: block; width: 57%; height: auto; margin-top: -6%; object-fit: contain; }
-      #boot-fallback .boot-spinner {
-        width: 18px;
-        height: 18px;
-        border: 2px solid #5e5e5e;
-        border-top-color: #f0f0f0;
-        border-radius: 50%;
-        animation: boot-spin .72s linear infinite;
+      #boot-fallback .boot-bike {
+        flex: none;
+        display: block;
+        width: 19px;
+        height: 19px;
+        transform-box: view-box;
+        transform-origin: 20.833% 70.833%;
+        animation: boot-wheelie 2.8s ease-in-out infinite;
       }
       #boot-fallback button {
         min-height: 42px;
@@ -63,17 +81,18 @@
       }
       @media(max-aspect-ratio:3/4){#boot-fallback .boot-art{object-position:center}}
       @media(max-width:600px){#boot-fallback{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 24px)}#boot-fallback .boot-brand{width:180px}}
-      @media(max-height:420px){#boot-fallback{padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 15px)}#boot-fallback .boot-brand{top:calc(env(safe-area-inset-top,0px) + 14px);width:180px}}
-      @keyframes boot-spin { to { transform: rotate(360deg); } }
-      @media(prefers-reduced-motion:reduce){#boot-fallback .boot-spinner{animation:none}}
+      @media(max-height:420px){#boot-fallback{padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 15px)}#boot-fallback .boot-brand{top:calc(env(safe-area-inset-top,0px) + 14px);width:180px}#boot-fallback .boot-kicker{display:none}}
+      @keyframes boot-wheelie { 0%,18%,100%{transform:rotate(0)}40%,62%{transform:rotate(-24deg)}76%{transform:rotate(-18deg)} }
+      @keyframes boot-slide { from{transform:translateX(-35%)}to{transform:translateX(220%)} }
+      @media(prefers-reduced-motion:reduce){#boot-fallback .boot-bike,#boot-fallback .boot-track i{animation:none}#boot-fallback .boot-track i{width:100%;opacity:.6}}
     </style>
   </head>
   <body>
     <div id="root">
       <main id="boot-fallback" aria-live="polite">
         <picture>
-          <source media="(max-aspect-ratio: 3/4)" srcset="/branding/loading-trailer-portrait.webp" />
-          <img class="boot-art" src="/branding/loading-trailer.webp" alt="" fetchpriority="high" />
+          <source media="(max-aspect-ratio: 3/4)" srcset="/branding/loading-trailer-portrait.5040e2a548.webp" />
+          <img class="boot-art" src="/branding/loading-trailer.8d1469db74.webp" alt="" fetchpriority="high" />
         </picture>
         <span class="boot-brand" role="img" aria-label="PFUSCH Wheelie Escape">
           <span class="boot-brand-signs">
@@ -85,7 +104,19 @@
           </span>
           <img class="boot-brand-title" src="/branding/wheelie-escape-wordmark-a.png" alt="" />
         </span>
-        <span class="boot-status"><i class="boot-spinner" aria-hidden="true"></i>GARAGE WIRD GELADEN</span>
+        <div class="boot-caption">
+          <span class="boot-kicker" aria-hidden="true">GLEICH GEHT’S LOS.</span>
+          <span class="boot-status">
+            <svg class="boot-bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m18 14-1-3" />
+              <path d="m3 9 6 2a2 2 0 0 1 2-2h2a2 2 0 0 1 1.99 1.81" />
+              <path d="M8 17h3a1 1 0 0 0 1-1 6 6 0 0 1 6-6 1 1 0 0 0 1-1v-.75A5 5 0 0 0 17 5" />
+              <circle cx="19" cy="17" r="3" /><circle cx="5" cy="17" r="3" />
+            </svg>
+            DEIN SETUP WIRD GELADEN
+          </span>
+          <span class="boot-track" aria-hidden="true"><i></i></span>
+        </div>
         <button type="button" onclick="window.location.reload()">NEU LADEN</button>
       </main>
     </div>

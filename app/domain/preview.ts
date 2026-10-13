@@ -1,21 +1,21 @@
 import type { Player, Product, ProductConfiguration, Slot } from './types';
+import { ownsProductColor } from './productOwnership';
 export const equipmentSlot = (product: Product): Slot =>
   product.handle === 'schlusselanhanger' ? 'keychain' : product.category;
 export const equippable = (product: Product) =>
   product.category !== 'collectible';
 export const supportsHood = (product: Product) =>
   product.handle === 'unisex-windbreaker';
-export const canEquip = (player: Player, product: Product) =>
+export const canEquip = (player: Player, product: Product, variantId = player.variants[product.id] ?? product.variants[0]?.id ?? '') =>
   equippable(product) &&
-  (player.ownedItems.includes(product.id) ||
-    player.irlItems.includes(product.id));
+  ownsProductColor(player, product, variantId);
 export function initialConfiguration(
   player: Player,
   product: Product,
 ): ProductConfiguration {
   const variant =
     product.variants.find((v) => v.id === player.variants[product.id]) ??
-    product.variants[0];
+    product.variants.find(v => ownsProductColor(player, product, v.id)) ?? product.variants[0];
   return {
     productId: product.id,
     variantId: variant?.id ?? '',
@@ -70,7 +70,7 @@ export function equipConfiguration(
   product: Product,
   config: ProductConfiguration,
 ): Player | null {
-  if (!canEquip(player, product) || !validConfiguration(product, config))
+  if (!canEquip(player, product, config.variantId) || !validConfiguration(product, config))
     return null;
   return previewLoadout(player, product, config);
 }

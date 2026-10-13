@@ -61,8 +61,8 @@ export default function ProductPreview({
     variant?.image ??
     product.localImage ??
     product.image;
-  const permanent = canEquip(player, product),
-    state = ownership(player, product),
+  const permanent = canEquip(player, product, configuration.variantId),
+    state = ownership(player, product, configuration.variantId),
     numberEnabled = product.preview?.numberCustomization;
   const [numberFont, setNumberFont] = useState<'loading' | 'ready' | 'error'>(
     'loading',

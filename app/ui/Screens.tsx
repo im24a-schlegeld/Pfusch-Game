@@ -34,6 +34,8 @@ import { Coin, ScreenHeading, XpBar, fmt } from './shared';
 import { dayKey, normalizeLeaderboardName, refreshDaily } from '../domain/progression';
 import { dailyChallengesForDate } from '../domain/dailyChallenges';
 import { dailySignMask } from '../domain/dailySigns';
+import { rankedGameShare, type SharePeriod } from '../domain/gameShare';
+import { ShareAction } from './GameShare';
 import SignProgress from './SignProgress';
 import { useTouchInput } from './useTouchInput';
 import './ride-touch-controls.css';
@@ -281,7 +283,7 @@ export function Leaderboard({
   const [period, setPeriod] = useState<'Today' | 'This week' | 'All time'>(
     'Today',
   );
-  const [result, setResult] = useState<{ snapshot: LeaderboardSnapshot | null; loading: boolean; error: boolean }>({ snapshot: null, loading: true, error: false });
+  const [result, setResult] = useState<{ snapshot: LeaderboardSnapshot | null; period: string; date: string; loading: boolean; error: boolean }>({ snapshot: null, period, date: dayKey(), loading: true, error: false });
   const [revision, setRevision] = useState(0);
   const saveRevision = useRef(0);
   const [draftName, setDraftName] = useState(player.leaderboardName);
@@ -302,10 +304,11 @@ export function Leaderboard({
   useEffect(() => {
     let current = true;
     const savedAtStart = saveRevision.current;
-    setResult({ snapshot: null, loading: true, error: false });
+    const date = dayKey();
+    setResult({ snapshot: null, period, date, loading: true, error: false });
     const fetch = services.leaderboard.fetch;
     if (!fetch) {
-      setResult({ snapshot: { entries: services.leaderboard.list(player, period), source: 'local', message: 'Deine gespeicherten Fahrten auf diesem Gerät.' }, loading: false, error: false });
+      setResult({ snapshot: { entries: services.leaderboard.list(player, period), source: 'local', message: 'Deine gespeicherten Fahrten auf diesem Gerät.' }, period, date, loading: false, error: false });
       return;
     }
     void (async () => {
@@ -313,9 +316,9 @@ export function Leaderboard({
       await services.players.flush?.();
       if (!current || savedAtStart !== saveRevision.current) return;
       const snapshot = await fetch.call(services.leaderboard, player, period);
-      if (current && savedAtStart === saveRevision.current) setResult({ snapshot, loading: false, error: false });
+      if (current && savedAtStart === saveRevision.current) setResult({ snapshot, period, date, loading: false, error: false });
     })().catch(() => {
-      if (current && savedAtStart === saveRevision.current) setResult({ snapshot: null, loading: false, error: true });
+      if (current && savedAtStart === saveRevision.current) setResult({ snapshot: null, period, date, loading: false, error: true });
     });
     return () => { current = false; };
   }, [services.leaderboard, services.players, player, period, revision]);
@@ -323,6 +326,9 @@ export function Leaderboard({
   const online = result.snapshot?.source === 'shopify';
   const normalizedName = normalizeLeaderboardName(draftName);
   const invalidName = Boolean(draftName.trim()) && !normalizedName;
+  const sharePeriod: SharePeriod = period === 'Today' ? 'day' : period === 'This week' ? 'week' : 'all';
+  const rankShare = !result.loading && !result.error && result.period === period
+    ? rankedGameShare(result.snapshot, sharePeriod, result.date) : null;
   return (
     <main className="standard-page narrow">
       <ScreenHeading
@@ -334,6 +340,14 @@ export function Leaderboard({
         <div className="page-feature"><Trophy aria-hidden="true" /><p>{online ? 'Die besten Fahrten der Community.' : 'Deine Bestleistungen im gewählten Zeitraum.'}</p></div>
         <span className="tag">{online ? <Globe2 size={13} aria-hidden="true" /> : <Route size={13} aria-hidden="true" />}{online ? 'COMMUNITY' : 'DEINE BESTWERTE'}</span>
       </div>
+      <section className="game-share-section" aria-label="Bestleistung teilen und Freunde einladen">
+        <p>Dein Highscore <b>{fmt(player.highScore)}</b></p>
+        <div className="game-share-actions">
+          <ShareAction label="HIGHSCORE TEILEN" share={{ kind: 'score', score: player.highScore, name: player.leaderboardName, date: dayKey() }} />
+          {rankShare && <ShareAction label={`PLATZ ${rankShare.rank} TEILEN`} share={rankShare} />}
+          <ShareAction label="FREUNDE EINLADEN" share={{ kind: 'invite', name: player.leaderboardName }} />
+        </div>
+      </section>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
         <TabsList className="ranking-tabs" variant="line">
           {(['Today', 'This week', 'All time'] as const).map((p) => (
@@ -455,7 +469,7 @@ export function SettingsScreen({
           <label htmlFor="quality">
             <b>Performance-Modus</b>
             <span>
-              Niedrigere Auflösung und weniger Details für ältere Geräte.
+              Standard: hohe Bildqualität. Performance-Modus reduziert Auflösung und Details.
             </span>
           </label>
           <Switch

@@ -44,6 +44,7 @@ import {
   trafficSeparatedUntilPass,
   trafficWaveSpacing,
 } from './trafficFlow';
+import { TRAFFIC_PROGRESSION, trafficLaneProgress, type TrafficLaneShift } from './trafficProgression';
 import { SPEED_CAMERA, SpeedCameraSchedule } from './speedCamera';
 import {
   POLICE,
@@ -82,6 +83,7 @@ export interface Obstacle {
   airNearMiss: boolean;
   lateEvade: boolean;
   police: boolean;
+  laneShift: TrafficLaneShift | null;
 }
 export interface GameEvent {
   text: string;
@@ -102,6 +104,7 @@ export const STUNT_POINTS = Object.freeze({
   airEvade: 240,
   wheelieLaneSwitch: 5,
   policeEscape: 500,
+  scrapePerMeter: 24,
 });
 export interface SignPickup {
   active: boolean;
@@ -210,6 +213,7 @@ export class Engine {
     airNearMiss: false,
     lateEvade: false,
     police: false,
+    laneShift: null,
   }));
   readonly world: World;
   private rng: number;
@@ -536,6 +540,11 @@ export class Engine {
           TRAFFIC_FLOW.maximumTrafficSpeed,
           Math.max(0, this.speed - TRAFFIC_FLOW.towClosingSpeed),
         );
+      // One seeded decision per wave; retries preserve it. Oncoming vehicles
+      // use the same pool, spacing checks and collision path as other cars.
+      if (first === 'car' && this.score >= TRAFFIC_PROGRESSION.oncomingScore &&
+        this.random() < TRAFFIC_PROGRESSION.oncomingChance)
+        velocity = -TRAFFIC_PROGRESSION.oncomingSpeed;
       this.pendingWave = { section, kinds, velocity };
     }
     const { kinds: nextKinds, velocity } = this.pendingWave;
@@ -607,7 +616,7 @@ export class Engine {
     let patrolSpawned = false;
     for (let i = 0; i < count; i++) {
       const patrol: boolean =
-        patrolReady && !patrolSpawned && nextKinds[i] === 'car';
+        patrolReady && !patrolSpawned && nextKinds[i] === 'car' && velocity >= 0;
       const vehicle = this.spawn(
         nextKinds[i],
         lanes[i],
@@ -617,6 +626,7 @@ export class Engine {
         patrol,
       );
       patrolSpawned ||= patrol && !!vehicle;
+      if (vehicle && count === 1) this.planTrafficLaneChange(vehicle);
     }
     if (patrolSpawned) this.nextPatrolDistance = this.distance + 1800;
     this.pendingWave = null;
@@ -631,6 +641,29 @@ export class Engine {
         this.random() * 4,
     );
     this.spawnWaveSign();
+  }
+  private planTrafficLaneChange(vehicle: Obstacle) {
+    // Move only from the middle into the other occupied-side lane. The wave's
+    // reserved safe edge remains open throughout the entire manoeuvre.
+    if (this.score < TRAFFIC_PROGRESSION.laneChangeScore || vehicle.kind !== 'car' ||
+      vehicle.police || vehicle.velocity <= 0 || vehicle.lane !== 0 ||
+      this.nextSafe === 0 || this.arrivalTime(vehicle.z, vehicle.velocity) < TRAFFIC_PROGRESSION.minimumChangeArrival)
+      return;
+    // Start close enough for the motion to be readable, but finish with ample
+    // reaction time before the rider reaches the car.
+    const wait = Math.max(0, this.arrivalTime(vehicle.z, vehicle.velocity) - TRAFFIC_PROGRESSION.laneChangeApproach);
+    const duration = wait + TRAFFIC_PROGRESSION.laneChangeDelay + TRAFFIC_PROGRESSION.laneChangeSeconds;
+    const clear = this.obstacles.every(other => {
+      if (!other.active || other === vehicle) return true;
+      const halfLength = isRoadEvent(other.kind)
+        ? ROAD_EVENTS[other.kind].contactHalfLength : TRAFFIC_SHAPES[other.kind].contactHalfLength;
+      const gap = vehicle.z - other.z;
+      const endGap = gap + (vehicle.velocity - other.velocity) * duration;
+      return gap * endGap > 0 && Math.min(Math.abs(gap), Math.abs(endGap)) >
+        TRAFFIC_SHAPES.car.contactHalfLength + halfLength + TRAFFIC_FLOW.minimumVehicleGap;
+    });
+    if (clear && this.random() < TRAFFIC_PROGRESSION.laneChangeChance)
+      vehicle.laneShift = { from: vehicle.lane, to: -this.nextSafe, age: -wait };
   }
   private spawnWaveSign() {
     const unavailable = this.collectedSigns | this.excludedSigns;
@@ -758,7 +791,7 @@ export class Engine {
           kind === 'construction' || isRoadEvent(kind)
             ? 0
             : Math.max(
-                0,
+                kind === 'car' && !police ? -TRAFFIC_PROGRESSION.oncomingSpeed : 0,
                 Math.min(
                   TRAFFIC_FLOW.maximumTrafficSpeed,
                   Number.isFinite(velocity) ? velocity : 0,
@@ -768,6 +801,7 @@ export class Engine {
         airNearMiss: false,
         lateEvade: false,
         police,
+        laneShift: null,
       });
     }
     return o;
@@ -948,6 +982,7 @@ export class Engine {
       velocity: p.velocity,
       passed: true,
       color: 0,
+      laneShift: null,
     };
     this.crash('POLIZEI HAT DICH GERAMMT', this.policeRamObstacle);
   }
@@ -1405,7 +1440,7 @@ export class Engine {
       this.wheelie && this.height === 0 ? scrape.intensity : 0;
     this.scrapeMaterial = this.scrapeIntensity > 0 ? scrape.material : null;
     if (this.scrapeIntensity > 0) {
-      this.gain('SCRAPE', travel * 12 * this.scrapeIntensity, 'scrape');
+      this.gain('SCRAPE', travel * STUNT_POINTS.scrapePerMeter * this.scrapeIntensity, 'scrape');
     }
     this.balanceQuality = this.wheelie
       ? balanceAccuracy(this, this.balanceProfile)
@@ -1434,6 +1469,16 @@ export class Engine {
       if (!o.active) continue;
       const prev = o.z;
       o.z -= travel - o.velocity * dt;
+      if (o.laneShift) {
+        const shift = o.laneShift;
+        shift.age += dt;
+        o.offsetX = (shift.to - shift.from) * LANE * trafficLaneProgress(shift.age);
+        if (shift.age >= TRAFFIC_PROGRESSION.laneChangeDelay + TRAFFIC_PROGRESSION.laneChangeSeconds) {
+          o.lane = shift.to;
+          o.offsetX = 0;
+          o.laneShift = null;
+        }
+      }
       const dx = Math.abs(this.x - (o.lane * LANE + o.offsetX));
       const road = isRoadEvent(o.kind) ? ROAD_EVENTS[o.kind] : undefined;
       const traffic = !isRoadEvent(o.kind) ? TRAFFIC_SHAPES[o.kind] : undefined;
@@ -1483,7 +1528,7 @@ export class Engine {
           : (road?.height ?? traffic!.height);
       const airborneCar = o.kind === 'car' && this.height > 0.12;
       const tireClearance = airborneCar
-        ? carJumpClearance(this.bike.id, this.height, contactPitch, o.z, dx, o.police)
+        ? carJumpClearance(this.bike.id, this.height, contactPitch, o.z, dx, o.police, o.velocity < 0)
         : -Infinity;
       if (this.towJumpActive && this.towTransferCars.has(o)
         && overlap && dx < contactWidth && o.z < TRAFFIC_SHAPES.car.rearZ

@@ -1,6 +1,5 @@
 import { BIKES, PAINTS, RIMS } from './config.js';
-import { DARK_CARBON } from './carbon.js';
-import { isHelmet, isHelmetColor, isVisorColor } from './helmet.js';
+import { isHelmet, isHelmetColor, isVisorColor, unownedHelmetFinishes } from './helmet.js';
 import { canEquip, equipmentSlot, validConfiguration } from './preview.js';
 import { helmetStickerTarget, isSticker, MAX_STICKERS, validStickerForTarget } from './stickers.js';
 import type { Player, PlayerAppearance, Product, SavedSetup, Slot, StickerPlacement } from './types';
@@ -89,7 +88,7 @@ function available(player: Player, selection: PlayerAppearance): boolean {
   const bike = BIKES.find(candidate => candidate.id === selection.bike);
   return !!bike && player.level >= bike.level && owns(player, `bike:${bike.id}`) &&
     owns(player, `paint:${selection.paint}`) && owns(player, `rims:${selection.rims}`) &&
-    (['helmetColor', 'helmetVisor'] as const).every(slot => selection[slot] !== DARK_CARBON || owns(player, `${slot}:${DARK_CARBON}`)) &&
+    unownedHelmetFinishes(player, selection).length === 0 &&
     Object.values(selection.equipped).every(id => owns(player, id)) &&
     Object.values(selection.stickers).every(placements => placements.every(sticker => owns(player, sticker.productId)));
 }
@@ -148,7 +147,7 @@ export function applySetup(player: Player, id: string, products: Product[]): Pla
     // Old equipped garments may predate remembered variants. Match the garage's
     // first-variant default, but never replace an explicitly saved stale variant.
     const variantId = selection.variants[productId] ?? product?.variants[0]?.id ?? '';
-    if (!product || !canEquip(player, product) || equipmentSlot(product) !== slot ||
+    if (!product || !canEquip(player, product, variantId) || equipmentSlot(product) !== slot ||
       !validConfiguration(product, { productId, variantId,
         ...selection.customizations[productId] })) return null;
     selection.variants[productId] = variantId;

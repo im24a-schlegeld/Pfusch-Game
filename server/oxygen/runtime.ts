@@ -1,5 +1,6 @@
 import { ApiError, readShopifyConfig } from '../shopify/auth.js';
 import { handlePlayerRequest } from '../shopify/playerEndpoint.js';
+import { loadCustomerPurchases } from '../shopify/purchaseStore.js';
 import { handleRankingRequest, updateRanking } from '../shopify/leaderboard.js';
 import { handleRewardRequest, MAX_REWARD_FINISH_BODY_BYTES, type RewardAction } from '../shopify/rewardEndpoint.js';
 import { readBoundedWebJson, withFetchDeadline } from '../shopify/http.js';
@@ -43,12 +44,16 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
     // Capture identity only in this server closure; request headers/query/body cannot supply it.
     const authenticate = () => authenticateOxygen(request, config, boundedFetch);
     const shopify = readShopifyConfig(env);
+    // Purchase lookup has its own small budget; it cannot consume the cloud-save deadline.
+    let playerFetch: typeof fetch | undefined;
+    const requestPlayer: typeof fetch = (input, init) => (playerFetch ??= withFetchDeadline(fetcher, 10000))(input, init);
     const result = rewardAction
       ? await handleRewardRequest(rewardAction, { method: request.method, url: request.url, contentType: request.headers.get('content-type') ?? undefined,
         readBody: () => readBoundedWebJson(request, rewardAction === 'run/finish' ? MAX_REWARD_FINISH_BODY_BYTES : undefined) }, { config: shopify, request: boundedFetch, authenticate, enabled: env.SHOPIFY_GAME_REWARDS_ENABLED === 'true' })
       : path === '/api/player'
       ? await handlePlayerRequest({ method: request.method, url: request.url, contentType: request.headers.get('content-type') ?? undefined,
-        readBody: () => readBoundedWebJson(request) }, { config: shopify, request: boundedFetch, authenticate,
+        readBody: () => readBoundedWebJson(request) }, { config: shopify, request: requestPlayer, authenticate,
+        purchases: shopify ? customerId => loadCustomerPurchases(shopify, customerId, withFetchDeadline(fetcher, 5000)) : undefined,
         afterSave: shopify ? (customerId, player) => updateRanking(shopify, customerId, player, withFetchDeadline(fetcher, 1500)) : undefined })
       : await handleRankingRequest(request.method, request.url, shopify, boundedFetch, Date.now(), authenticate);
     const response = json(result.status, result.body);
