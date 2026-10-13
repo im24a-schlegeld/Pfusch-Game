@@ -74,7 +74,8 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       : await handleRankingRequest(request.method, request.url, shopify, boundedFetch, Date.now(), authenticate);
     // Retry a pending first-ride credit on the friend's next connection too,
     // even when the previous save succeeded but its secondary reward call failed.
-    if (path === '/api/player' && request.method === 'GET' && result.status === 200 && shopify) {
+    if (path === '/api/player' && request.method === 'GET' && result.status === 200 && shopify
+      && 'customer' in result.body && 'player' in result.body) {
       const customer = result.body.customer as { id?: string } | undefined;
       const player = result.body.player as { runsPlayed?: number } | undefined;
       if (customer?.id && player?.runsPlayed && player.runsPlayed > 0)
