@@ -1,3 +1,7 @@
 .game-brand { display: inline-flex; width: 100%; flex-direction: column; align-items: center; flex: 0 0 auto; }
 .game-brand .game-brand-title { display: block; width: 57%; height: auto; margin-top: -6%; object-fit: contain; transform: none; }
 .game-signs-home > .game-brand { width: 108px; }
+/* Center the visible Signs lockup, rather than a taller empty logo box. */
+.app-shell > .topbar > .brand > .game-brand.brand-logo { height: auto !important; }
+/* The rotated supplied artwork and its STOP sign carry extra weight below center. */
+.app-shell > :is(.topbar, .account-header-embedded) .game-brand-signs { transform: translateY(-5%); }
