@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import artwork from '../../app/ui/loadingArtwork.json';
+import { readFileSync } from 'node:fs';
+
+const artwork = JSON.parse(readFileSync(new URL('../../app/ui/loadingArtwork.json', import.meta.url), 'utf8')) as {
+  desktop: string;
+  portrait: string;
+};
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
   test.describe(`current loading art ${viewport.width}x${viewport.height}`, () => {
