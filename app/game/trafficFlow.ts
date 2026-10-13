@@ -22,6 +22,11 @@ export function trafficWaveSpacing(
   const d = Math.max(0, Math.min(1, difficulty));
   return (initial + (minimum - initial) * d) * TRAFFIC_FLOW.density * (1 - trafficIntensity(score) * 0.18);
 }
+/** Recheck an already chosen wave sooner later in a run. This only removes
+ * scheduler idle time after a safe gap opens; every safety check still runs. */
+export function trafficSpawnRetry(score: number) {
+  return 7 - trafficIntensity(score) * 6.6;
+}
 /** First/last contact, not just vehicle centres, must have a reachable exit. */
 export function trafficArrivalGap(
   riderSpeed: number,

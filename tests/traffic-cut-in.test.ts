@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BIKES } from '../app/domain/config';
 import { Engine, LANE, STEP } from '../app/game/engine';
-import { TRAFFIC_FLOW, trafficArrivalGap, trafficWaveSpacing } from '../app/game/trafficFlow';
+import { TRAFFIC_FLOW, trafficArrivalGap, trafficSpawnRetry, trafficWaveSpacing } from '../app/game/trafficFlow';
 import { TRAFFIC_PROGRESSION, trafficCutInTarget, trafficIntensity } from '../app/game/trafficProgression';
 
 function cutIn(bike = BIKES[3], from = 0, to = 1, z = 55) {
@@ -86,7 +86,7 @@ describe('readable traffic cut-ins', () => {
 
 describe('bounded progressive traffic density', () => {
   it('tightens spawn spacing while retaining two swipes and reaction between contact windows', () => {
-    let previousGap = Infinity, previousSpacing = Infinity;
+    let previousGap = Infinity, previousSpacing = Infinity, previousRetry = Infinity;
     for (const score of [0, 25_000, 50_000, 100_000, 150_000, 200_000, 1_000_000]) {
       const gap = trafficArrivalGap(45, 10, -14, 4, 7, score);
       const contactDurations = 4 / (45 - 10) + 7 / (45 + 14);
@@ -95,6 +95,10 @@ describe('bounded progressive traffic density', () => {
       const spacing = trafficWaveSpacing(68, 36, .7, score);
       expect(spacing).toBeLessThanOrEqual(previousSpacing);
       expect(spacing).toBeGreaterThan(0);
+      const retry = trafficSpawnRetry(score);
+      expect(retry).toBeGreaterThan(0);
+      expect(retry).toBeLessThanOrEqual(previousRetry);
+      previousRetry = retry;
       previousGap = gap; previousSpacing = spacing;
     }
     expect(trafficIntensity(-1)).toBe(0);
@@ -105,6 +109,7 @@ describe('bounded progressive traffic density', () => {
 
   it('generates more vehicles later while retaining the same fixed obstacle pool', () => {
     const counts = [0, 0];
+    const observations: { seed: number; score: number; vehicles: number }[] = [];
     for (const seed of [47, 1741, 8191]) for (const [index, score] of [0, 200_000].entries()) {
       const engine = new Engine(BIKES[3], seed);
       const seen = new Set<number>();
@@ -121,7 +126,9 @@ describe('bounded progressive traffic density', () => {
       }
       expect(engine.phase).toBe('playing');
       expect(engine.obstacles).toHaveLength(32);
+      observations.push({ seed, score, vehicles: seen.size });
     }
+    console.info(JSON.stringify({ trafficDensity: observations, totals: counts }));
     expect(counts[0]).toBeGreaterThan(0);
     expect(counts[1]).toBeGreaterThan(counts[0]);
   });

@@ -14,6 +14,8 @@ export const SPEED_CAMERA = Object.freeze({
   searchStep: 12,
   searchEnd: 198,
   lookBehind: 28,
+  // Photograph an approaching stunt while the roadside unit is still ahead.
+  triggerAhead: 20,
   triggerRange: 4,
 });
 

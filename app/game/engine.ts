@@ -41,6 +41,7 @@ import { rampEntryImpulse, consumeRampImpulse } from './rampEntry';
 import {
   TRAFFIC_FLOW,
   trafficArrivalGap,
+  trafficSpawnRetry,
   trafficSeparatedUntilPass,
   trafficWaveSpacing,
 } from './trafficFlow';
@@ -631,7 +632,7 @@ export class Engine {
             ),
       )
     ) {
-      this.spawnIn = 7;
+      this.spawnIn = trafficSpawnRetry(this.score);
       return;
     }
     // Arrival gaps protect the rider, while this guard protects the entire
@@ -652,7 +653,7 @@ export class Engine {
         sharedLifetime,
       );
     }))) {
-      this.spawnIn = 7;
+      this.spawnIn = trafficSpawnRetry(this.score);
       return;
     }
     // Each new wave closes the previous safe lane. Sweep through adjacent
@@ -963,7 +964,8 @@ export class Engine {
       camera.triggered ||
       this.policeVehicle.phase !== 'idle' ||
       this.elapsed < this.policeReadyAt ||
-      Math.abs(camera.distance - this.distance) > SPEED_CAMERA.triggerRange ||
+      camera.distance - this.distance > SPEED_CAMERA.triggerAhead ||
+      camera.distance - this.distance < -SPEED_CAMERA.triggerRange ||
       !this.doingPoliceStunt()
     )
       return;

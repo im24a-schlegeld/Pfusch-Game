@@ -8,6 +8,7 @@ import {
   type Obstacle,
 } from '../app/game/engine';
 import { POLICE, firstPoliceHit } from '../app/game/policePursuit';
+import { SPEED_CAMERA } from '../app/game/speedCamera';
 
 function ride() {
   const engine = new Engine(BIKES.find(bike => bike.id === '450')!, 539);
@@ -573,6 +574,39 @@ describe('speed camera pursuit integration', () => {
     expect(engine.policeChase).toBe(false);
     expect(engine.blitzerFlashSerial).toBe(0);
     expect(engine.speedCamera.triggered).toBe(false);
+  });
+
+  it('flashes an approaching stunt while the camera is still clearly ahead, exactly once', () => {
+    const engine = ride();
+    engine.score = SPEED_CAMERA.firstScore;
+    frame(engine);
+    engine.distance = engine.speedCamera.distance - SPEED_CAMERA.triggerAhead - 2;
+    engine.wheelieAngle = 0.6;
+    frame(engine);
+    expect(engine.blitzerFlashSerial).toBe(0);
+    for (let tick = 0; tick < 20 && !engine.speedCamera.triggered; tick++) {
+      engine.wheelieAngle = 0.6;
+      engine.wheelieAngularVelocity = 0;
+      frame(engine);
+    }
+    const ahead = engine.speedCamera.distance - engine.distance;
+    expect(ahead).toBeGreaterThan(19);
+    expect(ahead).toBeLessThanOrEqual(SPEED_CAMERA.triggerAhead);
+    expect(engine.blitzerFlashSerial).toBe(1);
+    expect(engine.policeChase).toBe(true);
+    for (let tick = 0; tick < 60; tick++) frame(engine);
+    expect(engine.blitzerFlashSerial).toBe(1);
+  });
+
+  it('does not expand the detection zone behind a camera already passed', () => {
+    const engine = ride();
+    engine.score = SPEED_CAMERA.firstScore;
+    frame(engine);
+    engine.distance = engine.speedCamera.distance + SPEED_CAMERA.triggerRange + 1;
+    engine.wheelieAngle = 0.6;
+    frame(engine);
+    expect(engine.blitzerFlashSerial).toBe(0);
+    expect(engine.policeChase).toBe(false);
   });
 
   it('flashes once for a stunt and keeps the pursuing police offscreen', () => {
