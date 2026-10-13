@@ -1142,7 +1142,7 @@ export default function SceneView({
           o instanceof THREE.PointLight
         )
           o.shadow.dispose();
-        if (o instanceof THREE.Mesh) {
+        if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) {
           geometries.add(o.geometry);
           if (Array.isArray(o.material)) o.material.forEach((m) => mats.add(m));
           else mats.add(o.material);
@@ -1150,7 +1150,7 @@ export default function SceneView({
       });
       templates.forEach((t) =>
         t.traverse((o) => {
-          if (o instanceof THREE.Mesh) {
+          if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) {
             geometries.add(o.geometry);
             (Array.isArray(o.material) ? o.material : [o.material]).forEach(
               (m) => mats.add(m),
@@ -1161,7 +1161,7 @@ export default function SceneView({
       variantSets.forEach((variants) =>
         variants.forEach((t) =>
           t.traverse((o) => {
-            if (o instanceof THREE.Mesh) {
+            if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) {
               geometries.add(o.geometry);
               (Array.isArray(o.material) ? o.material : [o.material]).forEach(
                 (m) => mats.add(m),

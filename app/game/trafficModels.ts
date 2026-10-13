@@ -3,6 +3,7 @@ import type { TrafficLaneShift } from './trafficProgression';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TRAFFIC_SHAPES, TOW_RAMP, towRampHeight } from './trafficDomain';
 import { CAR_BODY_PROFILE, CAR_CABIN_PROFILE } from './carClearance';
+import { createTrafficContour } from './trafficContours';
 
 type Point = readonly [number, number, number];
 type Ring = readonly [
@@ -719,7 +720,12 @@ export function makeDetailedTraffic(
         );
     }
   }
+  const contour = createTrafficContour(
+    parts.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
+    root.children.filter((child): child is THREE.Group => child instanceof THREE.Group && child.name === 'traffic-wheel'),
+  );
   batchParts(parts);
+  root.add(contour);
   if (kind === 'car') {
     // One pooled lamp moves to the committed side; no lights or glow passes.
     const signalMaterial = amber.clone();
