@@ -10,6 +10,20 @@ vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
   sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
 }));
+/** Mixed source meshes may contain painted bodywork and fixed black hardware.
+ * Inspect only finishes referenced by rendered triangle groups, not unused
+ * source entries retained in a material array. */
+function renderedMaterials(part: Mesh): MeshStandardMaterial[] {
+  const materials = Array.isArray(part.material) ? part.material : [part.material];
+  const indices = part.geometry.groups.length
+    ? [...new Set(part.geometry.groups.filter(group => group.count > 0).map(group => group.materialIndex ?? 0))]
+    : materials.map((_, index) => index);
+  return indices.map(index => {
+    expect(materials[index]).toBeInstanceOf(MeshStandardMaterial);
+    return materials[index] as MeshStandardMaterial;
+  });
+}
+
 describe('assembled motorcycle connections', () => {
   it('keeps the Ciao rear axle rigid and the native lamp attached to its steering', () => {
     const bike = makeBike({ ...newPlayer(), bike: '125' }, []);
@@ -78,19 +92,28 @@ describe('assembled motorcycle connections', () => {
       if (/seat/.test(part.name)) seats.push(part);
     });
     expect(painted.length).toBeGreaterThan(0); expect(seats.length).toBeGreaterThan(0);
-    for (const part of painted) expect((part.material as MeshStandardMaterial).color.getHexString()).toBe('e33126');
-    for (const part of seats) expect((part.material as MeshStandardMaterial).color.getHexString()).not.toBe('e33126');
-    const trim: Mesh[] = [], tyres: Mesh[] = [];
+    for (const part of painted) {
+      const finishes = renderedMaterials(part);
+      const bodyPaint = finishes.filter(material => !material.userData.fixedHardwareFinish);
+      expect(bodyPaint.length).toBeGreaterThan(0);
+      for (const material of bodyPaint) expect(material.color.getHexString()).toBe('e33126');
+      for (const material of finishes.filter(material => material.userData.fixedHardwareFinish))
+        expect(material.color.getHexString()).toBe('101214');
+    }
+    for (const part of seats) for (const material of renderedMaterials(part))
+      expect(material.color.getHexString()).not.toBe('e33126');
+    const trim: MeshStandardMaterial[] = [], tyres: Mesh[] = [];
     bike.body.traverse(part => {
       if (!(part instanceof Mesh) || !part.userData.importedPart) return;
-      if (/trim|dark/.test((part.material as MeshStandardMaterial).name)) trim.push(part);
+      trim.push(...renderedMaterials(part).filter(material => /trim|dark/.test(material.name)));
       if (part.name === 'tire') tyres.push(part);
     });
     expect(trim.length).toBeGreaterThan(0);
-    for (const part of trim) {
-      const actual = part.material as MeshStandardMaterial;
+    for (const actual of trim) {
       const definition = definitions.find(material => material.name === actual.name)!;
-      const expected = Array.isArray(definition.color) ? new Color().fromArray(definition.color) : new Color(definition.color);
+      expect(definition).toBeDefined();
+      const expected = actual.userData.fixedHardwareFinish ? new Color('#101214')
+        : Array.isArray(definition.color) ? new Color().fromArray(definition.color) : new Color(definition.color);
       // "trim" contains "rim": selecting wheel paint must not recolor it.
       expect(actual.color.equals(expected)).toBe(true);
     }

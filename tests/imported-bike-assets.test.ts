@@ -55,7 +55,17 @@ it('the Supermoto brake rings have real watertight through holes and distinct st
 
 it('the Supermoto keeps its visible engine case, a recessed lamp assembly and plain matte tires within the mobile budget', () => {
   const { manifest, binary } = loadModel('fs450');
-  expect(manifest.statistics.triangles).toBeLessThan(46000);
+  // 086da29 preserved the two 1,024-face rim hoops and replaced the painted
+  // sprocket openings with real geometry (43,177 -> 47,533 total triangles).
+  // Retain the earlier budget for the rest of the bike as well as a tight
+  // total cap; the extra wheel detail must not mask unrelated geometry growth.
+  const wheelDetails = manifest.parts.filter(part =>
+    part.material === 'fs450_rim_hoop' || part.material === 'fs450_sprocket_metal');
+  expect(wheelDetails).toHaveLength(3);
+  const wheelDetailTriangles = wheelDetails.reduce((sum, part) => sum + part.index.count / 3, 0);
+  expect(wheelDetailTriangles).toBeLessThanOrEqual(5124);
+  expect(manifest.statistics.triangles - wheelDetailTriangles).toBeLessThan(46000);
+  expect(manifest.statistics.triangles).toBeLessThan(48000);
   const engine = manifest.parts.find(part => part.material === 'fs450_engine_case')!;
   // The authored main case/cylinder is preserved while its surrounding fittings
   // may be reduced. This prevents the earlier crumpled simplified engine shell.

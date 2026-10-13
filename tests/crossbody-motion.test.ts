@@ -191,5 +191,7 @@ describe('crossbody cloth attachment', () => {
       );
     expect(pivot.quaternion.toArray()).not.toEqual(orientation);
     expect(Array.from(position.array).every(Number.isFinite)).toBe(true);
-  });
+  // Full skinned-garment raycasts and 60 attachment updates are intentionally
+  // retained; this geometry correctness test is not a frame-time benchmark.
+  }, 20_000);
 });

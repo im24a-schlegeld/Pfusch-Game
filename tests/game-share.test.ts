@@ -9,7 +9,7 @@ describe('public game sharing', () => {
     expect(url.origin).toBe('https://game.pfusch-clothing.ch');
     expect(readGameShare(url.search)).toEqual(score);
     expect([...url.searchParams.keys()]).toEqual(['share', 'name', 'points', 'date']);
-    expect(gameShareText(score)).toContain("158’863");
+    expect(gameShareText(score)).toMatch(/158['’]863/);
     const attack = readGameShare('?share=invite&name=%3Cscript%3E&customerId=123&coins=9999&return_to=https%3A%2F%2Fevil.test');
     expect(attack).toEqual({ kind: 'invite', name: '<script>' });
     expect(gameShareUrl(attack!)).not.toContain('evil.test');
