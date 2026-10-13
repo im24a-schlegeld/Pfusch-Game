@@ -259,6 +259,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
       const wasChecked = await sound.isChecked();
       for (const checked of [false, true]) {
         await sound.setChecked(checked);
+        // Verify the final position. A passing intermediate transition frame
+        // can hide a second individual CSS translate applied by the primitive.
+        await sound.locator('[data-slot="switch-thumb"]').evaluate(async element => {
+          await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {})));
+        });
         await expect.poll(async () => {
           const track = await sound.boundingBox();
           const thumb = await sound.locator('[data-slot="switch-thumb"]').boundingBox();
@@ -268,6 +273,15 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
         }).toBe(true);
       }
       await sound.setChecked(wasChecked);
+      for (const control of await page.getByRole('switch').all()) {
+        await control.locator('[data-slot="switch-thumb"]').evaluate(async element => {
+          await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {})));
+        });
+        const track = (await control.boundingBox())!;
+        const thumb = (await control.locator('[data-slot="switch-thumb"]').boundingBox())!;
+        expect(thumb.x).toBeGreaterThanOrEqual(track.x + 2);
+        expect(thumb.x + thumb.width).toBeLessThanOrEqual(track.x + track.width - 2);
+      }
       if (viewport.width < 760) await expect(page.getByRole('radio', { name: 'Tasten', exact: true })).toBeChecked();
       await expectMenuFits(page);
       await page.screenshot({ path: `outputs/browser-pwa/menu-settings-${size}.png` });
