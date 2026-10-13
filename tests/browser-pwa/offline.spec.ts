@@ -6,11 +6,23 @@ test('installed app shell and playable ride survive a genuinely offline reload',
   await expect(page.getByTestId('offline-ready')).toHaveAttribute('data-state', 'ready', { timeout: 120000 });
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   const manifest = await page.evaluate(async () => {
-    const data = await (await fetch('/manifest.webmanifest')).json() as { icons: { src: string; sizes: string }[] };
-    return { icons: data.icons, available: await Promise.all(data.icons.map(async (icon) => (await fetch(icon.src)).ok)) };
+    const href = (document.querySelector('link[rel="manifest"]') as HTMLLinkElement).href;
+    const response = await fetch(href);
+    if (!response.ok) throw new Error(`Install manifest is unavailable: ${response.status}`);
+    const data = await response.json() as { icons: { src: string; sizes: string }[] };
+    return { icons: data.icons, dimensions: await Promise.all(data.icons.map(async (icon) => {
+      const image = new Image(); image.src = new URL(icon.src, href).href;
+      await image.decode();
+      return `${image.naturalWidth}x${image.naturalHeight}`;
+    })) };
   });
   expect(manifest.icons.map((icon) => icon.sizes)).toEqual(['192x192', '512x512']);
-  expect(manifest.available).toEqual([true, true]);
+  expect(manifest.dimensions).toEqual(['192x192', '512x512']);
+  const chrome = await context.newCDPSession(page);
+  const parsed = await chrome.send('Page.getAppManifest');
+  expect(parsed.errors).toEqual([]);
+  expect(new URL(parsed.url).pathname).toBe('/manifest.json');
+  await chrome.detach();
   await page.evaluate(async () => {
     await fetch('/api/player'); await fetch('/api/referral'); await fetch('/auth/login');
   });

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { isRoadEvent, ROAD_EVENTS } from './roadEvents';
 import { cloneTrafficColor, makeDetailedTraffic } from './trafficModels';
 import { CONSTRUCTION_RAMP } from './constructionRamp';
+import { createTrafficContour } from './trafficContours';
 
 const materials = new Map<string, THREE.MeshStandardMaterial>();
 function mat(color: string, metal = 0, rough = 0.75) {
@@ -93,11 +94,13 @@ export function makeTraffic(kind: string, colorIndex: number) {
       edge.rotation.x = Math.atan2(r.height, r.entryZ - r.lipZ);
     }
     box(group, r.width, 0.04, 0.25, 0, 0.03, r.gapEndZ, '#d1b04e');
+    group.add(createTrafficContour([ramp], []));
     return group;
   }
   if (kind === 'barrier') {
     // Exposed edge of a temporary road plate, low enough for a controlled wheel lift.
-    box(group, 2, 0.16, 0.7, 0, 0.08, 0, '#7a7464');
+    const plate = box(group, 2, 0.16, 0.7, 0, 0.08, 0, '#7a7464');
+    plate.name = 'road-plate';
     for (let i = -1; i <= 1; i++) {
       const stripe = box(
         group,
@@ -111,6 +114,7 @@ export function makeTraffic(kind: string, colorIndex: number) {
       );
       stripe.rotation.z = -0.4;
     }
+    group.add(createTrafficContour([plate], []));
     return group;
   }
   if (isRoadEvent(kind)) {

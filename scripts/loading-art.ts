@@ -9,7 +9,7 @@ import { makeWorldLighting, DAY_SKY } from '../app/game/worldLighting';
 import { makeCartoonSky } from '../app/game/cartoonSky';
 import { applyCartoonHeroStyle, applyCartoonStyle } from '../app/game/cartoonStyle';
 import { createCartoonOutline } from '../app/game/cartoonOutline';
-import { preloadImportedBike } from '../app/game/importedBikeAsset';
+import { preloadImportedBike, type ImportedBikeId } from '../app/game/importedBikeAsset';
 import { policeRampPose } from '../app/game/policePursuit';
 import { newPlayer } from '../app/domain/progression';
 import { shadeClothingCatalog } from '../app/domain/appearanceColors';
@@ -71,7 +71,8 @@ fill.position.set(12, 8, -10);
 scene.add(hemisphere, sunlight, fill);
 const world = new World(42, { acceleration: 0.6, maxSpeed: 38 });
 world.advance(72);
-makeWorldView(scene, false).update(world, 72);
+const worldView = makeWorldView(scene, false);
+worldView.update(world, 72);
 makeWorldLighting(scene, renderer, hemisphere, sunlight, fill).update(world, 72, 0, 1);
 
 const player = newPlayer();
@@ -157,6 +158,7 @@ function frame(isPortrait: boolean) {
     if (bounds[0] >= -0.76 && bounds[2] <= 0.76 && bounds[1] >= -verticalLimit && bounds[3] <= verticalLimit) break;
   }
   outline.update(width, height);
+  worldView.resize(width, height);
   sky.resize(width, height, 1);
   sky.update(world, 72, 9.5);
   renderer.render(scene, camera);
@@ -202,7 +204,7 @@ Object.assign(window, {
     const proof = frame(isPortrait);
     return { webp: renderer.domElement.toDataURL('image/webp', 0.91), png: renderer.domElement.toDataURL('image/png'), proof };
   },
-  async exportBikeDetail(id: '450' | 'scooter', view: 'front' | 'side') {
+  async exportBikeDetail(id: ImportedBikeId, view: 'front' | 'side') {
     await preloadImportedBike(id);
     const detail = makeBike({ ...player, bike: id, paint: '#19324f', rims: '#b9e3f2' }, shadeClothingCatalog(catalog));
     detail.animateSuspension(0, 0);
@@ -235,12 +237,18 @@ Object.assign(window, {
         if (projected.every(point => Math.abs(point.x) < 0.88 && Math.abs(point.y) < 0.86)) break;
       }
       ink.update(1200, 900);
+      worldView.resize(1200, 900);
       sky.resize(1200, 900, 1);
       sky.update(world, 72, 9.5);
       renderer.render(scene, camera);
       const panels: { name: string; segments: number }[] = [];
       const rims: { name: string; shaded: boolean; recess: boolean; color: string }[] = [];
+      let exhaustShells = 0, exhaustContours = 0;
       detail.root.traverse(object => {
+        if (object.userData.cartoonExhaust) {
+          if (object.userData.cartoonOutline) exhaustShells++;
+          if (object.userData.cartoonContour) exhaustContours++;
+        }
         if (!(object instanceof THREE.Mesh)) return;
         if (object.userData.bikePaintSurface === true) {
           const contour = object.children.find(child => child.userData.cartoonContour) as THREE.LineSegments | undefined;
@@ -255,7 +263,8 @@ Object.assign(window, {
         (detail.body.getObjectByName('fs450_inner_trim:body')?.userData.bikeStickerSurface === true &&
           !detail.body.getObjectByName('supermoto-mudflap'));
       return { png: renderer.domElement.toDataURL('image/png'),
-        proof: { id, view, panels, rims, stockGuard, outlines: ink.count, contours: ink.contourCount } };
+        proof: { id, view, panels, rims, stockGuard, exhaustShells, exhaustContours,
+          outlines: ink.count, contours: ink.contourCount } };
     } finally {
       ink.dispose();
       scene.remove(detail.root);

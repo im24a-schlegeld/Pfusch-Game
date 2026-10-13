@@ -41,6 +41,8 @@ describe('bounded offline assets', () => {
   it('includes playable models and current artwork, excluding retired artwork and source files', () => {
     expect(isCoreOfflineAsset('/models/ciao/model.bin')).toBe(true);
     expect(isCoreOfflineAsset('/assets/index-AbCd.js')).toBe(true);
+    expect(isCoreOfflineAsset('/manifest.json')).toBe(true);
+    expect(isCoreOfflineAsset('/manifest.webmanifest')).toBe(false);
     expect(isCoreOfflineAsset('/branding/loading-trailer-portrait.5040e2a548.webp')).toBe(true);
     expect(isCoreOfflineAsset('/branding/loading-wheelie.webp')).toBe(false);
     expect(isCoreOfflineAsset('/models/ciao/SOURCE.md')).toBe(false);

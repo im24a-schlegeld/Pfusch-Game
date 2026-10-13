@@ -393,6 +393,7 @@ export default function SceneView({
       renderer.setSize(w, h, false);
       heroOutline.update(w, h);
       sky?.resize(w, h, renderer.getPixelRatio());
+      worldView?.resize(w, h);
       particles?.setViewport(h, renderer.getPixelRatio());
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
@@ -1121,6 +1122,7 @@ export default function SceneView({
       zoomPreview.current = () => {};
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       sky?.dispose();
+      worldView?.dispose();
       heroOutline.dispose();
       disposeUnique(scene);
       disposeSkeletons(scene);

@@ -21,6 +21,31 @@ function segments(line: THREE.LineSegments) {
   ] as const);
 }
 
+it.each(['ramp', 'barrier'])('gives the actual %s hazard one shared hard contour without changing its source geometry', kind => {
+  const model = makeTraffic(kind, 0);
+  const line = contours(model)[0];
+  expect(line).toBeDefined();
+  expect(contours(model)).toHaveLength(1);
+  expect(line.geometry.attributes.position.count).toBeGreaterThan(0);
+  expect(line.geometry.attributes.position.count).toBeLessThanOrEqual(2048);
+  expect([...line.geometry.attributes.position.array].every(Number.isFinite)).toBe(true);
+  const source = model.getObjectByName(kind === 'ramp' ? 'construction-launch-ramp' : 'road-plate') as THREE.Mesh;
+  expect(source).toBeDefined();
+  const edges = segments(line);
+  const bounds = new THREE.Box3().setFromBufferAttribute(source.geometry.getAttribute('position') as THREE.BufferAttribute);
+  source.updateMatrix(); bounds.applyMatrix4(source.matrix);
+  for (const [a, b] of edges) for (const point of [a, b])
+    expect(bounds.clone().expandByScalar(0.0001).containsPoint(point)).toBe(true);
+  const clone = model.clone(true), copy = contours(clone)[0];
+  expect(copy.geometry).toBe(line.geometry);
+  expect(copy.material).toBe(line.material);
+  expect(new THREE.Raycaster().intersectObject(copy, false)).toEqual([]);
+  applyCartoonStyle(model);
+  expect(contours(model)).toHaveLength(1);
+  expect(line.material.depthTest).toBe(true);
+  expect(line.material.depthWrite).toBe(false);
+});
+
 it.each(['car', 'police', 'towtruck', 'van', 'construction'])(
   'gives %s one bounded black contour in the shared loading/game model', kind => {
     const model = makeTraffic(kind, 0);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const MAX_SEGMENTS = 1024;
 const TIRE_SEGMENTS = 32;
-const majorPart = /^(sculpted-body|raked-cabin|van-cab-lower|cab-roof|cargo-shell|tow-deck-and-ramp|door-skin|front-bumper|rear-bumper-inset|cab-step|deck-front-edge|rear-mudflap|headboard-.+|winch|barrier-board|weighted-foot|barrier-post)$|window|windscreen|glass/;
+const majorPart = /^(sculpted-body|raked-cabin|van-cab-lower|cab-roof|cargo-shell|tow-deck-and-ramp|construction-launch-ramp|road-plate|door-skin|front-bumper|rear-bumper-inset|cab-step|deck-front-edge|rear-mudflap|headboard-.+|winch|barrier-board|weighted-foot|barrier-post)$|window|windscreen|glass/;
 
 /** A clone keeps this prototype, so visual lines never become collision/ramp picks. */
 class TrafficContour extends THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> {

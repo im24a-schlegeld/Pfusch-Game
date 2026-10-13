@@ -9,6 +9,7 @@ import {
   writeTunnelBermMatrix,
 } from './worldTerrain';
 import { createBlitzerModel } from './blitzerModel';
+import { makeWorldFoliageOutline } from './worldFoliageOutline';
 import type { SpeedCameraState } from './speedCamera';
 
 export const WORLD_VIEW = Object.freeze({
@@ -187,9 +188,16 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   // One shader pass, with ink on buildings/props rather than seams between
   // recycled road or ground cells. Shared geometry and all 56 pools stay intact.
   const broadSurfaces = new Set<Finish>(['asphalt', 'marking', 'grass', 'soil', 'sand', 'forestFloor', 'water', 'ripple']);
-  for (const finish of Object.keys(COLORS) as Finish[])
-    applyCartoonMaterial(materials[finish], !broadSurfaces.has(finish), !broadSurfaces.has(finish));
+  for (const finish of Object.keys(COLORS) as Finish[]) {
+    // Crowns get a true exterior below; grazing facet ink made their interiors
+    // patchy and still missed most of the silhouette.
+    const surfaceInk = !broadSurfaces.has(finish) && finish !== 'foliage';
+    applyCartoonMaterial(materials[finish], surfaceInk, surfaceInk);
+  }
   applyCartoonMaterial(terrainMaterial);
+  const foliageOutline = makeWorldFoliageOutline([
+    batches.get('cone:foliage')!.mesh, batches.get('canopy:foliage')!.mesh,
+  ]);
 
   const matrix = new THREE.Matrix4(),
     quaternion = new THREE.Quaternion(),
@@ -1092,10 +1100,11 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
         batch.mesh.visible = batch.used > 0;
         batch.mesh.instanceMatrix.needsUpdate = true;
       }
+      foliageOutline.sync();
       root.userData.windowStart = start;
       root.userData.windowEnd = end;
     }
     root.position.z = distance - anchor;
   }
-  return { root, update, updateSpeedCamera };
+  return { root, update, updateSpeedCamera, resize: foliageOutline.resize, dispose: foliageOutline.dispose };
 }

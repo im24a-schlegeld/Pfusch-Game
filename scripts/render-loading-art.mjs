@@ -37,10 +37,10 @@ try {
   const references = await writeLoadingArtwork(exports[0].webp, exports[1].webp, output);
   await writeFile(resolve(output, 'render-proof.json'), JSON.stringify({ references, crops: exports.map(art => art.proof) }, null, 2) + '\n');
   const details = [];
-  for (const id of ['450', 'scooter']) for (const view of ['front', 'side']) {
+  for (const id of ['125', 'moped', '450', '701', 'scooter']) for (const view of ['front', 'side']) {
     const detail = await page.evaluate(({ id, view }) => window.exportBikeDetail(id, view), { id, view });
     if (detail.proof.panels.some(panel => panel.segments < 1) || detail.proof.outlines > 32 || detail.proof.contours > 10 ||
-      !detail.proof.stockGuard || detail.proof.rims.length !== 2 ||
+      !detail.proof.stockGuard || detail.proof.exhaustShells < 1 || detail.proof.exhaustContours < 1 || detail.proof.rims.length < 2 ||
       detail.proof.rims.some(rim => !rim.shaded || !rim.recess || rim.color !== 'b9e3f2'))
       throw new Error('Imported motorcycle detail lost its panel contours or rim finish: ' + JSON.stringify(detail.proof));
     await writeFile(resolve(output, `bike-${id}-${view}.png`), Buffer.from(detail.png.split(',')[1], 'base64'));

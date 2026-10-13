@@ -6,6 +6,7 @@ import { handleRankingRequest, updateRanking } from '../shopify/leaderboard.js';
 import { handleRewardRequest, MAX_REWARD_FINISH_BODY_BYTES, type RewardAction } from '../shopify/rewardEndpoint.js';
 import { readBoundedWebJson, withFetchDeadline } from '../shopify/http.js';
 import { authenticateOxygen, clearSessionCookies, finishLogin, readOxygenAuth, SHOP_ORIGINS, startLogin } from './auth.js';
+import installManifest from '../../public/manifest.json' with { type: 'json' };
 
 export type OxygenEnvironment = Record<string, string | undefined>;
 function harden(response: Response) {
@@ -24,6 +25,15 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
   };
   try {
     const url = new URL(request.url), path = url.pathname;
+    // Oxygen's asset CDN does not publish .webmanifest files. New pages use the
+    // supported JSON asset, while existing tabs/installers retain this URL.
+    // This metadata is public and never reads identity, cookies or Shopify.
+    if (path === '/manifest.webmanifest') {
+      if (!['GET', 'HEAD'].includes(request.method)) return harden(json(405, { error: 'method_not_allowed' }));
+      return harden(new Response(request.method === 'HEAD' ? null : JSON.stringify(installManifest), {
+        headers: { 'Content-Type': 'application/manifest+json; charset=utf-8' },
+      }));
+    }
     if (path === '/' || path === '/index.html') {
       if (!['GET', 'HEAD'].includes(request.method)) return harden(json(405, { error: 'method_not_allowed' }));
       const config = '<script type="application/json" id="pfusch-runtime-config">{"version":1,"mode":"oxygen"}</script>';

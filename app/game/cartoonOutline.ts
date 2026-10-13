@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { getImportedBikeAsset, isImportedBike, type ImportedBikeAsset } from './importedBikeAsset';
+import { hardwareComponents } from './importedHardwareFinish';
+import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
 
 export const CARTOON_OUTLINE_MAX_MESHES = 32;
 export const CARTOON_CONTOUR_MAX_MESHES = 10;
@@ -86,6 +89,54 @@ function hardContourGeometry(source: THREE.BufferGeometry) {
   return geometry;
 }
 
+/** Small imported bikes batch their exhaust with unrelated metal. Recover
+ * only connected authored shells beside the real outlet; never ink the whole
+ * mechanics batch or create a replacement pipe. All work runs at construction.
+ */
+function bundledExhaustGeometry(mesh: THREE.Mesh, asset: ImportedBikeAsset, outletWorld: THREE.Vector3, scale: number) {
+  const part = asset.manifest.parts.find(part => part.name === mesh.userData.importedPart);
+  if (!part) return;
+  const outlet = mesh.worldToLocal(outletWorld.clone()).divideScalar(scale);
+  const positions = new Float32Array(asset.binary, part.position.offset, part.position.count * 3);
+  const index = new Uint16Array(asset.binary, part.index.offset, part.index.count);
+  const triangle = new THREE.Triangle(), closest = new THREE.Vector3();
+  const selected: number[] = [];
+  for (const component of hardwareComponents(part, asset.binary)) {
+    const box = new THREE.Box3(new THREE.Vector3(...component.min), new THREE.Vector3(...component.max));
+    const extents = box.getSize(new THREE.Vector3()).toArray().sort((a, b) => b - a);
+    if (extents[0] < 0.09 || extents[1] < 0.035 || box.distanceToPoint(outlet) > 0.05) continue;
+    let distance = Infinity;
+    for (const face of component.triangles) {
+      triangle.a.fromArray(positions, index[face * 3] * 3);
+      triangle.b.fromArray(positions, index[face * 3 + 1] * 3);
+      triangle.c.fromArray(positions, index[face * 3 + 2] * 3);
+      triangle.closestPointToPoint(outlet, closest);
+      distance = Math.min(distance, outlet.distanceTo(closest));
+    }
+    if (distance <= 0.05) selected.push(...component.triangles);
+  }
+  if (!selected.length) return;
+  const sourcePosition = mesh.geometry.getAttribute('position'), sourceNormal = mesh.geometry.getAttribute('normal');
+  const sourceIndex = mesh.geometry.index!;
+  const vertices = new Map<number, number>(), points: number[] = [], normals: number[] = [], indices: number[] = [];
+  for (const face of selected) for (let corner = 0; corner < 3; corner++) {
+    const sourceVertex = sourceIndex.getX(face * 3 + corner);
+    let vertex = vertices.get(sourceVertex);
+    if (vertex === undefined) {
+      vertex = vertices.size;
+      vertices.set(sourceVertex, vertex);
+      points.push(sourcePosition.getX(sourceVertex), sourcePosition.getY(sourceVertex), sourcePosition.getZ(sourceVertex));
+      normals.push(sourceNormal.getX(sourceVertex), sourceNormal.getY(sourceVertex), sourceNormal.getZ(sourceVertex));
+    }
+    indices.push(vertex);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
 /** A small shared-geometry backface shell on the player only. Real silhouettes
  * need geometry beyond the coloured fragments; no fullscreen pass is required.
  * Each shell follows its own steering, suspension, cloth or bone parent.
@@ -107,10 +158,18 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     polygonOffsetUnits: 1,
     toneMapped: false,
   });
-  const candidates: { mesh: THREE.Mesh; priority: number; size: number; hardForm: boolean }[] = [];
+  const candidates: { mesh: THREE.Mesh; geometry: THREE.BufferGeometry; priority: number; size: number; hardForm: boolean; exhaust: boolean }[] = [];
+  const ownedGeometry = new Set<THREE.BufferGeometry>();
   const scale = new THREE.Vector3(), size = new THREE.Vector3();
   const position = new THREE.Vector3(), rotation = new THREE.Quaternion();
   root.updateWorldMatrix(true, true);
+  const imported = root.getObjectByName('imported-motorcycle');
+  const modelId: unknown = imported?.userData.importedBike;
+  const asset = typeof modelId === 'string' && isImportedBike(modelId) ? getImportedBikeAsset(modelId) : undefined;
+  const outlet = root.getObjectByName('open-silencer-outlet');
+  const outletWorld = outlet?.getWorldPosition(new THREE.Vector3());
+  const sourceScale = asset && typeof modelId === 'string' && isImportedBike(modelId)
+    ? IMPORTED_BIKE_WHEELBASE[modelId] / Math.abs(asset.manifest.anchors.rearAxle[2] - asset.manifest.anchors.frontAxle[2]) : 1;
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh ||
         object.userData.cartoonOutline || object.userData.bikeSticker || object.userData.helmetSticker) return;
@@ -141,31 +200,38 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     const rider = object instanceof THREE.SkinnedMesh ||
       /garment|hood|helmet|motocross-peak|trouser|rider-(glove|boot)|stand-collar|imported-cap-shell|carried-crossbody-bag/.test(name) || goggleFrame;
     const paintedBodywork = object.userData.bikePaintSurface === true;
+    const namedExhaust = /exhaust|headers?|manifold|silencer|muffler/.test(name);
+    const bundled = asset && outletWorld && (modelId === '125' || modelId === 'moped' || modelId === 'scooter') &&
+      /mechanics|chrome/.test(name) && (object.userData.importedRig === 'body' || object.userData.importedRig === 'swingarm')
+      ? bundledExhaustGeometry(object, asset, outletWorld, sourceScale) : undefined;
+    if (bundled) ownedGeometry.add(bundled);
+    const exhaust = namedExhaust || !!bundled;
     // Imported models batch the FS450 mask into generic painted steering
     // bodywork. Its paint/rig metadata identifies the real shell reliably.
     const headlightMask = /headlight[-_](mask|bezel|recess)/.test(name) ||
       (paintedBodywork && object.userData.importedRig === 'steering');
-    const bodywork = object.userData.bikePaintSurface || rim ||
+    const bodywork = object.userData.bikePaintSurface || rim || exhaust ||
       /tire|tyre|seat|fairing|fender|mudguard|mudflap|side-cover|bodywork|shroud|tank|swingarm|crankcase|engine|fork-guard|fork-slider|stanchion|main-frame|headlight-(mask|bezel|recess)|tail-shell|rear-hugger|single-exhaust|silencer|muffler|carried-cap/.test(name);
     if (!rider && !bodywork && !object.userData.importedPart) return;
-    const essential = rim || goggleFrame || /helmet|motocross-peak|garment|mudflap/.test(name);
+    const essential = rim || goggleFrame || exhaust || /helmet|motocross-peak|garment|mudflap/.test(name);
     const hardForm = !(object instanceof THREE.SkinnedMesh) &&
-      (paintedBodywork || headlightMask || rim || goggleFrame || /helmet|motocross-peak|fairing|fender|mudflap|side-cover|shroud|tank|tail-shell|rear-hugger/.test(name));
-    candidates.push({ mesh: object, priority: headlightMask ? 4 : essential ? 3 : rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1], hardForm });
+      (paintedBodywork || headlightMask || rim || goggleFrame || exhaust || /helmet|motocross-peak|fairing|fender|mudflap|side-cover|shroud|tank|tail-shell|rear-hugger/.test(name));
+    candidates.push({ mesh: object, geometry: bundled ?? object.geometry, priority: headlightMask ? 4 : essential ? 3 : rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1], hardForm, exhaust });
   });
   candidates.sort((a, b) => b.priority - a.priority || b.size - a.size);
   const outlines: THREE.Mesh[] = [];
-  for (const { mesh } of candidates.slice(0, CARTOON_OUTLINE_MAX_MESHES)) {
+  for (const { mesh, geometry, exhaust } of candidates.slice(0, CARTOON_OUTLINE_MAX_MESHES)) {
     let outline: THREE.Mesh;
     if (mesh instanceof THREE.SkinnedMesh) {
-      const skin = new THREE.SkinnedMesh(mesh.geometry, material);
+      const skin = new THREE.SkinnedMesh(geometry, material);
       skin.bindMode = mesh.bindMode;
       skin.bind(mesh.skeleton, mesh.bindMatrix);
       skin.bindMatrixInverse.copy(mesh.bindMatrixInverse);
       outline = skin;
-    } else outline = new THREE.Mesh(mesh.geometry, material);
+    } else outline = new THREE.Mesh(geometry, material);
     outline.name = 'cartoon-hero-outline';
     outline.userData.cartoonOutline = true;
+    outline.userData.cartoonExhaust = exhaust;
     outline.morphTargetInfluences = mesh.morphTargetInfluences;
     outline.morphTargetDictionary = mesh.morphTargetDictionary;
     outline.frustumCulled = false;
@@ -189,18 +255,19 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
   });
   const contourGeometry = new Map<THREE.BufferGeometry, THREE.BufferGeometry>();
   const contours: THREE.LineSegments[] = [];
-  for (const { mesh, hardForm } of candidates) {
+  for (const { mesh, geometry: sourceGeometry, hardForm, exhaust } of candidates) {
     if (!hardForm) continue;
     if (contours.length >= CARTOON_CONTOUR_MAX_MESHES) break;
-    let geometry = contourGeometry.get(mesh.geometry);
+    let geometry = contourGeometry.get(sourceGeometry);
     if (!geometry) {
-      geometry = hardContourGeometry(mesh.geometry);
-      contourGeometry.set(mesh.geometry, geometry);
+      geometry = hardContourGeometry(sourceGeometry);
+      contourGeometry.set(sourceGeometry, geometry);
     }
     if (!geometry.getAttribute('position').count) continue;
     const contour = new THREE.LineSegments(geometry, contourMaterial);
     contour.name = 'cartoon-hero-contour';
     contour.userData.cartoonContour = true;
+    contour.userData.cartoonExhaust = exhaust;
     contour.frustumCulled = false;
     contour.layers.mask = mesh.layers.mask;
     contour.raycast = () => {};
@@ -224,6 +291,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
       material.dispose();
       contourMaterial.dispose();
       for (const geometry of contourGeometry.values()) geometry.dispose();
+      for (const geometry of ownedGeometry) geometry.dispose();
       active.delete(root);
     },
   };

@@ -11,7 +11,7 @@ export function isCoreOfflineAsset(url, loadingImages) {
     || /^\/models\/(ciao|moped|fs450|r6|nitro)\/.*\.(json|bin|png|jpe?g|webp)$/.test(url)
     || /^\/assets\/signs\/.*\.png$/.test(url)
     || (/^\/branding\/loading-trailer(?:-portrait)?\.[a-f0-9]+\.webp$/.test(url) && (!loadingImages || loadingImages.has(url)))
-    || ['/offline.html', '/manifest.webmanifest', '/app-icon-192.png', '/app-icon-512.png', '/branding/pfusch-logo.webp',
+    || ['/offline.html', '/manifest.json', '/app-icon-192.png', '/app-icon-512.png', '/branding/pfusch-logo.webp',
       '/branding/wheelie-escape-wordmark-a.png', '/images/artwork/signs.png', '/images/stop-sign.png',
       '/textures/carbon-dark.jpg', '/catalog/products.json'].includes(url);
 }

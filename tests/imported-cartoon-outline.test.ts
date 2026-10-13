@@ -20,6 +20,73 @@ function vertexKey(positions: THREE.BufferAttribute | THREE.InterleavedBufferAtt
     .map(value => Math.round(value * 100000)).join(',');
 }
 
+const exhaustSources: Record<string, string[]> = {
+  '125': ['ciao_mechanics:body'],
+  moped: ['moped_chrome:body'],
+  '450': ['mat_exmanifold277:body', 'fs450_muffler_unbranded:body'],
+  '701': ['r6_headers:body', 'r6_exhaust:body'],
+  scooter: ['nitro_mechanics:swingarm'],
+};
+
+it.each(['125', 'moped', '450', '701', 'scooter'])(
+  'outlines actual exhaust pipes and ends on %s while retaining painted panels, rims and helmet', id => {
+    const bike = makeBike({ ...newPlayer(), bike: id, helmet: 'motocross' }, []);
+    const sources = exhaustSources[id].map(name => bike.body.getObjectByName(name) as THREE.Mesh);
+    const original = sources.map(source => ({ geometry: source.geometry, material: source.material }));
+    const outlines = createCartoonOutline(bike.root);
+    let sourceDisposals = 0, subsetDisposals = 0, contourDisposals = 0;
+    for (const [i, source] of sources.entries()) {
+      const shell = source.children.find(child => child.userData.cartoonOutline) as THREE.Mesh;
+      const contour = source.children.find(child => child.userData.cartoonContour) as THREE.LineSegments;
+      expect(shell).toBeDefined();
+      expect(contour).toBeDefined();
+      expect(shell.userData.cartoonExhaust).toBe(true);
+      expect(contour.userData.cartoonExhaust).toBe(true);
+      expect(contour.geometry.attributes.position.count).toBeGreaterThan(0);
+      expect(source.geometry).toBe(original[i].geometry);
+      expect(source.material).toBe(original[i].material);
+      source.geometry.addEventListener('dispose', () => sourceDisposals++);
+      contour.geometry.addEventListener('dispose', () => contourDisposals++);
+      if (id === '125' || id === 'moped' || id === 'scooter') {
+        // The pipe shares a material batch with unrelated mechanical parts.
+        // Only its real connected shells should gain the new outline.
+        expect(shell.geometry.attributes.position.count).toBeLessThan(source.geometry.attributes.position.count);
+        expect(shell.geometry.index!.count).toBeLessThan(source.geometry.index!.count);
+        const triangles = id === '125' ? 768 : id === 'moped' ? 108 : 289;
+        expect(shell.geometry.index!.count).toBe(triangles * 3);
+        shell.geometry.addEventListener('dispose', () => subsetDisposals++);
+      }
+    }
+    const paints: THREE.Mesh[] = [], rims: THREE.Mesh[] = [];
+    bike.body.traverse(object => {
+      if (!(object instanceof THREE.Mesh) || !object.userData.importedPart) return;
+      if (object.userData.bikePaintSurface === true) paints.push(object);
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      if (materials.some(material => material.userData.rimPalette === true) &&
+          (id !== '450' || /rim_hoop/.test(object.name))) rims.push(object);
+    });
+    for (const source of [...paints, ...rims])
+      expect(source.children.some(child => child.userData.cartoonContour)).toBe(true);
+    for (const name of ['motocross-peak', 'motocross-goggle-frame']) {
+      const source = bike.root.getObjectByName(name)!;
+      expect(source.children.some(child => child.userData.cartoonContour)).toBe(true);
+    }
+    bike.animateSuspension(0.3, 0.1);
+    bike.root.updateMatrixWorld(true);
+    for (const source of sources) {
+      const contour = source.children.find(child => child.userData.cartoonContour)!;
+      expect(contour.matrixWorld.elements).toEqual(source.matrixWorld.elements);
+    }
+    expect(outlines.count).toBeLessThanOrEqual(CARTOON_OUTLINE_MAX_MESHES);
+    expect(outlines.contourCount).toBeLessThanOrEqual(CARTOON_CONTOUR_MAX_MESHES);
+    outlines.dispose();
+    outlines.dispose();
+    expect(sourceDisposals).toBe(0);
+    expect(contourDisposals).toBe(sources.length);
+    expect(subsetDisposals).toBe(id === '125' || id === 'moped' || id === 'scooter' ? 1 : 0);
+  },
+);
+
 it.each(['125', 'moped', '450', '701', 'scooter'])(
   'traces the real rigid painted bodywork of imported %s while keeping its optics clear', id => {
     const bike = makeBike({ ...newPlayer(), bike: id }, []);
