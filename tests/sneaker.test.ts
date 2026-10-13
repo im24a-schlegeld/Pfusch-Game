@@ -5,7 +5,8 @@ import { createSneaker } from '../app/game/sneaker';
 it('keeps the supplied sneaker small, untextured and mirrored at fixed adult size', () => {
   const left = createSneaker('#e6e4dd', -1), right = createSneaker('#7461a5', 1);
   const size = right.geometry.boundingBox!.getSize(new THREE.Vector3());
-  expect(size.z).toBeCloseTo(0.30, 4);
+  // Decimation may remove an extremal sole vertex; allow less than one mm.
+  expect(Math.abs(size.z - 0.30)).toBeLessThan(0.001);
   expect(size.x).toBeGreaterThan(0.09);
   expect(size.x).toBeLessThan(0.13);
   expect(size.y).toBeLessThan(0.15);

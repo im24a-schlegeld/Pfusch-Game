@@ -66,7 +66,7 @@ export function createPreviewColorUpdater(
     if (!(object instanceof THREE.Mesh)) return;
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!(material instanceof THREE.MeshStandardMaterial)) continue;
-      const slot = material.userData.appearanceColorSlot;
+      const slot: unknown = material.userData.appearanceColorSlot;
       if (slot === 'pantsColor' || slot === 'shoesColor') slots[slot].add(material);
     }
   });

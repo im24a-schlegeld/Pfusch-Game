@@ -277,6 +277,7 @@ export default function SceneView({
       const [y, distance, elevation] = defaults[focus];
       const look = new THREE.Vector3(0, y, 0);
       const name = focus === 'upper' ? 'tailored-garment'
+        : focus === 'feet' ? 'rider-boot'
         : focus === 'head' ? (appearance.current.player.helmet === 'fullface' ? 'full-face-helmet' : 'motocross-helmet')
           : focus === 'cap' ? 'carried-cap' : focus === 'cape' ? 'pfusch-flag-cape' : focus === 'accessory' ? 'carried-crossbody-bag' : focus === 'keychain' ? 'keychain-fabric-tag' : '';
       const target = focus === 'model' ? bike.root : name ? bike.root.getObjectByName(name) : undefined;
