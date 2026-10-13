@@ -1,3 +1,5 @@
+import { TRAFFIC_PROGRESSION, trafficIntensity } from './trafficProgression';
+
 /** All distances are metres; speeds are metres/second. No km/h/m/s mixing. */
 export const TRAFFIC_FLOW = Object.freeze({
   // Keep a reachable safe lane while making the road feel consistently busy.
@@ -15,9 +17,10 @@ export function trafficWaveSpacing(
   initial: number,
   minimum: number,
   difficulty: number,
+  score = 0,
 ) {
   const d = Math.max(0, Math.min(1, difficulty));
-  return (initial + (minimum - initial) * d) * TRAFFIC_FLOW.density;
+  return (initial + (minimum - initial) * d) * TRAFFIC_FLOW.density * (1 - trafficIntensity(score) * 0.18);
 }
 /** First/last contact, not just vehicle centres, must have a reachable exit. */
 export function trafficArrivalGap(
@@ -26,16 +29,20 @@ export function trafficArrivalGap(
   nextSpeed: number,
   previousHalfLength: number,
   nextHalfLength: number,
+  score = 0,
 ) {
   const previousClosing = Math.max(5, riderSpeed - previousSpeed);
   const nextClosing = Math.max(5, riderSpeed - nextSpeed);
+  // A changing car can leave a different exit than the original wave planned.
+  // Two adjacent swipes cover even the opposite edge; density never removes
+  // this physical escape budget, only the extra breathing room for beginners.
   return Math.max(
     TRAFFIC_FLOW.minimumArrivalGap,
     TRAFFIC_FLOW.reactionSeconds +
-      TRAFFIC_FLOW.laneChangeSeconds +
+      TRAFFIC_FLOW.laneChangeSeconds * 2 +
       previousHalfLength / previousClosing +
       nextHalfLength / nextClosing,
-  );
+  ) + TRAFFIC_PROGRESSION.initialExtraHeadway * (1 - trafficIntensity(score));
 }
 /** Different speeds must not create an ordinary side-by-side pair later. */
 export function trafficSeparatedUntilPass(

@@ -11,6 +11,8 @@ import { disposeUnique, makeTrafficVariants } from './models';
 import { makeBike } from './vehicle';
 import { makeWorldView } from './worldView';
 import { DAY_SKY, makeWorldLighting } from './worldLighting';
+import { applyCartoonStyle } from './cartoonStyle';
+import { makeCartoonSky } from './cartoonSky';
 import { createBikeHeadlightGlowUpdater, createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
 import { createGarmentGlowUpdater } from './garmentGlow';
@@ -171,12 +173,13 @@ export default function SceneView({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelCap));
     renderer.setClearColor(mode === 'ride' ? DAY_SKY : '#323232');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = THREE.LinearToneMapping;
     renderer.toneMappingExposure = 1.1;
     renderer.shadowMap.enabled = mode !== 'ride' && !low;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
+    scene.userData.visualStyle = 'cartoon';
     scene.environment = environment.texture;
     scene.environmentIntensity = 0.7;
     scene.fog = new THREE.Fog(
@@ -221,6 +224,7 @@ export default function SceneView({
       return;
     }
     applyStickersSafely(bike, player);
+    applyCartoonStyle(bike.root);
     const invalidation = createSceneInvalidation();
     invalidation.track(bike.root);
     bike.root.name = 'player-bike';
@@ -235,6 +239,7 @@ export default function SceneView({
       mode === 'ride'
         ? makeWorldLighting(scene, renderer, hemisphere, sunlight, fill)
         : null;
+    const sky = mode === 'ride' ? makeCartoonSky(scene, camera) : null;
     let worldView: ReturnType<typeof makeWorldView> | undefined;
     const traffic: THREE.Group[] = [];
     const templates = new Map<string, THREE.Group>();
@@ -349,6 +354,7 @@ export default function SceneView({
     if (mode === 'ride') {
       worldView = makeWorldView(scene, low);
       const policeVariants = makeTrafficVariants('police');
+      policeVariants.forEach(applyCartoonStyle);
       variantSets.set('police', policeVariants);
       pursuitCar.add(policeVariants[0].clone(true));
       scene.add(pursuitCar);
@@ -549,6 +555,7 @@ export default function SceneView({
         try {
           replacement = makeBike(nextAppearance.player, nextAppearance.products);
           applyStickersSafely(replacement, nextAppearance.player);
+          applyCartoonStyle(replacement.root);
         } catch (reason) {
           graphicsAvailable = false;
           setError(reason instanceof Error ? reason.message : 'Vorschau konnte nicht aktualisiert werden.');
@@ -576,7 +583,10 @@ export default function SceneView({
         vehicleProducts = nextAppearance.products;
         if (mode === 'garage') transitionPreview(now, appliedFocus);
       }
-      if (latestAssetReady && updateColors(nextAppearance.player)) invalidation.track(bike.root);
+      if (latestAssetReady && updateColors(nextAppearance.player)) {
+        applyCartoonStyle(bike.root);
+        invalidation.track(bike.root);
+      }
       if (mode === 'garage' && command.inspectionFocus !== appliedFocus) {
         appliedFocus = command.inspectionFocus;
         transitionPreview(now, appliedFocus, focusAngles[appliedFocus]);
@@ -843,6 +853,7 @@ export default function SceneView({
               let variants = variantSets.get(modelKind);
               if (!variants) {
                 variants = makeTrafficVariants(modelKind);
+                variants.forEach(applyCartoonStyle);
                 variantSets.set(modelKind, variants);
               }
               template = variants[o.color] ?? variants[0];
@@ -855,6 +866,7 @@ export default function SceneView({
             group,
             Math.abs(o.velocity),
             moving || (crashed && crashActive) ? dt : 0,
+            o.laneShift,
           );
         });
         if (crashed) {
@@ -1000,6 +1012,7 @@ export default function SceneView({
           camera.fov = fov;
           camera.updateProjectionMatrix();
         }
+        sky?.update(engine.world, distance, reducedMotion() ? 0 : engine.elapsed);
         // Observe already-rendered encounter models at most seven times per
         // second. React receives only changed viewport anchors, never frames.
         // An instructional pause retains its cue and does not discover another.
@@ -1096,6 +1109,7 @@ export default function SceneView({
       el.removeEventListener('keydown', keyDown);
       zoomPreview.current = () => {};
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
+      sky?.dispose();
       disposeUnique(scene);
       disposeSkeletons(scene);
       particles?.dispose();

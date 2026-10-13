@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { TrafficLaneShift } from './trafficProgression';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TRAFFIC_SHAPES, TOW_RAMP, towRampHeight } from './trafficDomain';
 import { CAR_BODY_PROFILE, CAR_CABIN_PROFILE } from './carClearance';
@@ -719,6 +720,13 @@ export function makeDetailedTraffic(
     }
   }
   batchParts(parts);
+  if (kind === 'car') {
+    // One pooled lamp moves to the committed side; no lights or glow passes.
+    const signalMaterial = amber.clone();
+    signalMaterial.emissiveIntensity = 1.7;
+    const signal = box('traffic-turn-signal', [0.24, 0.15, 0.025], [0, 0.78, 2.925], signalMaterial, root);
+    signal.visible = false;
+  }
   // One tiny alpha texture and one plane replace costly per-vehicle shadowmaps.
   // The texture tapers to zero at all edges, without a visible rectangular pad.
   const shadowPixels = new Uint8Array(32 * 32 * 4);
@@ -773,11 +781,16 @@ export function animateTraffic(
   group: THREE.Group,
   velocity: number,
   dt: number,
+  shift: TrafficLaneShift | null = null,
 ) {
-  if (!velocity || dt <= 0) return;
   const model = group.children[0];
   if (!model) return;
-  for (const child of model.children)
-    if (child.name === 'traffic-wheel')
+  for (const child of model.children) {
+    if (child.name === 'traffic-turn-signal') {
+      child.visible = !!shift && shift.committed !== false && shift.age >= 0 && Math.floor(shift.age / 0.19) % 2 === 0;
+      if (shift) child.position.x = Math.sign(shift.to - shift.from) * 0.9;
+    }
+    if (child.name === 'traffic-wheel' && velocity && dt > 0)
       child.rotation.x -= (velocity * dt) / (child.userData.radius as number);
+  }
 }

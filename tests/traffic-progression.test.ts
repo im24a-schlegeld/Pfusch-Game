@@ -26,13 +26,14 @@ describe('score-based traffic progression', () => {
       const ordinary = engine.obstacles.filter(o => o.active && (o.kind === 'car' || o.kind === 'van'));
       for (const car of ordinary) {
         if (car.laneShift) {
-          changing.add(car.spawnId);
+          if (car.laneShift.committed !== false) changing.add(car.spawnId);
           expect(car.kind).toBe('car');
           expect(car.police).toBe(false);
           expect(car.velocity).toBeGreaterThan(0);
-          expect(car.laneShift.from).toBe(0);
-          expect(Math.abs(car.laneShift.to)).toBe(1);
-          const clearEdge = -car.laneShift.to * LANE;
+          expect([-1, 0, 1]).toContain(car.laneShift.from);
+          expect([-1, 0, 1]).toContain(car.laneShift.to);
+          expect(Math.abs(car.laneShift.to - car.laneShift.from)).toBe(1);
+          const clearEdge = (car.laneShift.from === 0 ? -car.laneShift.to : -car.laneShift.from) * LANE;
           expect(Math.abs(clearEdge - (car.lane * LANE + car.offsetX)))
             .toBeGreaterThan(TRAFFIC_SHAPES.car.contactHalfWidth);
           if (car.offsetX !== 0) {

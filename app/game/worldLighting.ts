@@ -1,47 +1,47 @@
 import * as THREE from 'three';
 import type { World, WorldLighting } from './world';
 
-export const DAY_SKY = '#79b9ed';
+export const DAY_SKY = '#7ecdf4';
 
 const palettes = {
   day: {
     sky: DAY_SKY,
-    sun: '#fff5e6',
-    ambient: 1.4,
-    direct: 3.4,
-    fill: 0.9,
-    environment: 0.7,
-    exposure: 1.1,
+    sun: '#fff3d4',
+    ambient: 1.55,
+    direct: 1.8,
+    fill: 0.8,
+    environment: 0.38,
+    exposure: 1.05,
     dark: 0,
   },
   golden: {
-    sky: '#9a8175',
-    sun: '#ffba78',
-    ambient: 1.05,
-    direct: 2.8,
-    fill: 0.65,
-    environment: 0.5,
-    exposure: 1.1,
+    sky: '#efad88',
+    sun: '#ffd89b',
+    ambient: 1.25,
+    direct: 1.65,
+    fill: 0.75,
+    environment: 0.3,
+    exposure: 1.05,
     dark: 0.08,
   },
   night: {
-    sky: '#101b2a',
-    sun: '#9cb5dc',
-    ambient: 0.38,
-    direct: 0.25,
-    fill: 0.5,
-    environment: 0.23,
-    exposure: 1.3,
+    sky: '#203452',
+    sun: '#b9d4fa',
+    ambient: 0.62,
+    direct: 0.55,
+    fill: 0.65,
+    environment: 0.2,
+    exposure: 1.15,
     dark: 1,
   },
   dawn: {
-    sky: '#75879a',
-    sun: '#f3c6b5',
-    ambient: 0.95,
-    direct: 1.45,
-    fill: 0.7,
-    environment: 0.48,
-    exposure: 1.15,
+    sky: '#a8bde3',
+    sun: '#ffe4c8',
+    ambient: 1.3,
+    direct: 1.4,
+    fill: 0.8,
+    environment: 0.32,
+    exposure: 1.08,
     dark: 0.2,
   },
 } satisfies Record<WorldLighting, object>;
@@ -54,6 +54,24 @@ const colors = Object.fromEntries(
 const tunnelSky = new THREE.Color('#101720');
 const tunnelSun = new THREE.Color('#cbd5d8');
 
+export interface WorldLightBlend {
+  from: WorldLighting;
+  to: WorldLighting;
+  blend: number;
+  tunnel: number;
+}
+
+/** Reuse the supplied sample so the sky and lighting share one allocation-free fade. */
+export function readWorldLighting(world: World, distance: number, target: WorldLightBlend) {
+  const segment = world.at(distance);
+  const previous = segment && world.at(Math.max(0, segment.start - 0.01));
+  target.to = segment?.lighting ?? 'day';
+  target.from = previous?.lighting ?? target.to;
+  target.blend = segment ? THREE.MathUtils.smoothstep(distance - segment.start, 0, 42) : 1;
+  target.tunnel = world.tunnelExposure(distance);
+  return target;
+}
+
 /** Distance-driven light and real tunnel acoustics share the same domain segment. */
 export function makeWorldLighting(
   scene: THREE.Scene,
@@ -63,6 +81,7 @@ export function makeWorldLighting(
   fill: THREE.DirectionalLight,
 ) {
   const sky = new THREE.Color();
+  const sample: WorldLightBlend = { from: 'day', to: 'day', blend: 0, tunnel: 0 };
   const headlights = [
     new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2),
     new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2),
@@ -82,14 +101,9 @@ export function makeWorldLighting(
     x: number,
     headlightCount: 1 | 2,
   ) => {
-    const segment = world.at(distance)!;
-    const previous = world.at(Math.max(0, segment.start - 0.01));
-    const from = previous?.lighting ?? segment.lighting;
-    const to = segment.lighting;
-    const blend = THREE.MathUtils.smoothstep(distance - segment.start, 0, 42);
+    const { from, to, blend, tunnel } = readWorldLighting(world, distance, sample);
     const a = palettes[from],
       b = palettes[to];
-    const tunnel = world.tunnelExposure(distance);
     const mix = (
       key: 'ambient' | 'direct' | 'fill' | 'environment' | 'exposure' | 'dark',
     ) => THREE.MathUtils.lerp(a[key], b[key], blend);

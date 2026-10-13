@@ -10,6 +10,22 @@ import {
 } from '../app/game/trafficDomain';
 
 describe('pooled traffic geometry', () => {
+  it('signals only the committed cut-in side and resets a recycled entry', () => {
+    const template = makeDetailedTraffic('car', 0);
+    const entry = new Group();
+    entry.add(template.clone(true));
+    const lamp = entry.getObjectByName('traffic-turn-signal')!;
+    animateTraffic(entry, 6, 0, { from: 0, to: -1, age: -1, committed: false });
+    expect(lamp.visible).toBe(false);
+    animateTraffic(entry, 6, 0, { from: 0, to: -1, age: 0, committed: true });
+    expect(lamp.visible).toBe(true);
+    expect(lamp.position.x).toBeLessThan(0);
+    expect(template.getObjectByName('traffic-turn-signal')!.visible).toBe(false);
+    animateTraffic(entry, 6, 0, { from: 0, to: 1, age: 0.4, committed: true });
+    expect(lamp.position.x).toBeGreaterThan(0);
+    animateTraffic(entry, 6, 0, null);
+    expect(lamp.visible).toBe(false);
+  });
   it('shares geometry across colors while preserving the existing paints and wheel poses', () => {
     for (const kind of TRAFFIC_KINDS) {
       const variants = makeTrafficVariants(kind);

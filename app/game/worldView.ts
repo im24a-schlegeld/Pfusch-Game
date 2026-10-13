@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { LANE } from './engine';
 import { WORLD_LOOK_BEHIND, type World, type WorldSegment } from './world';
 import { addWorldSurfaceDetail } from './worldSurface';
+import { applyCartoonMaterial, applyCartoonStyle, prepareCartoonGeometry } from './cartoonStyle';
 import {
   makeTunnelBermGeometry,
   makeTunnelMountainGeometry,
@@ -19,36 +20,36 @@ export const WORLD_VIEW = Object.freeze({
 });
 
 const COLORS = {
-  asphalt: '#303132',
-  marking: '#e2e0d7',
-  curb: '#b8b6b0',
-  sidewalk: '#858582',
-  grass: '#636e5b',
-  soil: '#766d60',
-  sand: '#96917d',
-  concrete: '#a8a7a1',
-  dark: '#242729',
-  steel: '#6e7377',
-  glass: '#303d43',
-  glassLit: '#d0cbb8',
-  water: '#466e7c',
-  ripple: '#7b9a9d',
-  city0: '#c4c2ba',
-  city1: '#939695',
-  city2: '#63696c',
-  city3: '#b2a798',
-  shed0: '#646c6b',
-  shed1: '#9c9c92',
-  shed2: '#867464',
-  shed3: '#505b60',
-  brick: '#826b5c',
-  white: '#c8cbbf',
-  orange: '#c58444',
-  yellow: '#c7ac5c',
-  foliage: '#455d47',
-  foliageLight: '#6b7b55',
-  forestFloor: '#394b38',
-  trunk: '#675e4d',
+  asphalt: '#3c4651',
+  marking: '#fff3d5',
+  curb: '#dedbc9',
+  sidewalk: '#a4aaa9',
+  grass: '#79a35a',
+  soil: '#a68a68',
+  sand: '#d4bd85',
+  concrete: '#c1c8c1',
+  dark: '#171e29',
+  steel: '#839dab',
+  glass: '#284f69',
+  glassLit: '#ffe3a0',
+  water: '#368fac',
+  ripple: '#a1d9df',
+  city0: '#e4d4aa',
+  city1: '#a4bed0',
+  city2: '#78939b',
+  city3: '#dbb58e',
+  shed0: '#72998f',
+  shed1: '#c5c6a8',
+  shed2: '#b68b71',
+  shed3: '#738aab',
+  brick: '#b76d50',
+  white: '#e8eddb',
+  orange: '#ef8b3d',
+  yellow: '#f3ce60',
+  foliage: '#4c864c',
+  foliageLight: '#8aaf57',
+  forestFloor: '#536e43',
+  trunk: '#81613f',
   tunnelModern: '#7f9098',
   tunnelWeathered: '#837d6b',
   tunnelPanel: '#b0b9b5',
@@ -106,6 +107,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   root.name = 'streamed-world';
   scene.add(root);
   const speedCamera = createBlitzerModel({ scale: 1.12 });
+  applyCartoonStyle(speedCamera);
   speedCamera.visible = false;
   scene.add(speedCamera);
   const cameraFlash = speedCamera.getObjectByName('BlitzerFlash') as THREE.Mesh<
@@ -124,6 +126,8 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     mountain: makeTunnelMountainGeometry(),
     berm: makeTunnelBermGeometry(),
   };
+  for (const [form, geometry] of Object.entries(geometries))
+    prepareCartoonGeometry(geometry, form === 'box');
   const materials = {} as Record<Finish, THREE.MeshStandardMaterial>;
   const batches = new Map<string, Batch>();
   function allocate(form: Form, finish: Finish, material = materials[finish]) {
@@ -179,6 +183,13 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     'dark',
   ] as const)
     allocate('arch', finish);
+
+  // One shader pass, with ink on buildings/props rather than seams between
+  // recycled road or ground cells. Shared geometry and all 56 pools stay intact.
+  const broadSurfaces = new Set<Finish>(['asphalt', 'marking', 'grass', 'soil', 'sand', 'forestFloor', 'water', 'ripple']);
+  for (const finish of Object.keys(COLORS) as Finish[])
+    applyCartoonMaterial(materials[finish], !broadSurfaces.has(finish), !broadSurfaces.has(finish));
+  applyCartoonMaterial(terrainMaterial);
 
   const matrix = new THREE.Matrix4(),
     quaternion = new THREE.Quaternion(),

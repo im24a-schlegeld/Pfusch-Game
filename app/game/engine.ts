@@ -44,7 +44,7 @@ import {
   trafficSeparatedUntilPass,
   trafficWaveSpacing,
 } from './trafficFlow';
-import { TRAFFIC_PROGRESSION, trafficLaneProgress, type TrafficLaneShift } from './trafficProgression';
+import { TRAFFIC_PROGRESSION, trafficCutInTarget, trafficIntensity, trafficLaneProgress, type TrafficLaneShift } from './trafficProgression';
 import { SPEED_CAMERA, SpeedCameraSchedule } from './speedCamera';
 import {
   POLICE,
@@ -564,7 +564,7 @@ export class Engine {
       const moving =
         !environment.kinds.includes('construction') &&
         this.distance > 220 &&
-        this.random() < 0.38 + this.difficulty * 0.24;
+        this.random() < 0.38 + this.difficulty * 0.24 + trafficIntensity(this.score) * 0.2;
       let velocity = moving
         ? Math.min(
             TRAFFIC_FLOW.maximumCarSpeed,
@@ -621,6 +621,7 @@ export class Engine {
                 ? ROAD_EVENTS[o.kind].contactHalfLength
                 : TRAFFIC_SHAPES[o.kind].contactHalfLength,
               nextHalfLength,
+              this.score,
             ),
       )
     ) {
@@ -687,6 +688,7 @@ export class Engine {
         environment.initialSpacing,
         environment.minimumSpacing,
         this.difficulty,
+        this.score,
       ) *
         0.8 -
         this.random() * 4,
@@ -694,16 +696,28 @@ export class Engine {
     this.spawnWaveSign();
   }
   private planTrafficLaneChange(vehicle: Obstacle) {
-    // Move only from the middle into the other occupied-side lane. The wave's
-    // reserved safe edge remains open throughout the entire manoeuvre.
+    // Eligibility is drawn once per spawned wave, never once per frame. The
+    // target is committed later, close enough to notice the apparent gap close.
     if (this.score < TRAFFIC_PROGRESSION.laneChangeScore || vehicle.kind !== 'car' ||
-      vehicle.police || vehicle.velocity <= 0 || vehicle.lane !== 0 ||
-      this.nextSafe === 0 || this.arrivalTime(vehicle.z, vehicle.velocity) < TRAFFIC_PROGRESSION.minimumChangeArrival)
+      vehicle.police || vehicle.velocity <= 0 ||
+      this.arrivalTime(vehicle.z, vehicle.velocity) < TRAFFIC_PROGRESSION.minimumChangeArrival ||
+      this.random() >= TRAFFIC_PROGRESSION.laneChangeChance)
       return;
-    // Start close enough for the motion to be readable, but finish with ample
-    // reaction time before the rider reaches the car.
-    const wait = Math.max(0, this.arrivalTime(vehicle.z, vehicle.velocity) - TRAFFIC_PROGRESSION.laneChangeApproach);
-    const duration = wait + TRAFFIC_PROGRESSION.laneChangeDelay + TRAFFIC_PROGRESSION.laneChangeSeconds;
+    const wait = Math.max(STEP, this.arrivalTime(vehicle.z, vehicle.velocity) - TRAFFIC_PROGRESSION.laneChangeApproach);
+    vehicle.laneShift = { from: vehicle.lane,
+      to: trafficCutInTarget(vehicle.lane, this.lane, this.nextSafe), age: -wait, committed: false };
+  }
+  private commitTrafficLaneChange(vehicle: Obstacle, shift: TrafficLaneShift) {
+    // Do not combine a new cut-in with a jump, ramp transfer or police attack.
+    if (this.height > 0.1 || this.towCarrier || this.towJumpActive || this.constructionJumpActive ||
+      this.policeChase || this.policeVehicle.phase !== 'idle') return false;
+    const firstContact = TRAFFIC_SHAPES.car.rearZ + carFrontReach(this.bike.id, 0);
+    const warningAndMotion = TRAFFIC_PROGRESSION.laneChangeDelay + TRAFFIC_PROGRESSION.laneChangeSeconds;
+    if (vehicle.z <= firstContact || this.arrivalTime(vehicle.z - firstContact, vehicle.velocity) <
+      warningAndMotion + TRAFFIC_FLOW.reactionSeconds + TRAFFIC_FLOW.laneChangeSeconds) return false;
+    // Preserve longitudinal isolation until the car has passed, not only until
+    // the animation ends. Its vacated lane is then a real, reachable exit.
+    const duration = this.arrivalTime(vehicle.z + 18, vehicle.velocity);
     const clear = this.obstacles.every(other => {
       if (!other.active || other === vehicle) return true;
       const halfLength = isRoadEvent(other.kind)
@@ -713,8 +727,13 @@ export class Engine {
       return gap * endGap > 0 && Math.min(Math.abs(gap), Math.abs(endGap)) >
         TRAFFIC_SHAPES.car.contactHalfLength + halfLength + TRAFFIC_FLOW.minimumVehicleGap;
     });
-    if (clear && this.random() < TRAFFIC_PROGRESSION.laneChangeChance)
-      vehicle.laneShift = { from: vehicle.lane, to: -this.nextSafe, age: -wait };
+    if (!clear) return false;
+    shift.to = trafficCutInTarget(shift.from, this.lane, shift.to);
+    shift.committed = true;
+    shift.age = 0;
+    if (shift.to === this.lane)
+      this.event = { text: 'AUTO WECHSELT DIE SPUR', kind: 'warning', serial: this.event.serial + 1 };
+    return true;
   }
   private spawnWaveSign() {
     const unavailable = this.collectedSigns | this.excludedSigns;
@@ -1524,8 +1543,10 @@ export class Engine {
       if (o.laneShift) {
         const shift = o.laneShift;
         shift.age += dt;
-        o.offsetX = (shift.to - shift.from) * LANE * trafficLaneProgress(shift.age);
-        if (shift.age >= TRAFFIC_PROGRESSION.laneChangeDelay + TRAFFIC_PROGRESSION.laneChangeSeconds) {
+        if (shift.committed === false && shift.age >= 0 && !this.commitTrafficLaneChange(o, shift))
+          o.laneShift = null;
+        o.offsetX = o.laneShift ? (shift.to - shift.from) * LANE * trafficLaneProgress(shift.age) : 0;
+        if (o.laneShift && shift.age >= TRAFFIC_PROGRESSION.laneChangeDelay + TRAFFIC_PROGRESSION.laneChangeSeconds) {
           o.lane = shift.to;
           o.offsetX = 0;
           o.laneShift = null;
