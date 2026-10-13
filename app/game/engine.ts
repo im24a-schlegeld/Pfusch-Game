@@ -61,6 +61,7 @@ export type EngineInput =
   | { type: 'hold' | 'forward'; value: boolean }
   | { type: 'weight'; value: number }
   | { type: 'move'; value: -1 | 1 }
+  | { type: 'excludeSigns'; value: number }
   | { type: 'clear' | 'end' };
 export type ObstacleKind = TrafficKind | RoadEventKind;
 export interface Obstacle {
@@ -176,6 +177,7 @@ export class Engine {
   jumps = 0;
   scoreGains: ScoreGain[] = [];
   collectedSigns = 0;
+  private excludedSigns = 0;
   signSetCount = 0;
   signPickupSerial = 0;
   lastSignId: SignId | null = null;
@@ -631,21 +633,16 @@ export class Engine {
     this.spawnWaveSign();
   }
   private spawnWaveSign() {
-    // Daily progress is stored outside the fixed-step engine. A long ride can
-    // keep collecting small point bonuses, including after UTC midnight.
-    if (this.collectedSigns === COMPLETE_SIGN_MASK && this.distance >= this.nextSignAttempt) {
-      this.collectedSigns = 0;
-      this.signSequence = 0;
-    }
+    const unavailable = this.collectedSigns | this.excludedSigns;
     if (
-      this.collectedSigns === COMPLETE_SIGN_MASK ||
+      unavailable === COMPLETE_SIGN_MASK ||
       this.distance < this.nextSignAttempt ||
       !signScoreReady(this.collectedSigns, this.score) ||
       this.signs.some((s) => s.active)
     )
       return;
     const id = nextMissingSign(
-      this.collectedSigns,
+      unavailable,
       this.signs,
       this.signSequence,
     );
@@ -677,12 +674,24 @@ export class Engine {
     const pickup = this.signPickupHistory[serial % this.signPickupHistory.length];
     return pickup.serial === serial ? pickup.id : null;
   }
+  /** Saved daily progress can only remove pickups, never grant points or reset
+   * collection. Record the restriction so server replay uses the same spawns. */
+  excludeSigns(mask: number) {
+    if (this.phase === 'crashed' || !Number.isInteger(mask) || mask < 0 || mask > COMPLETE_SIGN_MASK) return;
+    const next = this.excludedSigns | mask;
+    if (next === this.excludedSigns) return;
+    this.excludedSigns = next;
+    this.onInput?.({ type: 'excludeSigns', value: next }, this.fixedTicks);
+    for (const sign of this.signs) {
+      if (next & signBit(sign.id)) sign.active = false;
+    }
+  }
   spawnSign(id: SignId, lane: number, z: number) {
     if (
       !SIGN_IDS.includes(id) ||
       !Number.isFinite(lane) ||
       !Number.isFinite(z) ||
-      this.collectedSigns & signBit(id) ||
+      (this.collectedSigns | this.excludedSigns) & signBit(id) ||
       this.signs.some((s) => s.active && s.id === id)
     )
       return;
@@ -1625,13 +1634,13 @@ export class Engine {
           this.height < 2.1
         ) {
           sign.active = false;
-          if (this.collectedSigns & signBit(sign.id)) continue;
+          if ((this.collectedSigns | this.excludedSigns) & signBit(sign.id)) continue;
           this.lastSignId = sign.id;
           this.signPickupSerial++;
           Object.assign(this.signPickupHistory[this.signPickupSerial % this.signPickupHistory.length],
             { serial: this.signPickupSerial, id: sign.id });
           this.collectedSigns |= signBit(sign.id);
-          if (this.collectedSigns === COMPLETE_SIGN_MASK) {
+          if ((this.collectedSigns | this.excludedSigns) === COMPLETE_SIGN_MASK) {
             this.signSetCount++;
             for (const pending of this.signs) pending.active = false;
             this.skill('SIGNS · ALLE GESAMMELT', 45);

@@ -1,5 +1,6 @@
 import { BIKES } from '../domain/config';
 import { Engine, STEP, type EngineInput } from './engine';
+import { COMPLETE_SIGN_MASK } from './signSet';
 
 export const MAX_VERIFIED_TICKS = 18000;
 export const MAX_VERIFIED_EVENTS = 2000;
@@ -47,6 +48,8 @@ function input(value: unknown): value is EngineInput {
   if (Object.keys(value).length !== 2 || !Object.hasOwn(value, 'value')) return false;
   if (value.type === 'hold' || value.type === 'forward') return typeof value.value === 'boolean';
   if (value.type === 'move') return value.value === -1 || value.value === 1;
+  if (value.type === 'excludeSigns') return typeof value.value === 'number' && Number.isInteger(value.value)
+    && value.value >= 0 && value.value <= COMPLETE_SIGN_MASK;
   return value.type === 'weight' && typeof value.value === 'number' && Number.isFinite(value.value)
     && value.value >= -1 && value.value <= 1;
 }
@@ -86,6 +89,7 @@ export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown):
         case 'hold': engine.hold(command.value); break;
         case 'forward': engine.forward(command.value); break;
         case 'weight': engine.weight(command.value); break;
+        case 'excludeSigns': engine.excludeSigns(command.value); break;
         case 'clear': engine.clearInput(); break;
         case 'end': engine.endRide(); break;
       }

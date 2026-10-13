@@ -62,6 +62,12 @@ export default function Ride({
     [player.bike, verifiedChallenge],
   );
   const verifier = useMemo(() => verifiedChallenge ? new VerifiedRunRecorder(engine) : null, [engine, verifiedChallenge]);
+  const collectedDailySigns = dailySignMask(player.challenges, dayKey());
+  useEffect(() => {
+    // Apply after the recorder exists and before the ready countdown starts.
+    // A new ride gets the current UTC day's saved progress, including guests.
+    engine.excludeSigns(collectedDailySigns);
+  }, [engine, collectedDailySigns]);
   const [tick, setTick] = useState(0),
     [ready, setReady] = useState(false),
     [countdown, setCountdown] = useState(3),
@@ -522,7 +528,7 @@ export default function Ride({
         </g>
       </svg>
       <RideHud engine={engine} best={player.highScore} pause={pause}
-        dailySignMask={dailySignMask(player.challenges, dayKey())} />
+        dailySignMask={collectedDailySigns} />
       {buttonMode && touchActive && engine.phase === 'playing' && !tutorial &&
         <RideTouchButtons onPress={pressTouchButton} wheelieHeld={engine.wheelieHeld} brakeHeld={engine.forwardHeld} />}
       {engine.phase === 'playing' && (
