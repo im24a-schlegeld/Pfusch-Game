@@ -15,7 +15,84 @@ function cutIn(bike = BIKES[3], from = 0, to = 1, z = 55) {
   return { engine, car };
 }
 
+function scheduledCutIn(bike = BIKES[3]) {
+  const engine = new Engine(bike, 8191);
+  engine.score = 50_000;
+  engine.lane = 100;
+  engine.x = engine.lane * LANE;
+  engine.start();
+  for (let tick = 0; tick < 3600; tick++) {
+    engine.advance(STEP);
+    const car = engine.obstacles.find(obstacle => obstacle.active && obstacle.laneShift?.committed === false);
+    if (!car) continue;
+    // Isolate the actual scheduled manoeuvre from earlier natural waves.
+    for (const obstacle of engine.obstacles) if (obstacle !== car) obstacle.active = false;
+    engine.lane = car.lane === 0 ? 1 : 0;
+    engine.x = engine.lane * LANE;
+    return { engine, car };
+  }
+  throw new Error('No planned cut-in in the deterministic 50k route.');
+}
+
 describe('readable traffic cut-ins', () => {
+  it.each(BIKES)('$name keeps a scheduled car in its lane until close, then warns before moving', bike => {
+    const { engine, car } = scheduledCutIn(bike);
+    expect(car.laneShift?.age).toBeLessThan(-1);
+    const from = car.lane;
+    let pendingTicks = 0;
+    while (car.laneShift?.committed === false && pendingTicks < 600) {
+      expect(car.lane).toBe(from);
+      expect(Math.abs(car.offsetX)).toBe(0);
+      engine.advance(STEP);
+      pendingTicks++;
+    }
+    expect(pendingTicks).toBeGreaterThan(60);
+    expect(car.laneShift).toMatchObject({ from, to: engine.lane, committed: true, age: 0 });
+    // Literal contact horizon: the old 3.5-second trigger is visibly too early.
+    expect(car.z / (engine.speed - car.velocity)).toBeLessThan(2.55);
+    expect(engine.event).toMatchObject({ kind: 'warning', text: 'AUTO WECHSELT DIE SPUR' });
+    for (let tick = 0; tick < 12; tick++) {
+      engine.advance(STEP);
+      expect(Math.abs(car.offsetX)).toBe(0);
+    }
+    for (let tick = 0; tick < 12; tick++) engine.advance(STEP);
+    expect(Math.abs(car.offsetX)).toBeGreaterThan(0);
+    expect(engine.phase).toBe('playing');
+  });
+
+  it.each(BIKES)('$name can escape the later scheduled cut-in after a real reaction and one swipe', bike => {
+    const dodge = scheduledCutIn(bike), stay = scheduledCutIn(bike);
+    for (let tick = 0; dodge.car.laneShift?.committed === false && tick < 600; tick++) {
+      dodge.engine.advance(STEP); stay.engine.advance(STEP);
+    }
+    expect(dodge.car.laneShift?.committed).toBe(true);
+    const from = dodge.car.lane, target = dodge.car.laneShift!.to;
+    const changingSpawn = dodge.car.spawnId;
+    for (let tick = 0; tick < Math.ceil(TRAFFIC_FLOW.reactionSeconds / STEP); tick++) {
+      dodge.engine.advance(STEP); stay.engine.advance(STEP);
+    }
+    dodge.engine.move(Math.sign(from - dodge.engine.lane));
+    expect(dodge.car.laneShift?.to).toBe(target);
+    let largestStep = 0, closestWhileMoving = Infinity;
+    let previous = dodge.car.lane * LANE + dodge.car.offsetX;
+    for (let tick = 0; tick < 210; tick++) {
+      dodge.engine.advance(STEP); stay.engine.advance(STEP);
+      if (!dodge.car.active || dodge.car.spawnId !== changingSpawn) continue;
+      const current = dodge.car.lane * LANE + dodge.car.offsetX;
+      largestStep = Math.max(largestStep, Math.abs(current - previous));
+      previous = current;
+      if (dodge.car.laneShift && Math.abs(dodge.car.offsetX) > 0)
+        closestWhileMoving = Math.min(closestWhileMoving,
+          dodge.car.z / (dodge.engine.speed - dodge.car.velocity));
+    }
+    expect(largestStep).toBeLessThan(0.08);
+    expect(closestWhileMoving).toBeGreaterThan(1.2);
+    expect(dodge.engine.lane).toBe(from);
+    expect(dodge.engine.phase).toBe('playing');
+    expect(stay.engine.phase).toBe('crashed');
+    expect(stay.engine.crashObstacle).toBe(stay.car);
+  });
+
   it.each(BIKES)('$name can react once to a car entering its formerly clear lane and use the vacated lane', bike => {
     const dodge = cutIn(bike), stay = cutIn(bike);
     dodge.engine.advance(STEP); stay.engine.advance(STEP);

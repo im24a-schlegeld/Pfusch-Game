@@ -60,7 +60,7 @@ function Palette({ title, colors, value, valueLabel, equipped, status, onChange,
     <div className="gc-color-summary" aria-live="polite"><strong>{selected?.name ?? valueLabel ?? value}</strong><span>{selected ? status(selected) : ''}</span></div>
     <div className="gc-swatches">{(expanded ? options : compact).map(color => <label key={color.value} className={`${value === color.value ? 'is-selected' : ''} ${color.value === DARK_CARBON ? 'gc-carbon' : ''}`} title={`${color.name} · ${status(color)}`}>
       <input type="radio" name={`garage-${title}`} value={color.value} checked={value === color.value} onChange={() => onChange(color.value)} aria-label={`${title}: ${color.name} · ${status(color)}`} />
-      <i style={{ background: finishSwatch(color.value) }} />{color.value === DARK_CARBON && <span><strong>DUNKLES KARBON</strong><small>PREMIUM · {status(color)}</small></span>}{value === color.value && <Check size={16} aria-hidden="true" />}
+      <i style={{ background: finishSwatch(color.value) }} />{color.value === DARK_CARBON && <span><strong>KARBON</strong><small>PREMIUM · {status(color)}</small></span>}{value === color.value && <Check size={16} aria-hidden="true" />}
     </label>)}</div>
     {options.length > compactCount && <button className="gc-text-button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Weniger Farben' : `Weitere Farben (${options.length})`} <ChevronDown size={14} aria-hidden="true" /></button>}
   </fieldset>;
@@ -224,7 +224,7 @@ export default function Garage({ player, products, update, services, notify, sta
       </div>
       {previewReady && <div className="gc-preview-footer"><h2>{bike.name}</h2>{appearance.equipped.upper && <p>{products.find(product => product.id === appearance.equipped.upper)?.title}</p>}</div>}
       {previewReady && <div className="gc-angles" aria-label="Kameraansicht">
-        {[{ name: 'Vorne ¾', value: 2.35 }, { name: 'Seite', value: 1.57 }, { name: 'Hinten ¾', value: .55 }].map(view => <button key={view.name} onClick={() => { setAngle(view.value); setInspectionRevision(revision => revision + 1); }}>{view.name}</button>)}
+        {[{ name: 'Vorne ¾', value: 2.35 }, { name: 'Seite', value: 1.57 }, { name: 'Hinten ¾', value: .55 }].map(view => <button key={view.name} aria-pressed={angle === view.value} onClick={() => { setAngle(view.value); setInspectionRevision(revision => revision + 1); }}>{view.name}</button>)}
       </div>}
     </section>
     <section className="gc-controls" aria-label="Garage konfigurieren">
@@ -242,7 +242,7 @@ export default function Garage({ player, products, update, services, notify, sta
         {(part === 'pantsColor' || part === 'shoesColor') && riderPalette(part)}
         {(part === 'helmet' || part === 'head') && <div className="gc-toggle" aria-label="Kopfausrüstung"><button aria-pressed={part === 'helmet'} onClick={() => selectPart('helmet')}>Helm</button><button aria-pressed={part === 'head'} onClick={() => selectPart('head')}>Caps an der Hose</button></div>}
         {part === 'helmet' && <div className="gc-helmet-options">
-          <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name} · {helmetStatus('helmet', helmet.id)}</button>)}</div></fieldset>
+          <fieldset className="gc-field"><legend>Helmtyp</legend><div className="gc-toggle">{HELMETS.map(helmet => <button key={helmet.id} aria-pressed={appearance.helmet === helmet.id} onClick={() => editHelmet({ helmet: helmet.id })}>{helmet.name}{helmet.id !== 'fullface' && ` · ${helmetStatus('helmet', helmet.id)}`}</button>)}</div></fieldset>
           <Palette title="Helmfarbe" compactCount={16} colors={HELMET_COLORS} value={appearance.helmetColor} equipped={player.helmetColor} status={color => helmetStatus('helmetColor', color.value)} onChange={helmetColor => editHelmet({ helmetColor })} />
           <Palette title="Visier / Brillenglas" colors={SELECTABLE_VISOR_COLORS} value={appearance.helmetVisor} valueLabel={VISOR_COLORS.find(color => color.value === appearance.helmetVisor)?.name} equipped={player.helmetVisor} status={color => helmetStatus('helmetVisor', color.value)} onChange={helmetVisor => editHelmet({ helmetVisor })} />
           {products.some(isSticker) && <button className="gc-secondary" onClick={() => { selectPart('extras'); const sticker = products.find(isSticker)!; setEdit({ kind: 'product', productId: sticker.id, configuration: initialConfiguration(player, sticker) }); setStickerTarget('helmet'); }}>Helmsticker auswählen</button>}

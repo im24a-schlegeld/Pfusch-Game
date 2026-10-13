@@ -28,7 +28,9 @@ for (const mesh of source.meshes) {
   const src = source.worldPositions.get(mesh.name), sn = source.worldNormals.get(mesh.name);
   const p = new Float32Array(src.length), n = new Float32Array(sn.length);
   for (let i = 0; i < p.length; i += 3) {
-    // Supplied sneaker points +X; game forward is -Z, Y stays up.
+    // The supplied low toe points -X (the tall heel/collar is +X).
+    // Preserve the existing packed +Z toe frame; createSneaker rotates its
+    // positions and normals 180° around Y once to motorcycle forward -Z.
     p[i] = (src[i + 2] - center.z) * scale;
     p[i + 1] = (src[i + 1] - box.min.y) * scale;
     p[i + 2] = -(src[i] - center.x) * scale;

@@ -92,13 +92,13 @@ export function makeWorldLighting(
     headlight.visible = false;
     scene.add(headlight, headlight.target);
   }
-  const riderLight = new THREE.PointLight('#c4d3dd', 0, 18, 1.5);
-  riderLight.name = 'tunnel-rider-fill';
-  scene.add(riderLight);
+  // Only the motorcycle's optical faces project local light. The existing
+  // hemisphere and directional fill keep the rider readable without an
+  // artificial side cone on the tunnel wall or the road beside the bike.
   const update = (
     world: World,
     distance: number,
-    x: number,
+    _x: number,
     headlightCount: 1 | 2,
   ) => {
     const { from, to, blend, tunnel } = readWorldLighting(world, distance, sample);
@@ -138,8 +138,6 @@ export function makeWorldLighting(
       headlights[i].visible = active;
       headlights[i].intensity = active ? (dark * 55) / headlightCount : 0;
     }
-    riderLight.intensity = dark * THREE.MathUtils.lerp(8, 4, tunnel);
-    riderLight.position.set(x - 2, 4.5, 2);
     return dark;
   };
   return { headlights, update };

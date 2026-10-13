@@ -61,10 +61,10 @@ export function Challenges({
   const completed = challenges.filter((challenge) => daily.claimed.includes(challenge.id)).length;
   const remaining = challenges.filter((challenge) => !daily.claimed.includes(challenge.id));
   return (
-    <main className="standard-page">
+    <main className="standard-page menu-page tasks-page">
       <ScreenHeading
         kicker=""
-        title="TÄGLICHE AUFGABEN."
+        title="Tägliche Aufgaben."
         back={back}
       />
       <div className="page-intro">
@@ -91,8 +91,9 @@ export function Challenges({
               data-testid={c.stat === 'signs' ? 'daily-pfusch-task' : undefined}
             >
               <div className="challenge-top">
-                <span>0{i + 1}</span>
+                <span className="mission-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
                 <span className="mission-symbol">{complete ? <CircleCheck aria-hidden="true" /> : <Icon aria-hidden="true" />}</span>
+                {complete && <span className="mission-status">Erledigt</span>}
               </div>
               <h2>{c.title}</h2>
               <p>{c.description}</p>
@@ -190,10 +191,10 @@ export function ProgressContent({ player }: { player: Player }) {
 }
 export function ProgressScreen({ player, back }: Base) {
   return (
-    <main className="standard-page narrow">
+    <main className="standard-page narrow menu-page progress-page">
       <ScreenHeading
         kicker=""
-        title="FORTSCHRITT."
+        title="Fortschritt."
         back={back}
       />
       <ProgressContent player={player} />
@@ -218,10 +219,10 @@ export function Rewards({
   const rewards = REWARDS.filter((reward) => reward.kind !== 'future');
   const ready = rewards.filter((reward) => reward.level <= player.level && !player.redeemedRewards.includes(reward.id));
   return (
-    <main className="standard-page">
+    <main className="standard-page menu-page rewards-page">
       <ScreenHeading
         kicker=""
-        title="BELOHNUNGEN."
+        title="Belohnungen."
         back={back}
       />
       <div className="page-intro">
@@ -245,7 +246,7 @@ export function Rewards({
                   LEVEL {r.level}
                 </span>
               </div>
-              <div>
+              <div className="reward-content">
                 <h2>{r.title}</h2>
                 <p>{r.description}</p>
                 <span className="reward-unlock"><Medal size={15} aria-hidden="true" />{claimed ? 'Gutgeschrieben' : available ? 'Einmalig abholbar' : `Noch ${fmt(neededXp)} XP bis Level ${r.level}`}</span>
@@ -342,10 +343,10 @@ export function Leaderboard({
   const rankShare = !result.loading && !result.error && result.period === period
     ? rankedGameShare(result.snapshot, sharePeriod, result.date) : null;
   return (
-    <main className="standard-page narrow">
+    <main className="standard-page narrow menu-page ranking-page">
       <ScreenHeading
         kicker=""
-        title="RANGLISTE."
+        title="Rangliste."
         back={back}
       />
       <div className="page-intro">
@@ -362,13 +363,6 @@ export function Leaderboard({
           <ShareAction label="RANG TEILEN" share={rankShare} />
         </div>}
       </section>
-      <section className="game-invite-section" aria-labelledby="invite-heading">
-        <div className="game-invite-heading"><UserPlus size={22} aria-hidden="true" /><h2 id="invite-heading">Freunde einladen.</h2></div>
-        {invite.code ? <><p className="game-invite-offer">Aktuell <strong>150</strong> statt <s>100</s> Coins pro erfolgreicher Einladung.</p>
-          <p className="game-invite-detail">Wenn dein Freund sich anmeldet und seine erste Fahrt beendet.</p></>
-          : <p className="game-invite-detail">{invite.loading ? 'Dein persönlicher Einladungslink wird geladen …' : 'Mit Online-Anmeldung kannst du Einladungs-Coins verdienen. Im Moment teilst du ohne Belohnung.'}</p>}
-        <ShareAction label="FREUND EINLADEN" disabled={invite.loading} share={{ kind: 'invite', name: player.leaderboardName, ...(invite.code ? { referral: invite.code } : {}) }} />
-      </section>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
         <TabsList className="ranking-tabs" variant="line">
           {(['Today', 'This week', 'All time'] as const).map((p) => (
@@ -378,54 +372,64 @@ export function Leaderboard({
           ))}
         </TabsList>
       </Tabs>
-      <section className="settings-section leaderboard-name-form" aria-labelledby="leaderboard-name-title">
-        <h2 id="leaderboard-name-title">DEIN RANGLISTENNAME</h2>
-        <p>Ohne Namen erscheinst du als „DU“.</p>
-        <label htmlFor="leaderboard-name">Anzeigename</label>
-        <input
-          id="leaderboard-name"
-          type="text"
-          value={draftName}
-          maxLength={24}
-          // Valid HTML autofill token; retained for the player's public display name.
-          // eslint-disable-next-line jsx-a11y/autocomplete-valid
-          autoComplete="nickname"
-          placeholder="Dein Name"
-          onChange={(event) => setDraftName(event.target.value)}
-        />
-        {invalidName && <p role="alert">Nutze maximal 24 Zeichen ohne Steuerzeichen.</p>}
-        <button
-          className="button small"
-          disabled={invalidName || normalizedName === player.leaderboardName}
-          onClick={() => update({ ...player, leaderboardName: normalizedName })}
-        >
-          NAMEN SPEICHERN
-        </button>
-      </section>
-      {result.loading && <output className="ranking-state"><span className="spinner" /> BESTWERTE WERDEN GELADEN</output>}
+      {result.loading && <output className="ranking-state" aria-live="polite"><span className="spinner" /> BESTWERTE WERDEN GELADEN</output>}
       {result.error && <div className="ranking-state"><p>Die Rangliste ist gerade nicht erreichbar.</p><button className="button small" onClick={() => setRevision((value) => value + 1)}>ERNEUT LADEN</button></div>}
       {!result.loading && !result.error && entries.length === 0 && <div className="ranking-state"><Trophy size={32} aria-hidden="true" /><h2>NOCH KEINE FAHRTEN.</h2><p>Nach deiner ersten Fahrt erscheint hier dein Punktestand.</p><button className="button small" onClick={back}>ZUR GARAGE <ArrowRight size={16} aria-hidden="true" /></button></div>}
       {entries.length > 0 && <>
-      <div className="ranking-list">
-        <div className="ranking-head">
-          <span>{online ? 'RANG / FAHRER' : 'FAHRER / BESTLEISTUNG'}</span>
-          <span>PUNKTE</span>
+      <div className="ranking-list" role="table" aria-colcount={3} aria-label={online ? 'Community-Rangliste' : 'Deine Bestleistungen'}>
+        <div className="ranking-head" role="row">
+          <span role="columnheader" aria-colspan={2}>{online ? 'RANG / FAHRER' : 'FAHRER / BESTLEISTUNG'}</span>
+          <span role="columnheader" aria-colindex={3}>PUNKTE</span>
         </div>
         {entries.map((e, i) => (
-          <div key={`${i}:${e.name}`} className={e.you ? 'you' : ''}>
-            <span className="rank">
-              {i === 0 ? <Trophy size={23} /> : String(i + 1).padStart(2, '0')}
+          <div key={`${i}:${e.name}`} className={e.you ? 'you' : ''} role="row">
+            <span className="rank" role="cell" aria-label={`Platz ${i + 1}`}>
+              {i === 0 ? <Trophy size={23} aria-hidden="true" /> : String(i + 1).padStart(2, '0')}
             </span>
-            <span className="racer">
+            <span className="racer" role="cell">
               {e.name}
               <small>{e.you ? 'DEINE BESTLEISTUNG' : 'COMMUNITY-FAHRER'}</small>
             </span>
-            <strong>{fmt(e.score)}</strong>
+            <strong role="cell">{fmt(e.score)}</strong>
           </div>
         ))}
       </div>
       </>}
       {result.snapshot && <p className="catalog-note">{result.snapshot.message}</p>}
+      <details className="ranking-name-editor">
+        <summary><span>Anzeigenamen bearbeiten</span><strong>{player.leaderboardName || 'DU'}</strong></summary>
+        <section className="settings-section leaderboard-name-form" aria-labelledby="leaderboard-name-title">
+          <h2 id="leaderboard-name-title">Dein Ranglistenname</h2>
+          <p>Ohne Namen erscheinst du als „DU“.</p>
+          <label htmlFor="leaderboard-name">Anzeigename</label>
+          <input
+            id="leaderboard-name"
+            type="text"
+            value={draftName}
+            maxLength={24}
+            // Valid HTML autofill token; retained for the player's public display name.
+            // eslint-disable-next-line jsx-a11y/autocomplete-valid
+            autoComplete="nickname"
+            placeholder="Dein Name"
+            onChange={(event) => setDraftName(event.target.value)}
+          />
+          {invalidName && <p role="alert">Nutze maximal 24 Zeichen ohne Steuerzeichen.</p>}
+          <button
+            className="button small"
+            disabled={invalidName || normalizedName === player.leaderboardName}
+            onClick={() => update({ ...player, leaderboardName: normalizedName })}
+          >
+            NAMEN SPEICHERN
+          </button>
+        </section>
+      </details>
+      <section className="game-invite-section" aria-labelledby="invite-heading">
+        <div className="game-invite-heading"><UserPlus size={22} aria-hidden="true" /><h2 id="invite-heading">Freunde einladen.</h2></div>
+        {invite.code ? <><p className="game-invite-offer">Aktuell <strong>150</strong> statt <s>100</s> Coins pro erfolgreicher Einladung.</p>
+          <p className="game-invite-detail">Wenn dein Freund sich anmeldet und seine erste Fahrt beendet.</p></>
+          : <p className="game-invite-detail">{invite.loading ? 'Dein persönlicher Einladungslink wird geladen …' : 'Mit Online-Anmeldung kannst du Einladungs-Coins verdienen. Im Moment teilst du ohne Belohnung.'}</p>}
+        <ShareAction label="FREUND EINLADEN" disabled={invite.loading} share={{ kind: 'invite', name: player.leaderboardName, ...(invite.code ? { referral: invite.code } : {}) }} />
+      </section>
     </main>
   );
 }
@@ -461,8 +465,11 @@ export function SettingsScreen({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return (
-    <main className="standard-page narrow">
+    <main className="standard-page narrow menu-page settings-page">
       <ScreenHeading kicker="" title="EINSTELLUNGEN." back={back} backLabel={backLabel} />
+      <p className="settings-intro">Passe Bild, Ton und Bedienung an dich an.</p>
+      <section className="settings-section settings-preferences" aria-labelledby="settings-preferences-title">
+      <h2 id="settings-preferences-title">Bild & Ton</h2>
       <div className="settings-list">
         <div>
           <label htmlFor="sound">
@@ -478,7 +485,7 @@ export function SettingsScreen({
         <div>
           <label htmlFor="motion">
             <b>Reduzierte Bewegung</b>
-            <span>Weniger Kamerabewegung, keine automatische Drehung in der Garage.</span>
+            <span>Ruhigere Kamera und eine stehende Garagenvorschau.</span>
           </label>
           <Switch
             id="motion"
@@ -490,7 +497,7 @@ export function SettingsScreen({
           <label htmlFor="quality">
             <b>Performance-Modus</b>
             <span>
-              Standard: hohe Bildqualität. Performance-Modus reduziert Auflösung und Details.
+              Weniger Details für schwächere Geräte. Standard ist hohe Bildqualität.
             </span>
           </label>
           <Switch
@@ -500,29 +507,10 @@ export function SettingsScreen({
           />
         </div>
       </div>
-      <section className="settings-section">
-        <h2>DEIN FORTSCHRITT</h2>
-        {syncStatus && <output className="mb-3 block">{syncStatus.message}</output>}
-        <p>
-          {access && !access.allowed
-            ? 'Neue Fahrten und das Speichern sind pausiert, bis dein Zugang bestätigt ist. Bereits gespeicherter Fortschritt bleibt erhalten.'
-            : syncStatus && player.id.startsWith('shopify:')
-            ? 'Dein Spielstand gehört zu deinem Shop-Konto. Der Speicherstatus zeigt, ob der aktuelle Fortschritt bereits im Konto gesichert ist.'
-            : syncStatus
-              ? 'Ohne verbundenes Shop-Konto bleibt dein Gastspielstand auf diesem Gerät. Beim Löschen der Browserdaten kann er verloren gehen.'
-              : 'Dein Fortschritt wird automatisch auf diesem Gerät gespeichert. Beim Löschen der Browserdaten kann der Spielstand verloren gehen.'}
-        </p>
-        {access && access.reason !== 'subscribed' && <p>{Math.min(access.completedRuns, access.freeRuns)} von {access.freeRuns} freien Fahrten abgeschlossen. Danach ist ein aktives PFUSCH-Newsletter-Abo für weitere Fahrten und neue Spielstände nötig.</p>}
-        {onAccess && <button className="button mb-3" onClick={onAccess}><Mail size={18} aria-hidden="true" /> NEWSLETTER-STATUS</button>}
-        {!duringRide && accountKind === 'guest' && (loginHref ? <a className="button mb-3" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN</a>
-          : services.auth.login && <button className="button mb-3" onClick={services.auth.login}>MIT PFUSCH-KONTO ANMELDEN</button>)}
-        <button className="button" onClick={exportSave}>
-          <Download size={18} /> SPIELSTAND EXPORTIEREN
-        </button>
       </section>
-      <section className="settings-section">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2>STEUERUNG</h2>
+      <section className="settings-section settings-controls" aria-labelledby="settings-controls-title">
+        <div className="settings-section-heading">
+          <h2 id="settings-controls-title">Steuerung</h2>
           {onTutorial && <button className="button small" onClick={onTutorial}>
             <Repeat2 size={18} aria-hidden="true" /> SPIELHINWEISE ANSEHEN
           </button>}
@@ -536,6 +524,9 @@ export function SettingsScreen({
             onChange={() => update({ ...player, settings: { ...player.settings, touchControls: 'buttons' } })} />
             <span><b>Tasten</b><small>Wheelie und Bremse gedrückt halten.</small></span></label>
         </fieldset>}
+        <p className="settings-control-summary">{buttonMode ? 'Wheelie oder Bremse gedrückt halten. Seitlich wischen zum Ausweichen.' : 'Nach unten ziehen für einen Wheelie, nach oben zum Senken. Seitlich wischen zum Ausweichen.'}</p>
+        <details className="settings-help">
+        <summary>Gesten & Tastatur im Überblick</summary>
         <div className="control-guide">
           <span>
             WISCHEN ← → / A D <b>Ausweichen</b>
@@ -551,8 +542,31 @@ export function SettingsScreen({
           </span>
         </div>
         <p>
-          {buttonMode ? 'Touch: Wheelie halten hebt das Vorderrad an, Bremse halten senkt es. Loslassen ist neutral. Seitlich wischen zum Ausweichen.' : 'Touch: nach unten ziehen hebt das Vorderrad an, nach oben ziehen senkt es. Seitlich wischen zum Ausweichen.'} Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Tastatur: A/D oder Pfeile seitlich, S/↓ anheben, W/↑ senken. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Jedes PFUSCH-Zeichen bringt 45 Punkte. Sammle täglich P, F, U, S, C und H für 120 Coins.
+          Zwei Finger auf der Fahrfläche oder die Pausentaste pausieren. Wheelies, knappe Manöver und Stunts bringen die meisten Punkte. Jedes PFUSCH-Zeichen bringt 45 Punkte. Sammle täglich P, F, U, S, C und H für 120 Coins.
         </p>
+        </details>
+      </section>
+      <section className="settings-section settings-account" aria-labelledby="settings-account-title">
+        <h2 id="settings-account-title">Konto & Spielstand</h2>
+        {syncStatus && <output className="settings-save-status" aria-live="polite">{syncStatus.message}</output>}
+        <p>
+          {access && !access.allowed
+            ? 'Neue Fahrten und das Speichern sind pausiert, bis dein Zugang bestätigt ist. Bereits gespeicherter Fortschritt bleibt erhalten.'
+            : syncStatus && player.id.startsWith('shopify:')
+            ? 'Dein Spielstand gehört zu deinem Shop-Konto. Der Speicherstatus zeigt, ob der aktuelle Fortschritt bereits im Konto gesichert ist.'
+            : syncStatus
+              ? 'Ohne verbundenes Shop-Konto bleibt dein Gastspielstand auf diesem Gerät. Beim Löschen der Browserdaten kann er verloren gehen.'
+              : 'Dein Fortschritt wird automatisch auf diesem Gerät gespeichert. Beim Löschen der Browserdaten kann der Spielstand verloren gehen.'}
+        </p>
+        {access && access.reason !== 'subscribed' && <p>{Math.min(access.completedRuns, access.freeRuns)} von {access.freeRuns} freien Fahrten abgeschlossen. Danach ist ein aktives PFUSCH-Newsletter-Abo für weitere Fahrten und neue Spielstände nötig.</p>}
+        <div className="settings-actions">
+          {!duringRide && accountKind === 'guest' && (loginHref ? <a className="button" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN</a>
+            : services.auth.login && <button className="button" onClick={services.auth.login}>MIT PFUSCH-KONTO ANMELDEN</button>)}
+          {onAccess && <button className="button" onClick={onAccess}><Mail size={18} aria-hidden="true" /> NEWSLETTER-STATUS</button>}
+          <button className="button" onClick={exportSave}>
+            <Download size={18} aria-hidden="true" /> SPIELSTAND EXPORTIEREN
+          </button>
+        </div>
       </section>
       {!duringRide && <OfflineSettings />}
       <footer className="settings-section">

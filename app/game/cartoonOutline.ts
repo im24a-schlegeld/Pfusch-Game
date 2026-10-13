@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 
 export const CARTOON_OUTLINE_MAX_MESHES = 32;
+export const CARTOON_CONTOUR_MAX_MESHES = 10;
+export const CARTOON_CONTOUR_MAX_SEGMENTS = 2048;
 export interface CartoonOutline {
   readonly count: number;
+  readonly contourCount: number;
   /** CSS viewport dimensions, only needed when the view resizes. */
   update(width: number, height: number): void;
   dispose(): void;
@@ -27,13 +30,61 @@ const vertexShader = `
     // objectNormal still points outwards. Unlike defaultnormal_vertex this
     // deliberately does not invert normals for a BackSide material.
     vec3 outlineNormal = normalize(normalMatrix * objectNormal);
-    vec2 direction = (projectionMatrix * vec4(outlineNormal, 0.0)).xy * cartoonViewport;
+    vec2 projectedNormal = (projectionMatrix * vec4(outlineNormal, 0.0)).xy;
+    vec2 direction = projectedNormal * cartoonViewport;
     direction /= max(length(direction), 0.00001);
-    gl_Position.xy += direction * (2.0 * cartoonStroke / cartoonViewport) * gl_Position.w;
+    // Face-on normals have no stable screen direction. Normalising their tiny
+    // decimation noise to a full stroke made the sneaker sole grow black teeth.
+    float contourWeight = smoothstep(0.025, 0.12, length(projectedNormal));
+    gl_Position.xy += direction * contourWeight * (2.0 * cartoonStroke / cartoonViewport) * gl_Position.w;
     // Keep the black shell behind its coloured surface, including at seams.
     gl_Position.z += 0.00001 * gl_Position.w;
   }
 `;
+
+/** Weld UV/material duplicates before comparing adjacent faces. Only genuine
+ * open borders, strong corners and material joins survive; coplanar triangle
+ * diagonals and smooth tessellation never become a wireframe. Built once. */
+function hardContourGeometry(source: THREE.BufferGeometry) {
+  const positions = source.getAttribute('position');
+  const index = source.index;
+  const keys = Array.from({ length: positions.count }, (_, i) =>
+    `${Math.round(positions.getX(i) * 100000)},${Math.round(positions.getY(i) * 100000)},${Math.round(positions.getZ(i) * 100000)}`);
+  const edges = new Map<string, { a: number; b: number; normal: THREE.Vector3; material: number; border: boolean; uses: number }>();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const normal = new THREE.Vector3(), side = new THREE.Vector3();
+  const at = (i: number) => index ? index.getX(i) : i;
+  const count = index ? index.count : positions.count;
+  for (let i = 0; i + 2 < count; i += 3) {
+    const vertices = [at(i), at(i + 1), at(i + 2)];
+    a.fromBufferAttribute(positions, vertices[0]);
+    b.fromBufferAttribute(positions, vertices[1]);
+    c.fromBufferAttribute(positions, vertices[2]);
+    normal.subVectors(b, a).cross(side.subVectors(c, a));
+    if (normal.lengthSq() < 1e-16) continue;
+    normal.normalize();
+    const material = source.groups.find((group) => i >= group.start && i < group.start + group.count)?.materialIndex ?? 0;
+    for (let j = 0; j < 3; j++) {
+      const from = vertices[j], to = vertices[(j + 1) % 3];
+      if (keys[from] === keys[to]) continue;
+      const key = keys[from] < keys[to] ? `${keys[from]}:${keys[to]}` : `${keys[to]}:${keys[from]}`;
+      const edge = edges.get(key);
+      if (edge) {
+        edge.uses++;
+        edge.border ||= edge.material !== material || edge.normal.dot(normal) < 0.5;
+      } else edges.set(key, { a: from, b: to, normal: normal.clone(), material, border: false, uses: 1 });
+    }
+  }
+  const points: number[] = [];
+  for (const edge of edges.values()) {
+    if (edge.uses !== 1 && !edge.border) continue;
+    for (const vertex of [edge.a, edge.b]) points.push(positions.getX(vertex), positions.getY(vertex), positions.getZ(vertex));
+    if (points.length >= CARTOON_CONTOUR_MAX_SEGMENTS * 6) break;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+  return geometry;
+}
 
 /** A small shared-geometry backface shell on the player only. Real silhouettes
  * need geometry beyond the coloured fragments; no fullscreen pass is required.
@@ -56,7 +107,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     polygonOffsetUnits: 1,
     toneMapped: false,
   });
-  const candidates: { mesh: THREE.Mesh; priority: number; size: number }[] = [];
+  const candidates: { mesh: THREE.Mesh; priority: number; size: number; hardForm: boolean }[] = [];
   const scale = new THREE.Vector3(), size = new THREE.Vector3();
   const position = new THREE.Vector3(), rotation = new THREE.Quaternion();
   root.updateWorldMatrix(true, true);
@@ -64,7 +115,13 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh ||
         object.userData.cartoonOutline || object.userData.bikeSticker || object.userData.helmetSticker) return;
     const name = `${object.name} ${object.userData.importedPart ?? ''}`.toLowerCase();
-    if (/sticker|decal|shadow|glass|reflector|glow|goggle|lens|wire|cable|hose|spoke|spring|chain|bolt|zipper|screw|stitch|cape|flag/.test(name)) return;
+    const goggleFrame = object.name === 'motocross-goggle-frame';
+    // Older Töffli/sport rim lips are intentionally unnamed. Their topology
+    // and wheel parent identify them without promoting the thin wire spokes.
+    const rim = /(^|-)rim(-|\s|$)/.test(name) ||
+      (object.geometry instanceof THREE.TorusGeometry && /^(front|rear)-wheel$/.test(object.parent?.name ?? ''));
+    if (/sticker|decal|shadow|glass|reflector|glow|lens|wire|cable|hose|spoke|spring|chain|bolt|zipper|screw|stitch|cape|flag/.test(name) ||
+        (/goggle/.test(name) && !goggleFrame)) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     if (!materials.length || materials.some((entry) => !entry.visible || entry.transparent || entry.opacity < 0.98 ||
         entry.alphaTest > 0 || (entry as THREE.MeshStandardMaterial).alphaMap)) return;
@@ -76,10 +133,15 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     const extents = [size.x, size.y, size.z].sort((a, b) => b - a);
     // Tiny hardware should not turn into a one-pixel black mass on a phone.
     if (extents[0] < 0.09 || extents[1] < 0.035) return;
-    const rider = object instanceof THREE.SkinnedMesh || /garment|hood|helmet|trouser|rider-(glove|boot)/.test(name);
-    const bodywork = object.userData.bikePaintSurface || /tire|tyre|seat|fairing|fender|mudguard|side-cover|bodywork|shroud|tank|swingarm|crankcase|engine|fork-guard|carried-cap/.test(name);
+    const rider = object instanceof THREE.SkinnedMesh ||
+      /garment|hood|helmet|motocross-peak|trouser|rider-(glove|boot)|stand-collar|imported-cap-shell|carried-crossbody-bag/.test(name) || goggleFrame;
+    const bodywork = object.userData.bikePaintSurface || rim ||
+      /tire|tyre|seat|fairing|fender|mudguard|side-cover|bodywork|shroud|tank|swingarm|crankcase|engine|fork-guard|fork-slider|stanchion|main-frame|headlight-(mask|bezel|recess)|tail-shell|rear-hugger|single-exhaust|silencer|muffler|carried-cap/.test(name);
     if (!rider && !bodywork && !object.userData.importedPart) return;
-    candidates.push({ mesh: object, priority: rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1] });
+    const essential = rim || goggleFrame || /helmet|motocross-peak|garment/.test(name);
+    const hardForm = !(object instanceof THREE.SkinnedMesh) &&
+      (rim || goggleFrame || /helmet|motocross-peak|fairing|fender|side-cover|shroud|headlight-(mask|bezel|recess)|tank|tail-shell|rear-hugger/.test(name));
+    candidates.push({ mesh: object, priority: essential ? 3 : rider ? 2 : bodywork ? 1 : 0, size: extents[0] * extents[1], hardForm });
   });
   candidates.sort((a, b) => b.priority - a.priority || b.size - a.size);
   const outlines: THREE.Mesh[] = [];
@@ -104,9 +166,41 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     mesh.add(outline);
     outlines.push(outline);
   }
+  const contourMaterial = new THREE.ShaderMaterial({
+    name: 'cartoon-hero-contour',
+    vertexShader: `void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      gl_Position.z -= 0.00001 * gl_Position.w;
+    }`,
+    fragmentShader: 'void main() { gl_FragColor = vec4(0.008, 0.010, 0.014, 1.0); }',
+    depthWrite: false,
+    depthTest: true,
+    toneMapped: false,
+  });
+  const contourGeometry = new Map<THREE.BufferGeometry, THREE.BufferGeometry>();
+  const contours: THREE.LineSegments[] = [];
+  for (const { mesh, hardForm } of candidates) {
+    if (!hardForm) continue;
+    if (contours.length >= CARTOON_CONTOUR_MAX_MESHES) break;
+    let geometry = contourGeometry.get(mesh.geometry);
+    if (!geometry) {
+      geometry = hardContourGeometry(mesh.geometry);
+      contourGeometry.set(mesh.geometry, geometry);
+    }
+    if (!geometry.getAttribute('position').count) continue;
+    const contour = new THREE.LineSegments(geometry, contourMaterial);
+    contour.name = 'cartoon-hero-contour';
+    contour.userData.cartoonContour = true;
+    contour.frustumCulled = false;
+    contour.layers.mask = mesh.layers.mask;
+    contour.raycast = () => {};
+    mesh.add(contour);
+    contours.push(contour);
+  }
   let disposed = false;
   const result: CartoonOutline = {
     count: outlines.length,
+    contourCount: contours.length,
     update(width, height) {
       if (!disposed && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)
         viewport.set(width, height);
@@ -115,8 +209,11 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
       if (disposed) return;
       disposed = true;
       for (const outline of outlines) outline.removeFromParent();
+      for (const contour of contours) contour.removeFromParent();
       // Source geometry and skeleton belong to the vehicle, never the shell.
       material.dispose();
+      contourMaterial.dispose();
+      for (const geometry of contourGeometry.values()) geometry.dispose();
       active.delete(root);
     },
   };

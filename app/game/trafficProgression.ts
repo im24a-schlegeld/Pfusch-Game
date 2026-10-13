@@ -5,10 +5,12 @@ export const TRAFFIC_PROGRESSION = Object.freeze({
   laneChangeChance: 0.65,
   oncomingChance: 0.16,
   oncomingSpeed: 14,
-  laneChangeDelay: 0.45,
-  laneChangeSeconds: 1.1,
-  minimumChangeArrival: 3.1,
-  laneChangeApproach: 3.5,
+  laneChangeDelay: 0.30,
+  laneChangeSeconds: 0.90,
+  minimumChangeArrival: 2.1,
+  // Close the gap shortly before the rider arrives. The engine still checks
+  // first physical contact against warning, motion, reaction and swipe time.
+  laneChangeApproach: 2.45,
   fullDensityScore: 200_000,
   additionalCarWeight: 4,
   // The contact/reaction budget already protects the route. Extra idle time

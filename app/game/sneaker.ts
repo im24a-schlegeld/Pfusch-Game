@@ -14,8 +14,12 @@ export function createSneaker(color: string, side: number) {
     const positions = new Float32Array(count), normals = new Float32Array(count);
     const indices = new Uint16Array(asset.indices);
     for (let i = 0; i < count; i++) {
-      positions[i] = view.getInt16(i * 2, true) / 100000;
-      normals[i] = view.getInt16((count + i) * 2, true) / 32767;
+      // The supplied source toe is -X, packed as +Z. Turn this frame 180°
+      // around Y once so the low toe and laces face motorcycle forward -Z.
+      // Rotate normals too; two axis flips preserve triangle winding.
+      const direction = i % 3 === 1 ? 1 : -1;
+      positions[i] = direction * view.getInt16(i * 2, true) / 100000;
+      normals[i] = direction * view.getInt16((count + i) * 2, true) / 32767;
     }
     for (let i = 0; i < indices.length; i++) indices[i] = view.getUint16(count * 4 + i * 2, true);
     decoded = { positions, normals, indices };

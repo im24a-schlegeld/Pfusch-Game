@@ -27,6 +27,46 @@ it('simplifies hero surface shading while keeping original garment and sticker a
   expect(material.customProgramCacheKey()).toContain(':hero');
 });
 
+it('inks the garment cuff in the existing skinned surface without touching artwork or armhole topology', () => {
+  const artwork = new THREE.Texture();
+  const material = new THREE.MeshStandardMaterial({ map: artwork });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.1, 0.2, 0, 0.1, 0.2, 0, -0.1, 0.1, 0, 0.1, 0.1, 0,
+    -0.1, 0, 0, 0.1, 0, 0,
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 0, 0.5, 1, 0.5, 0, 0, 1, 0], 2));
+  geometry.setIndex([0, 1, 2, 1, 3, 2, 2, 3, 4, 3, 5, 4]);
+  geometry.computeVertexNormals();
+  const sleeve = new THREE.SkinnedMesh(geometry, material); sleeve.name = 'garment-sleeve';
+  const root = new THREE.Group(); root.add(sleeve);
+  const uv = geometry.getAttribute('uv'), positions = geometry.getAttribute('position'), index = geometry.index;
+  applyCartoonHeroStyle(root);
+  const contour = geometry.getAttribute('cartoonGarmentEdge');
+  expect(contour.getX(0)).toBe(1); // Hidden shoulder seam stays smooth.
+  expect(contour.getX(2)).toBe(0.5);
+  expect(contour.getX(4)).toBe(0); // Visible fabric-to-skin cuff.
+  expect(geometry.getAttribute('uv')).toBe(uv);
+  expect(geometry.getAttribute('position')).toBe(positions);
+  expect(geometry.index).toBe(index);
+  expect(material.map).toBe(artwork);
+  expect(sleeve.children).toHaveLength(0);
+  const shader = compile(material);
+  expect(shader.vertexShader).toContain('vCartoonGarmentEdge = cartoonGarmentEdge');
+  expect(shader.fragmentShader).toContain('fwidth(vCartoonGarmentEdge)');
+  applyCartoonHeroStyle(root);
+  expect(geometry.getAttribute('cartoonGarmentEdge')).toBe(contour);
+});
+
+it('keeps a sneaker outer contour without amplifying decimated sole normals into black surface patches', () => {
+  const material = new THREE.MeshStandardMaterial({ color: '#7461a5' });
+  const boot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), material);
+  boot.name = 'rider-boot';
+  applyCartoonHeroStyle(boot);
+  expect(compile(material).fragmentShader).toContain('cartoonInk * 0.0');
+  expect(material.color.getHexString()).toBe('7461a5');
+});
+
 it('preserves artwork, alpha and geometry without adding outline draw calls', () => {
   const map = new THREE.Texture();
   const material = new THREE.MeshStandardMaterial({ color: '#7461a5', map, alphaTest: 0.3 });

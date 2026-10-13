@@ -12,6 +12,7 @@ test('ranking waits for account saves, refreshes the final trial and tolerates d
   const ownRow = page.locator('.ranking-list > .you');
   await expect(ownRow).toContainText('Sam');
   await expect.poll(() => page.evaluate(() => window.leaderboardSyncProbe.fetches)).toBe(1);
+  await page.locator('.ranking-name-editor > summary').click();
   await page.getByRole('textbox', { name: 'Anzeigename' }).fill('Alex');
   await page.getByRole('button', { name: 'NAMEN SPEICHERN' }).click();
   await expect.poll(() => page.evaluate(() => window.leaderboardSyncProbe.saving)).toBe(true);

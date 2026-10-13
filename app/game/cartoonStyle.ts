@@ -21,6 +21,13 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
     // Carbon/colour changes can wrap a previously styled shader. Never apply
     // cel shading twice, and never replace that artwork's existing hook.
     if (shader.fragmentShader.includes('// PFUSCH_CARTOON')) return;
+    if (hero) {
+      shader.vertexShader = shader.vertexShader.replace('#include <common>',
+        '#include <common>\nattribute float cartoonGarmentEdge;\nvarying float vCartoonGarmentEdge;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCartoonGarmentEdge = cartoonGarmentEdge;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+        '#include <common>\nvarying float vCartoonGarmentEdge;');
+    }
     if (boxInk) {
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
         '#include <common>\nattribute vec4 cartoonBox;\nvarying vec4 vCartoonBox;')
@@ -43,6 +50,12 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
       float cartoonWidth = min(0.12, max(0.025, fwidth(cartoonFacing) * 1.15));
       float cartoonInk = 1.0 - smoothstep(0.045, 0.045 + cartoonWidth, cartoonFacing);
+      ${hero ? `
+      // The cuff is a real fabric/skin boundary even when it faces the camera.
+      // Screen derivatives keep this surface stroke narrow on every bike pose.
+      float garmentEdgeWidth = max(fwidth(vCartoonGarmentEdge), 0.00001);
+      cartoonInk = max(cartoonInk, 1.0 - smoothstep(garmentEdgeWidth * 0.35, garmentEdgeWidth * 1.35, vCartoonGarmentEdge));
+      ` : ''}
       ${boxInk ? `
       vec3 cartoonFace = max(vec3(0.5) - abs(vCartoonBox.xyz), vec3(0.0));
       float cartoonEdge = min(max(cartoonFace.x, cartoonFace.y), min(max(cartoonFace.y, cartoonFace.z), max(cartoonFace.z, cartoonFace.x)));
@@ -74,13 +87,24 @@ export function applyCartoonStyle(root: THREE.Object3D) {
 export function applyCartoonHeroStyle(root: THREE.Object3D) {
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object.userData.cartoonOutline) return;
+    if (!object.geometry.getAttribute('cartoonGarmentEdge')) {
+      const positions = object.geometry.getAttribute('position');
+      const edge = new THREE.BufferAttribute(new Float32Array(positions.count).fill(1), 1);
+      const uv = object.geometry.getAttribute('uv');
+      if (uv && /^(garment-sleeve|tailored-garment)$/.test(object.name))
+        for (let i = 0; i < edge.count; i++) edge.setX(i, Math.max(0, uv.getY(i)));
+      object.geometry.setAttribute('cartoonGarmentEdge', edge);
+    }
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!(material instanceof THREE.MeshStandardMaterial)) continue;
       material.userData.pfuschCartoonHero = true;
       material.normalMap = null;
       material.bumpMap = null;
       if (material instanceof THREE.MeshPhysicalMaterial) material.clearcoatNormalMap = null;
-      applyCartoonMaterial(material);
+      // The decimated sneaker has disconnected upper/sole/lace surfaces.
+      // Their retained local normals are unsuitable for facing-angle ink;
+      // its outer backface shell still provides the readable shoe silhouette.
+      applyCartoonMaterial(material, false, object.name !== 'rider-boot');
     }
   });
 }

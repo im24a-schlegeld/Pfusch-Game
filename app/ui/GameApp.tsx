@@ -535,6 +535,7 @@ export default function GameApp() {
       {screen !== 'results' && <nav className="bottom-nav" aria-label="Spielnavigation">
         <button
           className={screen === 'garage' ? 'active' : ''}
+          aria-current={screen === 'garage' ? 'page' : undefined}
           onClick={() => navigate('garage')}
         >
           <Wrench size={18} />
@@ -542,6 +543,7 @@ export default function GameApp() {
         </button>
         <button
           className={screen === 'challenges' ? 'active' : ''}
+          aria-current={screen === 'challenges' ? 'page' : undefined}
           onClick={() => navigate('challenges')}
         >
           <Flag size={18} />
@@ -549,6 +551,7 @@ export default function GameApp() {
         </button>
         <button
           className={screen === 'rewards' ? 'active' : ''}
+          aria-current={screen === 'rewards' ? 'page' : undefined}
           onClick={() => navigate('rewards')}
         >
           <Gift size={18} />
@@ -556,6 +559,7 @@ export default function GameApp() {
         </button>
         <button
           className={screen === 'leaderboard' ? 'active' : ''}
+          aria-current={screen === 'leaderboard' ? 'page' : undefined}
           onClick={() => navigate('leaderboard')}
         >
           <Trophy size={18} />
@@ -564,6 +568,7 @@ export default function GameApp() {
         {embedded && <button
           className={screen === 'settings' ? 'active' : ''}
           aria-label="Einstellungen"
+          aria-current={screen === 'settings' ? 'page' : undefined}
           onClick={() => navigate('settings')}
         >
           <SettingsIcon size={18} />
