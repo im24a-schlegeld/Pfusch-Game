@@ -1,0 +1,60 @@
+/* Base UI owns state and keyboard behavior; one style owns the geometry. */
+.pfusch-switch[data-slot='switch'] {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 42px;
+  min-width: 42px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 1px solid #727272;
+  border-radius: 999px;
+  background: #555;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.pfusch-switch[data-slot='switch']::after {
+  content: '';
+  position: absolute;
+  inset: -11px -2px;
+}
+.pfusch-switch > .pfusch-switch-thumb {
+  position: absolute;
+  display: block;
+  top: 2px;
+  left: 2px;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #efefef;
+  pointer-events: none;
+  transition: left 140ms ease, background-color 140ms ease;
+}
+.pfusch-switch[data-checked] {
+  border-color: #efefef;
+  background: #efefef;
+}
+.pfusch-switch[data-checked] > .pfusch-switch-thumb {
+  left: 20px;
+  background: #232323;
+}
+.pfusch-switch[data-size='sm'] {
+  width: 34px;
+  min-width: 34px;
+  height: 22px;
+  min-height: 22px;
+}
+.pfusch-switch[data-size='sm']::after { inset: -12px -6px; }
+.pfusch-switch[data-size='sm'] > .pfusch-switch-thumb { width: 16px; height: 16px; }
+.pfusch-switch[data-size='sm'][data-checked] > .pfusch-switch-thumb { left: 14px; }
+.pfusch-switch:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.pfusch-switch[data-disabled] { cursor: default; opacity: 0.45; }
+@media (prefers-reduced-motion: reduce) {
+  .pfusch-switch[data-slot='switch'], .pfusch-switch > .pfusch-switch-thumb { transition: none; }
+}
