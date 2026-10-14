@@ -68,6 +68,7 @@ import { supermotoFuelTankGeometry, SUPERMOTO_FUEL_CAP_MOUNT } from './supermoto
 import { supermotoForkGuardGeometry } from './supermotoForkGuards';
 import { SUPERMOTO_SHOCK_DETAILS } from './supermotoShock';
 import { addSupermotoFootpeg } from './supermotoFootpegs';
+import { riderFootPlacement } from './riderFootPose';
 import { addSupermotoEngine } from './supermotoEngine';
 import { SUPERMOTO_PIVOT_FRAME_JOINT, SUPERMOTO_PIVOT_FRAME_RADIUS, addSupermotoMainFrame } from './supermotoFrame';
 import { supermotoSwingarmGeometry, supermotoSwingarmBridgeGeometry, supermotoSwingarmSection, addSupermotoPivotConnection } from './supermotoSwingarm';
@@ -2965,7 +2966,8 @@ function makeRider(
       leg: skinLimb(rider, [leg, exposedAnkle], rest.limbs[index].leg),
     });
     const foot = createSneaker(getShoesColor(player), side);
-    foot.position.set(side * pose.peg[0], pose.peg[1] + 0.012, pose.peg[2] - 0.005);
+    foot.position.set(...riderFootPlacement(pose.peg, side, pose.footPitch).position);
+    foot.rotation.x = pose.footPitch ?? 0;
     const bootPivot = new THREE.Group();
     rider.add(bootPivot);
     bootPivot.add(foot);

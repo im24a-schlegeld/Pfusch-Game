@@ -65,10 +65,10 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
     if (rimTireBand) {
       shader.uniforms.cartoonRimTireColor = { value: rimTireColor };
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
-        '#include <common>\nattribute float cartoonRimTireBand;\nvarying float vCartoonRimTireBand;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCartoonRimTireBand = cartoonRimTireBand;');
+        '#include <common>\nattribute vec2 cartoonRimTirePosition;\nvarying vec2 vCartoonRimTirePosition;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCartoonRimTirePosition = cartoonRimTirePosition;');
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
-        '#include <common>\nvarying float vCartoonRimTireBand;\nuniform vec3 cartoonRimTireColor;');
+        '#include <common>\nvarying vec2 vCartoonRimTirePosition;\nuniform vec3 cartoonRimTireColor;');
     }
     if (boxInk) {
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
@@ -80,6 +80,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
       // PFUSCH_CARTOON
       ${rimTireBand ? `// Source outer lip is tire finish even during color/carbon previews.
+      float vCartoonRimTireBand = smoothstep(0.166, 0.178, length(vCartoonRimTirePosition));
       diffuseColor.rgb = mix(diffuseColor.rgb, cartoonRimTireColor, vCartoonRimTireBand);` : ''}
       vec3 cartoonDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
       float cartoonBase = max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.025);
@@ -125,7 +126,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}${rimTireBand ? ':tire-band-v1' : ''}`;
+  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}${rimTireBand ? ':tire-band-v2' : ''}`;
   material.userData.pfuschCartoon = true;
   material.userData.pfuschCartoonRimShading = rim;
   material.needsUpdate = true;

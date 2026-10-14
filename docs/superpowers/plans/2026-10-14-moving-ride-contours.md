@@ -99,6 +99,8 @@
 ### Task 8: Final visual feedback after the successful deployment
 
 - [x] Put both Sport soles on the actual authored footpeg bars through the same fixed-length IK, retaining visible socks and the existing ankle/shoe offsets; real sole/peg raycasts and fixed-bone checks pass.
+- [x] Apply the requested slight heel-up Sport foot angle about the actual supported sole point; rotate the same ankle target and keep all shared human dimensions unchanged.
+- [ ] Correct the Scooter rim's pale edge at the tire boundary on the actual long front/rear faces, and inspect a native rear-wheel close-up.
 - [x] Extend only the static loading-world rear street to the fogged horizon; keep the approved camera and gameplay pools untouched, with bounded static instance counts and preserved buffers.
 - [x] Close the unexpected dark near-road gap using the existing headlight optics and two-light budget; actual road coverage and physical wheelie motion pass for all five bikes.
 - [x] Add clean black boundaries to the existing reusable explosion SVG without changing its timing or pooling; existing lifecycle and stroke regressions pass.

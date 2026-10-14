@@ -71,13 +71,14 @@ it.each(['125', 'moped', '450', '701', 'scooter'])(
       expect(bottom).toBeCloseTo(-0.012, 5); // Sock seats inside the shoe collar.
       const shoe = shoes[side];
       shoe.geometry.computeBoundingBox();
-      const collar = shoe.geometry.boundingBox!.clone().translate(shoe.position);
+      shoe.updateMatrix();
+      const collar = shoe.geometry.boundingBox!.clone().applyMatrix4(shoe.matrix);
       expect(collar.containsPoint(end.clone().addScaledVector(direction, bottom))).toBe(true);
       // Measure the actual shoe surface along this shin. The shoe's global
       // highest tongue belongs to another point, especially with high pegs.
       const collarProbeMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
       const collarProbe = new THREE.Mesh(shoe.geometry, collarProbeMaterial);
-      collarProbe.position.copy(shoe.position); collarProbe.updateMatrixWorld(true);
+      collarProbe.position.copy(shoe.position); collarProbe.quaternion.copy(shoe.quaternion); collarProbe.updateMatrixWorld(true);
       const hits = new THREE.Raycaster(end, direction).intersectObject(collarProbe);
       const collarAlongShin = Math.max(0, ...hits.map(hit => hit.distance));
       expect(0.075 - collarAlongShin).toBeGreaterThan(0.015);

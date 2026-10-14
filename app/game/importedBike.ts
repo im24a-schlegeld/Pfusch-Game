@@ -126,12 +126,14 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
       // Mask that band in the existing material pass, keeping the index order.
       const axle = part.rig === 'frontWheel' ? source.frontAxle : source.rearAxle;
       const positions = new Float32Array(binary, part.position.offset, part.position.count * 3);
-      const band = new Float32Array(part.position.count);
-      for (let i = 0; i < band.length; i++) {
-        const radius = Math.hypot(positions[i * 3 + 1] - axle[1], positions[i * 3 + 2] - axle[2]);
-        band[i] = THREE.MathUtils.smoothstep(radius, 0.166, 0.178);
+      const radial = new Float32Array(part.position.count * 2);
+      for (let i = 0; i < part.position.count; i++) {
+        const y = positions[i * 3 + 1] - axle[1], z = positions[i * 3 + 2] - axle[2];
+        radial[i * 2] = y; radial[i * 2 + 1] = z;
       }
-      geometry.setAttribute('cartoonRimTireBand', new THREE.BufferAttribute(band, 1));
+      // Interpolate positions, not the mask: long cast faces otherwise blend
+      // pale spoke color into the tire beyond the real radial boundary.
+      geometry.setAttribute('cartoonRimTirePosition', new THREE.BufferAttribute(radial, 2));
     }
     mesh.castShadow = true; mesh.receiveShadow = true;
     parent.add(mesh);
@@ -207,7 +209,9 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   for (let step = 0; step <= 24 && !pose; step++) {
     for (const direction of step === 0 ? [1] : [1, -1]) {
       try {
-        pose = resolveRiderPose({ hip, grip, peg, torsoLean: riderLean + direction * step * 0.025 });
+        // Negative rotation about X lowers the forward (-Z) toe and raises the rear (+Z) heel.
+        pose = resolveRiderPose({ hip, grip, peg, torsoLean: riderLean + direction * step * 0.025,
+          ...(id === '701' ? { footPitch: -7 * Math.PI / 180 } : {}) });
         break;
       } catch (error) { if (!(error instanceof RangeError)) throw error; }
     }

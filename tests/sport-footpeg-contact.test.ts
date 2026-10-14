@@ -42,13 +42,21 @@ it('supports both actual Sport sneaker soles on the authored riding pegs through
       expect(contact.z).toBeGreaterThan(bar.min[2] * size);
       expect(contact.z).toBeLessThan(bar.max[2] * size);
       expect(Math.abs(contact.y - bar.max[1] * size)).toBeLessThan(.003);
+      const toe = bike.body.worldToLocal(shoe.localToWorld(new THREE.Vector3(0, 0, -.14)));
+      const heel = bike.body.worldToLocal(shoe.localToWorld(new THREE.Vector3(0, 0, .14)));
+      expect(Math.atan2(heel.y - toe.y, heel.z - toe.z)).toBeCloseTo(7 * Math.PI / 180, 10);
       expect(shoe.geometry).toBe(originalGeometry[side]);
       const leg = pose.limbs[side].leg;
+      const ankleInShoe = shoe.worldToLocal(bike.rider.localToWorld(new THREE.Vector3(...leg.end)));
+      expect(ankleInShoe.x).toBeCloseTo(0, 9);
+      expect(ankleInShoe.y).toBeCloseTo(.093, 9);
+      expect(ankleInShoe.z).toBeCloseTo(.060, 9);
       expect(new THREE.Vector3(...leg.start).distanceTo(new THREE.Vector3(...leg.joint))).toBeCloseTo(RIDER_DIMENSIONS.thigh, 10);
       expect(new THREE.Vector3(...leg.joint).distanceTo(new THREE.Vector3(...leg.end))).toBeCloseTo(RIDER_DIMENSIONS.shin, 10);
       // Shoe and sock stay connected to the same ankle, including the wheelie.
       shoe.geometry.computeBoundingBox();
-      expect(shoe.geometry.boundingBox!.clone().translate(shoe.position).containsPoint(new THREE.Vector3(...leg.end))).toBe(true);
+      shoe.updateMatrix();
+      expect(shoe.geometry.boundingBox!.clone().applyMatrix4(shoe.matrix).containsPoint(new THREE.Vector3(...leg.end))).toBe(true);
     }
   }
 });

@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import { BIKE_MODEL_SCALES, type BikeModelId } from './vehicleScale';
 import { SUPERMOTO_GRIP, SUPERMOTO_PEG } from './supermotoFit';
+import { riderFootPlacement } from './riderFootPose';
 export type Point = [number, number, number];
 export const RIDER_DIMENSIONS = Object.freeze({
   torsoLength: 0.53,
@@ -17,6 +18,8 @@ export interface RiderTarget {
   grip: Point;
   peg: Point;
   torsoLean: number;
+  /** Contact-relative foot joint angle; the same ankle offsets and bones apply. */
+  footPitch?: number;
 }
 export interface RiderPose extends RiderTarget {
   /** Optional independently steered wrist contacts; the same fixed IK lengths apply. */
@@ -85,11 +88,7 @@ export function resolveRiderPose(target: RiderTarget): RiderPose {
     target.grip[1] + 0.015,
     target.grip[2] + 0.02,
   ];
-  const ankle: Point = [
-    target.peg[0],
-    target.peg[1] + 0.105,
-    target.peg[2] + 0.055,
-  ];
+  const ankle = riderFootPlacement(target.peg, 1, target.footPitch).ankle;
   return {
     ...target,
     shoulder,
