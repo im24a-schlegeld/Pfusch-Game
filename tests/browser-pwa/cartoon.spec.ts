@@ -80,13 +80,17 @@ async function startCartoonRide(page: Page, gear?: { bike: string; upper: Produc
   await expect.poll(() => page.evaluate(() => window.cartoonProbe.frames)).toBeGreaterThan(0);
   await page.evaluate(() => {
     // Observe the real mounted hook, without shipping a game/debug API.
+    // The round now pins its owner/bike/seed with Engine in useState; the older
+    // useMemo layout held Engine directly inside [value, dependencies].
     type Hook = { memoizedState: unknown; next: Hook | null };
     type Fiber = { memoizedState: Hook | null; return: Fiber | null };
     const element = document.querySelector('[data-testid="ride-screen"]')! as unknown as Record<string, unknown>;
     let fiber = element[Object.keys(element).find((key) => key.startsWith('__reactFiber$'))!] as Fiber | null;
     while (fiber) {
       for (let hook = fiber.memoizedState; hook; hook = hook.next) {
-        const candidate = Array.isArray(hook.memoizedState) ? hook.memoizedState[0] as Engine : undefined;
+        const state = Array.isArray(hook.memoizedState) ? hook.memoizedState[0] : hook.memoizedState;
+        const candidate = (state && typeof state === 'object' && 'engine' in state
+          ? state.engine : state) as Engine | undefined;
         if (candidate?.world && typeof candidate.advance === 'function') {
           window.cartoonProbe.engine = candidate;
           candidate.clearInput();
