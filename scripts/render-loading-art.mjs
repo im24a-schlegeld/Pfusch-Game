@@ -27,6 +27,8 @@ try {
     const verticalLimit = portrait ? 0.44 : 0.58;
     if (proof.cartoon !== 'cartoon' || proof.outlines < 1 || proof.outlines > 32 || proof.contours > 10 ||
       !proof.headlightMaskContour || !proof.ankle || !proof.street ||
+      proof.streetContinuation.seam !== 48 || proof.streetContinuation.end < 180 ||
+      proof.streetContinuation.rows !== 11 || proof.streetContinuation.instances < 1 || proof.streetContinuation.instances > 1000 ||
       (!portrait && proof.foregroundLampPartsRemoved < 1) ||
       proof.bounds[0] < -0.76 || proof.bounds[2] > 0.76 || proof.bounds[1] < -verticalLimit || proof.bounds[3] > verticalLimit)
       throw new Error('Loading artwork did not fit the current cartoon rider/street: ' + JSON.stringify(proof));
@@ -50,6 +52,17 @@ try {
   }
   if (errors.length) throw new Error('Motorcycle detail renderer failed: ' + errors.join('; '));
   await writeFile(resolve(output, 'bike-detail-proof.json'), JSON.stringify(details, null, 2) + '\n');
+  const crash = await page.evaluate(() => window.exportPoliceCrashEffect());
+  if (crash.proof.source !== 'createPoliceCrashEffect.update' || crash.proof.serial !== '1' ||
+    crash.proof.age !== 0.24 || crash.proof.viewBox !== '0 0 360 230' ||
+    crash.proof.layers.length !== 2 || crash.proof.embers.length !== 8 ||
+    crash.proof.layers.some(layer => layer.stroke !== '#080a0e' || layer.width !== '3.5' || !layer.transform) ||
+    crash.proof.embers.some(ember => ember.stroke !== '#080a0e' || ember.width !== '2' || !ember.transform))
+    throw new Error('The native police crash proof lost its real black boundaries: ' + JSON.stringify(crash.proof));
+  await writeFile(resolve(output, 'native-police-crash-effect.png'), Buffer.from(crash.png.split(',')[1], 'base64'));
+  await writeFile(resolve(output, 'native-police-crash-effect.svg'), crash.svg + '\n');
+  await writeFile(resolve(output, 'native-police-crash-effect-proof.json'), JSON.stringify(crash.proof, null, 2) + '\n');
+  if (errors.length) throw new Error('Police crash proof renderer failed: ' + errors.join('; '));
   console.log('Current cartoon loading artwork:', references);
 } finally {
   await browser?.close();

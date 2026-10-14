@@ -15,10 +15,11 @@ const LENS_FACES: Readonly<Record<BikeModelId, readonly Point[]>> = {
   '701': SPORT_LENS_FACES,
 };
 
-// Preserve the former road beam's slight downward angle: 1.22 m over 23 m.
-// This is a direction in the bike frame, so wheelies raise both source and aim.
+// Aim the existing optical cone at the near road instead of almost parallel
+// to it. The old 3-degree axis left the first 2–3 m in its faint outer fringe.
+// This stays in the bike frame: a wheelie still lifts the physical beam.
 const AIM_DISTANCE = 20;
-const AIM_DROP = (AIM_DISTANCE * (1.25 - 0.03)) / 23;
+const AIM_DROP = AIM_DISTANCE * Math.tan(Math.PI / 9);
 
 // Only the imported forward optics emit. Rear lamps, bodywork and shared
 // metallic trim must retain their authored materials and colours.

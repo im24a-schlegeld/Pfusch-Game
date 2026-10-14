@@ -11,7 +11,9 @@ import { applyCartoonHeroStyle, applyCartoonStyle } from '../app/game/cartoonSty
 import { createCartoonOutline } from '../app/game/cartoonOutline';
 import { preloadImportedBike, type ImportedBikeId } from '../app/game/importedBikeAsset';
 import { policeRampPose } from '../app/game/policePursuit';
+import { createPoliceCrashEffect } from '../app/game/policeCrashEffect';
 import { trimLoadingForegroundLamps } from './loading-art-foreground';
+import { makeLoadingWorldContinuation } from './loading-art-continuation';
 import { newPlayer } from '../app/domain/progression';
 import { shadeClothingCatalog } from '../app/domain/appearanceColors';
 import type { Product } from '../app/domain/types';
@@ -74,6 +76,8 @@ const world = new World(42, { acceleration: 0.6, maxSpeed: 38 });
 world.advance(72);
 const worldView = makeWorldView(scene, false);
 worldView.update(world, 72);
+const streetContinuation = makeLoadingWorldContinuation(worldView.root);
+scene.add(streetContinuation.root);
 makeWorldLighting(scene, renderer, hemisphere, sunlight, fill).update(world, 72, 0, 1);
 
 const player = newPlayer();
@@ -172,7 +176,9 @@ function frame(isPortrait: boolean) {
     contours: outline.contourCount, headlightMaskContour,
     ankle: Boolean(bike.rider.getObjectByName('rider-ankle')), street: Boolean(scene.getObjectByName('streamed-world')),
     authoredImages: authoredImages.size, referenceCamera: reference.toArray(), camera: camera.position.toArray(),
-    subject: subject.toArray(), backoff: distance / initialDistance, foregroundLampPartsRemoved: foreground.removed };
+    subject: subject.toArray(), backoff: distance / initialDistance, foregroundLampPartsRemoved: foreground.removed,
+    streetContinuation: { seam: streetContinuation.seam, end: streetContinuation.end,
+      rows: streetContinuation.rows, instances: streetContinuation.instances } };
 }
 
 // Texture completion is required, including supplied garment art. An arbitrary
@@ -202,6 +208,44 @@ await waitForArtwork();
 frame(false);
 await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 Object.assign(window, {
+  async exportPoliceCrashEffect() {
+    // Capture the real reusable effect after its real update path. The native
+    // browser rasterizes that exact SVG; no replacement explosion is authored.
+    const host = document.createElement('div');
+    const effect = createPoliceCrashEffect(host);
+    try {
+      const impact = { serial: 1, targetSpawnId: 42, x: 0, z: -20, worldDistance: 52, fallback: true };
+      for (const dt of [0.1, 0.1, 0.04]) effect.update(impact, camera, 72, dt, true, false);
+      const root = host.querySelector<HTMLElement>('.police-crash-cartoon')!;
+      const svg = root.querySelector<SVGSVGElement>('svg')!;
+      if (root.style.display !== 'block' || root.dataset.policeImpact !== '1')
+        throw new Error('The native police crash effect did not display its new impact.');
+      const layers = ['fire', 'core'].map(name => {
+        const layer = svg.querySelector<SVGGElement>(`.police-impact-${name}`)!;
+        return { name, stroke: layer.getAttribute('stroke'), width: layer.getAttribute('stroke-width'),
+          transform: layer.getAttribute('transform'), opacity: layer.getAttribute('opacity') };
+      });
+      const embers = Array.from(svg.querySelectorAll<SVGGElement>('.police-impact-ember'), ember => ({
+        stroke: ember.getAttribute('stroke'), width: ember.getAttribute('stroke-width'),
+        transform: ember.getAttribute('transform'), opacity: ember.getAttribute('opacity'),
+      }));
+      const width = 1080, height = 690;
+      svg.setAttribute('width', String(width)); svg.setAttribute('height', String(height));
+      const source = new XMLSerializer().serializeToString(svg);
+      const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
+      try {
+        const image = new NativeImage(); image.src = url; await image.decode();
+        const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('The police crash proof could not create its raster surface.');
+        context.fillStyle = '#e5ebef'; context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0);
+        return { png: canvas.toDataURL('image/png'), svg: source,
+          proof: { source: 'createPoliceCrashEffect.update', age: 0.24, serial: root.dataset.policeImpact,
+            width, height, viewBox: svg.getAttribute('viewBox'), layers, embers } };
+      } finally { URL.revokeObjectURL(url); }
+    } finally { effect.dispose(); }
+  },
   exportLoadingArt(isPortrait: boolean) {
     const proof = frame(isPortrait);
     return { webp: renderer.domElement.toDataURL('image/webp', 0.91), png: renderer.domElement.toDataURL('image/png'), proof };

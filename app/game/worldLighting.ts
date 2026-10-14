@@ -82,9 +82,11 @@ export function makeWorldLighting(
 ) {
   const sky = new THREE.Color();
   const sample: WorldLightBlend = { from: 'day', to: 'day', blend: 0, tunnel: 0 };
+  // Keep the authored optical cone narrow, but leave enough bright core to
+  // cover the near road. A 70% fringe made that footprint almost disappear.
   const headlights = [
-    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2),
-    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.7, 1.2),
+    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.35, 1.2),
+    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.35, 1.2),
   ] as const;
   headlights[0].name = 'road-headlight';
   headlights[1].name = 'road-headlight-secondary';

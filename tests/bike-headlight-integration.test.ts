@@ -113,6 +113,45 @@ function expectVector(actual: Vector3, expected: Vector3) {
   expect(actual.z).toBeCloseTo(expected.z, 10);
 }
 
+// Match Three's SpotLight cone factor at actual road samples. Geometry alone
+// can place a near point inside the cone while an oversized penumbra makes it
+// almost dark, so measure the smooth falloff as well as its outer boundary.
+function roadBeamFactor(light: SpotLight, point: Vector3) {
+  const direction = light.target.position.clone().sub(light.position).normalize();
+  const ray = point.clone().sub(light.position).normalize();
+  const outer = Math.cos(light.angle), inner = Math.cos(light.angle * (1 - light.penumbra));
+  const t = Math.max(0, Math.min(1, (direction.dot(ray) - outer) / (inner - outer)));
+  return t * t * (3 - 2 * t);
+}
+
+it.each(['125', 'moped', 'scooter', '450', '701'] as const)(
+  '%s covers the near road ahead with the same optical cone as its distant beam', model => {
+    const { scene, lighting } = lightingFixture();
+    const { world } = controlledWorld();
+    const bike = makeBike({ ...newPlayer(), bike: model }, []);
+    scene.add(bike.root); bike.animateSuspension(0, 0);
+    const rig = createBikeHeadlightRig(model);
+    lighting.update(world, 100, 0, rig.count); rig.copyPose(bike.body, lighting.headlights);
+    const front = bike.wheels[0].getWorldPosition(new Vector3());
+    const samples = [2, 3, 5, 8, 12, 20, 30].map(ahead => ({ ahead,
+      factor: Math.max(...lighting.headlights.slice(0, rig.count).map(light =>
+        roadBeamFactor(light, new Vector3(0, 0.04, front.z - ahead)))) }));
+    expect(samples.every(sample => sample.factor > 0.5)).toBe(true);
+    const nearRoad = new Vector3(0, 0.04, front.z - 2);
+    const grounded = lighting.headlights[0].target.position.clone();
+    // Wheelies must still lift the physical rays instead of locking light to
+    // the ground to hide the gap. Restoring the bike restores the same coverage.
+    bike.animateSuspension(0.7, 0); rig.copyPose(bike.body, lighting.headlights);
+    for (const light of lighting.headlights.slice(0, rig.count)) {
+      expect(light.target.position.y).toBeGreaterThan(light.position.y);
+      expect(roadBeamFactor(light, nearRoad)).toBe(0);
+    }
+    bike.animateSuspension(0, 0); rig.copyPose(bike.body, lighting.headlights);
+    expect(lighting.headlights[0].target.position.distanceTo(grounded)).toBeLessThan(1e-10);
+    expect(Math.max(...lighting.headlights.slice(0, rig.count).map(light => roadBeamFactor(light, nearRoad)))).toBeGreaterThan(0.5);
+  },
+);
+
 function expectSourceAndAim(
   bike: Bike,
   model: BikeModelId,
@@ -125,8 +164,8 @@ function expectSourceAndAim(
     expectVector(lights[index].position, anchor
       ? anchor.localToWorld(new Vector3()) : bike.body.localToWorld(new Vector3(x, y, z)));
     expectVector(lights[index].target.position, anchor
-      ? anchor.localToWorld(new Vector3(0, -(20 * 1.22) / 23, -20))
-      : bike.body.localToWorld(new Vector3(x, y - (20 * 1.22) / 23, z - 20)));
+      ? anchor.localToWorld(new Vector3(0, -20 * Math.tan(Math.PI / 9), -20))
+      : bike.body.localToWorld(new Vector3(x, y - 20 * Math.tan(Math.PI / 9), z - 20)));
   });
 }
 

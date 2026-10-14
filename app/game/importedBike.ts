@@ -9,7 +9,7 @@ import type { CarriedCapMotionInput } from './carriedCapMotion';
 import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { getImportedBikeAsset, type ImportedBikeId, type ImportedBikeMaterial } from './importedBikeAsset';
 import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
-import { createImportedHardwareFinisher } from './importedHardwareFinish';
+import { createImportedHardwareFinisher, hardwareComponents } from './importedHardwareFinish';
 import { roundImportedRimProfile } from './importedRimProfile';
 import { tagImportedSupermotoMudflap } from './supermotoMudflap';
 
@@ -183,6 +183,25 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   body.userData.riderSeatContact = { surfaceY: seatHeight, pelvisY: hip[1] / modelScale };
   const grip = point(source.grip).multiplyScalar(modelScale).toArray() as Point;
   const peg = point(source.peg).multiplyScalar(modelScale).toArray() as Point;
+  if (id === '701') {
+    // The export's hand-picked peg anchor lies on the silencer, below and
+    // forward of both real riding bars. Fit the contact to those authored
+    // source shells; all ankle offsets and fixed IK bone lengths stay shared.
+    const part = manifest.parts.find(part => part.name === 'r6_metal:body');
+    const bars = part ? hardwareComponents(part, binary).filter(c => {
+      const width = c.max[0] - c.min[0];
+      return width > 0.06 && width < 0.09 && c.min[1] > 0.35 && c.max[1] < 0.45 &&
+        c.max[1] - c.min[1] < 0.04 && c.min[2] > 0.28 && c.max[2] < 0.36;
+    }) : [];
+    if (bars.length === 2) {
+      const scale = size * modelScale;
+      peg[0] = bars.reduce((sum, c) => sum + Math.abs((c.min[0] + c.max[0]) / 2), 0) / 2 * scale;
+      // The shared sneaker placement adds 12 mm above pose.peg. Subtract
+      // that placement allowance here so its actual sole rests on the bar.
+      peg[1] = Math.max(...bars.map(c => c.max[1])) * scale - 0.012;
+      peg[2] = bars.reduce((sum, c) => sum + (c.min[2] + c.max[2]) / 2, 0) / 2 * scale;
+    }
+  }
   let pose: RiderPose | undefined;
   const riderLean = scooterRiderContact?.torsoLean ?? nominalLean[id];
   for (let step = 0; step <= 24 && !pose; step++) {

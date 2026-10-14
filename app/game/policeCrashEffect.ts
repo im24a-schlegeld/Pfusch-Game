@@ -53,18 +53,18 @@ export function createPoliceCrashEffect(host: HTMLElement, initialSerial = 0) {
       <radialGradient id="${shadeId}-core" cx="36%" cy="20%" r="86%"><stop stop-color="#ffe86a"/><stop offset=".55" stop-color="#ffc62c"/><stop offset="1" stop-color="#eb900b"/></radialGradient>
     </defs>
     <ellipse class="police-impact-ring" cx="180" cy="226" rx="100" ry="18" fill="none" stroke="#ffdb72" stroke-width="7"/>
-    <g class="police-impact-fire">
+    <g class="police-impact-fire" stroke="#080a0e" stroke-width="3.5" stroke-linejoin="round">
       <path d="M25 234Q17 216 46 205L17 177L75 193L56 164Q94 156 108 175L87 120L121 143L111 54L151 121L165 91L166 139L218 28L209 128L240 105L231 150Q259 125 279 136L265 176L324 158L294 201L346 214L301 234Z" fill="url(#${shadeId}-flare)"/>
-      <path d="${roundedFire}" fill="#9d3609" opacity=".30" transform="translate(5 8)"/>
+      <path d="${roundedFire}" fill="#9d3609" stroke="none" opacity=".30" transform="translate(5 8)"/>
       <path d="${roundedFire}" fill="url(#${shadeId}-fire)"/>
       <path d="M100 151C102 138 117 131 129 140M137 118C137 106 151 102 161 111M223 133C237 131 247 140 246 149" fill="none" stroke="#ffe16a" stroke-width="5" stroke-linecap="round" opacity=".75"/>
     </g>
-    <g class="police-impact-core">
-      <path d="${hotCore}" fill="#b55109" opacity=".38" transform="translate(6 7)"/>
+    <g class="police-impact-core" stroke="#080a0e" stroke-width="3.5" stroke-linejoin="round">
+      <path d="${hotCore}" fill="#b55109" stroke="none" opacity=".38" transform="translate(6 7)"/>
       <path d="${hotCore}" fill="url(#${shadeId}-core)"/>
       <path d="M147 165C143 150 159 145 169 153M109 188C115 181 126 180 133 185M187 157C194 153 204 158 206 165" fill="none" stroke="#ffe66f" stroke-width="5" stroke-linecap="round" opacity=".8"/>
     </g>
-    ${Array.from({ length: 8 }, (_, i) => `<g class="police-impact-ember" fill="${i % 2 ? '#f38317' : '#ec5820'}"><path d="${['M-2 -10L3 -3L1 7L-4 2Z', 'M-6 -3L6 -1L2 5Z', 'M-2 -6L3 0L0 4L-4 2Z'][i % 3]}"/></g>`).join('')}
+    ${Array.from({ length: 8 }, (_, i) => `<g class="police-impact-ember" fill="${i % 2 ? '#f38317' : '#ec5820'}" stroke="#080a0e" stroke-width="2" stroke-linejoin="round"><path d="${['M-2 -10L3 -3L1 7L-4 2Z', 'M-6 -3L6 -1L2 5Z', 'M-2 -6L3 0L0 4L-4 2Z'][i % 3]}"/></g>`).join('')}
   </svg>`;
   const fire = root.querySelector<SVGElement>('.police-impact-fire')!;
   const core = root.querySelector<SVGElement>('.police-impact-core')!;

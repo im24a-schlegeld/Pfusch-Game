@@ -5,7 +5,7 @@ import { getOfflineAppState, installOfflineApp, prepareOfflineApp, subscribeOffl
 export default function OfflineSettings() {
   const offline = useSyncExternalStore(subscribeOfflineApp, getOfflineAppState, getOfflineAppState);
   return <section className="settings-section settings-offline" aria-labelledby="offline-title">
-    <h2 id="offline-title">Ohne Internet spielen</h2>
+    <h2 id="offline-title">App &amp; Offline</h2>
     <p className="settings-save-status" role="status" data-testid="offline-ready" data-state={offline.state}>
       {offline.state === 'ready' ? 'Spiel ist offline bereit.'
         : offline.state === 'preparing' ? 'Spiel wird einmalig auf diesem Gerät gespeichert …'
@@ -18,7 +18,7 @@ export default function OfflineSettings() {
     {offline.installable && <button type="button" className="button" onClick={() => { void installOfflineApp(); }}><Download size={18} aria-hidden="true" />ALS APP INSTALLIEREN</button>}
     </div>
     <details className="settings-help">
-      <summary>Offline vorbereiten</summary>
+      <summary>App installieren &amp; offline vorbereiten</summary>
       <p>Öffne das Spiel einmal online und warte auf „Spiel ist offline bereit“. Öffne auch deine gewünschte Kleidung, damit ihre Bilder gespeichert sind.</p>
       {!offline.installed && !offline.installable && <p>Wähle im Browsermenü „App installieren“ oder „Zum Startbildschirm hinzufügen“.</p>}
     </details>

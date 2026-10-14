@@ -173,7 +173,7 @@ describe.each(fixtures)('$model headlight pose', (fixture) => {
       expectPoint(lights[i].position, expectedWorld(source, fixture, motion));
       const aim: Point = [
         source[0],
-        source[1] - (20 * 1.22) / 23,
+        source[1] - 20 * Math.tan(Math.PI / 9),
         source[2] - 20,
       ];
       expectPoint(

@@ -73,9 +73,15 @@ it.each(['125', 'moped', '450', '701', 'scooter'])(
       shoe.geometry.computeBoundingBox();
       const collar = shoe.geometry.boundingBox!.clone().translate(shoe.position);
       expect(collar.containsPoint(end.clone().addScaledVector(direction, bottom))).toBe(true);
-      const collarTop = collar.max.y;
-      // Even the highest tongue cannot hide the complete sock strip.
-      expect(cuffCenter(trousers[side]).y - collarTop).toBeGreaterThan(0.015);
+      // Measure the actual shoe surface along this shin. The shoe's global
+      // highest tongue belongs to another point, especially with high pegs.
+      const collarProbeMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      const collarProbe = new THREE.Mesh(shoe.geometry, collarProbeMaterial);
+      collarProbe.position.copy(shoe.position); collarProbe.updateMatrixWorld(true);
+      const hits = new THREE.Raycaster(end, direction).intersectObject(collarProbe);
+      const collarAlongShin = Math.max(0, ...hits.map(hit => hit.distance));
+      expect(0.075 - collarAlongShin).toBeGreaterThan(0.015);
+      collarProbeMaterial.dispose();
     });
     const ankleGeometry = ankles.map(mesh => mesh.geometry);
     for (const motion of [

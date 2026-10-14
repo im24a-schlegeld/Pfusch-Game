@@ -159,6 +159,18 @@ describe('police burst lifecycle', () => {
     expect(node.remove).toHaveBeenCalledTimes(1);
   });
 
+  it('gives the real fire, core and eight embers black boundaries in the existing reusable SVG', () => {
+    const { node, host, effect, camera, impact } = setup();
+    for (const layer of ['fire', 'core'])
+      expect(node.innerHTML).toMatch(new RegExp(`class="police-impact-${layer}"[^>]*stroke="#080a0e"[^>]*stroke-width="3.5"[^>]*stroke-linejoin="round"`));
+    expect(node.innerHTML.match(/class="police-impact-ember"[^>]*stroke="#080a0e"/g)).toHaveLength(8);
+    const original = node.innerHTML;
+    effect.update(impact, camera, 100, 0.1, true, true);
+    effect.update({ ...impact, serial: 2 }, camera, 100, 0.1, true, false);
+    expect(node.innerHTML).toBe(original);
+    expect(host.appendChild).toHaveBeenCalledTimes(1);
+  });
+
   it('freezes throughout pause or blur and expires without replay during an active crash presentation', () => {
     const { node, effect, camera, impact, shapes } = setup();
     effect.update(impact, camera, 100, 0.05, true, false);
