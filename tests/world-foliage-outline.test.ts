@@ -6,12 +6,12 @@ import { makeWorldView, WORLD_VIEW } from '../app/game/worldView';
 function fixture(low = false) {
   const scene = new THREE.Scene();
   const view = makeWorldView(scene, low);
-  const sources = ['world-cone-foliage', 'world-canopy-foliage'].map(name => view.root.getObjectByName(name) as THREE.InstancedMesh);
+  const sources = ['world-cone-foliage', 'world-canopy-foliage', 'world-round-trunk'].map(name => view.root.getObjectByName(name) as THREE.InstancedMesh);
   const shells = () => sources.map(source => source.children.find(object => object.userData.cartoonWorldFoliageOutline) as THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>);
   return { scene, view, sources, shells };
 }
 
-it.each([false, true])('adds two shared-buffer tree contours without changing the original world pools (low=%s)', low => {
+it.each([false, true])('outlines both crown forms and actual trunks without changing the original world pools (low=%s)', low => {
   const { view, sources, shells } = fixture(low);
   expect(view.root.children).toHaveLength(56);
   const outlines = shells();
@@ -52,7 +52,7 @@ it('reuses the same shell geometry and instance uploads while counts follow recy
       expect(shell.geometry).toBe(sources[i].geometry);
       populated ||= shell.count > 0;
     });
-    expect(outlines.filter(shell => shell.visible && shell.count).length).toBeLessThanOrEqual(2);
+    expect(outlines.filter(shell => shell.visible && shell.count).length).toBeLessThanOrEqual(3);
   }
   expect(populated).toBe(true);
   expect(writes.every(write => write.mock.calls.length === 0)).toBe(true);
@@ -72,6 +72,11 @@ it('keeps the border stroke in CSS pixels, fogs it with the world and never disp
   view.resize(0, NaN);
   expect(shader.uniforms.cartoonWorldFoliageViewport.value.toArray()).toEqual([1440, 900]);
   expect(shader.vertexShader).toContain('instanceMatrix');
+  expect(shader.vertexShader).toContain('worldFoliageConeOffset(position, pixelOffset)');
+  expect(shader.vertexShader).toContain('attribute vec3 cartoonWorldConeProfile');
+  expect(sources[0].geometry.getAttribute('cartoonWorldConeProfile').getX(0)).toBe(10);
+  expect(sources[1].geometry.getAttribute('cartoonWorldConeProfile').getX(0)).toBe(0);
+  expect(sources[2].geometry.getAttribute('cartoonWorldConeProfile').getX(0)).toBe(0);
   expect(shader.vertexShader).toContain('#include <fog_vertex>');
   expect(shader.fragmentShader).toContain('#include <fog_fragment>');
   const geometryDisposals = sources.map(source => vi.spyOn(source.geometry, 'dispose'));

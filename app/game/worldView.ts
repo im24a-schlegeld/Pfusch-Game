@@ -197,6 +197,7 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   applyCartoonMaterial(terrainMaterial);
   const foliageOutline = makeWorldFoliageOutline([
     batches.get('cone:foliage')!.mesh, batches.get('canopy:foliage')!.mesh,
+    batches.get('round:trunk')!.mesh,
   ]);
 
   const matrix = new THREE.Matrix4(),

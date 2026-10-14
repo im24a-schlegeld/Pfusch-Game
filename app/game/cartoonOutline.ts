@@ -18,11 +18,16 @@ const active = new WeakMap<THREE.Object3D, CartoonOutline>();
 const vertexShader = `
   uniform vec2 cartoonViewport;
   uniform float cartoonStroke;
+  attribute vec3 cartoonOutlineNormal;
   #include <common>
   #include <morphtarget_pars_vertex>
   #include <skinning_pars_vertex>
   void main() {
     #include <beginnormal_vertex>
+    // Cloth lighting is faired across the shoulder overlap. Its silhouette
+    // needs normals from the real faces, before the same morph/bone motion.
+    if (dot(cartoonOutlineNormal, cartoonOutlineNormal) > 0.0)
+      objectNormal = cartoonOutlineNormal;
     #include <morphnormal_vertex>
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
@@ -44,6 +49,42 @@ const vertexShader = `
     gl_Position.z += 0.00001 * gl_Position.w;
   }
 `;
+
+/** The garment's lighting normals deliberately smooth the armhole overlap.
+ * Keep them intact and build a separate face-derived field for shell extrusion.
+ * Welding the duplicated UV circumference avoids a split at its visible seam.
+ * Garment positions are fixed; their existing bones animate this attribute. */
+function prepareGarmentOutlineNormals(geometry: THREE.BufferGeometry) {
+  if (geometry.getAttribute('cartoonOutlineNormal')) return;
+  const positions = geometry.getAttribute('position'), index = geometry.index;
+  const keys = Array.from({ length: positions.count }, (_, vertex) =>
+    `${Math.round(positions.getX(vertex) * 100000)},${Math.round(positions.getY(vertex) * 100000)},${Math.round(positions.getZ(vertex) * 100000)}`);
+  const sums = new Map<string, THREE.Vector3>();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const at = (vertex: number) => index ? index.getX(vertex) : vertex;
+  for (let face = 0; face + 2 < (index?.count ?? positions.count); face += 3) {
+    const vertices = [at(face), at(face + 1), at(face + 2)];
+    a.fromBufferAttribute(positions, vertices[0]);
+    b.fromBufferAttribute(positions, vertices[1]).sub(a);
+    c.fromBufferAttribute(positions, vertices[2]).sub(a);
+    b.cross(c); // Area weighting retains the real surface's outward winding.
+    for (const vertex of vertices) {
+      const key = keys[vertex];
+      const sum = sums.get(key);
+      if (sum) sum.add(b);
+      else sums.set(key, b.clone());
+    }
+  }
+  const normal = new THREE.Vector3(), source = geometry.getAttribute('normal');
+  const attribute = new THREE.Float32BufferAttribute(new Float32Array(positions.count * 3), 3);
+  for (let vertex = 0; vertex < positions.count; vertex++) {
+    const sum = sums.get(keys[vertex]);
+    if (sum && sum.lengthSq() > 0) normal.copy(sum).normalize();
+    else normal.fromBufferAttribute(source, vertex); // Unused trimmed vertices.
+    attribute.setXYZ(vertex, normal.x, normal.y, normal.z);
+  }
+  geometry.setAttribute('cartoonOutlineNormal', attribute);
+}
 
 /** Weld UV/material duplicates before comparing adjacent faces. Only genuine
  * open borders, strong corners and material joins survive; coplanar triangle
@@ -158,6 +199,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     polygonOffsetUnits: 1,
     toneMapped: false,
   });
+  Object.assign(material.defaultAttributeValues, { cartoonOutlineNormal: [0, 0, 0] });
   const candidates: { mesh: THREE.Mesh; geometry: THREE.BufferGeometry; priority: number; size: number; hardForm: boolean; exhaust: boolean }[] = [];
   const ownedGeometry = new Set<THREE.BufferGeometry>();
   const scale = new THREE.Vector3(), size = new THREE.Vector3();
@@ -221,6 +263,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
   candidates.sort((a, b) => b.priority - a.priority || b.size - a.size);
   const outlines: THREE.Mesh[] = [];
   for (const { mesh, geometry, exhaust } of candidates.slice(0, CARTOON_OUTLINE_MAX_MESHES)) {
+    if (/^(tailored-garment|garment-sleeve)$/.test(mesh.name)) prepareGarmentOutlineNormals(geometry);
     let outline: THREE.Mesh;
     if (mesh instanceof THREE.SkinnedMesh) {
       const skin = new THREE.SkinnedMesh(geometry, material);

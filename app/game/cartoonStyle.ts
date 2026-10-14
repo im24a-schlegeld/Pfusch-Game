@@ -138,7 +138,10 @@ export function applyCartoonHeroStyle(root: THREE.Object3D) {
       const positions = object.geometry.getAttribute('position');
       const edge = new THREE.BufferAttribute(new Float32Array(positions.count).fill(1), 1);
       const uv = object.geometry.getAttribute('uv');
-      if (uv && /^(garment-sleeve|tailored-garment)$/.test(object.name))
+      // These authored UVs reach zero only at the exposed cuff/hem. The
+      // open trouser cuff needs the same surface ink across the ankle skin;
+      // its backface shell covers only the leg's outer silhouette.
+      if (uv && /^(garment-sleeve|tailored-garment|continuous-trouser-leg)$/.test(object.name))
         for (let i = 0; i < edge.count; i++) edge.setX(i, Math.max(0, uv.getY(i)));
       object.geometry.setAttribute('cartoonGarmentEdge', edge);
     }

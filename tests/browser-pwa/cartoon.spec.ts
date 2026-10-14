@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 import type * as THREE from 'three';
 import { newPlayer } from '../../app/domain/progression';
 import type { Engine } from '../../app/game/engine';
@@ -15,6 +16,7 @@ declare global {
       scene?: THREE.Scene;
       camera?: THREE.Camera;
       inspectionCamera?: THREE.Camera;
+      afterRideFrame?: () => void;
       frames: number;
     };
   }
@@ -58,6 +60,7 @@ async function startCartoonRide(page: Page, gear?: { bike: string; upper: Produc
           window.cartoonProbe.scene = scene as THREE.Scene;
           window.cartoonProbe.camera = actualCamera;
           window.cartoonProbe.frames++;
+          window.cartoonProbe.afterRideFrame?.();
         }
       };
     });
@@ -91,6 +94,81 @@ async function startCartoonRide(page: Page, gear?: { bike: string; upper: Produc
 
 async function showWorldLighting(page: Page, lighting: 'day' | 'night') {
   return showWorldView(page, { kind: lighting === 'day' ? 'city' : 'open', lighting });
+}
+
+async function captureMovingRide(page: Page, motion: 'left' | 'right' | 'wheelie', path: string) {
+  const frame = await page.evaluate((motion) => new Promise<{
+    dataUrl: string; ticks: number; distance: number; lane: number; x: number; wheelieAngle: number;
+    productionCamera: boolean; cuffCount: number; treeForms: { name: string; count: number; shared: boolean }[];
+    heroOutlines: number; hardContours: number; treeDraws: number; programsLinked: boolean; contextLost: boolean;
+  }>((resolve, reject) => {
+    const probe = window.cartoonProbe, engine = probe.engine!;
+    const startTick = engine.fixedTicks, startDistance = engine.distance;
+    const timeout = setTimeout(() => {
+      probe.afterRideFrame = undefined;
+      engine.pause();
+      reject(new Error(`No moving ${motion} frame from the production camera`));
+    }, 45000);
+    probe.inspectionCamera = undefined;
+    engine.clearInput();
+    for (const obstacle of engine.obstacles) obstacle.active = false;
+    engine.phase = 'playing';
+    if (motion === 'wheelie') engine.hold(true);
+    else engine.move(motion === 'left' ? -1 : 1);
+    probe.afterRideFrame = () => {
+      const moving = engine.phase === 'playing' && engine.fixedTicks > startTick + 2 && engine.distance > startDistance;
+      const posed = motion === 'wheelie' ? engine.wheelieAngle > 0.5 : engine.laneChangeAge > 0.1 && engine.laneChangeAge < 0.5;
+      if (!moving || !posed) return;
+      const scene = probe.scene!;
+      const treeForms = ['cone-foliage', 'canopy-foliage', 'round-trunk'].map(form => {
+        const source = scene.getObjectByName(`world-${form}`) as THREE.InstancedMesh;
+        const shell = source.children.find(child => child.userData.cartoonWorldFoliageOutline) as THREE.InstancedMesh;
+        return { name: form, count: shell?.count ?? -1,
+          shared: shell?.geometry === source.geometry && shell?.instanceMatrix === source.instanceMatrix && shell?.count === source.count };
+      });
+      const cuffs = scene.getObjectsByProperty('name', 'continuous-trouser-leg') as THREE.SkinnedMesh[];
+      const cuffCount = cuffs.filter(leg => {
+        const edge = leg.geometry.getAttribute('cartoonGarmentEdge');
+        const shell = leg.children.find(child => child.userData.cartoonOutline) as THREE.SkinnedMesh;
+        return edge && edge.getX(edge.count - 1) === 0 && shell?.skeleton === leg.skeleton;
+      }).length;
+      let heroOutlines = 0, hardContours = 0, treeDraws = 0;
+      scene.traverse(object => {
+        if (object.userData.cartoonOutline) heroOutlines++;
+        if (object.userData.cartoonContour) hardContours++;
+        if (object.userData.cartoonWorldFoliageOutline && object.visible && (object as THREE.InstancedMesh).count > 0) treeDraws++;
+      });
+      const gl = probe.renderer!.getContext();
+      const programs = probe.renderer!.info.programs as unknown as { program: WebGLProgram }[];
+      // Save the exact advancing production frame before pausing the fixture.
+      // Canvas capture runs only in this test observer, never in game code.
+      const dataUrl = probe.renderer!.domElement.toDataURL('image/png');
+      const result = { dataUrl, ticks: engine.fixedTicks - startTick, distance: engine.distance - startDistance,
+        lane: engine.lane, x: engine.x, wheelieAngle: engine.wheelieAngle,
+        productionCamera: !probe.inspectionCamera, cuffCount, treeForms, heroOutlines, hardContours, treeDraws,
+        programsLinked: programs.every(entry => gl.getProgramParameter(entry.program, gl.LINK_STATUS)), contextLost: gl.isContextLost() };
+      probe.afterRideFrame = undefined;
+      clearTimeout(timeout);
+      engine.pause();
+      resolve(result);
+    };
+    window.dispatchEvent(new Event('focus'));
+  }), motion);
+  await writeFile(path, Buffer.from(frame.dataUrl.split(',')[1], 'base64'));
+  const { dataUrl: _image, ...measurements } = frame;
+  expect(measurements.ticks).toBeGreaterThan(2);
+  expect(measurements.distance).toBeGreaterThan(0);
+  expect(measurements.productionCamera).toBe(true);
+  expect(measurements.cuffCount).toBe(2);
+  expect(measurements.treeForms.every(form => form.shared && form.count >= 0)).toBe(true);
+  expect(measurements.treeForms.some(form => form.count > 0)).toBe(true);
+  expect(measurements.heroOutlines).toBeGreaterThan(0);
+  expect(measurements.heroOutlines).toBeLessThanOrEqual(32);
+  expect(measurements.hardContours).toBeLessThanOrEqual(10);
+  expect(measurements.treeDraws).toBeLessThanOrEqual(3);
+  expect(measurements.programsLinked).toBe(true);
+  expect(measurements.contextLost).toBe(false);
+  return measurements;
 }
 
 async function showWorldView(page: Page, target: WorldViewTarget) {
@@ -219,6 +297,11 @@ for (const device of ['mobile', 'desktop'] as const) {
         await page.screenshot({ path: `outputs/browser-pwa/cartoon-${lighting}-${device}.png` });
       }
       if (samples.length > 1) expect(samples[0].fog).not.toBe(samples[1].fog);
+      await showWorldView(page, { kind: 'open', lighting: 'day' });
+      const movingFrames = [];
+      for (const motion of ['left', 'right', 'wheelie'] as const)
+        movingFrames.push(await captureMovingRide(page, motion, `outputs/browser-pwa/cartoon-motion-${motion}-${device}.png`));
+      await info.attach('cartoon-moving-camera-measurements', { body: JSON.stringify(movingFrames, null, 2), contentType: 'application/json' });
       await info.attach('cartoon-render-measurements', { body: JSON.stringify(samples, null, 2), contentType: 'application/json' });
       expect(errors).toEqual([]);
     });
@@ -298,6 +381,11 @@ test.describe('cartoon visual gallery', () => {
       await page.screenshot({ path: `outputs/browser-pwa/sport-tshirt-${angle.name}.png` });
     }
     await page.evaluate(() => { window.cartoonProbe.inspectionCamera = undefined; });
+    await showWorldView(page, { kind: 'open', lighting: 'day' });
+    const movingFrames = [];
+    for (const motion of ['left', 'right', 'wheelie'] as const)
+      movingFrames.push(await captureMovingRide(page, motion, `outputs/browser-pwa/sport-tshirt-motion-${motion}.png`));
+    await info.attach('sport-tshirt-moving-camera', { body: JSON.stringify(movingFrames, null, 2), contentType: 'application/json' });
     await info.attach('sport-tshirt-contours', { body: JSON.stringify(cloth, null, 2), contentType: 'application/json' });
     expect(errors).toEqual([]);
   });
