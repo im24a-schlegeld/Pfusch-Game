@@ -85,3 +85,13 @@
 - [x] Verify with the actual seeded world and approved camera; retain background lighting and non-lamp props.
 - [x] Extend static boot checks to 1920×1080 and 2560×1080.
 - [ ] Inspect the regenerated wide artwork and boot screenshots before final completion.
+
+### Task 7: Latest user refinements
+
+- [ ] Refine the actual Sport rim hoop's uneven circular chords; preserve spokes, hub, original profile and a single draw, then inspect new front/rear views.
+- [x] Reuse the existing black fabric material for the visible sock strip without changing leg geometry or bones.
+- [ ] Offer a dismissible installation hint after login, with a truthful offline status and no prompt inside an embedded or installed app.
+- [ ] Use the actual GameBrand artwork including the clipped octagonal STOP sign for app icons; check maskable bounds and the generated PNGs.
+- [x] Explain the discount task with actual dynamic goals and remaining progress; put detailed qualifying rules behind an accessible disclosure.
+- [ ] Remove clipboard/manual-link sharing fallbacks while retaining native sharing and a WhatsApp draft option; keep revive native-only.
+- [ ] Repair the isolated-background browser observer for the scene's real null background; require the complete remote browser/build/deploy gate.

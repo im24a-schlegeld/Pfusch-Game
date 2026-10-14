@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 test('installed app shell and playable ride survive a genuinely offline reload', async ({ page, context }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+  });
   await page.goto('/', { waitUntil: 'load' });
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
   await expect(page.getByTestId('offline-ready')).toHaveAttribute('data-state', 'ready', { timeout: 120000 });
@@ -39,7 +42,21 @@ test('installed app shell and playable ride survive a genuinely offline reload',
   await page.getByRole('navigation', { name: 'Spielnavigation' }).getByRole('button', { name: 'RANG', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Freunde einladen.', exact: true })).toBeVisible();
   await page.locator('.game-share-section').scrollIntoViewIfNeeded();
-  await expect(page.getByRole('button', { name: 'FREUND EINLADEN', exact: true })).toBeEnabled();
+  const invite = page.locator('.game-invite-section').getByRole('link', { name: 'Über WhatsApp teilen', exact: true });
+  await expect(invite).toBeEnabled();
+  await expect(invite).toHaveAttribute('href', /^https:\/\/wa\.me\/\?text=/);
+  await expect(invite).toHaveAttribute('target', '_blank');
+  const draft = new URL((await invite.getAttribute('href'))!);
+  expect([...draft.searchParams.keys()]).toEqual(['text']);
+  const [message, gameUrl] = draft.searchParams.get('text')!.split('\n');
+  expect(message).toContain('PFUSCH Wheelie Escape');
+  const destination = new URL(gameUrl);
+  expect(destination.origin).toBe('https://game.pfusch-clothing.ch');
+  expect(destination.searchParams.get('share')).toBe('invite');
+  expect(destination.searchParams.has('points')).toBe(false);
+  expect(destination.searchParams.has('ref')).toBe(false);
+  await expect(page.getByRole('button', { name: 'FREUND EINLADEN', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Link zum Teilen', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'outputs/browser-pwa/sharing-390x844.png' });
   await page.setViewportSize({ width: 320, height: 568 });
   await page.locator('.game-share-section').scrollIntoViewIfNeeded();

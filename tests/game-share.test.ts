@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { gameShareText, gameShareUrl, rankedGameShare, readGameShare, sharePeriodLabel, type GameShare } from '../app/domain/gameShare';
-import { shareGame } from '../app/services/gameShare';
+import { shareGame, whatsappGameShareUrl } from '../app/services/gameShare';
 
 describe('public game sharing', () => {
   const score: GameShare = { kind: 'score', name: 'Fahrer + #1 & Crew', score: 158863, date: '2026-10-13' };
@@ -53,14 +53,28 @@ describe('public game sharing', () => {
     expect(await shareGame(score, { share, clipboard })).toBe('cancelled');
     expect(clipboard.writeText).not.toHaveBeenCalled();
   });
-  it('copies a direct link when sharing is unavailable, with a selectable-link fallback', async () => {
+  it('leaves the clipboard untouched when native sharing is unavailable or fails', async () => {
     const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
-    expect(await shareGame(score, { clipboard })).toBe('copied');
-    expect(clipboard.writeText).toHaveBeenCalledWith(gameShareUrl(score));
+    expect(await shareGame(score, { clipboard })).toBe('unavailable');
     const share = vi.fn().mockRejectedValue({ name: 'NotAllowedError' });
-    expect(await shareGame(score, { share, clipboard })).toBe('copied');
-    clipboard.writeText.mockRejectedValue(new Error('Clipboard unavailable'));
-    expect(await shareGame(score, { clipboard })).toBe('manual');
-    expect(await shareGame(score, {})).toBe('manual');
+    expect(await shareGame(score, { share, clipboard })).toBe('failed');
+    expect(await shareGame(score, {})).toBe('unavailable');
+    expect(clipboard.writeText).not.toHaveBeenCalled();
+  });
+  it.each<GameShare>([
+    score,
+    { kind: 'rank', name: 'Alex & Crew', score: 200, rank: 2, period: 'week', date: '2026-10-13' },
+    { kind: 'invite', name: 'Alex + Crew', referral: 'v1.1234567890abcdef.Signed_public_invite-code' },
+  ])('keeps the $kind message and game data inside one WhatsApp text parameter', content => {
+    const url = new URL(whatsappGameShareUrl(content));
+    expect(url.origin).toBe('https://wa.me');
+    expect(url.pathname).toBe('/');
+    expect([...url.searchParams.keys()]).toEqual(['text']);
+    const [message, gameUrl] = url.searchParams.get('text')!.split('\n');
+    expect(message).toContain(content.name);
+    expect(message).toContain('PFUSCH Wheelie Escape');
+    const destination = new URL(gameUrl);
+    expect(destination.origin).toBe('https://game.pfusch-clothing.ch');
+    expect(readGameShare(destination.search)).toEqual(content);
   });
 });

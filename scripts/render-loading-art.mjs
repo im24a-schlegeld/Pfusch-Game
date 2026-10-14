@@ -39,7 +39,7 @@ try {
   await writeFile(resolve(output, 'render-proof.json'), JSON.stringify({ references, crops: exports.map(art => art.proof) }, null, 2) + '\n');
   const details = [];
   for (const id of ['125', 'moped', '450', '701', 'scooter']) for (const view of
-    ['front', 'side', ...(['450', '701', 'scooter'].includes(id) ? ['front-wheel'] : [])]) {
+    ['front', 'side', ...(['450', '701', 'scooter'].includes(id) ? ['front-wheel'] : []), ...(id === '701' ? ['rear-wheel'] : [])]) {
     const detail = await page.evaluate(({ id, view }) => window.exportBikeDetail(id, view), { id, view });
     if (detail.proof.panels.some(panel => panel.segments < 1) || detail.proof.outlines > 32 || detail.proof.contours > 10 ||
       !detail.proof.stockGuard || detail.proof.exhaustShells < 1 || detail.proof.exhaustContours < 1 || detail.proof.rims.length < 2 ||

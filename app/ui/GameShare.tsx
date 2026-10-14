@@ -1,33 +1,37 @@
 import { useState } from 'react';
 import { ArrowRight, Share2, UserPlus } from 'lucide-react';
-import { gameShareUrl, sharePeriodLabel, type GameShare } from '../domain/gameShare';
-import { shareGame } from '../services/gameShare';
+import { sharePeriodLabel, type GameShare } from '../domain/gameShare';
+import { shareGame, whatsappGameShareUrl } from '../services/gameShare';
 import { fmt } from './shared';
 import './game-share.css';
 
 export function ShareAction({ share, label, disabled = false }: { share: GameShare; label: string; disabled?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState('');
-  const [manualUrl, setManualUrl] = useState('');
+  const [fallback, setFallback] = useState(false);
+  const nativeAvailable = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   async function openShare() {
     if (busy || disabled) return;
     setBusy(true);
     setOutcome('');
-    setManualUrl('');
+    setFallback(false);
     try {
       const result = await shareGame(share, navigator);
-      if (result === 'copied') setOutcome('Link kopiert. Füge ihn in deiner App oder Nachricht ein.');
-      if (result === 'manual') setManualUrl(gameShareUrl(share));
+      if (result === 'failed' || result === 'unavailable') {
+        setOutcome('Direktes Teilen ist gerade nicht verfügbar. Versuche es über WhatsApp.');
+        setFallback(true);
+      }
     } finally { setBusy(false); }
   }
   return <div className="game-share-action">
-    <button type="button" className="button small" disabled={busy || disabled} onClick={() => { void openShare(); }}>
+    {nativeAvailable && <button type="button" className="button small" disabled={busy || disabled} onClick={() => { void openShare(); }}>
       {share.kind === 'invite' ? <UserPlus size={17} aria-hidden="true" /> : <Share2 size={17} aria-hidden="true" />}{label}
-    </button>
+    </button>}
     <output aria-live="polite">{outcome}</output>
-    {manualUrl && <label className="game-share-copy">Link markieren und kopieren
-      <input type="text" readOnly value={manualUrl} aria-label="Link zum Teilen" onFocus={(event) => event.currentTarget.select()} />
-    </label>}
+    {(!nativeAvailable || fallback) && <a className="button small game-share-whatsapp" href={busy || disabled ? undefined : whatsappGameShareUrl(share)}
+      target="_blank" rel="noopener noreferrer" aria-disabled={busy || disabled || undefined} tabIndex={busy || disabled ? -1 : undefined}>
+      <Share2 size={17} aria-hidden="true" />Über WhatsApp teilen
+    </a>}
   </div>;
 }
 

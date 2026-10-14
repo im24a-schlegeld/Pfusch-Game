@@ -10,6 +10,7 @@ import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { getImportedBikeAsset, type ImportedBikeId, type ImportedBikeMaterial } from './importedBikeAsset';
 import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
 import { createImportedHardwareFinisher } from './importedHardwareFinish';
+import { roundImportedRimProfile } from './importedRimProfile';
 import { tagImportedSupermotoMudflap } from './supermotoMudflap';
 
 interface ImportedRiderController {
@@ -107,6 +108,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     else if (part.rig === 'swingarm') parent = rearAssembly;
     else if (part.rig === 'shockUpper' || part.rig === 'shockLower') parent = shock;
     if (!part.normal) geometry.computeVertexNormals();
+    roundImportedRimProfile(id, part, binary, part.rig === 'rearWheel' ? source.rearAxle : source.frontAxle, geometry);
     geometry.computeBoundingSphere();
     const material = typeof part.material === 'number' ? materials[part.material] : materialByName.get(part.material);
     if (!material) throw new Error(`Unbekanntes Motorradmaterial: ${part.material}`);

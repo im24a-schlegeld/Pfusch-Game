@@ -36,6 +36,8 @@ import RideResult from './RideResult';
 import LoadingScreen from './LoadingScreen';
 import GameBrand from './GameBrand';
 import SaveAccessGate from './SaveAccessGate';
+import OfflineInstallHint from './OfflineInstallHint';
+import { getOfflineAppState, subscribeOfflineApp } from '../services/offlineApp';
 import './account-header.css';
 import { readGameShare } from '../domain/gameShare';
 import { SharedGame } from './GameShare';
@@ -63,6 +65,9 @@ export default function GameApp() {
   const accessStatus = useSyncExternalStore(subscribeSave, getAccessStatus, getAccessStatus);
   const [player, setPlayer] = useState<Player | null>(null);
   const [accountKind, setAccountKind] = useState<'guest' | 'customer'>('guest');
+  const offlineApp = useSyncExternalStore(subscribeOfflineApp, getOfflineAppState, getOfflineAppState);
+  // Session-only dismissal survives menu/ride navigation and account refreshes.
+  const [installHintDismissed, setInstallHintDismissed] = useState(false);
   const [loginHint, setLoginHint] = useState(false);
   const loginPending = useRef(false);
   const current = useRef<Player | null>(null);
@@ -474,6 +479,9 @@ export default function GameApp() {
         {accountAction}
       </header>}
       {screen === 'garage' && (
+        <div className="garage-with-install-hint">
+        {!embedded && accountKind === 'customer' && !offlineApp.installed && !installHintDismissed && <OfflineInstallHint offline={offlineApp}
+          dismiss={() => setInstallHintDismissed(true)} openSettings={() => { setInstallHintDismissed(true); navigate('settings'); }} />}
         <Garage
           player={player}
           products={products}
@@ -485,6 +493,7 @@ export default function GameApp() {
           embedded={embedded}
           onProgress={() => navigate('progress')}
         />
+        </div>
       )}
       {screen === 'invitation' && sharedGame && <SharedGame share={sharedGame} start={start} garage={back} />}
       {screen === 'results' && result && (

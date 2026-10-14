@@ -36,7 +36,7 @@ test('reward status recovers automatically on return and separates login, config
   const card = page.locator('.real-reward');
   const retry = page.getByRole('button', { name: 'ERNEUT PRÜFEN' });
   await expect(retry).toHaveCount(0);
-  await expect(card).toContainText('auf dem Spielserver noch nicht eingerichtet');
+  await expect(card).toContainText('Shop-Rabatte sind noch nicht eingerichtet');
   await expect(card).not.toContainText('melde dich');
   await expect(card).not.toContainText('Shop-Belohnungen sind noch nicht verfügbar');
 

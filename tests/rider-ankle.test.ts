@@ -37,7 +37,7 @@ function cuffCenter(leg: THREE.Mesh, posed = false) {
 }
 
 it.each(['125', 'moped', '450', '701', 'scooter'])(
-  'shows a connected skin ankle below the trouser cuff on %s without changing adult bones', id => {
+  'shows connected black socks below the trouser cuff on %s without changing adult bones', id => {
     const bike = makeBike({ ...newPlayer(), bike: id }, []);
     const ankles = meshes(bike.rider, 'rider-ankle');
     const trousers = meshes(bike.rider, 'continuous-trouser-leg');
@@ -56,7 +56,7 @@ it.each(['125', 'moped', '450', '701', 'scooter'])(
       expect(ankle).toBeInstanceOf(THREE.SkinnedMesh);
       expect(ankle.skeleton).toBe((trousers[side] as THREE.SkinnedMesh).skeleton);
       const material = ankle.material as THREE.MeshStandardMaterial;
-      expect(material.color.getHexString()).toBe('987565');
+      expect(material.color.getHexString()).toBe('141c20');
       expect(material.userData.appearanceColorSlot).toBeUndefined();
       const positions = ankle.geometry.getAttribute('position');
       const weights = ankle.geometry.getAttribute('skinWeight');
@@ -68,13 +68,13 @@ it.each(['125', 'moped', '450', '701', 'scooter'])(
         expect(weights.getY(i)).toBe(1);
       }
       expect(top).toBeCloseTo(0.083, 5); // 8 mm hidden inside the fabric cuff.
-      expect(bottom).toBeCloseTo(-0.012, 5); // Skin seats inside the shoe collar.
+      expect(bottom).toBeCloseTo(-0.012, 5); // Sock seats inside the shoe collar.
       const shoe = shoes[side];
       shoe.geometry.computeBoundingBox();
       const collar = shoe.geometry.boundingBox!.clone().translate(shoe.position);
       expect(collar.containsPoint(end.clone().addScaledVector(direction, bottom))).toBe(true);
       const collarTop = collar.max.y;
-      // Even the highest tongue cannot hide the complete skin strip.
+      // Even the highest tongue cannot hide the complete sock strip.
       expect(cuffCenter(trousers[side]).y - collarTop).toBeGreaterThan(0.015);
     });
     const ankleGeometry = ankles.map(mesh => mesh.geometry);

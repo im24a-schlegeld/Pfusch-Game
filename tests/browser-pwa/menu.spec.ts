@@ -40,6 +40,7 @@ async function prepareMenu(page: Page) {
   player.history = [{ score: 7723, date: new Date().toISOString().slice(0, 10) }];
   await page.addInitScript(saved => {
     if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
     window.menuPreviewProbe = { frames: 0, capture: false };
     window.__THREE_DEVTOOLS__ = new EventTarget();
     window.__THREE_DEVTOOLS__.addEventListener('observe', event => {
@@ -219,7 +220,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
           const table = page.getByRole('table', { name: 'Deine Bestleistungen', exact: true });
           await expect(table).toBeVisible();
           await expect(table.locator('.you')).toContainText('Fahrer mit langem Namen');
-          await expect(page.getByRole('button', { name: 'TEILEN', exact: true })).toBeEnabled();
+          const scoreShare = page.locator('.game-share-section').getByRole('link', { name: 'Über WhatsApp teilen', exact: true });
+          await expect(scoreShare).toBeEnabled();
+          await expect(page.getByRole('button', { name: 'TEILEN', exact: true })).toHaveCount(0);
           expect(await page.evaluate(() => {
             const table = document.querySelector('.ranking-list')!;
             const editor = document.querySelector('.ranking-name-editor')!;
@@ -234,20 +237,22 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
           await expect(table.locator('.you')).toContainText('Alex');
           await page.locator('.ranking-name-editor > summary').click();
           if (viewport.width === 390) {
-            // A browser without native sharing or clipboard access still exposes
-            // the real result link for copying, rather than leaving a dead action.
-            await page.evaluate(() => {
-              Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
-              Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
-            });
-            await page.getByRole('button', { name: 'TEILEN', exact: true }).click();
-            const link = page.getByRole('textbox', { name: 'Link zum Teilen', exact: true });
-            await expect(link).toBeVisible();
-            const url = new URL(await link.inputValue());
+            // Unsupported native sharing offers an encoded WhatsApp draft
+            // containing the actual result, without a link-copy control.
+            const draft = new URL((await scoreShare.getAttribute('href'))!);
+            expect(draft.origin).toBe('https://wa.me');
+            expect([...draft.searchParams.keys()]).toEqual(['text']);
+            const [message, gameUrl] = draft.searchParams.get('text')!.split('\n');
+            expect(message).toContain('Alex');
+            expect(message).toContain('PFUSCH Wheelie Escape');
+            const url = new URL(gameUrl);
             expect(url.origin).toBe('https://game.pfusch-clothing.ch');
             expect(url.searchParams.get('share')).toBe('score');
             expect(url.searchParams.get('points')).toBe('7723');
             expect(url.searchParams.get('name')).toBe('Alex');
+            expect(url.searchParams.get('date')).toBe(new Date().toISOString().slice(0, 10));
+            await expect(page.getByRole('textbox', { name: 'Link zum Teilen', exact: true })).toHaveCount(0);
+            await expect(page.locator('.game-share-copy')).toHaveCount(0);
           }
           await page.locator('.ranking-page').evaluate(node => { node.scrollTop = 0; });
         }

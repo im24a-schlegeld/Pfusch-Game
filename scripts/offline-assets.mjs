@@ -29,15 +29,18 @@ async function files(directory) {
   return result;
 }
 
-/** Emit a public shell: the raw build has no customer ID, tokens or server response. */
 let renderer;
-export async function writeOfflineBundle(directory, { oxygen = false } = {}) {
-  const html = await readFile(resolve(directory, 'index.html'), 'utf8');
-  const runtime = '<script type="application/json" id="pfusch-runtime-config">{"version":1,"mode":"oxygen"}</script>';
-  await writeFile(resolve(directory, 'offline.html'), oxygen ? html.replace('</head>', `${runtime}</head>`) : html);
-  // Reuse supplied artwork without generating or changing the brand image.
-  const artwork = (await readFile(resolve(directory, 'images/artwork/signs.png'))).toString('base64');
-  const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#323232"/><image href="data:image/png;base64,${artwork}" x="38" y="170" width="436" height="145"/></svg>`;
+/** Same supplied Signs/STOP/title lockup as GameBrand, inside the maskable safe circle. */
+export async function writeAppIcons(directory) {
+  const [signs, stop, title] = await Promise.all(['images/artwork/signs.png', 'images/stop-sign.png', 'branding/wheelie-escape-wordmark-a.png']
+    .map(async (path) => (await readFile(resolve(directory, path))).toString('base64')));
+  // An opaque square lets each launcher apply its own circle or rounded mask.
+  // Artwork stays within the central 80% circle, including the rotated Signs.
+  const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><clipPath id="stop-octagon" clipPathUnits="objectBoundingBox"><polygon points=".3,0 .7,0 1,.3 1,.7 .7,1 .3,1 0,.7 0,.3"/></clipPath></defs><rect width="512" height="512" fill="#323232"/>
+    <image href="data:image/png;base64,${signs}" x="76" y="170" width="342" height="126.32" transform="rotate(6 247 233.16)"/>
+    <image href="data:image/png;base64,${stop}" x="409.36" y="263.89" width="22.32" height="22.32" clip-path="url(#stop-octagon)"/>
+    <image href="data:image/png;base64,${title}" x="153.4" y="274.72" width="205.2" height="101.46"/>
+  </svg>`;
   renderer ??= readFile(fileURLToPath(import.meta.resolve('@resvg/resvg-wasm/index_bg.wasm'))).then(initWasm);
   await renderer;
   for (const size of [192, 512]) {
@@ -46,6 +49,14 @@ export async function writeOfflineBundle(directory, { oxygen = false } = {}) {
     await writeFile(resolve(directory, `app-icon-${size}.png`), rendered.asPng());
     rendered.free(); image.free();
   }
+}
+
+/** Emit a public shell: the raw build has no customer ID, tokens or server response. */
+export async function writeOfflineBundle(directory, { oxygen = false } = {}) {
+  const html = await readFile(resolve(directory, 'index.html'), 'utf8');
+  const runtime = '<script type="application/json" id="pfusch-runtime-config">{"version":1,"mode":"oxygen"}</script>';
+  await writeFile(resolve(directory, 'offline.html'), oxygen ? html.replace('</head>', `${runtime}</head>`) : html);
+  await writeAppIcons(directory);
   const core = [], optional = [];
   // Keep only the two crops actually shipped in the shell, even when the public
   // directory retains older immutable exports for existing deployments.

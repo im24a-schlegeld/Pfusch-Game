@@ -2942,7 +2942,7 @@ function makeRider(
         V(ankle).addScaledVector(shinDirection, -0.012).toArray() as Point,
       ],
       [0.047, 0.042, 0.039],
-      skin,
+      boot,
       8,
       16,
       0.92,

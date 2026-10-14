@@ -7,7 +7,7 @@ import './real-reward.css';
 function rewardErrorMessage(error: unknown) {
   if (error instanceof VerifiedRewardsError) {
     if (error.status === 401) return 'Bitte melde dich im Spiel an, um deinen Rabattfortschritt zu sehen.';
-    if (error.code === 'not_configured') return 'Shop-Rabatte sind auf dem Spielserver noch nicht eingerichtet. Bitte versuche es später erneut.';
+    if (error.code === 'not_configured') return 'Shop-Rabatte sind noch nicht eingerichtet. Bitte versuche es später erneut.';
     if (error.code === 'request_timeout') return 'Der Rabattdienst antwortet gerade zu langsam. Bitte versuche es erneut.';
     if (error.code === 'network_error') return 'Die Verbindung zum Rabattdienst ist unterbrochen. Prüfe deine Verbindung und versuche es erneut.';
     if (error.code === 'invalid_reward_response') return 'Der Rabattdienst hat eine ungültige Antwort gesendet. Bitte versuche es später erneut.';
@@ -60,6 +60,8 @@ export default function RealRewardCard({ service, onSignIn, loginHref }: { servi
   }, [service]);
   const reward = status?.reward;
   const expired = reward ? Date.parse(reward.expiresAt) <= Date.now() : false;
+  const pointsLeft = status ? Math.max(0, status.pointsRequired - status.verifiedPoints) : 0;
+  const runsLeft = status ? Math.max(0, status.runsRequired - status.verifiedRuns) : 0;
   async function claim() {
     if (!service || busy || !status?.available || !(status.eligible || status.pending)) return;
     claiming.current = true; requestEpoch.current++;
@@ -80,15 +82,22 @@ export default function RealRewardCard({ service, onSignIn, loginHref }: { servi
   return <section className="real-reward" aria-labelledby="real-reward-title">
     <div className="real-reward-heading"><Gift aria-hidden="true" size={23} /><div><span className="eyebrow">PFUSCH-SHOP</span>
       <h2 id="real-reward-title">{status?.available || reward ? 'CHF 5 Rabatt' : 'Shop-Belohnung'}</h2></div></div>
-    {loading ? <output>Kontofortschritt wird geprüft …</output> : status?.available || reward ? <>
+    {loading ? <output>Dein Rabattfortschritt wird geladen …</output> : status?.available || reward ? <>
       <p>CHF 5 Rabatt ab CHF 50 Bestellwert. Einmal pro Konto; nach Ausstellung 30 Tage gültig.</p>
       {reward ? <div className="real-reward-code"><span>{expired ? 'Dein Code ist abgelaufen.' : `Gültig bis ${new Date(reward.expiresAt).toLocaleDateString('de-CH')}`}</span>
         <code>{reward.code}</code><button className="button small" disabled={expired} onClick={() => { void copyCode(); }}>CODE KOPIEREN</button></div> : <>
-        <label className="real-reward-progress">Bestätigte Punkte <strong>{fmt(status!.verifiedPoints)} / {fmt(status!.pointsRequired)}</strong>
+        <p><strong>Deine Aufgabe:</strong> Sammle online und angemeldet {fmt(status!.pointsRequired)} Punkte in mindestens {status!.runsRequired} Fahrten.</p>
+        <label className="real-reward-progress">Punkte für deinen Rabatt <strong>{fmt(status!.verifiedPoints)} / {fmt(status!.pointsRequired)}</strong>
           <progress max={status!.pointsRequired} value={Math.min(status!.verifiedPoints, status!.pointsRequired)} /></label>
         <p>{status!.verifiedRuns} / {status!.runsRequired} bestätigte Fahrten · Heute {fmt(status!.dailyPoints)} / {fmt(status!.dailyCap)} Punkte</p>
-        <p className="real-reward-help">Es zählen neue, vom Spielserver bestätigte Fahrten ab 20 Sekunden. Mindestens 10 Fahrten und 50’000 Punkte; höchstens 10’000 Punkte pro UTC-Tag. Lokale Coins und bisherige XP zählen hier nicht.</p>
-        {status!.pending && <p>Dein Code ist reserviert. Die Bestätigung steht noch aus.</p>}
+        <details className="real-reward-help"><summary>Welche Fahrten zählen?</summary>
+          <p>Eine Fahrt zählt ab 20 Sekunden und 100 Punkten. Pro Tag zählen höchstens {fmt(status!.dailyCap)} Punkte. Coins und XP zählen nicht.</p>
+        </details>
+        {status!.pending ? <p>Dein Code ist reserviert. Tippe auf «Code bestätigen», um ihn zu erhalten.</p>
+          : status!.eligible ? <p><strong>Aufgabe geschafft!</strong> Du kannst deinen Rabattcode jetzt abholen.</p>
+            : <p>{pointsLeft > 0 || runsLeft > 0
+              ? `Noch ${[pointsLeft > 0 ? `${fmt(pointsLeft)} Punkte` : '', runsLeft > 0 ? `${runsLeft} ${runsLeft === 1 ? 'Fahrt' : 'Fahrten'}` : ''].filter(Boolean).join(' und ')}. Sobald beide Ziele erreicht sind, kannst du hier deinen Rabattcode abholen.`
+              : 'Deine Ziele sind erreicht. Sobald dein Fortschritt bestätigt ist, kannst du hier deinen Rabattcode abholen.'}</p>}
         <button className="button" disabled={busy || !(status!.eligible || status!.pending)} onClick={() => { void claim(); }}>{busy ? 'CODE WIRD BESTÄTIGT …' : status!.pending ? 'CODE BESTÄTIGEN' : status!.eligible ? 'CODE ABHOLEN' : 'NOCH NICHT FREIGESCHALTET'}</button>
       </>}
     </> : status || !service ? <p>{status?.reason === 'rewards_disabled' ? 'Shop-Rabatte sind derzeit deaktiviert.' : 'Shop-Belohnungen sind noch nicht verfügbar.'} Spielbelohnungen kannst du weiterhin abholen.</p> : null}

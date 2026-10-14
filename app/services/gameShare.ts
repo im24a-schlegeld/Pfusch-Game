@@ -5,21 +5,18 @@ export interface SharePlatform {
   clipboard?: { writeText(text: string): Promise<void> };
 }
 
-export async function shareGame(share: GameShare, platform: SharePlatform): Promise<'shared' | 'copied' | 'cancelled' | 'manual'> {
-  const url = gameShareUrl(share);
-  if (platform.share) {
-    try {
-      await platform.share({ title: 'PFUSCH · Wheelie Escape', text: gameShareText(share), url });
-      return 'shared';
-    } catch (error) {
-      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') return 'cancelled';
-    }
-  }
+/** Opens a message draft; following the link does not confirm sharing. */
+export function whatsappGameShareUrl(share: GameShare): string {
+  return `https://wa.me/?text=${encodeURIComponent(`${gameShareText(share)}\n${gameShareUrl(share)}`)}`;
+}
+
+export async function shareGame(share: GameShare, platform: SharePlatform): Promise<'shared' | 'cancelled' | 'unavailable' | 'failed'> {
+  if (!platform.share) return 'unavailable';
   try {
-    if (platform.clipboard) {
-      await platform.clipboard.writeText(url);
-      return 'copied';
-    }
-  } catch { /* A selectable link remains available without clipboard permission. */ }
-  return 'manual';
+    await platform.share({ title: 'PFUSCH · Wheelie Escape', text: gameShareText(share), url: gameShareUrl(share) });
+    return 'shared';
+  } catch (error) {
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') return 'cancelled';
+    return 'failed';
+  }
 }

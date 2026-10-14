@@ -54,7 +54,11 @@ describe.each(['125', 'moped', '450', '701', 'scooter'] as const)('Imported %s a
       const positions = mesh.geometry.getAttribute('position');
       let maximumShapeError = 0;
       const expected = new Vector3();
-      for (let index = 0; index < positions.count; index++) {
+      // Hoop refinement appends circular-profile vertices; all authored source
+      // vertices must still reproduce their original neutral pose exactly.
+      expect(positions.count).toBeGreaterThanOrEqual(part.position.count);
+      if (part.name !== 'r6_rim:frontWheel' && part.name !== 'r6_rim:rearWheel') expect(positions.count).toBe(part.position.count);
+      for (let index = 0; index < part.position.count; index++) {
         point.fromBufferAttribute(positions, index).applyMatrix4(matrix);
         expected.set(raw[index * 3], raw[index * 3 + 1], raw[index * 3 + 2]).multiplyScalar(size);
         maximumShapeError = Math.max(maximumShapeError, point.distanceTo(expected));

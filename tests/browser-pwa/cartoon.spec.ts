@@ -18,6 +18,7 @@ declare global {
       inspectionCamera?: THREE.Camera;
       afterRideFrame?: () => void;
       plainBackground?: boolean;
+      plainBackgroundColor?: THREE.Color;
       isolatedBike?: THREE.Object3D;
       restoreWorld?: () => void;
       frames: number;
@@ -58,7 +59,7 @@ async function startCartoonRide(page: Page, gear?: { bike: string; upper: Produc
       renderer.render = (scene, camera) => {
         const actualCamera = window.cartoonProbe.inspectionCamera ?? camera;
         if (window.cartoonProbe.plainBackground) {
-          ((scene as THREE.Scene).background as THREE.Color).set('#ffffff');
+          (scene as THREE.Scene).background = window.cartoonProbe.plainBackgroundColor!;
           for (const child of scene.children)
             if (!(child as THREE.Light).isLight) child.visible = child === window.cartoonProbe.isolatedBike;
         }
@@ -398,7 +399,9 @@ test.describe('cartoon visual gallery', () => {
       while (bike.parent && bike.parent !== scene) bike = bike.parent;
       const states = scene.children.map(child => ({ child, visible: child.visible }));
       const background = scene.background;
-      scene.background = (scene.background as THREE.Color).clone().set('#ffffff');
+      const light = scene.children.find(child => (child as THREE.Light).isLight) as THREE.Light;
+      probe.plainBackgroundColor = light.color.clone().set('#ffffff');
+      scene.background = probe.plainBackgroundColor;
       for (const { child } of states) child.visible = child === bike || (child as THREE.Light).isLight;
       probe.plainBackground = true;
       probe.isolatedBike = bike;
@@ -406,6 +409,7 @@ test.describe('cartoon visual gallery', () => {
         for (const { child, visible } of states) child.visible = visible;
         scene.background = background;
         probe.plainBackground = false;
+        probe.plainBackgroundColor = undefined;
         probe.isolatedBike = undefined;
         window.dispatchEvent(new Event('focus'));
       };

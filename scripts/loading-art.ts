@@ -206,7 +206,7 @@ Object.assign(window, {
     const proof = frame(isPortrait);
     return { webp: renderer.domElement.toDataURL('image/webp', 0.91), png: renderer.domElement.toDataURL('image/png'), proof };
   },
-  async exportBikeDetail(id: ImportedBikeId, view: 'front' | 'side' | 'front-wheel') {
+  async exportBikeDetail(id: ImportedBikeId, view: 'front' | 'side' | 'front-wheel' | 'rear-wheel') {
     await preloadImportedBike(id);
     const detail = makeBike({ ...player, bike: id, paint: '#19324f', rims: '#b9e3f2' }, shadeClothingCatalog(catalog));
     detail.animateSuspension(0, 0);
@@ -224,19 +224,20 @@ Object.assign(window, {
       detail.root.updateMatrixWorld(true);
       detail.root.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.update(); });
       const box = new THREE.Box3().setFromObject(detail.root, true);
-      if (view === 'front-wheel') {
+      const wheelDetail = view === 'front-wheel' || view === 'rear-wheel';
+      if (wheelDetail) {
         box.makeEmpty();
         detail.root.traverse(object => {
-          if (!(object instanceof THREE.Mesh) || !object.name.endsWith(':frontWheel') ||
+          if (!(object instanceof THREE.Mesh) || !object.name.endsWith(view === 'rear-wheel' ? ':rearWheel' : ':frontWheel') ||
             object.userData.cartoonOutline || object.userData.cartoonContour) return;
           object.geometry.computeBoundingBox();
           if (object.geometry.boundingBox) box.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
         });
-        if (box.isEmpty()) throw new Error('No authored front wheel found for ' + id);
+        if (box.isEmpty()) throw new Error('No authored wheel found for ' + id + ' ' + view);
         box.expandByScalar(0.08);
       }
       const subject = box.getCenter(new THREE.Vector3());
-      if (view === 'front-wheel') camera.position.copy(subject).add(new THREE.Vector3(2.2, 0.7, -1.2));
+      if (wheelDetail) camera.position.copy(subject).add(new THREE.Vector3(2.2, 0.7, view === 'rear-wheel' ? 1.2 : -1.2));
       else camera.position.set(view === 'front' ? 3.8 : 4.5, 2.4, view === 'front' ? -5 : 0);
       const direction = camera.position.clone().sub(subject).normalize();
       const corners: THREE.Vector3[] = [];
