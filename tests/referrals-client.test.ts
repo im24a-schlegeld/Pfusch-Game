@@ -14,6 +14,13 @@ function storage(): StorageDriver & { values: Map<string, string> } {
 }
 
 describe('invitation attribution client', () => {
+  it('exposes an optional Bell reward description while remaining compatible with older invitation responses', async () => {
+    const invites = new OxygenInvites(storage(), async () => json({ code, reward: 150, guardianBells: 1 }), () => true);
+    expect(await invites.getInvite()).toEqual({ code, guardianBells: 1 });
+    const older = new OxygenInvites(storage(), async () => json({ code, reward: 150 }), () => true);
+    expect(await older.getInvite()).toEqual({ code });
+  });
+
   it('persists only the first valid opaque invitation across login/reload, never account or score data', () => {
     const driver = storage(), request = vi.fn<typeof fetch>();
     const invites = new OxygenInvites(driver, request, () => true);

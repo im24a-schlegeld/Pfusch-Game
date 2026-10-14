@@ -1,5 +1,5 @@
 import { BIKES } from '../../app/domain/config.js';
-import { MAX_VERIFIED_TICKS, replayVerifiedRun } from '../../app/game/verifiedRun.js';
+import { MAX_VERIFIED_TICKS, replayVerifiedRunDetailed } from '../../app/game/verifiedRun.js';
 import { ApiError, assertCustomerIdentity, authenticateProxy, createCsrf, verifyCsrf, type CustomerAuthenticator, type CustomerIdentity, type ShopifyConfig } from './auth.js';
 import { hmacSha256, randomHex, verifyHmacHex } from './crypto.js';
 import { isRecord } from './playerValidation.js';
@@ -8,6 +8,7 @@ import type { ShopifyFetch } from './playerStore.js';
 import { issueRewardDiscount, reserveRewardDiscount } from './rewardDiscount.js';
 import { DAILY_VERIFIED_CAP, emptyRewardLedger, loadRewardLedger, saveRewardLedger,
   VERIFIED_POINTS_REQUIRED, VERIFIED_RUNS_REQUIRED, type RewardLedger, type RunChallenge } from './rewardStore.js';
+import { currentRewardOffer, freshRewardCampaign, publicRewardOffer, REWARD_ATTEMPT_MS, type RewardOffer } from './rewardCampaign.js';
 
 export type RewardAction = 'status' | 'run/start' | 'run/finish' | 'claim';
 /** Full-precision touch input proofs can exceed the smaller player-save body limit. */
@@ -42,13 +43,34 @@ async function verifyRunChallenge(token: unknown, identity: CustomerIdentity, se
   if (now > value.expiresAt) throw new ApiError(409, 'run_expired');
   return { version: 1, runId: value.runId, seed: value.seed, bikeId: value.bikeId, startedAt: value.startedAt, expiresAt: value.expiresAt };
 }
-function status(ledger: RewardLedger, unavailableReason?: string) {
+function normalizeCampaign(ledger: RewardLedger, offer: RewardOffer, now: number): RewardLedger {
+  const current = ledger.campaign;
+  const grace = current !== null && current.startedAt !== null && current.expiresAt !== null && current.completedAt === null && now <= current.expiresAt;
+  if (current && (current.id === offer.id || grace)) return ledger;
+  const history = [...ledger.rewardHistory];
+  if (ledger.reward && !history.some(reward => reward.code === ledger.reward!.code)) history.push(ledger.reward);
+  // A prepared run is independent of the offer: its proof starts/credits the
+  // campaign selected at acceptance, including across the Monday boundary.
+  return { ...ledger, campaign: freshRewardCampaign(offer), reward: null, rewardHistory: history.slice(-8) };
+}
+function status(ledger: RewardLedger, offer: RewardOffer, now: number, unavailableReason?: string) {
+  const campaign = ledger.campaign!;
+  const issued = [ledger.reward, ...ledger.rewardHistory.slice().reverse()].find(reward => reward?.state === 'issued');
+  const phase = ledger.reward?.state === 'issued' ? 'claimed' : campaign.completedAt !== null ? 'completed'
+    : campaign.startedAt === null ? 'not_started' : now > campaign.expiresAt! ? 'expired' : 'active';
   return { available: !unavailableReason, ...(unavailableReason ? { reason: unavailableReason } : {}),
     verifiedPoints: ledger.points, verifiedRuns: ledger.runs, pointsRequired: VERIFIED_POINTS_REQUIRED, runsRequired: VERIFIED_RUNS_REQUIRED,
     dailyPoints: ledger.dailyPoints, dailyCap: DAILY_VERIFIED_CAP,
-    eligible: !unavailableReason && !ledger.reward && ledger.points >= VERIFIED_POINTS_REQUIRED && ledger.runs >= VERIFIED_RUNS_REQUIRED,
-    reward: ledger.reward?.state === 'issued' ? { code: ledger.reward.code, expiresAt: ledger.reward.expiresAt } : null,
-    pending: ledger.reward?.state === 'reserved',
+    eligible: !unavailableReason && campaign.completedAt !== null && !ledger.reward,
+    reward: issued ? { code: issued.code, expiresAt: issued.expiresAt } : null,
+    pending: [ledger.reward, ...ledger.rewardHistory].some(reward => reward?.state === 'reserved'),
+    campaign: { ...publicRewardOffer(campaign), progress: campaign.progress, attempt: campaign.attempt, phase,
+      startedAt: campaign.startedAt === null ? null : new Date(campaign.startedAt).toISOString(),
+      expiresAt: campaign.expiresAt === null ? null : new Date(campaign.expiresAt).toISOString(),
+      completedAt: campaign.completedAt === null ? null : new Date(campaign.completedAt).toISOString() },
+    nextCampaign: campaign.id === offer.id ? null : publicRewardOffer(offer),
+    rewards: [ledger.reward, ...ledger.rewardHistory].filter(reward => reward?.state === 'issued' && Date.parse(reward.expiresAt) > now)
+      .map(reward => ({ code: reward!.code, expiresAt: reward!.expiresAt, amountCHF: reward!.amountCHF ?? 5, campaignId: reward!.campaignId ?? 'legacy' })),
   };
 }
 function requestBody(value: unknown, fields: string[]): Record<string, unknown> {
@@ -71,16 +93,20 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
       await verifyCsrf(body.csrfToken, identity, config.secret, now);
     }
     const csrfToken = await createCsrf(identity, config.secret, now);
+    const offer = await currentRewardOffer(config, now);
     if (!dependencies.enabled) return { status: action === 'status' ? 200 : 503,
-      body: { ...status(emptyRewardLedger(now), 'rewards_disabled'), csrfToken, ...(action === 'status' ? {} : { error: 'rewards_disabled' }) } };
-    const load = () => loadRewardLedger(config, identity.customerId, now, dependencies.request);
+      body: { ...status(normalizeCampaign(emptyRewardLedger(now), offer, now), offer, now, 'rewards_disabled'), csrfToken, ...(action === 'status' ? {} : { error: 'rewards_disabled' }) } };
+    const load = async () => {
+      const value = await loadRewardLedger(config, identity.customerId, now, dependencies.request);
+      return { ...value, ledger: normalizeCampaign(value.ledger, offer, now) };
+    };
     let saved = await load();
     if (saved.unavailableReason) return { status: action === 'status' ? 200 : 503,
-      body: { ...status(saved.ledger, saved.unavailableReason), csrfToken,
+      body: { ...status(saved.ledger, offer, now, saved.unavailableReason), csrfToken,
         ...(action === 'status' && saved.unavailableReason.endsWith('_scope_missing')
           ? { diagnostics: { adminClientId: config.clientId ?? null } } : {}),
         ...(action === 'status' ? {} : { error: saved.unavailableReason }) } };
-    if (action === 'status') return { status: 200, body: { ...status(saved.ledger), csrfToken } };
+    if (action === 'status') return { status: 200, body: { ...status(saved.ledger, offer, now), csrfToken } };
 
     // Retry only compare-and-set conflicts. Every mutation is recomputed from the newer ledger.
     const persist = async (update: (ledger: RewardLedger) => RewardLedger | Promise<RewardLedger>): Promise<RewardLedger> => {
@@ -104,7 +130,7 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
       const challenge: RunChallenge = { version: 1, runId: randomHex(16), seed: Number.parseInt(randomHex(4), 16),
         bikeId: body.bikeId, startedAt: now, expiresAt: now + 1_800_000 };
       await persist(ledger => {
-        if (ledger.reward) throw new ApiError(409, 'reward_already_reserved');
+        if (ledger.campaign?.completedAt !== null) throw new ApiError(409, 'reward_already_reserved');
         if (ledger.dailyStarts >= 40 || (ledger.lastStartAt && now - ledger.lastStartAt < 30_000)) throw new ApiError(429, 'reward_run_limit');
         if (ledger.dailyPoints >= DAILY_VERIFIED_CAP) throw new ApiError(429, 'reward_daily_limit');
         return { ...ledger, active: challenge, dailyStarts: ledger.dailyStarts + 1, lastStartAt: now };
@@ -114,40 +140,58 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
     if (action === 'run/finish') {
       const challenge = await verifyRunChallenge(body.token, identity, config.secret, now);
       const previous = saved.ledger.consumed.find(entry => entry.runId === challenge.runId);
-      if (previous) return { status: 200, body: { ...status(saved.ledger), csrfToken, accepted: true, creditedPoints: previous.points } };
+      if (previous) return { status: 200, body: { ...status(saved.ledger, offer, now), csrfToken, accepted: true, creditedPoints: previous.points } };
       if (!sameChallenge(saved.ledger.active, challenge)) throw new ApiError(409, 'run_not_active');
       // Cheap bounds/wall-clock checks before replay prevent attacker-controlled CPU work.
       if (!isRecord(body.proof) || typeof body.proof.ticks !== 'number' || !Number.isInteger(body.proof.ticks) || body.proof.ticks < 0 || body.proof.ticks > MAX_VERIFIED_TICKS ||
         body.proof.ticks / 60 > (now - challenge.startedAt) / 1000 + 1.5) throw new ApiError(422, 'invalid_run_proof');
-      const replay = replayVerifiedRun(challenge.bikeId, challenge.seed, body.proof);
+      const replay = replayVerifiedRunDetailed(challenge.bikeId, challenge.seed, body.proof);
       if (!replay || (!replay.crashed && replay.ticks !== MAX_VERIFIED_TICKS)) throw new ApiError(422, 'invalid_run_proof');
       const validRun = replay.ticks >= 1200 && replay.score >= 100;
       let creditedPoints = 0;
-      const ledger = await persist(current => {
+      const ledger = await persist(async current => {
         const consumed = current.consumed.find(entry => entry.runId === challenge.runId);
         if (consumed) { creditedPoints = consumed.points; return current; }
         if (!sameChallenge(current.active, challenge)) throw new ApiError(409, 'run_not_active');
         creditedPoints = validRun ? Math.max(0, Math.min(Math.floor(replay.score), Math.floor(replay.ticks / 60 * 100), DAILY_VERIFIED_CAP - current.dailyPoints)) : 0;
-        return { ...current, active: null, points: current.points + creditedPoints, runs: current.runs + (validRun && creditedPoints > 0 ? 1 : 0),
+        let campaign = current.campaign!, reward = current.reward;
+        if (validRun && campaign.completedAt === null) {
+          if (campaign.startedAt === null || now > campaign.expiresAt!) {
+            campaign = { ...freshRewardCampaign(campaign), attempt: campaign.attempt + 1, startedAt: now, expiresAt: now + REWARD_ATTEMPT_MS };
+          }
+          const gain = campaign.metric === 'points' ? creditedPoints : replay[campaign.metric];
+          campaign = { ...campaign, progress: Math.min(campaign.target, campaign.progress + gain) };
+          if (campaign.progress >= campaign.target) {
+            campaign = { ...campaign, completedAt: now };
+            reward = await reserveRewardDiscount(config, identity.customerId, now, campaign);
+          }
+        }
+        return { ...current, campaign, reward, active: null, points: current.points + creditedPoints, runs: current.runs + (validRun && creditedPoints > 0 ? 1 : 0),
           dailyPoints: current.dailyPoints + creditedPoints,
           consumed: [...current.consumed.slice(-99), { runId: challenge.runId, points: creditedPoints }] };
       });
-      return { status: 200, body: { ...status(ledger), csrfToken, accepted: true, creditedPoints } };
+      return { status: 200, body: { ...status(ledger, offer, now), csrfToken, accepted: true, creditedPoints } };
     }
     const reserved = await persist(async ledger => {
-      if (ledger.reward) return ledger;
-      if (ledger.points < VERIFIED_POINTS_REQUIRED || ledger.runs < VERIFIED_RUNS_REQUIRED) throw new ApiError(403, 'reward_not_eligible');
-      return { ...ledger, active: null, reward: await reserveRewardDiscount(config, identity.customerId, now) };
+      if (ledger.reward || ledger.rewardHistory.some(reward => reward.state === 'reserved')) return ledger;
+      if (ledger.campaign?.completedAt === null) {
+        if (ledger.rewardHistory.some(reward => reward.state === 'issued')) return ledger;
+        throw new ApiError(403, 'reward_not_eligible');
+      }
+      return { ...ledger, active: null, reward: await reserveRewardDiscount(config, identity.customerId, now, ledger.campaign!) };
     });
-    if (reserved.reward?.state === 'issued') return { status: 200, body: { ...status(reserved), csrfToken } };
-    const reservation = reserved.reward!;
+    const reservation = reserved.reward?.state === 'reserved' ? reserved.reward
+      : reserved.rewardHistory.slice().reverse().find(reward => reward.state === 'reserved') ?? reserved.reward;
+    if (!reservation || reservation.state === 'issued') return { status: 200, body: { ...status(reserved, offer, now), csrfToken } };
     // A reserved code is never replaced or extended, even if delivery is retried after 30 days.
     const discountId = await issueRewardDiscount(config, identity.customerId, reservation, dependencies.request);
     const issued = await persist(ledger => {
-      if (!ledger.reward || ledger.reward.code !== reservation.code) throw new ApiError(409, 'reward_conflict');
-      return ledger.reward.state === 'issued' ? ledger : { ...ledger, reward: { ...ledger.reward, state: 'issued', discountId } };
+      if (ledger.reward?.code === reservation.code)
+        return ledger.reward.state === 'issued' ? ledger : { ...ledger, reward: { ...ledger.reward, state: 'issued', discountId } };
+      if (!ledger.rewardHistory.some(reward => reward.code === reservation.code)) throw new ApiError(409, 'reward_conflict');
+      return { ...ledger, rewardHistory: ledger.rewardHistory.map(reward => reward.code === reservation.code ? { ...reward, state: 'issued', discountId } : reward) };
     });
-    return { status: 200, body: { ...status(issued), csrfToken } };
+    return { status: 200, body: { ...status(issued, offer, now), csrfToken } };
   } catch (error) {
     return error instanceof ApiError ? { status: error.status, body: { error: error.code } }
       : { status: 503, body: { error: 'service_unavailable' } };

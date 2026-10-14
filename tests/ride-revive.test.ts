@@ -3,7 +3,7 @@ import { BIKES } from '../app/domain/config';
 import { finishRun, newPlayer } from '../app/domain/progression';
 import { Engine, STEP } from '../app/game/engine';
 import { VerifiedRunRecorder, replayVerifiedRun } from '../app/game/verifiedRun';
-import { RideCompletion } from '../app/ui/rideCompletion';
+import { RideCompletion, reserveBellRevive } from '../app/ui/rideCompletion';
 import { ShareReviveGate } from '../app/services/shareRevive';
 
 function naturalCrash(engine: Engine) {
@@ -104,6 +104,66 @@ describe('one continuation of the same run', () => {
     expect(player.processedRuns).toEqual([runId]);
     expect(completion.run!.score).toBeGreaterThan(firstScore);
     expect(finishRun(player, completion.run!)).toBeNull();
+  });
+
+  it('offers a Bell-only continuation without native sharing and keeps a reserved Bell valid through its animation', () => {
+    const engine = new Engine(BIKES[0], 42);
+    let balance = 0, reserved = false;
+    const completion = new RideCompletion(engine, () => balance > 0 || reserved);
+    const finish = vi.fn();
+    engine.start(); naturalCrash(engine);
+    const runId = engine.stats().id;
+    expect(completion.offersRevive).toBe(false);
+    balance = 1;
+    expect(completion.offersRevive).toBe(true);
+    reserved = true; balance = 0;
+    completion.settle(finish);
+    expect(finish).not.toHaveBeenCalled();
+    expect(completion.revive()).toBe(true);
+    reserved = false;
+    expect(engine.stats().id).toBe(runId);
+    naturalCrash(engine);
+    expect(completion.offersRevive).toBe(false);
+    completion.settle(finish); completion.settle(finish);
+    expect(finish).toHaveBeenCalledTimes(1);
+    expect(engine.reviveCount).toBe(1);
+  });
+
+  it('charges a visual Bell reservation only when its original owner and crash are still current', () => {
+    const engine = new Engine(BIKES[0], 42), completion = new RideCompletion(engine, true);
+    engine.start(); naturalCrash(engine);
+    const runId = engine.stats().id, pay = vi.fn(() => true);
+    const changedOwner = reserveBellRevive(completion, 'shopify:123', runId);
+    expect(changedOwner.redeem(completion, 'shopify:456', pay)).toBe(false);
+    expect(pay).not.toHaveBeenCalled();
+    const abandoned = reserveBellRevive(completion, 'shopify:123', runId);
+    abandoned.cancel();
+    expect(abandoned.redeem(completion, 'shopify:123', pay)).toBe(false);
+    const changedRound = reserveBellRevive(completion, 'shopify:123', runId);
+    expect(changedRound.redeem(new RideCompletion(new Engine(BIKES[1], 43), true), 'shopify:123', pay)).toBe(false);
+    expect(pay).not.toHaveBeenCalled();
+    const active = reserveBellRevive(completion, 'shopify:123', runId);
+    expect(active.redeem(completion, 'shopify:123', pay)).toBe(true);
+    expect(pay).toHaveBeenCalledExactlyOnceWith(runId);
+    expect(engine.reviveCount).toBe(1);
+    expect(engine.stats().id).toBe(runId);
+    expect(active.redeem(completion, 'shopify:123', pay)).toBe(false);
+    expect(pay).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a failed payment retryable but never charges an already settled crash', () => {
+    const engine = new Engine(BIKES[0], 42), completion = new RideCompletion(engine, true);
+    engine.start(); naturalCrash(engine);
+    const runId = engine.stats().id;
+    expect(reserveBellRevive(completion, 'owner', runId).redeem(completion, 'owner', () => false)).toBe(false);
+    expect(completion.offersRevive).toBe(true);
+    const throwing = reserveBellRevive(completion, 'owner', runId);
+    expect(() => throwing.redeem(completion, 'owner', () => { throw new Error('save failed'); })).toThrow('save failed');
+    expect(completion.offersRevive).toBe(true);
+    const settled = reserveBellRevive(completion, 'owner', runId), pay = vi.fn(() => true);
+    completion.settle(vi.fn(), true);
+    expect(settled.redeem(completion, 'owner', pay)).toBe(false);
+    expect(pay).not.toHaveBeenCalled();
   });
 
   it.each([false, true])('settles a declined/unavailable continuation without granting an extra run: native=%s', native => {

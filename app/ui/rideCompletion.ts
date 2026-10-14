@@ -5,9 +5,11 @@ import type { Engine } from '../game/engine';
 export class RideCompletion {
   run: RunStats | null = null;
   private revealed = false;
-  constructor(private engine: Engine, private shareSupported: boolean) {}
+  constructor(private engine: Engine, private continuationAvailable: boolean | (() => boolean)) {}
   get offersRevive() {
-    return !this.run && this.shareSupported && this.engine.canRevive;
+    const available = typeof this.continuationAvailable === 'function'
+      ? this.continuationAvailable() : this.continuationAvailable;
+    return !this.run && available && this.engine.canRevive;
   }
   settle(finish: (run: RunStats) => void, declineRevive = false) {
     if (this.run || this.engine.phase !== 'crashed' || (this.offersRevive && !declineRevive)) return;
@@ -22,4 +24,17 @@ export class RideCompletion {
     this.revealed = true;
     ready(this.run.id);
   }
+}
+
+/** A visual reservation costs nothing until its original crashed ride is still valid. */
+export function reserveBellRevive(completion: RideCompletion, ownerId: string, runId: string) {
+  let closed = false;
+  return {
+    cancel() { closed = true; },
+    redeem(current: RideCompletion, currentOwner: string, pay: (runId: string) => boolean) {
+      if (closed || current !== completion || currentOwner !== ownerId || !completion.offersRevive) return false;
+      closed = true;
+      return pay(runId) && completion.revive();
+    },
+  };
 }

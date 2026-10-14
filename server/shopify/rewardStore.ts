@@ -5,14 +5,17 @@ import { PLAYER_NAMESPACE, shopifyGraphql, type ShopifyFetch } from './playerSto
 import type { VerifiedRunChallenge } from '../../app/game/verifiedRun.js';
 import { BIKES } from '../../app/domain/config.js';
 import { shopifyAdminToken } from './adminToken.js';
+import { validRewardCampaign, type RewardCampaign } from './rewardCampaign.js';
 
 export const REWARD_KEY = 'verified_rewards_v1';
-export const VERIFIED_POINTS_REQUIRED = 50_000;
-export const VERIFIED_RUNS_REQUIRED = 10;
-export const DAILY_VERIFIED_CAP = 10_000;
+export const VERIFIED_POINTS_REQUIRED = 1_000_000;
+export const VERIFIED_RUNS_REQUIRED = 0;
+export const DAILY_VERIFIED_CAP = 1_000_000;
 export type RunChallenge = Omit<VerifiedRunChallenge, 'token'>;
 export interface DiscountReservation {
   state: 'reserved' | 'issued'; code: string; startsAt: string; expiresAt: string; discountId?: string;
+  /** Absent on legitimate legacy CHF5 reservations; those values remain immutable. */
+  campaignId?: string; amountCHF?: number;
 }
 export interface RewardLedger {
   version: 1;
@@ -25,6 +28,8 @@ export interface RewardLedger {
   active: RunChallenge | null;
   consumed: { runId: string; points: number }[];
   reward: DiscountReservation | null;
+  campaign: RewardCampaign | null;
+  rewardHistory: DiscountReservation[];
 }
 export interface SavedRewardLedger {
   ledger: RewardLedger;
@@ -33,7 +38,7 @@ export interface SavedRewardLedger {
 }
 export const rewardDay = (now: number) => new Date(now).toISOString().slice(0, 10);
 export const emptyRewardLedger = (now: number): RewardLedger => ({ version: 1, points: 0, runs: 0,
-  day: rewardDay(now), dailyPoints: 0, dailyStarts: 0, lastStartAt: 0, active: null, consumed: [], reward: null });
+  day: rewardDay(now), dailyPoints: 0, dailyStarts: 0, lastStartAt: 0, active: null, consumed: [], reward: null, campaign: null, rewardHistory: [] });
 export const rollRewardDay = (ledger: RewardLedger, now: number): RewardLedger => ledger.day === rewardDay(now)
   ? ledger : { ...ledger, day: rewardDay(now), dailyPoints: 0, dailyStarts: 0 };
 const ownerId = (customerId: string) => `gid://shopify/Customer/${customerId}`;
@@ -46,7 +51,11 @@ const ledgerMessage = (config: ShopifyConfig, customerId: string, ledger: unknow
   `pfusch-verified-ledger-v1\n${config.shop}\n${customerId}\n${canonicalJson(ledger)}`;
 
 function validLedger(value: unknown): value is RewardLedger {
-  if (!isRecord(value) || value.version !== 1 || Object.keys(value).length !== 10 ||
+  const legacyKeys = ['version', 'points', 'runs', 'day', 'dailyPoints', 'dailyStarts', 'lastStartAt', 'active', 'consumed', 'reward'];
+  const keys = isRecord(value) ? Object.keys(value) : [];
+  if (!isRecord(value) || value.version !== 1 || ![10, 12].includes(Object.keys(value).length) ||
+    keys.some(key => ![...legacyKeys, 'campaign', 'rewardHistory'].includes(key)) || legacyKeys.some(key => !Object.hasOwn(value, key)) ||
+    (keys.length === 12 && (!Object.hasOwn(value, 'campaign') || !Object.hasOwn(value, 'rewardHistory'))) ||
     !integer(value.points) || !integer(value.runs) || typeof value.day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.day) ||
     !integer(value.dailyPoints, DAILY_VERIFIED_CAP) || !integer(value.dailyStarts, 40) || !integer(value.lastStartAt) ||
     !Array.isArray(value.consumed) || value.consumed.length > 100 || !value.consumed.every(entry =>
@@ -58,14 +67,21 @@ function validLedger(value: unknown): value is RewardLedger {
       typeof active.bikeId !== 'string' || !BIKES.some(bike => bike.id === active.bikeId) ||
       !integer(active.startedAt) || !integer(active.expiresAt) || active.expiresAt - active.startedAt !== 1_800_000) return false;
   }
-  if (value.reward !== null) {
-    const reward = value.reward;
+  if (value.campaign !== undefined && value.campaign !== null && !validRewardCampaign(value.campaign)) return false;
+  if (value.rewardHistory !== undefined && (!Array.isArray(value.rewardHistory) || value.rewardHistory.length > 8)) return false;
+  for (const reward of [value.reward, ...(Array.isArray(value.rewardHistory) ? value.rewardHistory : [])]) if (reward !== null) {
     if (!isRecord(reward) || !['reserved', 'issued'].includes(String(reward.state)) ||
-      typeof reward.code !== 'string' || !/^PFUSCH5-[A-F0-9]{24}$/.test(reward.code) ||
+      typeof reward.code !== 'string' || !/^PFUSCH[3-7]-[A-F0-9]{24}$/.test(reward.code) ||
       typeof reward.startsAt !== 'string' || !Number.isFinite(Date.parse(reward.startsAt)) ||
       typeof reward.expiresAt !== 'string' || Date.parse(reward.expiresAt) - Date.parse(reward.startsAt) !== 30 * 86_400_000 ||
-      (reward.state === 'issued' && (typeof reward.discountId !== 'string' || !/^gid:\/\/shopify\/DiscountCodeNode\/\d+$/.test(reward.discountId)))) return false;
+      (reward.state === 'issued' && (typeof reward.discountId !== 'string' || !/^gid:\/\/shopify\/DiscountCodeNode\/\d+$/.test(reward.discountId))) ||
+      reward.amountCHF !== undefined && (!integer(reward.amountCHF, 7) || reward.amountCHF < 3) ||
+      reward.code.slice(0, 8) !== `PFUSCH${reward.amountCHF ?? 5}-` ||
+      (reward.amountCHF === undefined) !== (reward.campaignId === undefined) ||
+      reward.campaignId !== undefined && (typeof reward.campaignId !== 'string' || !/^(launch-million-2026|week:\d{4}-\d{2}-\d{2})$/.test(reward.campaignId))) return false;
   }
+  const rewards = [value.reward, ...(Array.isArray(value.rewardHistory) ? value.rewardHistory : [])].filter(isRecord);
+  if (new Set(rewards.map(reward => reward.code)).size !== rewards.length) return false;
   return true;
 }
 
@@ -93,7 +109,10 @@ export async function loadRewardLedger(config: ShopifyConfig, customerId: string
   try { stored = JSON.parse(field.value); } catch { throw new ApiError(502, 'invalid_reward_ledger'); }
   if (!isRecord(stored) || Object.keys(stored).length !== 2 || typeof stored.signature !== 'string' || !validLedger(stored.ledger) ||
     !await verifyHmacHex(stored.signature, ledgerMessage(config, customerId, stored.ledger), config.secret)) throw new ApiError(502, 'invalid_reward_ledger');
-  return { ledger: rollRewardDay(stored.ledger, now), compareDigest: field.compareDigest, unavailableReason };
+  // Verify the original signed v1 bytes above before adding the new fields.
+  // Old reservations/codes, dates and spending restrictions stay unchanged.
+  const migrated = { ...stored.ledger, campaign: stored.ledger.campaign ?? null, rewardHistory: stored.ledger.rewardHistory ?? [] };
+  return { ledger: rollRewardDay(migrated, now), compareDigest: field.compareDigest, unavailableReason };
 }
 
 export async function saveRewardLedger(config: ShopifyConfig, customerId: string, ledger: RewardLedger, compareDigest: string | null, request: ShopifyFetch) {

@@ -215,6 +215,31 @@ describe('cartoon sky', () => {
     sky.dispose();
   });
 
+  it('keeps every actual cloud silhouette well above the forest horizon on narrow and wide cameras', () => {
+    const { sky, camera, world, mesh } = fixture();
+    const clouds = mesh('clouds') as InstancedMesh;
+    const vertices = clouds.geometry.getAttribute('position');
+    const instance = new Matrix4(), transform = new Matrix4(), point = new Vector3();
+    for (const aspect of [390 / 844, 320 / 568, 1440 / 900]) {
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+      for (const time of [0, 1200]) {
+        sky.update(world, 150, time); sky.root.updateMatrixWorld(true);
+        let lowest = Infinity;
+        for (let puff = 0; puff < clouds.count; puff++) {
+          clouds.getMatrixAt(puff, instance);
+          transform.multiplyMatrices(clouds.matrixWorld, instance);
+          for (let vertex = 0; vertex < vertices.count; vertex++) {
+            point.fromBufferAttribute(vertices, vertex).applyMatrix4(transform).project(camera);
+            lowest = Math.min(lowest, point.y);
+          }
+        }
+        expect(lowest).toBeGreaterThan(0.28);
+      }
+    }
+    sky.dispose();
+  });
+
   it('detaches and releases its resources once', () => {
     const { scene, sky } = fixture();
     const geometries = new Set(sky.root.children.map(object => (object as Mesh).geometry));

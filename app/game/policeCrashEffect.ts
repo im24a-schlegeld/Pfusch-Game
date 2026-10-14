@@ -39,14 +39,14 @@ export function createPoliceCrashEffect(host: HTMLElement, initialSerial = 0) {
   Object.assign(root.style, {
     position: 'absolute',
     width: 'min(62%, 270px)',
-    aspectRatio: '360 / 230',
+    aspectRatio: '360 / 270',
     pointerEvents: 'none',
     zIndex: '4',
     display: 'none',
     transform: 'translate(-50%, -100%)',
     transformOrigin: '50% 100%',
   });
-  root.innerHTML = `<svg viewBox="0 0 360 230" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  root.innerHTML = `<svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="${shadeId}-flare" x1="25%" y1="0%" x2="70%" y2="100%"><stop stop-color="#ffae28"/><stop offset=".52" stop-color="#ef6512"/><stop offset="1" stop-color="#b43808"/></linearGradient>
       <linearGradient id="${shadeId}-fire" x1="18%" y1="5%" x2="75%" y2="100%"><stop stop-color="#ffd650"/><stop offset=".42" stop-color="#ffaf20"/><stop offset="1" stop-color="#df710a"/></linearGradient>

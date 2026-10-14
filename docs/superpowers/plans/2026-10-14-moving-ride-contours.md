@@ -100,9 +100,24 @@
 
 - [x] Put both Sport soles on the actual authored footpeg bars through the same fixed-length IK, retaining visible socks and the existing ankle/shoe offsets; real sole/peg raycasts and fixed-bone checks pass.
 - [x] Apply the requested slight heel-up Sport foot angle about the actual supported sole point; rotate the same ankle target and keep all shared human dimensions unchanged.
-- [ ] Correct the Scooter rim's pale edge at the tire boundary on the actual long front/rear faces, and inspect a native rear-wheel close-up.
+- [x] Correct the Scooter rim's pale edge at the tire boundary on the actual long front/rear faces, and inspect a native rear-wheel close-up; the circled pale extension is gone with the inner painted casting retained.
 - [x] Extend only the static loading-world rear street to the fogged horizon; keep the approved camera and gameplay pools untouched, with bounded static instance counts and preserved buffers.
 - [x] Close the unexpected dark near-road gap using the existing headlight optics and two-light budget; actual road coverage and physical wheelie motion pass for all five bikes.
 - [x] Add clean black boundaries to the existing reusable explosion SVG without changing its timing or pooling; existing lifecycle and stroke regressions pass.
 - [x] Keep installation available after dismissing the login hint under Settings → App & Offline, including browser-menu instructions when no native prompt is available.
 - [ ] Briefly inspect every bike's front/side native views, the new Sport foot contact, night beam, explosion and final wide loading crop; require successful remote checks/deployment and retain the resulting artwork.
+
+The `b30c3a4` publication passes 149 unit files / 1,378 tests and all 19 browser checks, with Oxygen deployment and reachability verified at 16:50:28 UTC. Its native views confirm the Sport heel angle/contact, clean Scooter tire boundary, near-road night beam, stable moving garment/tree/cloud outlines and street continuation. Exact deployed loading crops `86cc57bb09` / `73bd38dd35` are retained. The final explosion raster exposed an older 230-unit SVG viewport clipping its bottom stroke; correcting that verified crop remains the final visual gate.
+
+### Task 9: Latest steering before final integration
+
+- [x] Remove rubber tire ink while keeping the real rim, spoke and brake contours; clip the Scooter's tire lip without changing source buffers.
+- [x] Raise the lowest clouds above the forest; check projected vertices rather than only their centres.
+- [x] Use eleven distinct complete authored city cells for the loading street continuation; keep the original jump camera, street cadence and gameplay world unchanged.
+- [x] Expand the explosion SVG viewport to retain its demonstrated bottom stroke and verify the actual raster.
+- [x] Add one server-earned Guardian Bell alongside the existing 150 coins per verified invitation; migrate absent v1 balances, reject client mint/refund and retain offline/CAS spending behavior.
+- [x] Draw the supplied Gothic cross and feathered wings in the existing cartoon palette, with separately tilted bell and hanger; inspect the CPU raster.
+- [x] Offer one Bell as an alternative to the existing invite continuation; animate burst before charging/countdown, pin round owner/bike/seed, and cancel without charge on account change/unmount. Failed saves remain actionable; one total revive and settlement are retained.
+- [x] Replace the initial discount task with one million replay-verified points in a personal 48-hour attempt starting on the first accepted valid ride, available until 2026-10-26 UTC. Generate subsequent Monday offers at runtime with an HMAC randomizer, bounded CHF3–7 values and comparable replayed stunt goals.
+- [x] Preserve legitimate signed legacy coupons and pending claims; test migration, retries, weekly grace and a valid Sunday prepared ride accepted on Monday.
+- [ ] Complete independent review, push the reviewed source, require remote full verification and inspect the new loading/tire/cloud/explosion/Bell views before marking the goal complete.

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PerspectiveCamera } from 'three';
+import { createRequire } from 'node:module';
+import { readFile } from 'node:fs/promises';
+import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import {
   createPoliceCrashEffect,
   policeImpactPlacement,
@@ -169,6 +172,46 @@ describe('police burst lifecycle', () => {
     effect.update({ ...impact, serial: 2 }, camera, 100, 0.1, true, false);
     expect(node.innerHTML).toBe(original);
     expect(host.appendChild).toHaveBeenCalledTimes(1);
+  });
+
+  it('rasterizes the real closing fire outline and retains every visible frame inside its viewport', async () => {
+    try {
+      const probe = new Resvg('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>');
+      probe.free();
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('Wasm has not been initialized')) throw error;
+      await initWasm(await readFile(createRequire(import.meta.url).resolve('@resvg/resvg-wasm/index_bg.wasm')));
+    }
+    const { node, effect, camera, impact, shapes } = setup();
+    let closingOutlinePixels = 0;
+    for (let frame = 1; frame <= 20; frame++) {
+      effect.update(impact, camera, 100, 0.05, true, false);
+      expect(node.style.display).toBe('block');
+      let ember = 3;
+      // Serialize attributes actually written by update() onto the production
+      // SVG paths. This existing lightweight DOM fixture avoids a browser/GPU.
+      const svg = node.innerHTML.replace(/(<(?:g|ellipse)\b[^>]*?class="police-impact-(fire|core|ring|ember)"[^>]*?)(\/?>)/g,
+        (_, tag: string, name: string, end: string) => {
+          const shape = shapes[name === 'ember' ? ember++ : { fire: 0, core: 1, ring: 2 }[name as 'fire' | 'core' | 'ring']];
+          return tag + Object.entries(shape.attributes).map(([key, value]) => ` ${key}="${value}"`).join('') + end;
+        });
+      const decoder = new Resvg(svg), image = decoder.render(), pixels = image.pixels;
+      try {
+        let bottom = -1;
+        for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+          const offset = (y * image.width + x) * 4;
+          if (pixels[offset + 3] > 0) bottom = Math.max(bottom, y);
+          if (frame === 5 && y >= 232 && y <= 236 && x >= 40 && x <= 320 &&
+              pixels[offset + 3] > 150 && Math.max(pixels[offset], pixels[offset + 1], pixels[offset + 2]) < 50)
+            closingOutlinePixels++;
+        }
+        expect(bottom, `Visible age ${frame * 0.05} must leave room below fire, ring and embers`).toBeLessThan(image.height - 2);
+        const [width, height] = node.style.aspectRatio.split('/').map(Number);
+        expect(width / height).toBeCloseTo(image.width / image.height, 8);
+      } finally { image.free(); decoder.free(); }
+    }
+    expect(closingOutlinePixels).toBeGreaterThan(100); // Real black baseline, not a mirrored viewBox assertion.
+    effect.dispose();
   });
 
   it('freezes throughout pause or blur and expires without replay during an active crash presentation', () => {

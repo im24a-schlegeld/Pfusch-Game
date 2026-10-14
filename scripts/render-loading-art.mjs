@@ -54,7 +54,7 @@ try {
   await writeFile(resolve(output, 'bike-detail-proof.json'), JSON.stringify(details, null, 2) + '\n');
   const crash = await page.evaluate(() => window.exportPoliceCrashEffect());
   if (crash.proof.source !== 'createPoliceCrashEffect.update' || crash.proof.serial !== '1' ||
-    crash.proof.age !== 0.24 || crash.proof.viewBox !== '0 0 360 230' ||
+    crash.proof.age !== 0.24 || crash.proof.viewBox !== '0 0 360 270' ||
     crash.proof.layers.length !== 2 || crash.proof.embers.length !== 8 ||
     crash.proof.layers.some(layer => layer.stroke !== '#080a0e' || layer.width !== '3.5' || !layer.transform) ||
     crash.proof.embers.some(ember => ember.stroke !== '#080a0e' || ember.width !== '2' || !ember.transform))

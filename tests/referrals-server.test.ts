@@ -84,7 +84,8 @@ describe('opaque customer invitations', () => {
     expect(get.status).toBe(200);
     expect(await readReferralCode(config, get.body.code)).toBe('100');
     expect(get.body.reward).toBe(150);
-    expect(Object.keys(get.body).sort()).toEqual(['code', 'csrfToken', 'reward']);
+    expect(get.body.guardianBells).toBe(1);
+    expect(Object.keys(get.body).sort()).toEqual(['code', 'csrfToken', 'guardianBells', 'reward']);
     const unauthorized = input('POST', {});
     expect(await handleReferralRequest(unauthorized, { ...deps(store.request), authenticate: async () => { throw new ApiError(401, 'login_required'); } }))
       .toMatchObject({ status: 401, body: { error: 'login_required' } });
@@ -148,14 +149,32 @@ describe('atomic referral coin settlement', () => {
     return { ...store, original };
   }
 
+  it('migrates an older inviter wallet and then grants each distinct successful invitation without refunding spent Bells', async () => {
+    const store = pending();
+    const legacy = { ...store.original } as Record<string, unknown>;
+    delete legacy.guardianBells;
+    store.set('100', PLAYER_KEY, legacy);
+    await finishReferral(config, '200', store.request);
+    expect(store.read('100', PLAYER_KEY)?.guardianBells).toEqual({ earned: 1, spent: 0, spentRunIds: [] });
+    const consumed = { ...store.read('100', PLAYER_KEY), guardianBells: { earned: 1, spent: 1, spentRunIds: ['revived-run'] } };
+    store.set('100', PLAYER_KEY, consumed);
+    store.set('300', PLAYER_KEY, { ...newPlayer(), runsPlayed: 1 });
+    store.set('300', REFERRAL_KEY, { version: 1, inviter: '100', state: 'pending' });
+    await finishReferral(config, '300', store.request);
+    await finishReferral(config, '300', store.request);
+    expect(store.read('100', PLAYER_KEY)).toMatchObject({ coins: 940,
+      guardianBells: { earned: 2, spent: 1, spentRunIds: ['revived-run'] } });
+  });
+
   it('credits 150 once after the first saved run and preserves every other original save field', async () => {
     const store = pending();
     await finishReferral(config, '200', store.request);
     await finishReferral(config, '200', store.request);
     await acceptReferral(config, '200', '100', store.request);
     expect(REFERRAL_COINS).toBe(150);
-    expect(store.read('100', PLAYER_KEY)).toEqual({ ...store.original, coins: 790 });
-    expect(store.read('200', REFERRAL_KEY)).toEqual({ version: 1, inviter: '100', state: 'credited', coins: 150 });
+    expect(store.read('100', PLAYER_KEY)).toEqual({ ...store.original, coins: 790,
+      guardianBells: { earned: 1, spent: 0, spentRunIds: [] } });
+    expect(store.read('200', REFERRAL_KEY)).toEqual({ version: 1, inviter: '100', state: 'credited', coins: 150, guardianBells: 1 });
     expect(store.mutations).toHaveLength(1);
     expect(store.mutations[0].map(field => [field.ownerId, field.key])).toEqual([[owner('100'), PLAYER_KEY], [owner('200'), REFERRAL_KEY]]);
     expect(store.mutations[0].every(field => !!field.compareDigest)).toBe(true);
@@ -165,6 +184,7 @@ describe('atomic referral coin settlement', () => {
     const store = pending();
     await Promise.all([finishReferral(config, '200', store.request), finishReferral(config, '200', store.request)]);
     expect(store.read('100', PLAYER_KEY)?.coins).toBe(790);
+    expect(store.read('100', PLAYER_KEY)?.guardianBells).toEqual({ earned: 1, spent: 0, spentRunIds: [] });
     expect(store.read('200', REFERRAL_KEY)?.state).toBe('credited');
   });
 
@@ -175,7 +195,7 @@ describe('atomic referral coin settlement', () => {
     await finishReferral(config, '200', store.request);
     await finishReferral(config, '200', store.request);
     expect(store.read('100', PLAYER_KEY)).toMatchObject({ version: 1, id: 'shopify:100',
-      coins: newPlayer().coins + REFERRAL_COINS, runsPlayed: 0 });
+      coins: newPlayer().coins + REFERRAL_COINS, runsPlayed: 0, guardianBells: { earned: 1, spent: 0, spentRunIds: [] } });
     expect(store.mutations).toHaveLength(1);
     expect(store.mutations[0][0].compareDigest).toBeNull();
     expect(store.read('200', REFERRAL_KEY)?.state).toBe('credited');
@@ -195,6 +215,7 @@ describe('atomic referral coin settlement', () => {
     await expect(finishReferral(config, '200', request)).rejects.toMatchObject({ code: 'shopify_admin_request_failed' });
     await finishReferral(config, '200', request);
     expect(store.read('100', PLAYER_KEY)?.coins).toBe(790);
+    expect(store.read('100', PLAYER_KEY)?.guardianBells).toEqual({ earned: 1, spent: 0, spentRunIds: [] });
     expect(store.read('200', REFERRAL_KEY)?.state).toBe('credited');
     expect(store.mutations).toHaveLength(1);
   });
@@ -207,7 +228,8 @@ describe('atomic referral coin settlement', () => {
       store.set('100', PLAYER_KEY, concurrent);
     };
     await finishReferral(config, '200', store.request);
-    expect(store.read('100', PLAYER_KEY)).toEqual({ ...concurrent, coins: 1060 });
+    expect(store.read('100', PLAYER_KEY)).toEqual({ ...concurrent, coins: 1060,
+      guardianBells: { earned: 1, spent: 0, spentRunIds: [] } });
     expect(store.mutations).toHaveLength(2);
     expect(store.read('200', REFERRAL_KEY)?.state).toBe('credited');
   });

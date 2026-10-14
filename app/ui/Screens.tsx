@@ -425,7 +425,7 @@ export function Leaderboard({
       </details>
       <section className="game-invite-section" aria-labelledby="invite-heading">
         <div className="game-invite-heading"><UserPlus size={22} aria-hidden="true" /><h2 id="invite-heading">Freunde einladen.</h2></div>
-        {invite.code ? <><p className="game-invite-offer">Aktuell <strong>150</strong> statt <s>100</s> Coins pro erfolgreicher Einladung.</p>
+        {invite.code ? <><p className="game-invite-offer">Aktuell <strong>150</strong> statt <s>100</s> Coins <strong>+ 1 Guardian Bell</strong> pro erfolgreicher Einladung.</p>
           <p className="game-invite-detail">Wenn dein Freund sich anmeldet und seine erste Fahrt beendet.</p></>
           : <p className="game-invite-detail">{invite.loading ? 'Dein persönlicher Einladungslink wird geladen …' : 'Mit Online-Anmeldung kannst du Einladungs-Coins verdienen. Im Moment teilst du ohne Belohnung.'}</p>}
         <ShareAction label="FREUND EINLADEN" disabled={invite.loading} share={{ kind: 'invite', name: player.leaderboardName, ...(invite.code ? { referral: invite.code } : {}) }} />

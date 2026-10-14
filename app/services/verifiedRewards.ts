@@ -1,6 +1,24 @@
 import { BIKES } from '../domain/config';
 import type { VerifiedRunChallenge, VerifiedRunSubmission } from '../game/verifiedRun';
 
+export type RealRewardMetric = 'points' | 'jumps' | 'nearMisses' | 'policeEscapes';
+export interface RealRewardOffer {
+  id: string;
+  metric: RealRewardMetric;
+  target: number;
+  rewardCHF: number;
+  minimumSubtotalCHF: 50;
+  offerEndsAt: string;
+}
+export interface RealRewardCampaign extends RealRewardOffer {
+  progress: number;
+  startedAt: string | null;
+  expiresAt: string | null;
+  completedAt: string | null;
+  attempt: number;
+  phase: 'not_started' | 'active' | 'expired' | 'completed' | 'claimed';
+}
+export interface RealRewardCoupon { code: string; expiresAt: string; amountCHF: number; campaignId: string }
 export interface RealRewardStatus {
   available: boolean;
   reason?: string;
@@ -13,6 +31,10 @@ export interface RealRewardStatus {
   eligible: boolean;
   pending: boolean;
   reward: { code: string; expiresAt: string } | null;
+  /** Absent only for the earlier reward API; current eligibility comes from the server campaign. */
+  campaign?: RealRewardCampaign;
+  nextCampaign?: RealRewardOffer | null;
+  rewards?: RealRewardCoupon[];
 }
 export interface VerifiedRewardsService {
   status(): Promise<RealRewardStatus>;
@@ -23,6 +45,24 @@ export interface VerifiedRewardsService {
 }
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
+const boundedInteger = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max;
+const validDate = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value));
+function validOffer(value: unknown): value is RealRewardOffer {
+  return isRecord(value) && typeof value.id === 'string' && /^(launch-million-2026|week:\d{4}-\d{2}-\d{2})$/.test(value.id)
+    && ['points', 'jumps', 'nearMisses', 'policeEscapes'].includes(String(value.metric))
+    && boundedInteger(value.target, 1_400_000) && value.target > 0
+    && boundedInteger(value.rewardCHF, 7) && value.rewardCHF >= 3 && value.minimumSubtotalCHF === 50 && validDate(value.offerEndsAt);
+}
+function validCampaign(value: unknown): value is RealRewardCampaign {
+  if (!isRecord(value) || !validOffer(value) || !boundedInteger(value.progress, value.target) || !boundedInteger(value.attempt)
+    || !['not_started', 'active', 'expired', 'completed', 'claimed'].includes(String(value.phase))) return false;
+  if (value.startedAt === null) return value.expiresAt === null && value.completedAt === null && value.progress === 0 && value.attempt === 0 && value.phase === 'not_started';
+  return validDate(value.startedAt) && validDate(value.expiresAt) && Date.parse(value.expiresAt) - Date.parse(value.startedAt) === 48 * 3_600_000
+    && value.attempt > 0 && (value.completedAt === null ? ['active', 'expired'].includes(String(value.phase))
+      : validDate(value.completedAt) && Date.parse(value.completedAt) >= Date.parse(value.startedAt)
+        && Date.parse(value.completedAt) <= Date.parse(value.expiresAt) && value.progress === value.target && ['completed', 'claimed'].includes(String(value.phase)));
+}
 
 export class VerifiedRewardsError extends Error {
   constructor(readonly code: string, readonly status?: number) {
@@ -79,8 +119,13 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
   private parseStatus(data: Record<string, unknown>): RealRewardStatus {
     const counters = ['verifiedPoints', 'verifiedRuns', 'pointsRequired', 'runsRequired', 'dailyPoints', 'dailyCap'] as const;
     if (typeof data.available !== 'boolean' || typeof data.eligible !== 'boolean' || typeof data.pending !== 'boolean'
-      || counters.some(key => typeof data[key] !== 'number' || !Number.isFinite(data[key]) || (data[key] as number) < 0)
-      || data.pointsRequired !== 50000 || data.runsRequired !== 10 || data.dailyCap !== 10000
+      || counters.some(key => !boundedInteger(data[key]))
+      || (data.campaign === undefined ? data.pointsRequired !== 50000 || data.runsRequired !== 10 || data.dailyCap !== 10000
+        : data.pointsRequired !== 1000000 || data.runsRequired !== 0 || data.dailyCap !== 1000000 || !validCampaign(data.campaign)
+          || data.nextCampaign !== null && !validOffer(data.nextCampaign)
+          || !Array.isArray(data.rewards) || data.rewards.length > 9 || !data.rewards.every(reward => isRecord(reward)
+            && typeof reward.code === 'string' && /^[A-Z0-9-]{6,80}$/i.test(reward.code) && validDate(reward.expiresAt)
+            && boundedInteger(reward.amountCHF, 7) && reward.amountCHF >= 3 && typeof reward.campaignId === 'string' && reward.campaignId.length <= 80))
       || data.reason !== undefined && typeof data.reason !== 'string'
       || data.reward !== null && (!isRecord(data.reward) || typeof data.reward.code !== 'string'
         || !/^[A-Z0-9-]{6,80}$/i.test(data.reward.code) || typeof data.reward.expiresAt !== 'string'
@@ -105,7 +150,8 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
       try {
         await this.settlement?.catch(() => {});
         const status = await this.status();
-        if (this.pendingSubmission || !status.available || status.reward || !this.csrfToken || revision !== this.revision) return;
+        const completed = status.campaign ? ['completed', 'claimed'].includes(status.campaign.phase) : !!status.reward;
+        if (this.pendingSubmission || !status.available || completed || !this.csrfToken || revision !== this.revision) return;
         const data = await this.request('run/start', { bikeId });
         const challenge = data.challenge;
         if (!isRecord(challenge) || challenge.version !== 1 || challenge.bikeId !== bikeId

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { getImportedBikeAsset, isImportedBike, type ImportedBikeAsset } from './importedBikeAsset';
 import { hardwareComponents } from './importedHardwareFinish';
 import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
+import { isRubberTirePart } from './cartoonStyle';
 
 export const CARTOON_OUTLINE_MAX_MESHES = 32;
 export const CARTOON_CONTOUR_MAX_MESHES = 10;
@@ -19,6 +20,8 @@ const vertexShader = `
   uniform vec2 cartoonViewport;
   uniform float cartoonStroke;
   attribute vec3 cartoonOutlineNormal;
+  attribute vec2 cartoonRimTirePosition;
+  varying vec2 vCartoonOutlineTirePosition;
   #include <common>
   #include <morphtarget_pars_vertex>
   #include <skinning_pars_vertex>
@@ -32,6 +35,7 @@ const vertexShader = `
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
     #include <begin_vertex>
+    vCartoonOutlineTirePosition = cartoonRimTirePosition;
     #include <morphtarget_vertex>
     #include <skinning_vertex>
     #include <project_vertex>
@@ -150,9 +154,28 @@ function hardContourGeometry(source: THREE.BufferGeometry, minimumLoopSpan = 0) 
     }
   }
   const points: number[] = [];
+  const tirePosition = source.getAttribute('cartoonRimTirePosition');
   for (const edge of selected) {
     if (smallLoops.has(edge)) continue;
-    for (const vertex of [edge.a, edge.b]) points.push(positions.getX(vertex), positions.getY(vertex), positions.getZ(vertex));
+    let first = 0, last = 1;
+    if (tirePosition) {
+      // The Nitro outer lip is semantically tire finish. Clip just that range
+      // from actual rim edges, keeping inner spokes and merged brake owners.
+      const y = tirePosition.getX(edge.a), z = tirePosition.getY(edge.a);
+      const dy = tirePosition.getX(edge.b) - y, dz = tirePosition.getY(edge.b) - z;
+      const qa = dy * dy + dz * dz, qb = 2 * (y * dy + z * dz), qc = y * y + z * z - 0.166 ** 2;
+      if (qa < 1e-16) { if (qc >= 0) continue; }
+      else {
+        const discriminant = qb * qb - 4 * qa * qc;
+        if (discriminant <= 0) continue;
+        const root = Math.sqrt(discriminant);
+        first = Math.max(0, (-qb - root) / (2 * qa));
+        last = Math.min(1, (-qb + root) / (2 * qa));
+        if (last <= first) continue;
+      }
+    }
+    for (const t of [first, last]) for (const axis of ['X', 'Y', 'Z'] as const)
+      points.push(positions[`get${axis}`](edge.a) * (1 - t) + positions[`get${axis}`](edge.b) * t);
     if (points.length >= CARTOON_CONTOUR_MAX_SEGMENTS * 6) break;
   }
   const geometry = new THREE.BufferGeometry();
@@ -220,7 +243,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     name: 'cartoon-hero-outline',
     uniforms: { cartoonViewport: { value: viewport }, cartoonStroke: { value: 1.15 } },
     vertexShader,
-    fragmentShader: 'void main() { gl_FragColor = vec4(0.008, 0.010, 0.014, 1.0); }',
+    fragmentShader: 'varying vec2 vCartoonOutlineTirePosition; void main() { if (length(vCartoonOutlineTirePosition) >= 0.166) discard; gl_FragColor = vec4(0.008, 0.010, 0.014, 1.0); }',
     side: THREE.BackSide,
     depthWrite: true,
     depthTest: true,
@@ -229,7 +252,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     polygonOffsetUnits: 1,
     toneMapped: false,
   });
-  Object.assign(material.defaultAttributeValues, { cartoonOutlineNormal: [0, 0, 0] });
+  Object.assign(material.defaultAttributeValues, { cartoonOutlineNormal: [0, 0, 0], cartoonRimTirePosition: [0, 0] });
   const candidates: { mesh: THREE.Mesh; geometry: THREE.BufferGeometry; priority: number; size: number; hardForm: boolean; exhaust: boolean }[] = [];
   const details: THREE.Mesh[] = [];
   const ownedGeometry = new Set<THREE.BufferGeometry>();
@@ -247,6 +270,9 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh ||
         object.userData.cartoonOutline || object.userData.bikeSticker || object.userData.helmetSticker) return;
     const name = `${object.name} ${object.userData.importedPart ?? ''}`.toLowerCase();
+    // Rubber keeps its normal lighting/color, with no shell or hard-edge ink.
+    // Rim/brake contours are separate candidates, even when their owners merge.
+    if (isRubberTirePart(object)) return;
     // Real brake surfaces share their wheel/fork rig with an existing major
     // form. Keep their edges in that draw, never inflate thin discs as shells.
     const windscreen = object.userData.importedPart === 'r6_windscreen_glass:body';

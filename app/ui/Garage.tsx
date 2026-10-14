@@ -13,6 +13,8 @@ import { equipmentSlot, equippable, imagePath, initialConfiguration, productColo
 import { commitGarageEdit, commitStickerEdit, garageAppearance, garageEditChanged, garageOffer, type GarageEdit } from '../domain/garageEdit';
 import { colorName, perceptualDistance } from '../domain/paletteView';
 import { Coin, Preview } from './shared';
+import GuardianBellBalance from './GuardianBellBalance';
+import { guardianBellBalance } from '../domain/guardianBells';
 import SavedSetups from './SavedSetups';
 import './garage-configurator.css';
 
@@ -210,7 +212,7 @@ export default function Garage({ player, products, update, services, notify, sta
   return <main className="garage-page garage-configurator"><div className="gc-layout">
     <section className="gc-preview" aria-label="Motorrad- und Fahrervorschau">
       <div className="gc-preview-heading">{changed && <span className="gc-state is-preview">Vorschau</span>}
-        <div className="gc-balance"><Coin value={player.coins} />{embedded && <button onClick={onProgress} aria-label={`Fortschritt, Stufe ${player.level}`}>ST. {String(player.level).padStart(2, '0')}</button>}</div>
+        <div className="gc-balance"><GuardianBellBalance value={guardianBellBalance(player)} /><Coin value={player.coins} />{embedded && <button onClick={onProgress} aria-label={`Fortschritt, Stufe ${player.level}`}>ST. {String(player.level).padStart(2, '0')}</button>}</div>
       </div>
       <div className="gc-model" data-testid="garage-model" data-bike={appearance.bike} data-paint={appearance.paint} data-rims={appearance.rims}
         data-variant={configuration?.variantId ?? ''} data-product={selectedProduct?.id ?? appearance.equipped.upper ?? ''}

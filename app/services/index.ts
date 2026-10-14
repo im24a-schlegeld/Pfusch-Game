@@ -32,6 +32,7 @@ import { trialAccess, type PlayerAccess } from './playerAccess';
 import { OxygenVerifiedRewards, type VerifiedRewardsService } from './verifiedRewards';
 import { OxygenInvites, withInvitations, type InviteService } from './referrals';
 import { createAccountFetch } from './accountFetch';
+import { readGuardianBells } from '../domain/guardianBells';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
@@ -106,6 +107,7 @@ export function decodePlayer(raw: string): Player {
     throw new Error('Nicht unterstützte Spielstand-Version');
   const base = newPlayer();
   const p = { ...base };
+  p.guardianBells = readGuardianBells(v.guardianBells);
   for (const field of [
     'xp',
     'coins',

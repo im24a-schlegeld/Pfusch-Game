@@ -4,6 +4,8 @@ import type { Player, Product, RunStats, TutorialHint } from '../domain/types';
 import { BIKES } from '../domain/config';
 import { dayKey } from '../domain/progression';
 import { dailySignMask } from '../domain/dailySigns';
+import { guardianBellBalance } from '../domain/guardianBells';
+import type { InviteService } from '../services/referrals';
 import type { SignId } from '../game/signCollectibles';
 import { TUTORIAL_HINTS } from '../domain/tutorial';
 import { Engine } from '../game/engine';
@@ -20,9 +22,10 @@ import RideTutorialOverlay from './RideTutorialOverlay';
 import RideTouchButtons from './RideTouchButtons';
 import { RideHeldInput, type RideHoldAction } from './rideHeldInput';
 import { useTouchInput } from './useTouchInput';
-import { RideCompletion } from './rideCompletion';
+import { RideCompletion, reserveBellRevive } from './rideCompletion';
 import { ShareReviveGate } from '../services/shareRevive';
 import RideRevive from './RideRevive';
+import { GuardianBellBurst } from './GuardianBell';
 import './ride-guidance.css';
 import './ride-settings.css';
 interface Props {
@@ -39,6 +42,8 @@ interface Props {
   onLoadError?: (message: string) => void;
   onTutorialSeen?: (ids: readonly TutorialHint[]) => void;
   onSignPickup?: (eventId: string, signId: SignId) => void;
+  onUseGuardianBell?: (runId: string) => boolean;
+  invites?: InviteService;
 }
 type ActiveTutorial = { id: TutorialHint; target?: { x: number; y: number } };
 export default function Ride({
@@ -54,29 +59,53 @@ export default function Ride({
   onLoadError,
   onTutorialSeen,
   onSignPickup,
+  onUseGuardianBell,
+  invites,
   verifiedChallenge,
 }: Props) {
-  const engine = useMemo(
-    () =>
-      new Engine(
-        BIKES.find((b) => b.id === player.bike) ?? BIKES[0],
-        verifiedChallenge?.seed ?? Math.floor(Math.random() * 0xffffffff),
-      ),
-    [player.bike, verifiedChallenge],
-  );
-  const verifier = useMemo(() => verifiedChallenge ? new VerifiedRunRecorder(engine) : null, [engine, verifiedChallenge]);
-  const completion = useMemo(() => new RideCompletion(engine,
-    typeof navigator !== 'undefined' && typeof navigator.share === 'function'), [engine]);
-  const reviveGate = useMemo(() => new ShareReviveGate(), [engine]);
+  // A keyed round retains its original owner, motorcycle and signed proof seed
+  // when background account synchronization refreshes the garage loadout.
+  const [round] = useState(() => ({ ownerId: player.id, challenge: verifiedChallenge,
+    engine: new Engine(BIKES.find(b => b.id === player.bike) ?? BIKES[0],
+      verifiedChallenge?.seed ?? Math.floor(Math.random() * 0xffffffff)) }));
+  const engine = round.engine;
+  const ridingPlayer = useMemo(() => player.bike === engine.bike.id ? player : { ...player, bike: engine.bike.id }, [player, engine]);
+  const verifier = useMemo(() => round.challenge ? new VerifiedRunRecorder(round.engine) : null, [round]);
+  const nativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const playerSnapshot = useRef(player), bellAction = useRef(onUseGuardianBell), bellReserved = useRef(false);
+  const bellReservation = useRef<ReturnType<typeof reserveBellRevive> | null>(null);
+  playerSnapshot.current = player; bellAction.current = onUseGuardianBell;
+  const completion = useMemo(() => new RideCompletion(engine, () => nativeShare || bellReserved.current ||
+    (!!bellAction.current && guardianBellBalance(playerSnapshot.current) > 0)), [engine, nativeShare]);
+  const [reviveGate] = useState(() => new ShareReviveGate());
   const [reviveOpen, setReviveOpen] = useState(false);
   const [reviveBusy, setReviveBusy] = useState(false);
   const [reviveMessage, setReviveMessage] = useState('');
+  const [bellBurst, setBellBurst] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
   const reviveSharing = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
+    return () => {
+      mounted.current = false; bellReservation.current?.cancel(); bellReserved.current = false;
+      if (reviveSharing.current) reviveGate.close();
+    };
+  }, [reviveGate]);
+  useEffect(() => {
+    if (player.id === round.ownerId) return;
+    bellReservation.current?.cancel(); bellReserved.current = false;
+    reviveSharing.current = false; reviveGate.close(); engine.pause();
+    audio.update(0, false, false); onExit();
+  }, [player.id, round.ownerId, engine, reviveGate, audio, onExit]);
+  useEffect(() => {
+    let alive = true;
+    setInviteCode(null);
+    if (invites) void invites.getInvite().then(result => {
+      if (alive) setInviteCode(result?.code ?? null);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [invites, player.id]);
   const collectedDailySigns = dailySignMask(player.challenges, dayKey());
   useEffect(() => {
     // Apply after the recorder exists and before the ready countdown starts.
@@ -401,12 +430,14 @@ export default function Ride({
     setTick(n => n + 1);
   }
   function settle(declineRevive = false) {
+    if (playerSnapshot.current.id !== round.ownerId) return;
     completion.settle(run => {
       const proof = verifier?.proof();
-      finish.current(run, proof && verifiedChallenge ? { token: verifiedChallenge.token, proof } : undefined);
+      finish.current(run, proof && round.challenge ? { token: round.challenge.token, proof } : undefined);
     }, declineRevive);
   }
   function revealResults() {
+    if (bellReserved.current) return;
     if (completion.offersRevive) {
       setReviveOpen(true);
       return;
@@ -415,20 +446,21 @@ export default function Ride({
     completion.reveal(runId => resultsReady.current(runId));
   }
   function declineRevive() {
+    if (bellReserved.current) return;
     reviveGate.close();
     setReviveOpen(false);
     settle(true);
     completion.reveal(runId => resultsReady.current(runId));
   }
   async function shareAndRevive() {
-    if (reviveSharing.current || !completion.offersRevive) return;
+    if (playerSnapshot.current.id !== round.ownerId || reviveSharing.current || !nativeShare || !completion.offersRevive) return;
     reviveSharing.current = true;
     setReviveBusy(true);
     setReviveMessage('');
     try {
-      const result = await reviveGate.request({ kind: 'score', name: player.leaderboardName,
-        score: Math.floor(engine.score), date: dayKey() }, navigator);
-      if (!mounted.current) return;
+      const result = await reviveGate.request({ kind: 'invite', name: player.leaderboardName,
+        ...(inviteCode ? { referral: inviteCode } : {}) }, navigator);
+      if (!mounted.current || playerSnapshot.current.id !== round.ownerId) return;
       if (result === 'ready' && completion.revive()) {
         clearGestures();
         setReviveOpen(false);
@@ -445,7 +477,40 @@ export default function Ride({
       if (mounted.current) setReviveBusy(false);
     }
   }
+  function useGuardianBell() {
+    if (playerSnapshot.current.id !== round.ownerId || reviveSharing.current || !completion.offersRevive || !bellAction.current || guardianBellBalance(playerSnapshot.current) < 1) return;
+    // Reserve the visual first. Unmounting or switching accounts during its
+    // animation must not consume a Bell without continuing the original ride.
+    bellReserved.current = true;
+    reviveSharing.current = true;
+    bellReservation.current = reserveBellRevive(completion, round.ownerId, engine.stats().id);
+    clearGestures(); setReviveMessage(''); setReviveOpen(false); setBellBurst(true);
+  }
+  function finishBellBurst() {
+    if (!bellReserved.current || !mounted.current) return;
+    let revived = false;
+    try {
+      revived = bellReservation.current?.redeem(completion, playerSnapshot.current.id,
+        runId => bellAction.current?.(runId) ?? false) ?? false;
+    } catch {
+      setReviveMessage('Die Glocke konnte nicht eingelöst werden. Versuche es erneut.');
+    } finally {
+      bellReservation.current = null; bellReserved.current = false;
+      reviveSharing.current = false; setBellBurst(false);
+    }
+    if (revived) {
+      reviveGate.close();
+      engine.pause();
+      if (!document.hidden && document.hasFocus()) engine.resume();
+      audio.unlock(); setTick(n => n + 1);
+    } else {
+      if (playerSnapshot.current.id !== round.ownerId) return;
+      setReviveOpen(true);
+      setReviveMessage(message => message || 'Du hast gerade keine Guardian Bell verfügbar.');
+    }
+  }
   function frame(e: Engine) {
+    if (playerSnapshot.current.id !== round.ownerId) return;
     if (e.signPickupSerial > lastSignPickup.current) {
       const runId = e.stats().id;
       while (lastSignPickup.current < e.signPickupSerial) {
@@ -528,7 +593,7 @@ export default function Ride({
       data-touch-active={touchActive}
     >
       <Preview
-        player={player}
+        player={ridingPlayer}
         products={products}
         mode="ride"
         engine={engine}
@@ -626,7 +691,9 @@ export default function Ride({
         </output>
       )}
       <RideRevive open={reviveOpen} score={engine.score} busy={reviveBusy} message={reviveMessage}
-        share={() => { void shareAndRevive(); }} finish={declineRevive} />
+        bellBalance={guardianBellBalance(player)} canShare={nativeShare}
+        useBell={useGuardianBell} share={() => { void shareAndRevive(); }} finish={declineRevive} />
+      {bellBurst && <GuardianBellBurst reducedMotion={player.settings.reducedMotion} onComplete={finishBellBurst} />}
       <Dialog
         open={engine.phase === 'paused' && !resuming && !tutorial}
         disablePointerDismissal

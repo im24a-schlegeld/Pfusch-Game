@@ -2,7 +2,7 @@ import type { StorageDriver } from './index';
 import type { CloudTransport } from './shopifyBridge';
 
 export interface InviteService {
-  getInvite(): Promise<{ code: string } | null>;
+  getInvite(): Promise<{ code: string; guardianBells?: number } | null>;
   capture(search: string): void;
   acceptPending(): Promise<void>;
 }
@@ -35,9 +35,10 @@ export class OxygenInvites implements InviteService {
     if (!record(data)) throw new Error('Ungültige Einladung.');
     return { status: response.status, data };
   }
-  async getInvite(): Promise<{ code: string } | null> {
+  async getInvite(): Promise<{ code: string; guardianBells?: number } | null> {
     if (!this.online()) return null;
-    try { const result = await this.call(); return result.status === 200 && validCode(result.data.code) ? { code: result.data.code } : null; } catch { return null; }
+    try { const result = await this.call(); return result.status === 200 && validCode(result.data.code)
+      ? { code: result.data.code, ...(result.data.guardianBells === 1 ? { guardianBells: 1 } : {}) } : null; } catch { return null; }
   }
   acceptPending(): Promise<void> {
     if (!this.pending) return Promise.resolve();

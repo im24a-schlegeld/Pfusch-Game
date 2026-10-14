@@ -23,6 +23,7 @@ import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/s
 import { GameAudio } from '../game/audio';
 import type { VerifiedRunChallenge, VerifiedRunSubmission } from '../game/verifiedRun';
 import { Coin } from './shared';
+import { spendGuardianBell } from '../domain/guardianBells';
 import Ride from './Ride';
 import Garage from './Garage';
 import {
@@ -89,6 +90,7 @@ export default function GameApp() {
   const [runKey, setRunKey] = useState(0);
   const [verifiedChallenge, setVerifiedChallenge] = useState<VerifiedRunChallenge | null>(null);
   const activeRun = useRef(0);
+  const activeRunOwner = useRef<string | null>(null);
   const pendingResult = useRef<{ run: RunStats; reward: RunReward } | null>(
     null,
   );
@@ -266,6 +268,7 @@ export default function GameApp() {
         if (!startRide) return;
         setAccessOpen(false);
         activeRun.current += 1;
+        activeRunOwner.current = current.current.id;
         pendingResult.current = null;
         setResult(null);
         setVerifiedChallenge(null);
@@ -286,6 +289,7 @@ export default function GameApp() {
       if (!startRide) return;
       setAccessOpen(false);
       activeRun.current += 1;
+      activeRunOwner.current = current.current.id;
       pendingResult.current = null;
       setResult(null);
       setVerifiedChallenge(services.rewards.real?.takeChallenge(current.current.bike) ?? null);
@@ -312,6 +316,7 @@ export default function GameApp() {
   function finish(run: RunStats, generation: number, verified?: VerifiedRunSubmission) {
     if (
       !current.current ||
+      current.current.id !== activeRunOwner.current ||
       generation !== activeRun.current ||
       pendingResult.current?.run.id === run.id
     )
@@ -335,7 +340,7 @@ export default function GameApp() {
     );
   }
   function collectSign(eventId: string, signId: SignId) {
-    if (!current.current) return;
+    if (!current.current || current.current.id !== activeRunOwner.current) return;
     const next = recordDailySign(current.current, eventId, signId);
     if (next === current.current) return;
     const completed = !current.current.challenges.claimed.includes('daily-signs')
@@ -348,6 +353,7 @@ export default function GameApp() {
   }
   function revealResults(runId: string, generation: number) {
     if (
+      current.current?.id !== activeRunOwner.current ||
       generation !== activeRun.current ||
       pendingResult.current?.run.id !== runId
     )
@@ -390,7 +396,16 @@ export default function GameApp() {
           products={products}
           audio={audio}
           onFinish={(run, verified) => finish(run, runKey, verified)}
-          onSignPickup={collectSign}
+          onSignPickup={(eventId, signId) => { if (runKey === activeRun.current) collectSign(eventId, signId); }}
+          invites={services.invites}
+          onUseGuardianBell={runId => {
+            const latest = current.current;
+            if (!latest || latest.id !== activeRunOwner.current || activeRun.current !== runKey) return false;
+            const next = spendGuardianBell(latest, runId);
+            if (!next) return false;
+            update(next);
+            return true;
+          }}
           verifiedChallenge={verifiedChallenge}
           onResultsReady={(runId) => revealResults(runId, runKey)}
           onExit={() => navigate('garage')}

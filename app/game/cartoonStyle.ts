@@ -2,6 +2,11 @@ import * as THREE from 'three';
 
 const applied = new WeakMap<THREE.Material, THREE.Material['onBeforeCompile']>();
 const rimTireColor = new THREE.Color('#16181a');
+const tireMaterialName = /(?:^|[_-])(?:tire|tyre)(?=$|[_:-])/i;
+
+export function isRubberTirePart(mesh: THREE.Mesh) {
+  return mesh.name === 'tire' || /(?:^|[_-])(?:tire|tyre)(?=$|[_:-])/i.test(mesh.userData.importedPart ?? '');
+}
 
 /** Imported wheels revolve around local X. Only the inward radial wall gets
  * the recess shade; axial cast faces and the outward rim lip stay untouched.
@@ -36,9 +41,10 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
   const rim = hero && material.userData.rimPalette === true;
   const rimTireBand = rim && material.userData.rimTireBand === true;
   const wheelHardware = hero && material.userData.importedWheelHardware === true;
+  const rubberTire = hero && (material.userData.rubberTire === true || tireMaterialName.test(material.name));
   // The rim's shape is shaded below; grazing-angle ink on its narrow bevels
   // produced irregular black patches. The existing geometry outline remains.
-  const ink = material.transparent || !contour || rim || wheelHardware ? '0.0' : '0.92';
+  const ink = material.transparent || !contour || rim || wheelHardware || rubberTire ? '0.0' : '0.92';
   material.onBeforeCompile = (shader, renderer) => {
     before.call(material, shader, renderer);
     // Carbon/colour changes can wrap a previously styled shader. Never apply
@@ -146,6 +152,15 @@ export function applyCartoonStyle(root: THREE.Object3D) {
 export function applyCartoonHeroStyle(root: THREE.Object3D) {
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object.userData.cartoonOutline) return;
+    if (isRubberTirePart(object)) {
+      // Imported rubber already has a dedicated named material. Legacy wheels
+      // may share plain rubber with hoses/belts; isolate only that tire finish.
+      const mark = (material: THREE.Material) => {
+        if (!(material instanceof THREE.MeshStandardMaterial) || tireMaterialName.test(material.name) || material.userData.rubberTire) return material;
+        const own = material.clone(); own.userData.rubberTire = true; return own;
+      };
+      object.material = Array.isArray(object.material) ? object.material.map(mark) : mark(object.material);
+    }
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     if (materials.some(material => material.userData.rimPalette === true)) prepareRimShading(object.geometry);
     if (!object.geometry.getAttribute('cartoonGarmentEdge')) {

@@ -40,6 +40,7 @@ export function newPlayer(): Player {
     level: 1,
     coins: 150,
     tickets: 0,
+    guardianBells: { earned: 0, spent: 0, spentRunIds: [] },
     highScore: 0,
     totalDistance: 0,
     runsPlayed: 0,

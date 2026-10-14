@@ -1,6 +1,6 @@
 import { ApiError, assertCustomerIdentity, authenticateProxy, createCsrf, verifyCsrf, type CustomerAuthenticator, type ShopifyConfig } from './auth.js';
 import { loadCustomerPlayer, saveCustomerPlayer, type ShopifyFetch } from './playerStore.js';
-import { isRecord, sanitizeDigitalPlayer } from './playerValidation.js';
+import { isRecord, retainGuardianBells, sanitizeDigitalPlayer } from './playerValidation.js';
 import type { Player } from '../../app/domain/types.js';
 import { canSave, retainRunCount, storageAccess, type StorageAccess } from './storagePolicy.js';
 import type { VerifiedPurchases } from './purchaseStore.js';
@@ -51,11 +51,12 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       // Re-read live consent on every save, including for a previously granted
       // session. Never write consent or accept it from a browser field.
       const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request, purchases?.items);
-      const player = retainRunCount(incoming, current.player);
+      let player = retainRunCount(incoming, current.player);
       storage = storageAccess(current.marketingState, player.runsPlayed);
       if (!canSave(current.marketingState, current.player?.runsPlayed ?? 0, player.runsPlayed))
         return { status: 403, body: { error: storage.reason === 'unsubscribed' ? 'newsletter_unsubscribed' : 'newsletter_required', storage } };
       if (body.compareDigest !== current.compareDigest) throw new ApiError(409, 'conflict');
+      player = retainGuardianBells(player, current.player, isRecord(body.player) && body.player.guardianBells !== undefined);
       result = await saveCustomerPlayer(config, identity.customerId,
         player, body.compareDigest as string | null, dependencies.request);
       // A secondary digital leaderboard outage must never turn an acknowledged

@@ -7,6 +7,30 @@ const status = { available: true, csrfToken: 'csrf', verifiedPoints: 0, verified
 const json = (data: unknown, code = 200) => new Response(JSON.stringify(data), { status: code, headers: { 'Content-Type': 'application/json' } });
 afterEach(() => vi.useRealTimers());
 describe('server-owned real rewards adapter', () => {
+  const campaign = { id: 'launch-million-2026', metric: 'points', target: 1000000, progress: 0, rewardCHF: 5,
+    minimumSubtotalCHF: 50, offerEndsAt: '2026-10-26T00:00:00.000Z', startedAt: null, expiresAt: null,
+    completedAt: null, attempt: 0, phase: 'not_started' };
+  const weekly = () => ({ ...status, pointsRequired: 1000000, runsRequired: 0, dailyCap: 1000000,
+    campaign: { ...campaign }, nextCampaign: null, rewards: [] });
+
+  it('accepts bounded weekly campaign progress and rejects forged targets, amounts and counts', async () => {
+    expect((await new OxygenVerifiedRewards(async () => json(weekly())).status()).campaign).toEqual(campaign);
+    for (const bad of [{ target: -1 }, { rewardCHF: 99 }, { progress: 1000001 }, { minimumSubtotalCHF: 0 }, { expiresAt: 'broken' }]) {
+      const data = weekly(); Object.assign(data.campaign, bad);
+      await expect(new OxygenVerifiedRewards(async () => json(data)).status()).rejects.toMatchObject({ code: 'invalid_reward_response' });
+    }
+  });
+
+  it('prepares a new campaign even while an earlier legitimate coupon remains visible', async () => {
+    const challenge = { version: 1, runId: 'run-1', seed: 42, bikeId: BIKES[0].id,
+      startedAt: Date.now(), expiresAt: Date.now() + 1800000, token: 'signed-challenge' };
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ ...weekly(),
+      reward: { code: 'PFUSCH5-ABC123', expiresAt: '2026-11-01T00:00:00.000Z' } })).mockResolvedValueOnce(json({ challenge }));
+    const service = new OxygenVerifiedRewards(request);
+    await service.prepare(BIKES[0].id);
+    expect(service.takeChallenge(BIKES[0].id)).toEqual(challenge);
+  });
+
   it.each([
     [401, 'login_required'],
     [403, 'csrf'],

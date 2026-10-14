@@ -229,7 +229,7 @@ Object.assign(window, {
         stroke: ember.getAttribute('stroke'), width: ember.getAttribute('stroke-width'),
         transform: ember.getAttribute('transform'), opacity: ember.getAttribute('opacity'),
       }));
-      const width = 1080, height = 690;
+      const width = 1080, height = 810;
       svg.setAttribute('width', String(width)); svg.setAttribute('height', String(height));
       const source = new XMLSerializer().serializeToString(svg);
       const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));

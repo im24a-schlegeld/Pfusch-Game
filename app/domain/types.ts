@@ -147,6 +147,8 @@ export interface Player {
   level: number;
   coins: number;
   tickets: number;
+  /** Additive v1 digital referral ledger; absent saves migrate explicitly to zero. */
+  guardianBells: GuardianBells;
   highScore: number;
   totalDistance: number;
   runsPlayed: number;
@@ -180,6 +182,13 @@ export interface Player {
   leaderboardName: string;
   settings: Settings;
   history: { score: number; date: string }[];
+}
+export interface GuardianBells {
+  /** Server-only referral credit. */
+  earned: number;
+  spent: number;
+  /** Bounded recent debit receipts; cumulative counters never roll back. */
+  spentRunIds: string[];
 }
 export interface RunReward {
   xp: number;

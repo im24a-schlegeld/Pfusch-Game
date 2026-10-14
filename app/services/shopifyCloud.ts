@@ -27,10 +27,17 @@ const sameDigitalProgress = (left: Player, right: Player) => {
     : record(value) ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
   return JSON.stringify(canonical({ ...left, irlItems: [], tickets: 0 })) === JSON.stringify(canonical({ ...right, irlItems: [], tickets: 0 }));
 };
-const serverCoinCredit = (before: Player, after: Player): number => {
-  const increase = after.coins - before.coins;
-  return Number.isSafeInteger(increase) && increase > 0 && sameDigitalProgress(before, { ...after, coins: before.coins }) ? increase : 0;
+interface ServerCredit { coins: number; bells: number }
+const serverCredit = (before: Player, after: Player): ServerCredit | null => {
+  const coins = after.coins - before.coins, bells = after.guardianBells.earned - before.guardianBells.earned;
+  if (!Number.isSafeInteger(coins) || coins < 0 || !Number.isSafeInteger(bells) || bells < 0 || !(coins || bells)) return null;
+  // Only server credit may differ from the acknowledged base. A concurrent
+  // debit/receipt or other device edit still requires the existing CAS recovery.
+  return sameDigitalProgress(before, { ...after, coins: before.coins,
+    guardianBells: { ...after.guardianBells, earned: before.guardianBells.earned } }) ? { coins, bells } : null;
 };
+const addServerCredit = (player: Player, credit: ServerCredit): Player => ({ ...player, coins: player.coins + credit.coins,
+  guardianBells: { ...player.guardianBells, earned: player.guardianBells.earned + credit.bells } });
 
 /** Cloud saves grant digital progress only, never purchase/reward authority. */
 export function digitalPlayer(player: Player, customerId: string): Player {
@@ -265,10 +272,10 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     const backup = pending?.dirty ? pending : accepted;
     if (pending?.dirty && accepted && !accepted.dirty && pending.compareDigest === accepted.compareDigest && next.player
       && !sameDigitalProgress(next.player, pending.player) && !(pending.attempted && sameDigitalProgress(next.player, pending.attempted))) {
-      const credit = serverCoinCredit(accepted.player, next.player);
+      const credit = serverCredit(accepted.player, next.player);
       if (credit && next.compareDigest !== pending.compareDigest) {
         this.backup(next.player);
-        const recovered = { ...pending.player, coins: pending.player.coins + credit };
+        const recovered = addServerCredit(pending.player, credit);
         this.lastAttempt = null; this.save(recovered);
         return recovered;
       }
@@ -312,7 +319,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         } catch { /* Preserve the existing guest save. */ }
       }
     }
-    player = digitalPlayer(player, this.session.customer.id);
+    // Guest progress cannot bring referral authority into a new account.
+    player = digitalPlayer({ ...player, guardianBells: { earned: 0, spent: 0, spentRunIds: [] } }, this.session.customer.id);
     this.save(player);
     return player;
   }
@@ -393,21 +401,21 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.deny(access);
     return true;
   }
-  private adoptCoinCredit(next: Snapshot): boolean {
+  private adoptServerCredit(next: Snapshot): boolean {
     if (this.blocked || !this.session || !next.player || !this.session.player || next.customer.id !== this.session.customer.id
       || next.compareDigest === this.session.compareDigest || !next.storage.allowed) return false;
     if (this.lastAttempt && sameDigitalProgress(next.player, this.lastAttempt)) return false;
-    const credit = serverCoinCredit(this.session.player, next.player);
+    const credit = serverCredit(this.session.player, next.player);
     if (!credit) return false;
     this.session.compareDigest = next.compareDigest;
     this.session.player = next.player;
     this.session.storage = next.storage;
     this.session.csrfToken = next.csrfToken;
     this.session.purchases = next.purchases;
-    if (this.lastUnsaved) this.lastUnsaved = { ...this.lastUnsaved, coins: this.lastUnsaved.coins + credit };
-    if (this.pending) this.pending = this.lastUnsaved ?? { ...this.pending, coins: this.pending.coins + credit };
+    if (this.lastUnsaved) this.lastUnsaved = addServerCredit(this.lastUnsaved, credit);
+    if (this.pending) this.pending = this.lastUnsaved ?? addServerCredit(this.pending, credit);
     this.lastAttempt = null;
-    if (this.outbox) this.storeOutbox(this.lastUnsaved ?? { ...this.outbox.player, coins: this.outbox.player.coins + credit });
+    if (this.outbox) this.storeOutbox(this.lastUnsaved ?? addServerCredit(this.outbox.player, credit));
     this.backup(next.player);
     return true;
   }
@@ -436,7 +444,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         const next = snapshot(refresh.data, this.decode);
         if (next.customer.id !== session.customer.id || next.compareDigest !== session.compareDigest) {
           if (next.customer.id !== session.customer.id) { this.invalidateSession(); await this.useLocalGuest(); return; }
-          if (!creditRetried && this.adoptCoinCredit(next)) {
+          if (!creditRetried && this.adoptServerCredit(next)) {
             const rebased = this.lastUnsaved!;
             this.pending = null;
             await this.write(rebased, true);
@@ -464,7 +472,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
           networkFailure = false;
           if (refresh.status === 401) { this.invalidateSession(); return; }
           if (authRevision !== this.authRevision) return;
-          if (refresh.status === 200 && this.adoptCoinCredit(snapshot(refresh.data, this.decode))) {
+          if (refresh.status === 200 && this.adoptServerCredit(snapshot(refresh.data, this.decode))) {
             const rebased = this.lastUnsaved!;
             this.pending = null;
             await this.write(rebased, true);
@@ -558,7 +566,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       // A save can finish while this GET is in flight. Its old digest is no
       // evidence of another device changing progress; check the current base.
       if (requestedDigest !== this.session.compareDigest) return rechecks < 1 ? this.checkAccess(rechecks + 1) : this.access;
-      this.adoptCoinCredit(next);
+      this.adoptServerCredit(next);
       // With no local edits, a newer server snapshot (another device or a
       // referral payout) is safe to adopt. Dirty progress still requires CAS.
       if (!this.blocked && !this.lastUnsaved && !this.outbox && next.compareDigest !== this.session.compareDigest) {

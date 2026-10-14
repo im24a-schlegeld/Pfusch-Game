@@ -4,10 +4,17 @@ import { isRecord } from './playerValidation.js';
 import { shopifyGraphql, type ShopifyFetch } from './playerStore.js';
 import type { DiscountReservation } from './rewardStore.js';
 
-export async function reserveRewardDiscount(config: ShopifyConfig, customerId: string, now: number): Promise<DiscountReservation> {
+export async function reserveRewardDiscount(config: ShopifyConfig, customerId: string, now: number,
+  campaign?: { id: string; rewardCHF: number }): Promise<DiscountReservation> {
   now = Math.floor(now / 1000) * 1000;
-  const code = `PFUSCH5-${(await hmacSha256(`pfusch-chf5-once-v1\n${config.shop}\n${customerId}`, config.secret)).slice(0, 24).toUpperCase()}`;
-  return { state: 'reserved', code, startsAt: new Date(now).toISOString(), expiresAt: new Date(now + 30 * 86_400_000).toISOString() };
+  const amount = campaign?.rewardCHF ?? 5;
+  if (!Number.isInteger(amount) || amount < 3 || amount > 7 || campaign && !/^(launch-million-2026|week:\d{4}-\d{2}-\d{2})$/.test(campaign.id))
+    throw new ApiError(503, 'invalid_reward_campaign');
+  const message = campaign ? `pfusch-weekly-coupon-v1\n${config.shop}\n${customerId}\n${campaign.id}\n${amount}`
+    : `pfusch-chf5-once-v1\n${config.shop}\n${customerId}`;
+  const code = `PFUSCH${amount}-${(await hmacSha256(message, config.secret)).slice(0, 24).toUpperCase()}`;
+  return { state: 'reserved', code, startsAt: new Date(now).toISOString(), expiresAt: new Date(now + 30 * 86_400_000).toISOString(),
+    ...(campaign ? { campaignId: campaign.id, amountCHF: amount } : {}) };
 }
 const selection = `id codeDiscount { __typename ... on DiscountCodeBasic {
   title startsAt endsAt usageLimit appliesOncePerCustomer
@@ -18,7 +25,7 @@ const selection = `id codeDiscount { __typename ... on DiscountCodeBasic {
     items { __typename ... on AllDiscountItems { allItems } } }
   minimumRequirement { __typename ... on DiscountMinimumSubtotal { greaterThanOrEqualToSubtotal { amount currencyCode } } }
 } }`;
-const title = 'PFUSCH Wheelie Escape · CHF 5';
+const titleFor = (reward: DiscountReservation) => `PFUSCH Wheelie Escape · CHF ${reward.amountCHF ?? 5}`;
 
 /** A matching code alone is insufficient: verify amount, buyer, dates and all restrictions. */
 export function verifyRewardDiscount(node: unknown, reward: DiscountReservation, customerId: string): string {
@@ -26,7 +33,7 @@ export function verifyRewardDiscount(node: unknown, reward: DiscountReservation,
   if (!isRecord(node) || typeof node.id !== 'string' || !/^gid:\/\/shopify\/DiscountCodeNode\/\d+$/.test(node.id) || !isRecord(node.codeDiscount)) return invalid();
   const discount = node.codeDiscount;
   const combinations = discount.combinesWith;
-  if (discount.__typename !== 'DiscountCodeBasic' || discount.title !== title || discount.usageLimit !== 1 || discount.appliesOncePerCustomer !== true ||
+  if (discount.__typename !== 'DiscountCodeBasic' || discount.title !== titleFor(reward) || discount.usageLimit !== 1 || discount.appliesOncePerCustomer !== true ||
     typeof discount.startsAt !== 'string' || Date.parse(discount.startsAt) !== Date.parse(reward.startsAt) ||
     typeof discount.endsAt !== 'string' || Date.parse(discount.endsAt) !== Date.parse(reward.expiresAt) ||
     !isRecord(discount.codes) || !Array.isArray(discount.codes.nodes) || discount.codes.nodes.length !== 1 ||
@@ -36,7 +43,7 @@ export function verifyRewardDiscount(node: unknown, reward: DiscountReservation,
   if (!isRecord(context) || context.__typename !== 'DiscountCustomers' || !Array.isArray(context.customers) || context.customers.length !== 1 ||
     !isRecord(context.customers[0]) || context.customers[0].id !== `gid://shopify/Customer/${customerId}` ||
     !isRecord(gets) || !isRecord(gets.value) || gets.value.__typename !== 'DiscountAmount' || gets.value.appliesOnEachItem !== false ||
-    !isRecord(gets.value.amount) || gets.value.amount.currencyCode !== 'CHF' || Number(gets.value.amount.amount) !== 5 ||
+    !isRecord(gets.value.amount) || gets.value.amount.currencyCode !== 'CHF' || Number(gets.value.amount.amount) !== (reward.amountCHF ?? 5) ||
     !isRecord(gets.items) || gets.items.__typename !== 'AllDiscountItems' || gets.items.allItems !== true ||
     !isRecord(minimum) || minimum.__typename !== 'DiscountMinimumSubtotal' || !isRecord(minimum.greaterThanOrEqualToSubtotal) ||
     minimum.greaterThanOrEqualToSubtotal.currencyCode !== 'CHF' || Number(minimum.greaterThanOrEqualToSubtotal.amount) !== 50) return invalid();
@@ -55,9 +62,9 @@ export async function issueRewardDiscount(config: ShopifyConfig, customerId: str
   try {
     const data = await shopifyGraphql(config, `mutation CreateGameRewardDiscount($discount: DiscountCodeBasicInput!) {
       discountCodeBasicCreate(basicCodeDiscount: $discount) { codeDiscountNode { ${selection} } userErrors { code } }
-    }`, { discount: { title, code: reward.code, startsAt: reward.startsAt, endsAt: reward.expiresAt,
+    }`, { discount: { title: titleFor(reward), code: reward.code, startsAt: reward.startsAt, endsAt: reward.expiresAt,
       context: { customers: { add: [`gid://shopify/Customer/${customerId}`] } },
-      customerGets: { value: { discountAmount: { amount: '5.00', appliesOnEachItem: false } }, items: { all: true } },
+      customerGets: { value: { discountAmount: { amount: (reward.amountCHF ?? 5).toFixed(2), appliesOnEachItem: false } }, items: { all: true } },
       minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: '50.00' } },
       usageLimit: 1, appliesOncePerCustomer: true,
       combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false }, recurringCycleLimit: 1,

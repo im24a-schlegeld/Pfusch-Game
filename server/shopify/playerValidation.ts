@@ -11,6 +11,7 @@ import type { Product } from '../../app/domain/types.js';
 import { migrateProductInventory, ownsProductColor } from '../../app/domain/productOwnership.js';
 import { migrateHelmetInventory } from '../../app/domain/helmet.js';
 import { isRiderColor } from '../../app/domain/riderColors.js';
+import { MAX_BELL_RUN_IDS, readGuardianBells } from '../../app/domain/guardianBells.js';
 
 export const MAX_BODY_BYTES = 131072;
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -49,6 +50,7 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifi
   const input = record(value, 35), player = newPlayer();
   if (input.version !== 1 || Object.keys(input).some(key => !Object.prototype.hasOwnProperty.call(player, key))) invalid();
   player.id = `shopify:${customerId}`;
+  try { player.guardianBells = readGuardianBells(input.guardianBells); } catch { invalid(); }
   if (input.leaderboardName !== undefined) {
     const name = normalizeLeaderboardName(input.leaderboardName);
     if (typeof input.leaderboardName !== 'string' || (input.leaderboardName.trim() && !name)) invalid();
@@ -165,4 +167,17 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifi
     player.savedSetups = sanitizeSavedSetups(input.savedSetups, player);
   }
   return refreshDaily(player, player.challenges.date);
+}
+
+/** Referral earnings belong to the saved server snapshot. CAS runs first;
+ * old clients may omit the additive field, but cannot mint or refund Bells. */
+export function retainGuardianBells(incoming: Player, current: Player | null, provided: boolean): Player {
+  const trusted = current?.guardianBells ?? readGuardianBells(undefined);
+  if (!provided) return { ...incoming, guardianBells: trusted };
+  const next = incoming.guardianBells, spent = next.spent - trusted.spent;
+  if (next.earned !== trusted.earned || spent < 0 || next.spent > trusted.earned) invalid();
+  const retained = trusted.spentRunIds.slice(Math.max(0, trusted.spentRunIds.length + spent - MAX_BELL_RUN_IDS));
+  if (retained.some((id, i) => next.spentRunIds[i] !== id) ||
+      next.spentRunIds.slice(retained.length).some(id => trusted.spentRunIds.includes(id))) invalid();
+  return incoming;
 }

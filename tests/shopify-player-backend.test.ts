@@ -42,6 +42,47 @@ function shopify(saved: unknown = null, state = 'NOT_SUBSCRIBED') {
   });
 }
 
+describe('server-authoritative Guardian Bell wallet', () => {
+  const saved = () => ({ ...newPlayer(), id: 'shopify:12345',
+    guardianBells: { earned: 3, spent: 1, spentRunIds: ['used-run'] } });
+
+  it('accepts a debit but rejects minted earnings, refunds, reused receipts and overspending', async () => {
+    const current = saved();
+    const valid = { ...current, guardianBells: { earned: 3, spent: 2, spentRunIds: ['used-run', 'next-run'] } };
+    const accepted = await handlePlayerRequest(post(valid, firstDigest), dependencies(shopify(current, 'SUBSCRIBED')));
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.player).toMatchObject({ guardianBells: valid.guardianBells });
+    for (const ledger of [
+      { earned: 99, spent: 1, spentRunIds: ['used-run'] },
+      { earned: 3, spent: 0, spentRunIds: [] },
+      { earned: 3, spent: 2, spentRunIds: ['used-run', 'used-run'] },
+      { earned: 3, spent: 4, spentRunIds: ['used-run', 'a', 'b', 'c'] },
+      { earned: 3, spent: 1, spentRunIds: ['replacement-run'] },
+    ]) {
+      const request = shopify(current, 'SUBSCRIBED');
+      expect((await handlePlayerRequest(post({ ...current, guardianBells: ledger }, firstDigest), dependencies(request))).status).toBe(400);
+      expect(request.mock.calls.filter(([, options]) => JSON.parse(String(options?.body)).query.startsWith('mutation'))).toHaveLength(0);
+    }
+  });
+
+  it('preserves the trusted ledger when an older v1 client omits it and still saves other progress', async () => {
+    const current = saved();
+    const legacy = { ...current, xp: 1000 } as Record<string, unknown>;
+    delete legacy.guardianBells;
+    const request = shopify(current, 'SUBSCRIBED');
+    const body = await post().readBody() as Record<string, unknown>;
+    body.player = legacy; body.compareDigest = firstDigest;
+    const result = await handlePlayerRequest(input('POST', body), dependencies(request));
+    expect(result.status).toBe(200);
+    expect(result.body.player).toMatchObject({ xp: 1000, guardianBells: current.guardianBells });
+  });
+
+  it('never imports locally forged Bell earnings into a new account', async () => {
+    const forged = { ...newPlayer(), guardianBells: { earned: 1, spent: 0, spentRunIds: [] } };
+    expect((await handlePlayerRequest(post(forged), dependencies(shopify(null, 'SUBSCRIBED')))).status).toBe(400);
+  });
+});
+
 describe('Shopify App Proxy authentication', () => {
   it('matches the official canonicalization fixture including repeated values', async () => {
     // The documentation now displays {shop}, but its published HMAC is for

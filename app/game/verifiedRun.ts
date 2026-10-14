@@ -55,7 +55,13 @@ function input(value: unknown): value is EngineInput {
 }
 
 /** Server calls this with its signed seed/bike. Input schemas and work are bounded. */
-export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown): { score: number; ticks: number; crashed: boolean } | null {
+export interface VerifiedRunResult { score: number; ticks: number; crashed: boolean }
+export interface DetailedVerifiedRunResult extends VerifiedRunResult { jumps: number; nearMisses: number; policeEscapes: number }
+export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown): VerifiedRunResult | null {
+  const replay = replayVerifiedRunDetailed(bikeId, seed, proof);
+  return replay ? { score: replay.score, ticks: replay.ticks, crashed: replay.crashed } : null;
+}
+export function replayVerifiedRunDetailed(bikeId: string, seed: number, proof: unknown): DetailedVerifiedRunResult | null {
   const bike = BIKES.find(item => item.id === bikeId);
   if (!bike || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff || !record(proof)
     || !Number.isInteger(proof.ticks) || typeof proof.ticks !== 'number' || proof.ticks < 0 || proof.ticks > MAX_VERIFIED_TICKS
@@ -80,6 +86,7 @@ export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown):
   const engine = new Engine(bike, seed);
   engine.start();
   let eventIndex = 0;
+  let policeSerial = 0, policeEscapes = 0;
   for (let tick = 0; tick <= proof.ticks; tick++) {
     while (eventIndex < events.length && events[eventIndex].tick === tick) {
       const command = events[eventIndex++].input;
@@ -98,6 +105,11 @@ export function replayVerifiedRun(bikeId: string, seed: number, proof: unknown):
     if (tick === proof.ticks) break;
     if (engine.phase !== 'playing') return null;
     engine.advance(STEP);
+    if (engine.policeOutcomeSerial !== policeSerial) {
+      if (engine.policeOutcome === 'escaped') policeEscapes++;
+      policeSerial = engine.policeOutcomeSerial;
+    }
   }
-  return { score: engine.stats().score, ticks: engine.fixedTicks, crashed: engine.phase === 'crashed' };
+  return { score: engine.stats().score, ticks: engine.fixedTicks, crashed: engine.phase === 'crashed',
+    jumps: engine.jumps, nearMisses: engine.nearMisses, policeEscapes };
 }

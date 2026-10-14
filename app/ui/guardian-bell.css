@@ -1,0 +1,44 @@
+.guardian-bell { display: inline-block; flex-shrink: 0; vertical-align: middle; }
+.guardian-bell-balance { display: inline-flex; align-items: center; gap: 5px; color: inherit; font-variant-numeric: tabular-nums; font-size: 12px; }
+.guardian-bell-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: rgb(0 0 0 / 22%);
+  animation: guardian-bell-overlay var(--guardian-bell-duration) both;
+}
+.guardian-bell-burst-center { position: relative; width: min(56vw, 210px, 45vh); aspect-ratio: 3 / 4; }
+.guardian-bell-burst-whole, .guardian-bell-burst-piece { position: absolute; inset: 0; }
+.guardian-bell-burst-art { display: block; width: 100%; height: 100%; overflow: visible; }
+.guardian-bell-burst-whole { animation: guardian-bell-appear var(--guardian-bell-duration) both; }
+.guardian-bell-burst-piece { animation: guardian-bell-pop var(--guardian-bell-duration) both; }
+.guardian-bell-burst-piece-0 { clip-path: polygon(0 0, 50% 0, 45% 48%, 0 59%); --bell-x: -45px; --bell-y: -50px; --bell-turn: -18deg; }
+.guardian-bell-burst-piece-1 { clip-path: polygon(50% 0, 100% 0, 100% 52%, 45% 48%); --bell-x: 45px; --bell-y: -45px; --bell-turn: 17deg; }
+.guardian-bell-burst-piece-2 { clip-path: polygon(0 59%, 45% 48%, 53% 100%, 0 100%); --bell-x: -40px; --bell-y: 45px; --bell-turn: -14deg; }
+.guardian-bell-burst-piece-3 { clip-path: polygon(45% 48%, 100% 52%, 100% 100%, 53% 100%); --bell-x: 45px; --bell-y: 50px; --bell-turn: 20deg; }
+@keyframes guardian-bell-overlay {
+  0% { opacity: 0; }
+  12%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes guardian-bell-appear {
+  0% { opacity: 0; transform: scale(.3); }
+  16% { opacity: 1; transform: scale(.92); }
+  32%, 38% { opacity: 1; transform: scale(1); }
+  39%, 100% { opacity: 0; transform: scale(1); }
+}
+@keyframes guardian-bell-pop {
+  0%, 38% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  39% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--bell-x), var(--bell-y)) rotate(var(--bell-turn)); }
+}
+.guardian-bell-burst-reduced .guardian-bell-burst-whole { animation: none; }
+.guardian-bell-burst-reduced .guardian-bell-burst-piece { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .guardian-bell-burst { animation-duration: 180ms; }
+  .guardian-bell-burst-whole { animation: none; }
+  .guardian-bell-burst-piece { display: none; }
+}

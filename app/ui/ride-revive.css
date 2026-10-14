@@ -6,4 +6,6 @@
 .ride-revive .ride-revive-detail,.ride-revive output{font:400 12px/1.5 Arial,sans-serif;color:#c9c9c9}
 .ride-revive .button{min-height:48px;width:100%;justify-content:center}
 .ride-revive output:empty{display:none}
+.ride-revive-bells{display:flex;align-items:center;gap:9px;font-variant-numeric:tabular-nums}
+.ride-revive-bells strong{font-size:24px}.ride-revive-bells span{font:400 12px/1.4 Arial,sans-serif;color:#c9c9c9}
 @media(max-height:420px){.game-dialog.ride-revive{padding:16px;gap:9px}.ride-revive h2{font-size:24px}.ride-revive .ride-revive-detail{display:none}}

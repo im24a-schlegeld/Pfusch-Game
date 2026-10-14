@@ -4,6 +4,7 @@ import { isRecord } from './playerValidation.js';
 import { utf8 } from './crypto.js';
 import type { JsonResult, PlayerRequest } from './playerEndpoint.js';
 import { newPlayer } from '../../app/domain/progression.js';
+import { MAX_GUARDIAN_BELLS, readGuardianBells } from '../../app/domain/guardianBells.js';
 
 export const REFERRAL_COINS = 150;
 export const REFERRAL_KEY = 'invitation_v1';
@@ -90,10 +91,14 @@ export async function finishReferral(config: ShopifyConfig, invitee: string, req
     const saved = recipient.player?.value ?? { ...newPlayer(), id: `shopify:${inviter}` };
     const coins = saved.coins;
     if (saved.version !== 1 || typeof coins !== 'number' || !Number.isSafeInteger(coins) || coins < 0 || coins > 1e9 - REFERRAL_COINS) throw new ApiError(502, 'invalid_saved_player');
+    let bells;
+    try { bells = readGuardianBells(saved.guardianBells); } catch { throw new ApiError(502, 'invalid_saved_player'); }
+    if (bells.earned >= MAX_GUARDIAN_BELLS) throw new ApiError(502, 'invalid_saved_player');
     try {
       await setFields(config, [
-        writeField(inviter, PLAYER_KEY, { ...saved, coins: coins + REFERRAL_COINS }, recipient.player?.compareDigest ?? null),
-        writeField(invitee, REFERRAL_KEY, { ...claim.value, state: 'credited', coins: REFERRAL_COINS }, claim.compareDigest),
+        writeField(inviter, PLAYER_KEY, { ...saved, coins: coins + REFERRAL_COINS,
+          guardianBells: { ...bells, earned: bells.earned + 1 } }, recipient.player?.compareDigest ?? null),
+        writeField(invitee, REFERRAL_KEY, { ...claim.value, state: 'credited', coins: REFERRAL_COINS, guardianBells: 1 }, claim.compareDigest),
       ], request);
       return;
     } catch (error) { if (!(error instanceof ApiError) || error.code !== 'conflict' || attempt === 2) throw error; }
@@ -106,7 +111,8 @@ export async function handleReferralRequest(input: PlayerRequest, deps: { config
     if (!deps.config) throw new ApiError(503, 'not_configured');
     const config = deps.config, now = (deps.now ?? Date.now)();
     const identity = assertCustomerIdentity(await deps.authenticate(input.url, config, now), config);
-    if (input.method === 'GET') return { status: 200, body: { code: await createReferralCode(config, identity.customerId), reward: REFERRAL_COINS, csrfToken: await createCsrf(identity, config.secret, now) } };
+    if (input.method === 'GET') return { status: 200, body: { code: await createReferralCode(config, identity.customerId), reward: REFERRAL_COINS,
+      guardianBells: 1, csrfToken: await createCsrf(identity, config.secret, now) } };
     if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(input.contentType ?? '')) throw new ApiError(415, 'json_required');
     const body = await input.readBody();
     if (!isRecord(body) || Object.keys(body).length !== 2 || !('code' in body) || !('csrfToken' in body)) throw new ApiError(400, 'invalid_request');

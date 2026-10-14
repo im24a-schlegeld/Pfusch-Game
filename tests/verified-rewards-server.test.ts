@@ -5,6 +5,8 @@ import { handleRewardRequest, signRunChallenge, type RewardAction } from '../ser
 import { emptyRewardLedger, loadRewardLedger, REWARD_KEY, saveRewardLedger, type RewardLedger, type RunChallenge } from '../server/shopify/rewardStore';
 import { reserveRewardDiscount, verifyRewardDiscount } from '../server/shopify/rewardDiscount';
 import { PLAYER_NAMESPACE } from '../server/shopify/playerStore';
+import { currentRewardOffer, freshRewardCampaign, REWARD_ATTEMPT_MS } from '../server/shopify/rewardCampaign';
+import { hmacSha256 } from '../server/shopify/crypto';
 
 const now = Date.UTC(2026, 9, 7, 12);
 const config: ShopifyConfig = { shop: 'reward-test.myshopify.com', secret: 'test-only-reward-secret', adminToken: 'test-only-token' };
@@ -12,12 +14,13 @@ const identity = { shop: config.shop, customerId: '123' };
 const json = (data: unknown) => Response.json({ data });
 function discountNode(input: Record<string, unknown>) {
   const context = input.context as { customers: { add: string[] } };
+  const amount = (input.customerGets as { value: { discountAmount: { amount: string } } }).value.discountAmount.amount;
   return { id: 'gid://shopify/DiscountCodeNode/345', codeDiscount: {
     __typename: 'DiscountCodeBasic', title: input.title, startsAt: input.startsAt, endsAt: input.endsAt,
     usageLimit: input.usageLimit, appliesOncePerCustomer: input.appliesOncePerCustomer,
     codes: { nodes: [{ code: input.code }] }, combinesWith: input.combinesWith,
     context: { __typename: 'DiscountCustomers', customers: context.customers.add.map(id => ({ id })) },
-    customerGets: { value: { __typename: 'DiscountAmount', amount: { amount: '5.00', currencyCode: 'CHF' }, appliesOnEachItem: false },
+    customerGets: { value: { __typename: 'DiscountAmount', amount: { amount, currencyCode: 'CHF' }, appliesOnEachItem: false },
       items: { __typename: 'AllDiscountItems', allItems: true } },
     minimumRequirement: { __typename: 'DiscountMinimumSubtotal', greaterThanOrEqualToSubtotal: { amount: '50.00', currencyCode: 'CHF' } },
   } };
@@ -25,7 +28,8 @@ function discountNode(input: Record<string, unknown>) {
 function fixture() {
   const state = { value: null as string | null, digest: null as string | null, writes: 0,
     currency: 'CHF', scopes: ['write_customers', 'write_discounts'], discount: null as ReturnType<typeof discountNode> | null,
-    creates: 0, ambiguousCreate: false, failIssuedSave: false, firstSaveConflict: false, clock: now };
+    creates: 0, ambiguousCreate: false, failIssuedSave: false, firstSaveConflict: false, clock: now,
+    discounts: new Map<string, ReturnType<typeof discountNode>>() };
   const request = vi.fn<typeof fetch>(async (_url, options) => {
     const { query, variables } = JSON.parse(String(options!.body)) as { query: string; variables: Record<string, unknown> };
     if (query.includes('query GameRewardLedger')) {
@@ -44,19 +48,21 @@ function fixture() {
       state.digest = state.writes.toString(16).padStart(64, '0');
       return json({ metafieldsSet: { metafields: [{ compareDigest: state.digest }], userErrors: [] } });
     }
-    if (query.includes('query GameRewardDiscount')) return json({ codeDiscountNodeByCode: state.discount });
+    if (query.includes('query GameRewardDiscount')) return json({ codeDiscountNodeByCode: state.discounts.get(String(variables.code)) ?? null });
     if (query.includes('mutation CreateGameRewardDiscount')) {
       state.creates++;
       // The reservation must already be durable before any financial mutation.
-      expect(JSON.parse(state.value!).ledger.reward.state).toBe('reserved');
+      const persisted = JSON.parse(state.value!).ledger;
+      expect([persisted.reward, ...(persisted.rewardHistory ?? [])].some((reward: { state: string } | null) => reward?.state === 'reserved')).toBe(true);
       const input = variables.discount as Record<string, unknown>;
       expect(input).toMatchObject({ usageLimit: 1, appliesOncePerCustomer: true,
         context: { customers: { add: ['gid://shopify/Customer/123'] } },
-        customerGets: { value: { discountAmount: { amount: '5.00', appliesOnEachItem: false } }, items: { all: true } },
+        customerGets: { value: { discountAmount: { appliesOnEachItem: false } }, items: { all: true } },
         minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: '50.00' } },
         combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false } });
-      if (state.discount) return json({ discountCodeBasicCreate: { codeDiscountNode: null, userErrors: [{ code: 'TAKEN' }] } });
+      if (state.discounts.has(String(input.code))) return json({ discountCodeBasicCreate: { codeDiscountNode: null, userErrors: [{ code: 'TAKEN' }] } });
       state.discount = discountNode(input);
+      state.discounts.set(String(input.code), state.discount);
       if (state.ambiguousCreate) throw new Error('test response lost after commit');
       return json({ discountCodeBasicCreate: { codeDiscountNode: state.discount, userErrors: [] } });
     }
@@ -68,7 +74,14 @@ function fixture() {
     readBody: async () => ({ csrfToken: await createCsrf(identity, config.secret, state.clock), ...payload }),
   }, dependencies);
   const seedLedger = async (changes: Partial<RewardLedger> = {}) => {
-    const ledger = { ...emptyRewardLedger(state.clock), ...changes };
+    const offer = await currentRewardOffer(config, state.clock);
+    const campaign = freshRewardCampaign(offer);
+    if (changes.points) {
+      campaign.progress = Math.min(campaign.target, changes.points); campaign.attempt = 1;
+      campaign.startedAt = state.clock; campaign.expiresAt = state.clock + REWARD_ATTEMPT_MS;
+      campaign.completedAt = campaign.progress === campaign.target ? state.clock : null;
+    }
+    const ledger = { ...emptyRewardLedger(state.clock), campaign, ...changes };
     await saveRewardLedger(config, '123', ledger, state.digest, request);
     return ledger;
   };
@@ -82,6 +95,129 @@ function fixture() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('server-verified Shopify reward authority', () => {
+  it('starts exactly 48 hours on the first qualifying accepted proof, never on garage preparation or short runs', async () => {
+    const f = fixture();
+    const start = await f.call('run/start', { bikeId: '125' });
+    expect((await f.call('status')).body.campaign).toMatchObject({ startedAt: null, expiresAt: null, attempt: 0 });
+    const challenge = start.body.challenge as replayModule.VerifiedRunChallenge;
+    f.state.clock += 2_000;
+    const short = await f.call('run/finish', { token: challenge.token, proof: { ticks: 60, events: [{ tick: 60, input: { type: 'end' } }] } });
+    expect(short.body.campaign).toMatchObject({ startedAt: null, progress: 0 });
+    f.state.clock += 30_000;
+    const next = (await f.call('run/start', { bikeId: '125' })).body.challenge as replayModule.VerifiedRunChallenge;
+    vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 9999, ticks: 1200, crashed: true, jumps: 4, nearMisses: 7, policeEscapes: 1 });
+    f.state.clock += 25_000;
+    const acceptedAt = f.state.clock;
+    const finished = await f.call('run/finish', { token: next.token, proof: { ticks: 1200, events: [] } });
+    expect(finished.status).toBe(200);
+    expect(finished.body.campaign).toMatchObject({ progress: 2000, attempt: 1, startedAt: new Date(acceptedAt).toISOString(), expiresAt: new Date(acceptedAt + REWARD_ATTEMPT_MS).toISOString() });
+    expect(finished.body.creditedPoints).toBe(2000);
+    const writes = f.state.writes;
+    expect((await f.call('run/finish', { token: next.token, proof: { ticks: 1200, events: [] } })).body.campaign).toEqual(finished.body.campaign);
+    expect(f.state.writes).toBe(writes);
+  });
+
+  it('restarts an expired attempt only with another qualifying proof and resets progress', async () => {
+    const f = fixture(), offer = await currentRewardOffer(config, now);
+    const campaign = { ...freshRewardCampaign(offer), progress: 900000, startedAt: now - REWARD_ATTEMPT_MS - 1, expiresAt: now - 1, attempt: 2 };
+    const { token } = await f.active({ campaign });
+    expect((await f.call('status')).body.campaign).toMatchObject({ phase: 'expired', progress: 900000, attempt: 2 });
+    vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 100, ticks: 1200, crashed: true, jumps: 1, nearMisses: 2, policeEscapes: 0 });
+    f.state.clock += 21000;
+    expect((await f.call('run/finish', { token, proof: { ticks: 1200, events: [] } })).body.campaign).toMatchObject({ phase: 'active', progress: 100, attempt: 3, startedAt: new Date(f.state.clock).toISOString() });
+  });
+
+  it('keeps the full active 48-hour grace across Monday, then offers the current week', async () => {
+    const f = fixture(); f.state.clock = Date.UTC(2026, 9, 25, 23);
+    const startedAt = f.state.clock, offer = await currentRewardOffer(config, startedAt);
+    await f.seedLedger({ campaign: { ...freshRewardCampaign(offer), startedAt, expiresAt: startedAt + REWARD_ATTEMPT_MS, progress: 500, attempt: 1 } });
+    f.state.clock = Date.UTC(2026, 9, 26, 12);
+    const grace = await f.call('status');
+    expect(grace.body.campaign).toMatchObject({ id: 'launch-million-2026', progress: 500, phase: 'active', expiresAt: new Date(startedAt + REWARD_ATTEMPT_MS).toISOString() });
+    expect(grace.body.nextCampaign).toMatchObject({ id: 'week:2026-10-26' });
+    f.state.clock = startedAt + REWARD_ATTEMPT_MS + 1;
+    expect((await f.call('status')).body.campaign).toMatchObject({ id: 'week:2026-10-26', phase: 'not_started', startedAt: null, progress: 0 });
+  });
+
+  it('accepts a valid first proof prepared before Monday and starts the current offer at acceptance', async () => {
+    const f = fixture(); f.state.clock = Date.UTC(2026, 9, 25, 23, 50);
+    const started = (await f.call('run/start', { bikeId: '125' })).body.challenge as replayModule.VerifiedRunChallenge;
+    vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 100, ticks: 1200, crashed: true, jumps: 1, nearMisses: 2, policeEscapes: 1 });
+    f.state.clock = Date.UTC(2026, 9, 26, 0, 10);
+    const result = await f.call('run/finish', { token: started.token, proof: { ticks: 1200, events: [] } });
+    expect(result.status).toBe(200);
+    expect(result.body.campaign).toMatchObject({ id: 'week:2026-10-26', phase: 'active', attempt: 1, startedAt: new Date(f.state.clock).toISOString(), expiresAt: new Date(f.state.clock + REWARD_ATTEMPT_MS).toISOString() });
+  });
+
+  it.each(['jumps', 'nearMisses', 'policeEscapes'] as const)('credits %s only from replay, reserves once at the target, and defers financial creation to claim', async metric => {
+    const f = fixture();
+    const campaign = { ...freshRewardCampaign(await currentRewardOffer(config, now)), metric, target: 2 };
+    const { token } = await f.active({ campaign }); f.state.clock += 21000;
+    vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 100, ticks: 1200, crashed: true, jumps: 2, nearMisses: 2, policeEscapes: 2 });
+    const finish = await f.call('run/finish', { token, proof: { ticks: 1200, events: [] } });
+    expect(finish.body.campaign).toMatchObject({ metric, progress: 2, phase: 'completed' });
+    expect(finish.body).toMatchObject({ pending: true, eligible: false, reward: null });
+    expect(f.state.creates).toBe(0);
+    expect((await f.call('claim')).status).toBe(200);
+    expect((await f.call('claim')).status).toBe(200);
+    expect(f.state.creates).toBe(1);
+  });
+
+  it('preserves an earlier legitimate coupon while issuing distinct bounded weekly rewards', async () => {
+    const f = fixture(); await f.seedLedger({ points: 1000000 });
+    const first = await f.call('claim'), firstReward = first.body.reward;
+    const reservation = JSON.parse(f.state.value!).ledger.reward;
+    f.state.clock = Date.UTC(2026, 9, 26, 12);
+    const current = await currentRewardOffer(config, f.state.clock);
+    const fresh = await f.call('status');
+    expect(fresh.body.reward).toEqual(firstReward);
+    expect(fresh.body.campaign).toMatchObject({ id: current.id, phase: 'not_started' });
+    await f.seedLedger({ campaign: { ...freshRewardCampaign(current), progress: current.target, startedAt: f.state.clock, expiresAt: f.state.clock + REWARD_ATTEMPT_MS, completedAt: f.state.clock, attempt: 1 }, rewardHistory: [reservation] });
+    const second = await f.call('claim');
+    expect(second.status).toBe(200);
+    expect(second.body.rewards).toEqual(expect.arrayContaining([{ code: reservation.code, expiresAt: reservation.expiresAt, amountCHF: 5, campaignId: 'launch-million-2026' }, expect.objectContaining({ amountCHF: current.rewardCHF, campaignId: current.id })]));
+    expect(second.body.reward).not.toEqual(firstReward);
+    expect(f.state.creates).toBe(2);
+    expect(Number(f.state.discount!.codeDiscount.customerGets.value.amount.amount)).toBe(current.rewardCHF);
+  });
+
+  it('verifies the original signed v1 ledger before migrating and recovers its pending legacy coupon without changing dates or value', async () => {
+    const f = fixture(), legacyReward = await reserveRewardDiscount(config, '123', now);
+    const { campaign: _campaign, rewardHistory: _history, ...legacy } = emptyRewardLedger(now);
+    legacy.reward = legacyReward;
+    const canonical = JSON.stringify(legacy, (_key, entry: unknown) => entry && typeof entry === 'object' && !Array.isArray(entry)
+      ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right))) : entry);
+    f.state.value = JSON.stringify({ ledger: legacy, signature: await hmacSha256(`pfusch-verified-ledger-v1\n${config.shop}\n123\n${canonical}`, config.secret) });
+    f.state.digest = '1'.repeat(64);
+    expect((await f.call('status')).body).toMatchObject({ pending: true, campaign: { phase: 'not_started' } });
+    const claim = await f.call('claim');
+    expect(claim.status).toBe(200);
+    expect(claim.body.reward).toEqual({ code: legacyReward.code, expiresAt: legacyReward.expiresAt });
+    const loaded = await loadRewardLedger(config, '123', now, f.request);
+    expect(loaded.ledger.rewardHistory).toEqual([{ ...legacyReward, state: 'issued', discountId: 'gid://shopify/DiscountCodeNode/345' }]);
+    expect(loaded.ledger.campaign?.progress).toBe(0);
+  });
+
+  it('repairs an older pending reservation even when the current campaign already has an issued coupon', async () => {
+    const f = fixture();
+    const older = await reserveRewardDiscount(config, '123', now, await currentRewardOffer(config, now));
+    f.state.clock = Date.UTC(2026, 9, 26, 12);
+    const offer = await currentRewardOffer(config, f.state.clock);
+    const current = { ...await reserveRewardDiscount(config, '123', f.state.clock, offer), state: 'issued' as const, discountId: 'gid://shopify/DiscountCodeNode/456' };
+    await f.seedLedger({ campaign: { ...freshRewardCampaign(offer), progress: offer.target, startedAt: f.state.clock,
+      expiresAt: f.state.clock + REWARD_ATTEMPT_MS, completedAt: f.state.clock, attempt: 1 }, reward: current, rewardHistory: [older] });
+    expect((await f.call('status')).body).toMatchObject({ pending: true, campaign: { phase: 'claimed' } });
+    const claim = await f.call('claim');
+    expect(claim.status).toBe(200);
+    expect(claim.body).toMatchObject({ pending: false, reward: { code: current.code, expiresAt: current.expiresAt } });
+    const saved = await loadRewardLedger(config, '123', f.state.clock, f.request);
+    expect(saved.ledger.reward).toEqual(current);
+    expect(saved.ledger.rewardHistory[0]).toMatchObject({ ...older, state: 'issued' });
+    const dates = saved.ledger.rewardHistory[0].expiresAt;
+    expect((await f.call('claim')).status).toBe(200);
+    expect(f.state.creates).toBe(1);
+    expect(dates).toBe(older.expiresAt);
+  });
   it('requires enablement, authentication and CSRF before any upstream write or body trust', async () => {
     const f = fixture();
     f.dependencies.enabled = false;
@@ -155,13 +291,13 @@ describe('server-verified Shopify reward authority', () => {
 
   it('CAS-settles concurrent verified finishes once, clips the daily cap, and ignores claimed client points', async () => {
     // Isolate ledger concurrency from physics, which has its own deterministic replay tests above/in verified-run.test.ts.
-    vi.spyOn(replayModule, 'replayVerifiedRun').mockReturnValue({ score: 5000, ticks: 1800, crashed: true });
-    const f = fixture(), { token } = await f.active({ points: 12000, runs: 3, dailyPoints: 9800 }); f.state.clock += 31_000;
+    vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 5000, ticks: 1800, crashed: true, jumps: 0, nearMisses: 0, policeEscapes: 0 });
+    const f = fixture(), { token } = await f.active({ points: 12000, runs: 3, dailyPoints: 999800 }); f.state.clock += 31_000;
     const responses = await Promise.all([f.call('run/finish', { token, proof: { ticks: 1800, events: [] } }),
       f.call('run/finish', { token, proof: { ticks: 1800, events: [] } })]);
     expect(responses.every(response => response.status === 200)).toBe(true);
     const saved = await loadRewardLedger(config, '123', f.state.clock, f.request);
-    expect(saved.ledger).toMatchObject({ points: 12200, runs: 4, dailyPoints: 10000, active: null });
+    expect(saved.ledger).toMatchObject({ points: 12200, runs: 4, dailyPoints: 1000000, active: null });
     expect(saved.ledger.consumed).toHaveLength(1);
     expect((await f.call('run/start', { bikeId: '125' })).body.error).toBe('reward_daily_limit');
     f.state.clock += 86_400_000;
@@ -175,10 +311,10 @@ describe('server-verified Shopify reward authority', () => {
     expect(f.state.creates).toBe(0);
   });
 
-  it('requires both thresholds and issues exactly one customer-bound CHF5 reward with the persisted 30-day expiry', async () => {
-    const f = fixture(); await f.seedLedger({ points: 50000, runs: 9 });
+  it('requires the campaign target alone and issues exactly one customer-bound CHF5 reward with the persisted 30-day expiry', async () => {
+    const f = fixture(); await f.seedLedger({ points: 999999, runs: 9 });
     expect((await f.call('claim')).body.error).toBe('reward_not_eligible');
-    await f.seedLedger({ points: 50000, runs: 10 });
+    await f.seedLedger({ points: 1000000, runs: 1 });
     const claim = await f.call('claim');
     expect(claim.status).toBe(200);
     expect(claim.body.reward).toEqual({ code: f.state.discount!.codeDiscount.codes.nodes[0].code, expiresAt: new Date(now + 30 * 86_400_000).toISOString() });
@@ -190,7 +326,7 @@ describe('server-verified Shopify reward authority', () => {
   });
 
   it('recovers ambiguous Shopify creation and ledger acknowledgement without minting another code', async () => {
-    const f = fixture(); await f.seedLedger({ points: 50000, runs: 10 });
+    const f = fixture(); await f.seedLedger({ points: 1000000, runs: 1 });
     f.state.ambiguousCreate = true; f.state.failIssuedSave = true;
     expect((await f.call('claim')).status).toBe(503);
     const pending = await f.call('status');
@@ -204,7 +340,7 @@ describe('server-verified Shopify reward authority', () => {
   });
 
   it('concurrent claims converge on one reservation and one redeemable code', async () => {
-    const f = fixture(); await f.seedLedger({ points: 50000, runs: 10 });
+    const f = fixture(); await f.seedLedger({ points: 1000000, runs: 1 });
     const results = await Promise.all([f.call('claim'), f.call('claim')]);
     expect(results.map(result => result.status)).toEqual([200, 200]);
     expect(results[0].body.reward).toEqual(results[1].body.reward);
@@ -214,7 +350,7 @@ describe('server-verified Shopify reward authority', () => {
   });
 
   it('retries CAS conflicts before reservation and validates restrictions on any existing code', async () => {
-    const f = fixture(); await f.seedLedger({ points: 50000, runs: 10 }); f.state.firstSaveConflict = true;
+    const f = fixture(); await f.seedLedger({ points: 1000000, runs: 1 }); f.state.firstSaveConflict = true;
     expect((await f.call('claim')).status).toBe(200);
     expect(f.state.creates).toBe(1);
     const reservation = await reserveRewardDiscount(config, '123', now);

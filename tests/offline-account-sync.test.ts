@@ -4,6 +4,7 @@ import type { Player, RunStats } from '../app/domain/types';
 import { decodePlayer, LocalPlayerRepository } from '../app/services';
 import { ShopifyCloudRepository } from '../app/services/shopifyCloud';
 import type { CloudTransport } from '../app/services/shopifyBridge';
+import { guardianBellBalance, spendGuardianBell } from '../app/domain/guardianBells';
 
 const accountKey = 'pfusch:player:v1:shopify:123';
 function storage() {
@@ -37,6 +38,84 @@ function fixture(driver = storage()) {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe('offline account progress', () => {
+  it('does not import a locally edited guest Bell ledger when creating a new customer save', async () => {
+    vi.useFakeTimers();
+    const driver = storage();
+    driver.setItem('pfusch:player:v1', JSON.stringify({ ...newPlayer(), coins: 600,
+      guardianBells: { earned: 20, spent: 0, spentRunIds: [] } }));
+    let written: Player | null = null;
+    const transport: CloudTransport = { request: async (method, payload) => {
+      if (method === 'POST') written = (payload as { player: Player }).player;
+      return { status: 200, data: { customer: { id: '123' }, player: written, compareDigest: written ? 'a'.repeat(64) : null,
+        csrfToken: 'guest-import-test-csrf', storage: { allowed: true, reason: 'subscribed', completedRuns: 0, freeRuns: 5 } } };
+    } };
+    const repo = new ShopifyCloudRepository(transport, driver, new LocalPlayerRepository(driver), decodePlayer);
+    expect(await repo.load()).toMatchObject({ coins: 600, guardianBells: { earned: 0, spent: 0, spentRunIds: [] } });
+    await repo.flush();
+    expect(written).toMatchObject({ guardianBells: { earned: 0, spent: 0, spentRunIds: [] } });
+  });
+
+  it.each(['same session', 'reopened online', 'reopened offline'])(
+    'retains an offline Bell debit while rebasing a referral credit exactly once: %s', async mode => {
+      vi.useFakeTimers();
+      const f = fixture();
+      f.state.player = { ...f.state.player, guardianBells: { earned: 3, spent: 1, spentRunIds: ['already-used'] } };
+      const repo = f.reopen(), original = await repo.load();
+      f.state.online = false;
+      const spent = spendGuardianBell(original, 'offline-bell')!;
+      repo.save(spent); await repo.flush();
+      expect(guardianBellBalance(spent)).toBe(1);
+      expect(f.state.posts).toBe(0);
+      f.state.player = { ...f.state.player, coins: f.state.player.coins + 150,
+        guardianBells: { ...f.state.player.guardianBells, earned: 4 } };
+      f.state.digest = 'b'.repeat(64);
+      if (mode !== 'reopened offline') f.state.online = true;
+      const current = mode === 'same session' ? repo : f.reopen();
+      await current.load();
+      f.state.online = true;
+      await current.refreshAccess();
+      expect(current.syncStatus.state).toBe('synced');
+      expect(f.state.player.guardianBells).toEqual({ earned: 4, spent: 2, spentRunIds: ['already-used', 'offline-bell'] });
+      expect(f.state.player.coins).toBe(spent.coins + 150);
+      expect(guardianBellBalance(await current.load())).toBe(2);
+      const reopened = f.reopen(); await reopened.load(); await reopened.refreshAccess();
+      expect(f.state.posts).toBe(1);
+      expect(guardianBellBalance(await reopened.load())).toBe(2);
+      expect(spendGuardianBell(await reopened.load(), 'offline-bell')).toBeNull();
+    },
+  );
+
+  it('recognizes a Bell debit whose server acknowledgement was lost without spending or uploading twice', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    f.state.player = { ...f.state.player, guardianBells: { earned: 1, spent: 0, spentRunIds: [] } };
+    const repo = f.reopen(), spent = spendGuardianBell(await repo.load(), 'lost-bell-ack')!;
+    f.state.loseAck = true; repo.save(spent); await repo.flush();
+    const reopened = f.reopen();
+    expect(guardianBellBalance(await reopened.load())).toBe(0);
+    await reopened.flush(); await reopened.refreshAccess();
+    expect(f.state.posts).toBe(1);
+    expect(f.state.player.guardianBells.spent).toBe(1);
+    expect(spendGuardianBell(await reopened.load(), 'lost-bell-ack')).toBeNull();
+  });
+
+  it('keeps a concurrent device debit as a CAS conflict rather than MAX-merging balances or restoring Bells', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    f.state.player = { ...f.state.player, guardianBells: { earned: 2, spent: 0, spentRunIds: [] } };
+    const repo = f.reopen(), initial = await repo.load();
+    f.state.online = false;
+    repo.save(spendGuardianBell(initial, 'local-debit')!);
+    f.state.player = { ...f.state.player, guardianBells: { earned: 2, spent: 1, spentRunIds: ['other-device'] } };
+    f.state.digest = 'b'.repeat(64); f.state.online = true;
+    await repo.refreshAccess();
+    expect(repo.syncStatus.state).toBe('conflict');
+    expect(f.state.posts).toBe(0);
+    expect(f.state.player.guardianBells).toEqual({ earned: 2, spent: 1, spentRunIds: ['other-device'] });
+    expect(JSON.parse(f.driver.getItem(`${accountKey}:pending`)!).player.guardianBells)
+      .toEqual({ earned: 2, spent: 1, spentRunIds: ['local-debit'] });
+  });
+
   it('settles a crash once, persists through offline reopening and synchronizes once on reconnect', async () => {
     vi.useFakeTimers();
     const f = fixture(), first = f.reopen();

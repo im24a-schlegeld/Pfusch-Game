@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 
-/** Static loading composition only. Borrow the actual last city cell, including
- * its road finishes and facade details, past the gameplay pool's rear edge.
+/** Static loading composition only. Continue the street with a shuffled set of
+ * complete authored city cells, including every matching facade detail.
  * New instance buffers belong to this group; source materials/geometry do not. */
-export function makeLoadingWorldContinuation(source: THREE.Object3D) {
+export function makeLoadingWorldContinuation(source: THREE.Object3D, seed = 42) {
   const cellLength = 12, horizon = 180;
   const road = source.getObjectByName('world-box-asphalt');
   if (!(road instanceof THREE.InstancedMesh)) throw new Error('Loading continuation requires the authored street.');
@@ -16,6 +16,35 @@ export function makeLoadingWorldContinuation(source: THREE.Object3D) {
   const seam = bounds.max.z;
   if (!Number.isFinite(seam) || seam >= horizon) throw new Error('Loading street rear edge is outside the static horizon.');
   const rows = Math.ceil((horizon - seam) / cellLength), end = seam + rows * cellLength;
+  // Full-depth main houses identify complete city cells. Partial segment-end
+  // facades and distant silhouettes cannot be used as complete templates.
+  const cityCounts = new Map<number, number>();
+  for (const object of source.children) {
+    if (!(object instanceof THREE.InstancedMesh) || !/^world-box-city[0-3]$/.test(object.name)) continue;
+    for (let i = 0; i < object.count; i++) {
+      object.getMatrixAt(i, matrix);
+      if (Math.abs(matrix.elements[12]) >= 18 || Math.abs(matrix.elements[10] - 10.8) > .001) continue;
+      const center = matrix.elements[14];
+      cityCounts.set(center, (cityCounts.get(center) ?? 0) + 1);
+    }
+  }
+  const cityCells = [...cityCounts].filter(([, count]) => count === 2).map(([center]) => center).sort((a, b) => a - b);
+  if (!cityCells.length) throw new Error('Loading continuation requires complete authored city cells.');
+  let random = seed >>> 0 || 1, previous = seam - cellLength / 2;
+  const bag: number[] = [], rowCells: number[] = [];
+  for (let row = 0; row < rows; row++) {
+    if (!bag.length) {
+      bag.push(...cityCells);
+      for (let i = bag.length - 1; i > 0; i--) {
+        random ^= random << 13; random ^= random >>> 17; random ^= random << 5;
+        const j = (random >>> 0) % (i + 1);
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      if (bag.length > 1 && bag[bag.length - 1] === previous)
+        [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+    }
+    previous = bag.pop()!; rowCells.push(previous);
+  }
   const root = new THREE.Group(); root.name = 'loading-street-continuation';
   source.updateWorldMatrix(true, true);
   root.matrix.copy(source.matrixWorld); root.matrixAutoUpdate = false;
@@ -31,7 +60,6 @@ export function makeLoadingWorldContinuation(source: THREE.Object3D) {
       const z = matrix.elements[14];
       if (z > seam - cellLength + 0.0001 && z <= seam + 0.0001) terminal.push(i);
     }
-    if (!terminal.length) continue;
     const copies: { matrix: THREE.Matrix4; index: number }[] = [];
     if (object.name === 'world-box-marking') {
       // The gameplay dashes have a seven-metre cadence, independent of its
@@ -55,10 +83,18 @@ export function makeLoadingWorldContinuation(source: THREE.Object3D) {
           }
         }
       }
-    } else for (let row = 1; row <= rows; row++) for (const index of terminal) {
-      object.getMatrixAt(index, matrix); matrix.elements[14] += row * cellLength;
-      copies.push({ matrix: matrix.clone(), index });
+    } else for (let row = 1; row <= rows; row++) {
+      const street = /^world-box-(asphalt|sidewalk|curb|grass)$/.test(object.name);
+      const center = street ? seam - cellLength / 2 : rowCells[row - 1];
+      for (let index = 0; index < object.count; index++) {
+        object.getMatrixAt(index, matrix);
+        const z = matrix.elements[14];
+        if (z <= center - cellLength / 2 + .0001 || z > center + cellLength / 2 + .0001) continue;
+        matrix.elements[14] += seam + (row - .5) * cellLength - center;
+        copies.push({ matrix: matrix.clone(), index });
+      }
     }
+    if (!copies.length) continue;
     const batch = new THREE.InstancedMesh(object.geometry, object.material, copies.length);
     batch.name = `loading-${object.name}`;
     batch.matrix.copy(object.matrix); batch.matrixAutoUpdate = false;

@@ -2,8 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { BIKES } from '../app/domain/config';
 import { Engine, STEP } from '../app/game/engine';
 import { MAX_VERIFIED_EVENTS, MAX_VERIFIED_TICKS, VerifiedRunRecorder, replayVerifiedRun } from '../app/game/verifiedRun';
+import * as verified from '../app/game/verifiedRun';
 
 describe('verified fixed-step run evidence', () => {
+  it('returns replayed maneuver counters from the same proof while preserving the earlier three-field replay API', () => {
+    expect(typeof verified.replayVerifiedRunDetailed).toBe('function');
+    const engine = new Engine(BIKES[0], 78123), recorder = new VerifiedRunRecorder(engine);
+    engine.start(); engine.hold(true);
+    for (let tick = 0; tick < 2000 && engine.phase === 'playing'; tick++) {
+      if (tick % 90 === 30) engine.move(1);
+      if (tick % 90 === 60) engine.move(-1);
+      engine.advance(STEP);
+    }
+    engine.endRide();
+    const replay = verified.replayVerifiedRunDetailed(BIKES[0].id, 78123, recorder.proof());
+    expect(replay).toMatchObject({ jumps: engine.jumps, nearMisses: engine.nearMisses, policeEscapes: 0 });
+    expect(Object.keys(replayVerifiedRun(BIKES[0].id, 78123, recorder.proof())!).sort()).toEqual(['crashed', 'score', 'ticks']);
+    expect(verified.replayVerifiedRunDetailed(BIKES[0].id, 42, { ticks: 0, events: [], jumps: 999 })).toBeNull();
+  });
+
   it.each(BIKES)('replays $id with fractional frames, pause clearing and immediate tutorial resume', bike => {
     const engine = new Engine(bike, 78123);
     const recorder = new VerifiedRunRecorder(engine);
