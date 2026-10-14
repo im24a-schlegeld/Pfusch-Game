@@ -457,8 +457,9 @@ describe('streamed world geometry', () => {
       expect(new Set(pools.map((mesh) => mesh.material)).size).toBe(41);
       expect(peakDrawCalls).toBeLessThanOrEqual(31);
       expect(peakInstances).toBeLessThanOrEqual(low ? 1686 : 1697);
-      // Every batch of the same primitive shares one geometry allocation.
-      expect(new Set(pools.map((mesh) => mesh.geometry)).size).toBe(7);
+      // Seven shared primitives plus the two open-ended tunnel bodies are
+      // allocated once; recycling keeps the same geometry and pool identities.
+      expect(new Set(pools.map((mesh) => mesh.geometry)).size).toBe(9);
     },
   );
 });
