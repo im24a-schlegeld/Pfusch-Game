@@ -17,6 +17,9 @@ declare global {
       camera?: THREE.Camera;
       inspectionCamera?: THREE.Camera;
       afterRideFrame?: () => void;
+      plainBackground?: boolean;
+      isolatedBike?: THREE.Object3D;
+      restoreWorld?: () => void;
       frames: number;
     };
   }
@@ -54,6 +57,11 @@ async function startCartoonRide(page: Page, gear?: { bike: string; upper: Produc
       const render = renderer.render.bind(renderer);
       renderer.render = (scene, camera) => {
         const actualCamera = window.cartoonProbe.inspectionCamera ?? camera;
+        if (window.cartoonProbe.plainBackground) {
+          ((scene as THREE.Scene).background as THREE.Color).set('#ffffff');
+          for (const child of scene.children)
+            if (!(child as THREE.Light).isLight) child.visible = child === window.cartoonProbe.isolatedBike;
+        }
         render(scene, actualCamera);
         if (scene.getObjectByName('streamed-world')) {
           window.cartoonProbe.renderer = renderer;
@@ -99,7 +107,7 @@ async function showWorldLighting(page: Page, lighting: 'day' | 'night') {
 async function captureMovingRide(page: Page, motion: 'left' | 'right' | 'wheelie', path: string) {
   const frame = await page.evaluate((motion) => new Promise<{
     dataUrl: string; ticks: number; distance: number; lane: number; x: number; wheelieAngle: number;
-    productionCamera: boolean; cuffCount: number; treeForms: { name: string; count: number; shared: boolean }[];
+    productionCamera: boolean; cuffCount: number; treeForms: { name: string; count: number; shared: boolean; depthWrite: boolean }[];
     heroOutlines: number; hardContours: number; treeDraws: number; programsLinked: boolean; contextLost: boolean;
   }>((resolve, reject) => {
     const probe = window.cartoonProbe, engine = probe.engine!;
@@ -123,7 +131,7 @@ async function captureMovingRide(page: Page, motion: 'left' | 'right' | 'wheelie
       const treeForms = ['cone-foliage', 'canopy-foliage', 'round-trunk'].map(form => {
         const source = scene.getObjectByName(`world-${form}`) as THREE.InstancedMesh;
         const shell = source.children.find(child => child.userData.cartoonWorldFoliageOutline) as THREE.InstancedMesh;
-        return { name: form, count: shell?.count ?? -1,
+        return { name: form, count: shell?.count ?? -1, depthWrite: (shell?.material as THREE.Material)?.depthWrite === true,
           shared: shell?.geometry === source.geometry && shell?.instanceMatrix === source.instanceMatrix && shell?.count === source.count };
       });
       const cuffs = scene.getObjectsByProperty('name', 'continuous-trouser-leg') as THREE.SkinnedMesh[];
@@ -160,7 +168,7 @@ async function captureMovingRide(page: Page, motion: 'left' | 'right' | 'wheelie
   expect(measurements.distance).toBeGreaterThan(0);
   expect(measurements.productionCamera).toBe(true);
   expect(measurements.cuffCount).toBe(2);
-  expect(measurements.treeForms.every(form => form.shared && form.count >= 0)).toBe(true);
+  expect(measurements.treeForms.every(form => form.shared && form.count >= 0 && form.depthWrite)).toBe(true);
   expect(measurements.treeForms.some(form => form.count > 0)).toBe(true);
   expect(measurements.heroOutlines).toBeGreaterThan(0);
   expect(measurements.heroOutlines).toBeLessThanOrEqual(32);
@@ -352,6 +360,7 @@ test.describe('cartoon visual gallery', () => {
             cuffOrHemRetained: Array.from({ length: edge.count }, (_, i) => edge.getX(i)).some((value) => value === 0),
             artworkRetained: !!mesh.material.map,
             sharedOutlineGeometry: shell?.geometry === mesh.geometry,
+            outlineNormalsRetained: shell?.geometry.getAttribute('cartoonOutlineNormal')?.count === mesh.geometry.attributes.position.count,
             hardInteriorLines: mesh.children.some((child) => child.userData.cartoonContour),
           };
         });
@@ -362,6 +371,7 @@ test.describe('cartoon visual gallery', () => {
       expect(surface.cuffOrHemRetained).toBe(true);
       expect(surface.artworkRetained).toBe(true);
       expect(surface.sharedOutlineGeometry).toBe(true);
+      expect(surface.outlineNormalsRetained).toBe(true);
       expect(surface.hardInteriorLines).toBe(false);
     }
     for (const angle of [{ name: 'rear', x: 0 }, { name: 'rear-quarter', x: 2.0 }]) {
@@ -380,6 +390,31 @@ test.describe('cartoon visual gallery', () => {
       await expect.poll(() => page.evaluate(() => window.cartoonProbe.frames)).toBeGreaterThan(frame);
       await page.screenshot({ path: `outputs/browser-pwa/sport-tshirt-${angle.name}.png` });
     }
+    // Retain a close, plain-background reference so missing exterior ink cannot
+    // be mistaken for a clothing print, scenery edge or later cloud overlay.
+    const isolatedFrame = await page.evaluate(() => {
+      const probe = window.cartoonProbe, scene = probe.scene!;
+      let bike: THREE.Object3D = scene.getObjectByName('tailored-garment')!;
+      while (bike.parent && bike.parent !== scene) bike = bike.parent;
+      const states = scene.children.map(child => ({ child, visible: child.visible }));
+      const background = scene.background;
+      scene.background = (scene.background as THREE.Color).clone().set('#ffffff');
+      for (const { child } of states) child.visible = child === bike || (child as THREE.Light).isLight;
+      probe.plainBackground = true;
+      probe.isolatedBike = bike;
+      probe.restoreWorld = () => {
+        for (const { child, visible } of states) child.visible = visible;
+        scene.background = background;
+        probe.plainBackground = false;
+        probe.isolatedBike = undefined;
+        window.dispatchEvent(new Event('focus'));
+      };
+      window.dispatchEvent(new Event('focus'));
+      return probe.frames;
+    });
+    await expect.poll(() => page.evaluate(() => window.cartoonProbe.frames)).toBeGreaterThan(isolatedFrame);
+    await page.screenshot({ path: 'outputs/browser-pwa/sport-tshirt-rear-quarter-isolated.png' });
+    await page.evaluate(() => { window.cartoonProbe.restoreWorld!(); delete window.cartoonProbe.restoreWorld; });
     await page.evaluate(() => { window.cartoonProbe.inspectionCamera = undefined; });
     await showWorldView(page, { kind: 'open', lighting: 'day' });
     const movingFrames = [];

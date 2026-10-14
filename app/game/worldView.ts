@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeOpenTunnelBodyGeometry } from './worldTunnel';
 import { LANE } from './engine';
 import { WORLD_LOOK_BEHIND, type World, type WorldSegment } from './world';
 import { addWorldSurfaceDetail } from './worldSurface';
@@ -129,11 +130,15 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
   };
   for (const [form, geometry] of Object.entries(geometries))
     prepareCartoonGeometry(geometry, form === 'box');
+  // Only continuous tunnel bodies omit their longitudinal caps. Concrete
+  // portals and weathered ribs retain the original capped shared geometry.
+  const tunnelBodyBox = makeOpenTunnelBodyGeometry(geometries.box);
+  const tunnelBodyArch = makeOpenTunnelBodyGeometry(geometries.arch);
   const materials = {} as Record<Finish, THREE.MeshStandardMaterial>;
   const batches = new Map<string, Batch>();
-  function allocate(form: Form, finish: Finish, material = materials[finish]) {
+  function allocate(form: Form, finish: Finish, material = materials[finish], geometry = geometries[form]) {
     const mesh = new THREE.InstancedMesh(
-      geometries[form],
+      geometry,
       material,
       WORLD_VIEW.instancesPerBatch,
     );
@@ -160,7 +165,8 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       addWorldSurfaceDetail(materials[finish], surfaceOrigin, 'asphalt', low);
     if (finish === 'grass' || finish === 'soil' || finish === 'sand')
       addWorldSurfaceDetail(materials[finish], surfaceOrigin, 'ground', low);
-    allocate('box', finish);
+    allocate('box', finish, materials[finish],
+      finish === 'tunnelModern' || finish === 'tunnelWeathered' ? tunnelBodyBox : geometries.box);
   }
   for (const finish of ['concrete', 'steel', 'trunk', 'white', 'dark'] as const)
     allocate('round', finish);
@@ -183,7 +189,8 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
     'concrete',
     'dark',
   ] as const)
-    allocate('arch', finish);
+    allocate('arch', finish, materials[finish],
+      finish === 'tunnelModern' || finish === 'tunnelWeathered' ? tunnelBodyArch : geometries.arch);
 
   // One shader pass, with ink on buildings/props rather than seams between
   // recycled road or ground cells. Shared geometry and all 56 pools stay intact.

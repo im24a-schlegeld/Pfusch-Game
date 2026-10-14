@@ -11,6 +11,7 @@ import { applyCartoonHeroStyle, applyCartoonStyle } from '../app/game/cartoonSty
 import { createCartoonOutline } from '../app/game/cartoonOutline';
 import { preloadImportedBike, type ImportedBikeId } from '../app/game/importedBikeAsset';
 import { policeRampPose } from '../app/game/policePursuit';
+import { trimLoadingForegroundLamps } from './loading-art-foreground';
 import { newPlayer } from '../app/domain/progression';
 import { shadeClothingCatalog } from '../app/domain/appearanceColors';
 import type { Product } from '../app/domain/types';
@@ -161,7 +162,8 @@ function frame(isPortrait: boolean) {
   worldView.resize(width, height);
   sky.resize(width, height, 1);
   sky.update(world, 72, 9.5);
-  renderer.render(scene, camera);
+  const foreground = trimLoadingForegroundLamps(worldView.root, camera, Math.min(6, camera.position.distanceTo(subject) * 0.55));
+  try { renderer.render(scene, camera); } finally { foreground.restore(); }
   const headlightMask = bike.root.getObjectByName('fs450_bodywork_paint:steering');
   const headlightMaskContour = headlightMask?.children.some(object =>
     object instanceof THREE.LineSegments && object.userData.cartoonContour &&
@@ -170,7 +172,7 @@ function frame(isPortrait: boolean) {
     contours: outline.contourCount, headlightMaskContour,
     ankle: Boolean(bike.rider.getObjectByName('rider-ankle')), street: Boolean(scene.getObjectByName('streamed-world')),
     authoredImages: authoredImages.size, referenceCamera: reference.toArray(), camera: camera.position.toArray(),
-    subject: subject.toArray(), backoff: distance / initialDistance };
+    subject: subject.toArray(), backoff: distance / initialDistance, foregroundLampPartsRemoved: foreground.removed };
 }
 
 // Texture completion is required, including supplied garment art. An arbitrary
@@ -204,7 +206,7 @@ Object.assign(window, {
     const proof = frame(isPortrait);
     return { webp: renderer.domElement.toDataURL('image/webp', 0.91), png: renderer.domElement.toDataURL('image/png'), proof };
   },
-  async exportBikeDetail(id: ImportedBikeId, view: 'front' | 'side') {
+  async exportBikeDetail(id: ImportedBikeId, view: 'front' | 'side' | 'front-wheel') {
     await preloadImportedBike(id);
     const detail = makeBike({ ...player, bike: id, paint: '#19324f', rims: '#b9e3f2' }, shadeClothingCatalog(catalog));
     detail.animateSuspension(0, 0);
@@ -222,8 +224,20 @@ Object.assign(window, {
       detail.root.updateMatrixWorld(true);
       detail.root.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.update(); });
       const box = new THREE.Box3().setFromObject(detail.root, true);
+      if (view === 'front-wheel') {
+        box.makeEmpty();
+        detail.root.traverse(object => {
+          if (!(object instanceof THREE.Mesh) || !object.name.endsWith(':frontWheel') ||
+            object.userData.cartoonOutline || object.userData.cartoonContour) return;
+          object.geometry.computeBoundingBox();
+          if (object.geometry.boundingBox) box.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+        });
+        if (box.isEmpty()) throw new Error('No authored front wheel found for ' + id);
+        box.expandByScalar(0.08);
+      }
       const subject = box.getCenter(new THREE.Vector3());
-      camera.position.set(view === 'front' ? 3.8 : 4.5, 2.4, view === 'front' ? -5 : 0);
+      if (view === 'front-wheel') camera.position.copy(subject).add(new THREE.Vector3(2.2, 0.7, -1.2));
+      else camera.position.set(view === 'front' ? 3.8 : 4.5, 2.4, view === 'front' ? -5 : 0);
       const direction = camera.position.clone().sub(subject).normalize();
       const corners: THREE.Vector3[] = [];
       for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y])

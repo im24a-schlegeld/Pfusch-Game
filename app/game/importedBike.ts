@@ -79,6 +79,10 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
       side: definition.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
     });
     material.userData.rimPalette = rimMaterial;
+    // Perforated discs retain their actual edge contours. Their authored
+    // bevel normals must not turn into camera-angle black surface fragments.
+    material.userData.importedWheelHardware = /brake_(steel|carrier|friction_steel|dark_carrier)$/.test(definition.name);
+    material.userData.rimTireBand = id === 'scooter' && rimMaterial;
     return material;
   });
   const materialByName = new Map(manifest.materials.map((definition, index) => [definition.name, materials[index]]));
@@ -113,6 +117,20 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     const definition = typeof part.material === 'number' ? manifest.materials[part.material] : manifest.materials.find((candidate) => candidate.name === part.material);
     mesh.userData.bikePaintSurface = part.paintable ?? definition?.paintable ?? /livery|paint|fairing|bodywork/i.test(material.name);
     finishHardware(mesh, part);
+    if (id === 'scooter' && material.userData.rimPalette && /Wheel$/.test(part.rig)) {
+      // Nitro's outer lip and cast spokes share one authored mesh/material.
+      // In the source frame its colored inner rings end at radius .166;
+      // the outermost band begins at .178 and overlaps the tire at .1945.
+      // Mask that band in the existing material pass, keeping the index order.
+      const axle = part.rig === 'frontWheel' ? source.frontAxle : source.rearAxle;
+      const positions = new Float32Array(binary, part.position.offset, part.position.count * 3);
+      const band = new Float32Array(part.position.count);
+      for (let i = 0; i < band.length; i++) {
+        const radius = Math.hypot(positions[i * 3 + 1] - axle[1], positions[i * 3 + 2] - axle[2]);
+        band[i] = THREE.MathUtils.smoothstep(radius, 0.166, 0.178);
+      }
+      geometry.setAttribute('cartoonRimTireBand', new THREE.BufferAttribute(band, 1));
+    }
     mesh.castShadow = true; mesh.receiveShadow = true;
     parent.add(mesh);
   }

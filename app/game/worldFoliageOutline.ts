@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 export const WORLD_FOLIAGE_MAX_DRAWS = 3;
+export const WORLD_FOLIAGE_STROKE = 0.8;
 
 /** One exterior draw per tree form, sharing the existing geometry and every
  * instance transform. Coloured crowns write depth first so overlapping pine
@@ -9,11 +10,11 @@ export function makeWorldFoliageOutline(sources: readonly THREE.InstancedMesh[])
   if (sources.length > WORLD_FOLIAGE_MAX_DRAWS) throw new RangeError('World foliage contour draw budget exceeded');
   const viewport = new THREE.Vector2(390, 844);
   const material = new THREE.MeshBasicMaterial({ color: '#080a0e', side: THREE.BackSide,
-    fog: true, depthTest: true, depthWrite: false, toneMapped: false });
+    fog: true, depthTest: true, depthWrite: true, toneMapped: false });
   material.name = 'cartoon-world-foliage-outline';
   material.onBeforeCompile = shader => {
     shader.uniforms.cartoonWorldFoliageViewport = { value: viewport };
-    shader.uniforms.cartoonWorldFoliageStroke = { value: 1.05 };
+    shader.uniforms.cartoonWorldFoliageStroke = { value: WORLD_FOLIAGE_STROKE };
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
       uniform vec2 cartoonWorldFoliageViewport;
       uniform float cartoonWorldFoliageStroke;
@@ -114,6 +115,9 @@ export function makeWorldFoliageOutline(sources: readonly THREE.InstancedMesh[])
     shell.castShadow = false;
     shell.receiveShadow = false;
     shell.layers.mask = source.layers.mask;
+    // All coloured tree pools write depth first, preserving their union. The
+    // exterior then writes depth too, so later transparent clouds cannot paint
+    // over the border pixels outside the coloured fill.
     shell.renderOrder = 1;
     shell.raycast = () => {};
     // Instancing affects the source's vertices, not its child matrixWorld.

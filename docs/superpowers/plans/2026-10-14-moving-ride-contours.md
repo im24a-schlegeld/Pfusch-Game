@@ -34,7 +34,7 @@
 - [x] Require a shell for both crowns and actual trunks; observe missing trunk failure.
 - [x] Add the third borrowed-buffer batch and retain source material/pool ownership.
 - [x] Run the four focused actual-pool tests; check crown silhouette coverage without speculative shader changes.
-- [x] Prove subpixel pine-edge coverage loss and retain the 1.05-pixel stroke with a bounded cone-only corner miter; actual moving capture inspection remains in Task 3.
+- [x] Prove subpixel pine-edge coverage loss and retain a bounded cone-only corner miter; subsequent user feedback reduces the uniform stroke to 0.8 CSS pixels.
 
 ### Task 2: Actual rider boundaries
 
@@ -66,3 +66,22 @@
 - [x] Tag small interior segments once; fade their alpha at camera depths 24–62 metres while primary boundaries stay opaque.
 - [x] Verify near/far shader behavior, unchanged geometry sharing, fog and depth-write policy with the lightweight focused probe.
 - [x] Review transparency/order, shared resources and installed Three.js shader semantics; native traffic inspection remains pending CI.
+
+### Task 5: Native image findings and requested wheel details
+
+- [x] Inspect the first successful CI's real moving frames; identify transparent clouds overpainting depth-free exterior ink.
+- [x] Make tree ink depth-writing after all coloured crowns and guard that ordering in focused tests and browser measurements.
+- [x] Apply the same opaque-depth protection to hero shells and hard edges; keep translucent source materials intact.
+- [x] Merge actual brake and Sport windscreen border geometry into compatible existing contour owners, retaining the 10-draw ceiling and correct moving rig transforms.
+- [x] Correct actual Sport wheel finish noise and Scooter outer rim/tire classification with focused imported-model regressions.
+- [x] Remove demonstrated coplanar tunnel body caps without removing real portal/rib caps or changing pooled instance counts.
+- [ ] Capture the remaining T-shirt rear-quarter edge against scenery and an enforced plain background; add no speculative neckline ink.
+- [ ] Review the final diffs, verify remotely, inspect native captures and retain exact deployed loading artwork before completion.
+
+### Task 6: Desktop loading foreground
+
+- [x] Identify the giant foreground street-lamp pole in the actual wide loading image.
+- [x] Trim only near-camera authored lamp parts during the static artwork export; restore every shared instance buffer after each shot.
+- [x] Verify with the actual seeded world and approved camera; retain background lighting and non-lamp props.
+- [x] Extend static boot checks to 1920×1080 and 2560×1080.
+- [ ] Inspect the regenerated wide artwork and boot screenshots before final completion.

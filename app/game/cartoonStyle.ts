@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 const applied = new WeakMap<THREE.Material, THREE.Material['onBeforeCompile']>();
+const rimTireColor = new THREE.Color('#16181a');
 
 /** Imported wheels revolve around local X. Only the inward radial wall gets
  * the recess shade; axial cast faces and the outward rim lip stay untouched.
@@ -33,9 +34,11 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
   const previousKey = material.customProgramCacheKey.call(material);
   const hero = material.userData.pfuschCartoonHero === true;
   const rim = hero && material.userData.rimPalette === true;
+  const rimTireBand = rim && material.userData.rimTireBand === true;
+  const wheelHardware = hero && material.userData.importedWheelHardware === true;
   // The rim's shape is shaded below; grazing-angle ink on its narrow bevels
   // produced irregular black patches. The existing geometry outline remains.
-  const ink = material.transparent || !contour || rim ? '0.0' : '0.92';
+  const ink = material.transparent || !contour || rim || wheelHardware ? '0.0' : '0.92';
   material.onBeforeCompile = (shader, renderer) => {
     before.call(material, shader, renderer);
     // Carbon/colour changes can wrap a previously styled shader. Never apply
@@ -59,6 +62,14 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
         '#include <common>\nvarying float vCartoonRimRecess;');
     }
+    if (rimTireBand) {
+      shader.uniforms.cartoonRimTireColor = { value: rimTireColor };
+      shader.vertexShader = shader.vertexShader.replace('#include <common>',
+        '#include <common>\nattribute float cartoonRimTireBand;\nvarying float vCartoonRimTireBand;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCartoonRimTireBand = cartoonRimTireBand;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+        '#include <common>\nvarying float vCartoonRimTireBand;\nuniform vec3 cartoonRimTireColor;');
+    }
     if (boxInk) {
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
         '#include <common>\nattribute vec4 cartoonBox;\nvarying vec4 vCartoonBox;')
@@ -68,6 +79,8 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
     }
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
       // PFUSCH_CARTOON
+      ${rimTireBand ? `// Source outer lip is tire finish even during color/carbon previews.
+      diffuseColor.rgb = mix(diffuseColor.rgb, cartoonRimTireColor, vCartoonRimTireBand);` : ''}
       vec3 cartoonDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
       float cartoonBase = max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.025);
       float cartoonLight = dot(cartoonDiffuse, vec3(0.2126, 0.7152, 0.0722)) / cartoonBase;
@@ -112,7 +125,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}`;
+  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}${rimTireBand ? ':tire-band-v1' : ''}`;
   material.userData.pfuschCartoon = true;
   material.userData.pfuschCartoonRimShading = rim;
   material.needsUpdate = true;

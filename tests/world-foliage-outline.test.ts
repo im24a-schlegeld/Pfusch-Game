@@ -30,10 +30,16 @@ it.each([false, true])('outlines both crown forms and actual trunks without chan
     expect(shell.frustumCulled).toBe(false);
     expect(shell.material.side).toBe(THREE.BackSide);
     expect(shell.material.fog).toBe(true);
-    expect(shell.material.depthWrite).toBe(false);
+    expect(shell.material.depthTest).toBe(true);
+    expect(shell.material.depthWrite).toBe(true);
+    expect(shell.material.transparent).toBe(false);
     expect(shell.renderOrder).toBeGreaterThan(sources[i].renderOrder);
     expect(new THREE.Raycaster().intersectObject(shell, false)).toEqual([]);
   });
+  // Every coloured tree batch precedes every shell. Shell depth protects its
+  // exterior from later transparent sky fills without outlining crown joins.
+  expect(Math.max(...sources.map(source => source.renderOrder)))
+    .toBeLessThan(Math.min(...outlines.map(shell => shell.renderOrder)));
 });
 
 it('reuses the same shell geometry and instance uploads while counts follow recycled trees', () => {
@@ -69,6 +75,7 @@ it('keeps the border stroke in CSS pixels, fogs it with the world and never disp
   material.onBeforeCompile(shader as Parameters<THREE.Material['onBeforeCompile']>[0], {} as THREE.WebGLRenderer);
   view.resize(1440, 900);
   expect(shader.uniforms.cartoonWorldFoliageViewport.value.toArray()).toEqual([1440, 900]);
+  expect(shader.uniforms.cartoonWorldFoliageStroke.value).toBe(0.8);
   view.resize(0, NaN);
   expect(shader.uniforms.cartoonWorldFoliageViewport.value.toArray()).toEqual([1440, 900]);
   expect(shader.vertexShader).toContain('instanceMatrix');

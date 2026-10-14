@@ -24,7 +24,7 @@ it('keeps a shared-geometry contour attached to the moving part without changing
   expect(outline.geometry).toBe(source.geometry);
   expect(source.material).toBe(originalMaterial);
   expect(outline.material.side).toBe(THREE.BackSide);
-  expect(outline.material.depthWrite).toBe(false);
+  expect(outline.material.depthWrite).toBe(true);
   expect(outline.castShadow).toBe(false);
   expect(outline.userData.bikePaintSurface).toBeUndefined();
   expect(outline.userData.importedPart).toBeUndefined();
@@ -155,7 +155,7 @@ it('traces only hard form edges and material borders while sharing bounded conto
   expect(lines[0].geometry.getAttribute('position').count).toBe(10); // 4 border edges + the material junction.
   expect(lines[0].geometry.getAttribute('position').count).toBeLessThanOrEqual(CARTOON_CONTOUR_MAX_SEGMENTS * 2);
   expect(lines[0].userData.cartoonOutline).toBeUndefined();
-  expect(lines[0].material.depthWrite).toBe(false);
+  expect(lines[0].material.depthWrite).toBe(true);
   expect(new THREE.Raycaster().intersectObject(lines[0], false)).toEqual([]);
   const geometryDisposal = vi.spyOn(lines[0].geometry, 'dispose'), materialDisposal = vi.spyOn(lines[0].material, 'dispose');
   outlines.dispose(); outlines.dispose();

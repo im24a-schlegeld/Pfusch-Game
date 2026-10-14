@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
-import { makeWorldFoliageOutline } from '../app/game/worldFoliageOutline';
+import { makeWorldFoliageOutline, WORLD_FOLIAGE_STROKE } from '../app/game/worldFoliageOutline';
 
 const cross = (a: THREE.Vector2, b: THREE.Vector2, c: THREE.Vector2) =>
   (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -26,7 +26,7 @@ function contains(p: THREE.Vector2, a: THREE.Vector2, b: THREE.Vector2, c: THREE
  * independently against the real coloured convex hull and BackSide triangles,
  * rather than treating a changed projected normal as proof of an outline. */
 function sampleCone(segments: number, side: number, z: number) {
-  const width = 390, height = 844, stroke = 1.05;
+  const width = 390, height = 844, stroke = WORLD_FOLIAGE_STROKE;
   const geometry = new THREE.ConeGeometry(1, 1, segments);
   const positions = geometry.getAttribute('position');
   const originalPositions = Array.from(positions.array);
@@ -103,7 +103,7 @@ function sampleCone(segments: number, side: number, z: number) {
       const a = boundary[i], b = boundary[(i + 1) % boundary.length];
       const outward = new THREE.Vector2(b.y - a.y, a.x - b.x).normalize();
       for (const t of [0.15, 0.35, 0.5, 0.65, 0.85]) {
-        const p = a.clone().lerp(b, t).addScaledVector(outward, 0.75);
+        const p = a.clone().lerp(b, t).addScaledVector(outward, stroke * 0.625);
         if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) continue;
         samples++;
         if (!triangles.some(tri => contains(p, tri[0], tri[1], tri[2]))) misses++;

@@ -6,7 +6,10 @@ const artwork = JSON.parse(readFileSync(new URL('../../app/ui/loadingArtwork.jso
   portrait: string;
 };
 
-for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+for (const viewport of [
+  { width: 390, height: 844 }, { width: 1440, height: 900 },
+  { width: 1920, height: 1080 }, { width: 2560, height: 1080 },
+]) {
   test.describe(`current loading art ${viewport.width}x${viewport.height}`, () => {
     test.use({ viewport, isMobile: viewport.width < 760, hasTouch: viewport.width < 760 });
     test('shows the matching current crop with the brand and caption inside the screen', async ({ page }) => {

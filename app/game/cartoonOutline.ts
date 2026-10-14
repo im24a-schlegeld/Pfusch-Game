@@ -89,7 +89,7 @@ function prepareGarmentOutlineNormals(geometry: THREE.BufferGeometry) {
 /** Weld UV/material duplicates before comparing adjacent faces. Only genuine
  * open borders, strong corners and material joins survive; coplanar triangle
  * diagonals and smooth tessellation never become a wireframe. Built once. */
-function hardContourGeometry(source: THREE.BufferGeometry) {
+function hardContourGeometry(source: THREE.BufferGeometry, minimumLoopSpan = 0) {
   const positions = source.getAttribute('position');
   const index = source.index;
   const keys = Array.from({ length: positions.count }, (_, i) =>
@@ -119,9 +119,39 @@ function hardContourGeometry(source: THREE.BufferGeometry) {
       } else edges.set(key, { a: from, b: to, normal: normal.clone(), material, border: false, uses: 1 });
     }
   }
+  const selected = [...edges.values()].filter(edge => edge.uses === 1 || edge.border);
+  const smallLoops = new Set<(typeof selected)[number]>();
+  if (minimumLoopSpan > 0) {
+    // Rotor perforations form disconnected tiny rings. Their real surfaces
+    // already show the holes; inking each ring crowds out the disc boundaries.
+    const adjacent = new Map<string, (typeof selected)[number][]>();
+    for (const edge of selected) for (const vertex of [edge.a, edge.b]) {
+      const list = adjacent.get(keys[vertex]);
+      if (list) list.push(edge);
+      else adjacent.set(keys[vertex], [edge]);
+    }
+    const seen = new Set<(typeof selected)[number]>();
+    const bounds = new THREE.Box3(), point = new THREE.Vector3(), span = new THREE.Vector3();
+    for (const first of selected) {
+      if (seen.has(first)) continue;
+      const component = [first]; seen.add(first); bounds.makeEmpty();
+      for (let cursor = 0; cursor < component.length; cursor++) {
+        const edge = component[cursor];
+        for (const vertex of [edge.a, edge.b]) {
+          bounds.expandByPoint(point.fromBufferAttribute(positions, vertex));
+          for (const next of adjacent.get(keys[vertex])!) if (!seen.has(next)) {
+            seen.add(next); component.push(next);
+          }
+        }
+      }
+      bounds.getSize(span);
+      if (Math.max(span.x, span.y, span.z) < minimumLoopSpan)
+        for (const edge of component) smallLoops.add(edge);
+    }
+  }
   const points: number[] = [];
-  for (const edge of edges.values()) {
-    if (edge.uses !== 1 && !edge.border) continue;
+  for (const edge of selected) {
+    if (smallLoops.has(edge)) continue;
     for (const vertex of [edge.a, edge.b]) points.push(positions.getX(vertex), positions.getY(vertex), positions.getZ(vertex));
     if (points.length >= CARTOON_CONTOUR_MAX_SEGMENTS * 6) break;
   }
@@ -192,7 +222,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     vertexShader,
     fragmentShader: 'void main() { gl_FragColor = vec4(0.008, 0.010, 0.014, 1.0); }',
     side: THREE.BackSide,
-    depthWrite: false,
+    depthWrite: true,
     depthTest: true,
     polygonOffset: true,
     polygonOffsetFactor: 1,
@@ -201,6 +231,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
   });
   Object.assign(material.defaultAttributeValues, { cartoonOutlineNormal: [0, 0, 0] });
   const candidates: { mesh: THREE.Mesh; geometry: THREE.BufferGeometry; priority: number; size: number; hardForm: boolean; exhaust: boolean }[] = [];
+  const details: THREE.Mesh[] = [];
   const ownedGeometry = new Set<THREE.BufferGeometry>();
   const scale = new THREE.Vector3(), size = new THREE.Vector3();
   const position = new THREE.Vector3(), rotation = new THREE.Quaternion();
@@ -216,6 +247,15 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh ||
         object.userData.cartoonOutline || object.userData.bikeSticker || object.userData.helmetSticker) return;
     const name = `${object.name} ${object.userData.importedPart ?? ''}`.toLowerCase();
+    // Real brake surfaces share their wheel/fork rig with an existing major
+    // form. Keep their edges in that draw, never inflate thin discs as shells.
+    const windscreen = object.userData.importedPart === 'r6_windscreen_glass:body';
+    const brake = /brake_(friction_steel|steel|dark_carrier|carrier|caliper):/.test(name) ||
+      /^moped_mechanics:(frontWheel|rearWheel)$/.test(object.userData.importedPart ?? '');
+    if (brake || windscreen) {
+      details.push(object);
+      return;
+    }
     const goggleFrame = object.name === 'motocross-goggle-frame';
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     // Older Töffli/sport rim lips are intentionally unnamed. Their topology
@@ -292,12 +332,13 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
       gl_Position.z -= 0.00001 * gl_Position.w;
     }`,
     fragmentShader: 'void main() { gl_FragColor = vec4(0.008, 0.010, 0.014, 1.0); }',
-    depthWrite: false,
+    depthWrite: true,
     depthTest: true,
     toneMapped: false,
   });
   const contourGeometry = new Map<THREE.BufferGeometry, THREE.BufferGeometry>();
   const contours: THREE.LineSegments[] = [];
+  const contourSources = new Set<THREE.Mesh>();
   for (const { mesh, geometry: sourceGeometry, hardForm, exhaust } of candidates) {
     if (!hardForm) continue;
     if (contours.length >= CARTOON_CONTOUR_MAX_MESHES) break;
@@ -311,12 +352,55 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
     contour.name = 'cartoon-hero-contour';
     contour.userData.cartoonContour = true;
     contour.userData.cartoonExhaust = exhaust;
+    contour.userData.cartoonContourRanges = [{ source: mesh.uuid, start: 0, count: geometry.getAttribute('position').count }];
+    mesh.userData.cartoonContourOwner = contour.uuid;
+    contourSources.add(mesh);
     contour.frustumCulled = false;
     contour.layers.mask = mesh.layers.mask;
     contour.raycast = () => {};
     mesh.add(contour);
     contours.push(contour);
   }
+  for (const mesh of details) {
+    const rotor = /brake_(friction_steel|steel):/.test(mesh.name);
+    mesh.getWorldScale(scale);
+    const edges = hardContourGeometry(mesh.geometry, rotor ? 0.035 / Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)) : 0);
+    const positions = edges.getAttribute('position');
+    if (!positions.count) { edges.dispose(); continue; }
+    // Exact shared parent means steering, suspension and wheel rotation stay
+    // identical. A neighbouring rig can look aligned at rest and drift in play.
+    const compatible = contours.filter(contour => contour.parent instanceof THREE.Mesh &&
+      contour.parent.userData.importedPart && contour.parent.parent === mesh.parent &&
+      contour.layers.mask === mesh.layers.mask);
+    const owner = compatible.find(contour =>
+      contour.geometry.getAttribute('position').count + positions.count <= CARTOON_CONTOUR_MAX_SEGMENTS * 2);
+    if (!owner) { edges.dispose(); continue; }
+    // Clone once before extending: the original edge cache may be borrowed by
+    // another contour. Neither the cached edges nor any source buffer changes.
+    if (!ownedGeometry.has(owner.geometry)) {
+      owner.geometry = owner.geometry.clone();
+      ownedGeometry.add(owner.geometry);
+    }
+    const original = owner.geometry.getAttribute('position');
+    const combined = new Float32Array((original.count + positions.count) * 3);
+    for (let vertex = 0; vertex < original.count; vertex++) {
+      combined[vertex * 3] = original.getX(vertex);
+      combined[vertex * 3 + 1] = original.getY(vertex);
+      combined[vertex * 3 + 2] = original.getZ(vertex);
+    }
+    const transform = new THREE.Matrix4().copy(owner.parent!.matrixWorld).invert().multiply(mesh.matrixWorld);
+    const point = new THREE.Vector3();
+    for (let vertex = 0; vertex < positions.count; vertex++) {
+      point.fromBufferAttribute(positions, vertex).applyMatrix4(transform);
+      point.toArray(combined, (original.count + vertex) * 3);
+    }
+    owner.geometry.setAttribute('position', new THREE.BufferAttribute(combined, 3));
+    owner.userData.cartoonContourRanges.push({ source: mesh.uuid, start: original.count, count: positions.count });
+    mesh.userData.cartoonContourOwner = owner.uuid;
+    contourSources.add(mesh);
+    edges.dispose();
+  }
+  root.updateWorldMatrix(false, true);
   let disposed = false;
   const result: CartoonOutline = {
     count: outlines.length,
@@ -330,6 +414,7 @@ export function createCartoonOutline(root: THREE.Object3D): CartoonOutline {
       disposed = true;
       for (const outline of outlines) outline.removeFromParent();
       for (const contour of contours) contour.removeFromParent();
+      for (const source of contourSources) delete source.userData.cartoonContourOwner;
       // Source geometry and skeleton belong to the vehicle, never the shell.
       material.dispose();
       contourMaterial.dispose();

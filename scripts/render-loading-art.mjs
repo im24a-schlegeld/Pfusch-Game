@@ -27,6 +27,7 @@ try {
     const verticalLimit = portrait ? 0.44 : 0.58;
     if (proof.cartoon !== 'cartoon' || proof.outlines < 1 || proof.outlines > 32 || proof.contours > 10 ||
       !proof.headlightMaskContour || !proof.ankle || !proof.street ||
+      (!portrait && proof.foregroundLampPartsRemoved < 1) ||
       proof.bounds[0] < -0.76 || proof.bounds[2] > 0.76 || proof.bounds[1] < -verticalLimit || proof.bounds[3] > verticalLimit)
       throw new Error('Loading artwork did not fit the current cartoon rider/street: ' + JSON.stringify(proof));
     const webp = Buffer.from(art.webp.split(',')[1], 'base64');
@@ -37,7 +38,8 @@ try {
   const references = await writeLoadingArtwork(exports[0].webp, exports[1].webp, output);
   await writeFile(resolve(output, 'render-proof.json'), JSON.stringify({ references, crops: exports.map(art => art.proof) }, null, 2) + '\n');
   const details = [];
-  for (const id of ['125', 'moped', '450', '701', 'scooter']) for (const view of ['front', 'side']) {
+  for (const id of ['125', 'moped', '450', '701', 'scooter']) for (const view of
+    ['front', 'side', ...(['450', '701', 'scooter'].includes(id) ? ['front-wheel'] : [])]) {
     const detail = await page.evaluate(({ id, view }) => window.exportBikeDetail(id, view), { id, view });
     if (detail.proof.panels.some(panel => panel.segments < 1) || detail.proof.outlines > 32 || detail.proof.contours > 10 ||
       !detail.proof.stockGuard || detail.proof.exhaustShells < 1 || detail.proof.exhaustContours < 1 || detail.proof.rims.length < 2 ||
