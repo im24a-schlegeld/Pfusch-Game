@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { newPlayer } from '../../app/domain/progression';
 
+// Account requests in this DOM fixture must stay on Playwright's mocked routes.
+// Real offline caching is exercised separately by offline.spec.ts.
+test.use({ serviceWorkers: 'block' });
+
 async function prepareAccount(page: Page, options: { customer?: boolean; standalone?: boolean } = {}) {
   let customer = options.customer ?? true;
   const player = { ...newPlayer(), id: 'shopify:123' };
@@ -20,6 +24,17 @@ async function prepareAccount(page: Page, options: { customer?: boolean; standal
       customer: { id: '123' }, player, compareDigest: 'a'.repeat(64), csrfToken: 'test-csrf-token-for-account',
       storage: { allowed: true, reason: 'subscribed', completedRuns: 0, freeRuns: 5 },
       purchases: { items: [], available: true, history: 'all' },
+    } : { error: 'login_required' }),
+  }));
+  // A logged-in garage prepares rewards in the background. An unmocked 401
+  // would correctly expire the account and remove the post-login hint.
+  await page.route('**/api/rewards/status', route => route.fulfill({
+    status: customer ? 200 : 401,
+    contentType: 'application/json',
+    body: JSON.stringify(customer ? {
+      available: false, reason: 'rewards_disabled', csrfToken: 'test-csrf-token-for-account',
+      verifiedPoints: 0, verifiedRuns: 0, pointsRequired: 50000, runsRequired: 10,
+      dailyPoints: 0, dailyCap: 10000, eligible: false, pending: false, reward: null,
     } : { error: 'login_required' }),
   }));
   await page.goto('/', { waitUntil: 'load' });
