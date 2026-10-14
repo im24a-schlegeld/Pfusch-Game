@@ -39,8 +39,23 @@ test('one Bell bursts, is saved before countdown, then continues the same ride o
   await page.getByRole('button', { name: /1 BELL EINLÖSEN/ }).click();
   await expect(ride).toHaveAttribute('data-revives', '0');
   await expect(ride).toHaveAttribute('data-resume-countdown', '0');
-  await expect(page.locator('.guardian-bell-burst')).toBeVisible();
-  await page.screenshot({ path: 'outputs/browser-pwa/guardian-bell-burst-mobile.png' });
+  const bellBurst = page.locator('.guardian-bell-burst');
+  await expect(bellBurst).toBeVisible();
+  // Playwright fast-forwards finite CSS animations during screenshots by default.
+  // Freeze the real animation at its visible whole-bell frame so the artifact
+  // proves the Gothic artwork appeared instead of capturing the departing dialog.
+  await bellBurst.evaluate(element => {
+    const animations = element.getAnimations({ subtree: true });
+    if (animations.length < 6) throw new Error('Guardian Bell burst animation is missing');
+    for (const animation of animations) {
+      animation.pause();
+      animation.currentTime = 200;
+    }
+  });
+  await expect(bellBurst.locator('.guardian-bell-burst-whole')).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: 'outputs/browser-pwa/guardian-bell-burst-mobile.png', animations: 'allow' });
+  // The real timeout completes the burst independently of CSS animations.
+  // Do not locate the bell again: it may have unmounted after the screenshot.
   await expect.poll(() => player.guardianBells.spent).toBe(1);
   await expect(ride).toHaveAttribute('data-revives', '1');
   await expect(page.locator('.guardian-bell-burst')).toHaveCount(0);
