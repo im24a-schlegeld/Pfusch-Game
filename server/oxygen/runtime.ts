@@ -7,6 +7,7 @@ import { handleRewardRequest, MAX_REWARD_FINISH_BODY_BYTES, type RewardAction } 
 import { readBoundedWebJson, withFetchDeadline } from '../shopify/http.js';
 import { authenticateOxygen, clearSessionCookies, finishLogin, readOxygenAuth, SHOP_ORIGINS, startLogin } from './auth.js';
 import installManifest from '../../public/manifest.json' with { type: 'json' };
+import { handleAdminOverview, renderAdminDashboard } from './adminDashboard.js';
 
 export type OxygenEnvironment = Record<string, string | undefined>;
 function harden(response: Response) {
@@ -39,6 +40,20 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       const config = '<script type="application/json" id="pfusch-runtime-config">{"version":1,"mode":"oxygen"}</script>';
       if (!html.includes('</head>')) throw new ApiError(503, 'shell_unavailable');
       return harden(new Response(request.method === 'HEAD' ? null : html.replace('</head>', `${config}</head>`), { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+    }
+    // Embedded Shopify Admin app: isolated from the storefront/customer routes.
+    // Shell has no customer information; JSON requires a signed App Bridge ID token.
+    if (path === '/admin' || path === '/admin/' || path === '/api/admin/overview') {
+      const shopify = readShopifyConfig(env), adminAuth = readOxygenAuth(env);
+      if (!shopify?.clientId || !adminAuth) return harden(json(503, { error: 'admin_not_configured' }));
+      if (url.origin !== adminAuth.origin) return harden(json(403, { error: 'invalid_origin' }));
+      const response = path === '/api/admin/overview'
+        ? await handleAdminOverview(request, shopify, withFetchDeadline(fetcher, 10000))
+        : request.method === 'GET' ? renderAdminDashboard(shopify) : json(405, { error: 'method_not_allowed' });
+      harden(response);
+      response.headers.set('Content-Security-Policy', `frame-ancestors https://admin.shopify.com https://${shopify.shop}`);
+      response.headers.set('Referrer-Policy', 'no-referrer');
+      return response;
     }
     const rewardRoutes: Record<string, RewardAction> = { '/api/rewards/status': 'status', '/api/rewards/run/start': 'run/start',
       '/api/rewards/run/finish': 'run/finish', '/api/rewards/claim': 'claim' };
