@@ -6,6 +6,7 @@ import './preview.css';
 import './pfusch-shop-ui.css';
 import './ride-update-v38.css';
 import { registerOfflineApp } from './services/offlineApp';
+import { startOnlinePresence } from './services/onlinePresence';
 
 interface AppErrorBoundaryState {
   error: Error | null;
@@ -57,6 +58,7 @@ createRoot(rootElement).render(
   </React.StrictMode>,
 );
 if ((import.meta as ImportMeta & { env: { PROD: boolean } }).env.PROD) registerOfflineApp();
+startOnlinePresence();
 
 import './refinement-v40.css';
 

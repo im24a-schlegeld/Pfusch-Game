@@ -62,7 +62,10 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   const before = await saved(page);
   await expect(footerAction(page)).toHaveText('Sticker platzieren');
   await expect(footerAction(page)).toBeDisabled();
-  await expect(page.locator('.sticker-more')).not.toHaveAttribute('open');
+  // The controls are intentionally open in the restored workshop.
+  await expect(page.locator('.sticker-settings')).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Stickergröße' })).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Stickerdrehung' })).toBeVisible();
   const size = page.locator('input[aria-label="Stickergröße"]');
   await expect(size).toHaveValue('0.09');
   await expect(page.locator('.sticker-targets').getByRole('button', { name: 'HELM', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -70,7 +73,7 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   await expect(placedButtons(page)).toHaveCount(1);
   await expect(footerAction(page)).toHaveText(`Für ${digitalPrice(product)} Coins kaufen & speichern`);
   expect(await saved(page)).toEqual(before);
-  await page.locator('.sticker-more > summary').click();
+  await expect(page.getByRole('button', { name: 'Sticker größer machen' })).toBeVisible();
   await size.press('ArrowRight');
   await size.press('ArrowRight');
   await size.press('ArrowRight');

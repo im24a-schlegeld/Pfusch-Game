@@ -1,0 +1,10 @@
+/* Give placement, size and rotation the prominence they had before the collapsed menu. */
+.sticker-workshop .sticker-settings{border-top:1px solid #555;border-bottom:1px solid #555;padding:10px 0 14px;margin:8px 0 12px}
+.sticker-workshop .sticker-settings h2{font-size:13px;letter-spacing:.06em;margin:6px 0 12px;font-weight:800}
+.sticker-workshop .sticker-settings .sticker-adjust{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 18px;margin:0}
+.sticker-workshop .sticker-settings .sticker-adjust>label{font-size:12px}
+.sticker-workshop .sticker-settings .sticker-adjust input[type=range]{min-height:38px;accent-color:#fff}
+.sticker-workshop .sticker-shortcuts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;grid-column:1/-1}
+.sticker-workshop .sticker-shortcuts button{flex:1 1 85px;min-height:43px;border:1px solid #777;border-radius:6px;background:#383838;color:#fff;font-size:12px}
+.sticker-workshop .sticker-shortcuts button:focus-visible{outline:2px solid white;outline-offset:2px}
+@media(max-width:540px){.sticker-workshop .sticker-settings .sticker-adjust{grid-template-columns:1fr;gap:6px}.sticker-workshop .sticker-shortcuts{grid-column:1}.sticker-workshop .sticker-shortcuts button{flex-basis:78px}}

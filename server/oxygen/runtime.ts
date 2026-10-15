@@ -8,6 +8,7 @@ import { readBoundedWebJson, withFetchDeadline } from '../shopify/http.js';
 import { authenticateOxygen, clearSessionCookies, finishLogin, readOxygenAuth, SHOP_ORIGINS, startLogin } from './auth.js';
 import installManifest from '../../public/manifest.json' with { type: 'json' };
 import { handleAdminOverview, renderAdminDashboard } from './adminDashboard.js';
+import { handleDashboardPlayers, handleGamePresence } from './adminManagement.js';
 
 export type OxygenEnvironment = Record<string, string | undefined>;
 function harden(response: Response) {
@@ -54,6 +55,31 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       response.headers.set('Content-Security-Policy', `frame-ancestors https://admin.shopify.com https://${shopify.shop}`);
       response.headers.set('Referrer-Policy', 'no-referrer');
       return response;
+    }
+    // Dedicated Shopify Admin staff endpoints. Browser input never supplies an identity.
+    if (path === '/api/admin/players') {
+      const shopify = readShopifyConfig(env), adminAuth = readOxygenAuth(env);
+      if (!shopify?.clientId || !adminAuth) return harden(json(503, { error: 'admin_not_configured' }));
+      if (url.origin !== adminAuth.origin) return harden(json(403, { error: 'invalid_origin' }));
+      if (request.method === 'POST' && request.headers.get('origin') !== adminAuth.origin)
+        return harden(json(403, { error: 'invalid_origin' }));
+      const response = await handleDashboardPlayers(request, shopify, withFetchDeadline(fetcher, 10000),
+        env.SHOPIFY_DASHBOARD_EDITOR_IDS);
+      harden(response);
+      response.headers.set('Content-Security-Policy', `frame-ancestors https://admin.shopify.com https://${shopify.shop}`);
+      response.headers.set('Referrer-Policy', 'no-referrer');
+      return response;
+    }
+    // Game play must never depend on presence telemetry; only valid customer sessions count.
+    if (path === '/api/presence/ping') {
+      if (request.method !== 'POST') return harden(json(405, { error: 'method_not_allowed' }));
+      const auth = readOxygenAuth(env), shopify = readShopifyConfig(env);
+      if (!auth || !shopify) return harden(json(503, { error: 'not_configured' }));
+      if (url.origin !== auth.origin || request.headers.get('origin') !== auth.origin)
+        return harden(json(403, { error: 'invalid_origin' }));
+      const bounded = withFetchDeadline(fetcher, 10000);
+      const identity = await authenticateOxygen(request, auth, bounded, Date.now(), cookies => { refreshedCookies = cookies; });
+      return authenticatedResponse(await handleGamePresence(request, shopify, identity.customerId, bounded));
     }
     const rewardRoutes: Record<string, RewardAction> = { '/api/rewards/status': 'status', '/api/rewards/run/start': 'run/start',
       '/api/rewards/run/finish': 'run/finish', '/api/rewards/claim': 'claim' };

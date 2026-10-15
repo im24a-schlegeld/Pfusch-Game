@@ -12,6 +12,7 @@ import { importedBikeReady, preloadImportedBike } from '../game/importedBikeAsse
 import { rendererSessions } from '../game/rendererSession';
 import { applyBikeStickers, applyHelmetStickers, helmetStickerSurfaces, stickerHelmet, stickerSurfaces } from '../game/bikeStickers';
 import './stickerWorkshop.css';
+import './stickerWorkshopUpdate.css';
 
 type Target = 'bike' | 'helmet';
 const emptyPlacements: StickerPlacement[] = [];
@@ -207,7 +208,13 @@ export default function StickerWorkshop({ player, account, products, initialTarg
         {placements.length > 0 && <button disabled={saving || placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ WEITERER STICKER</button>}
         {selected && <button disabled={saving} aria-label="Ausgewählten Sticker entfernen" onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0); setHint('Sticker entfernt. Speichern übernimmt die Änderung.'); }}>ENTFERNEN</button>}
       </div>
-      <details className="sticker-more"><summary>Weitere Optionen</summary><div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input disabled={saving} aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input disabled={saving} aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label></div></details>
+      <section className="sticker-more sticker-settings" aria-label="Sticker-Werkzeuge"><h2>GRÖSSE & DREHUNG</h2><div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input disabled={saving} aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input disabled={saving} aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label><div className="sticker-shortcuts" aria-label="Schnell einstellen">
+        <button type="button" disabled={saving} onClick={() => change(Math.max(0.04, Math.round((size - 0.01) * 100) / 100), 'size')} aria-label="Sticker kleiner machen">− KLEINER</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), Math.round((size + 0.01) * 100) / 100), 'size')} aria-label="Sticker größer machen">+ GRÖSSER</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.max(-Math.PI, rotation - Math.PI / 4), 'rotation')} aria-label="Sticker 45 Grad nach links drehen">↶ 45°</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.min(Math.PI, rotation + Math.PI / 4), 'rotation')} aria-label="Sticker 45 Grad nach rechts drehen">↷ 45°</button>
+        <button type="button" disabled={saving} onClick={() => change(0, 'rotation')} aria-label="Drehung zurücksetzen">DREHUNG 0°</button>
+      </div></div></section>
       <p className="sticker-save-note">Erst Speichern übernimmt deine Sticker auf Helm und Motorrad.</p>
       {product && <a className="sticker-original" href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>{product.title} · Original im Shop</span></a>}
     </section>
