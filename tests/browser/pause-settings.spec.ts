@@ -56,7 +56,8 @@ test('settings retain the paused ride, accept controls and return to pause', asy
     expect(box!.height).toBeLessThanOrEqual(viewport.height);
     await page.screenshot({ path: `outputs/pause-settings-${viewport.width}.png` });
   }
-  await settings.getByRole('button', { name: 'Zurück zur Pause' }).click();
+  // Explicit save now synchronizes pending settings and returns to pause.
+  await settings.getByRole('button', { name: 'Einstellungen speichern', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'PAUSE.' })).toBeVisible();
   await page.getByRole('button', { name: 'EINSTELLUNGEN', exact: true }).click();
   await page.keyboard.press('Escape');
@@ -77,7 +78,10 @@ test('settings retain the paused ride, accept controls and return to pause', asy
 
 test('fallback preview has no overlapping footer or cropped mobile content', async ({ page }) => {
   await page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
+    // Take the function from its descriptor so it remains explicitly bound via .apply(canvas, args).
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext');
+    if (!descriptor || typeof descriptor.value !== 'function') throw new Error('Canvas context unavailable');
+    const original = descriptor.value as HTMLCanvasElement['getContext'];
     HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args: Parameters<typeof original>) {
       if (String(args[0]).includes('webgl')) return null;
       return original.apply(this, args);

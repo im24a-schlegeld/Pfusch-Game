@@ -3,6 +3,8 @@ import { isRecord, sanitizeDigitalPlayer } from '../shopify/playerValidation.js'
 import { PLAYER_NAMESPACE, PLAYER_KEY, shopifyGraphql, type ShopifyFetch } from '../shopify/playerStore.js';
 import { verifyAdminIdToken } from './adminDashboard.js';
 import { levelForXp } from '../../app/domain/progression.js';
+import { applyAdminCosmeticEdit, cosmeticEditSummary, adminCosmeticsCatalog } from './adminCosmetics.js';
+import type { Player } from '../../app/domain/types.js';
 
 const PRESENCE_KEY = 'last_active_v1';
 const AUDIT_KEY = 'dashboard_audit_v1';
@@ -87,8 +89,9 @@ function auditEntry(actor: string, field: string, before: unknown, after: unknow
   return { at: new Date(now).toISOString(), actor, field, before, after };
 }
 async function updateGamePlayer(config: ShopifyConfig, request: ShopifyFetch, customerId: string,
-  field: 'coins' | 'xp' | 'bellsEarned', value: number, actor: string, now: number) {
-  if (!safeInt(value, field === 'bellsEarned' ? 100_000 : 1_000_000_000)) throw new ApiError(400, 'invalid_value');
+  field: 'coins' | 'xp' | 'bellsEarned' | 'highScore' | 'runsPlayed' | 'totalDistance' | 'totalNearMisses' | 'totalWheelieMeters' | 'cosmetic', value: unknown, actor: string, now: number) {
+  if (field !== 'cosmetic' && !safeInt(value, field === 'bellsEarned' ? 100_000 : 1_000_000_000))
+    throw new ApiError(400, 'invalid_value');
   const data = await shopifyGraphql(config, `query PfuschAdminEdit($id:ID!,$ns:String!,$player:String!,$audit:String!){
     customer(id:$id){id game:metafield(namespace:$ns,key:$player){value compareDigest}
       audit:metafield(namespace:$ns,key:$audit){value compareDigest}}
@@ -104,14 +107,17 @@ async function updateGamePlayer(config: ShopifyConfig, request: ShopifyFetch, cu
   // Validate the original server snapshot, not browser-supplied player state.
   sanitizeDigitalPlayer(player, customerId);
   const bells = player.guardianBells;
-  const original = field === 'bellsEarned' && isRecord(bells) ? bells.earned : player[field];
-  if (field === 'bellsEarned') {
-    if (!isRecord(bells) || !safeInt(bells.spent, 100_000) || value < bells.spent)
+  const original = field === 'cosmetic' ? cosmeticEditSummary(player as unknown as Player, value)
+    : field === 'bellsEarned' && isRecord(bells) ? bells.earned : player[field];
+  if (field === 'cosmetic') {
+    player = applyAdminCosmeticEdit(player as unknown as Player, value) as unknown as Record<string, unknown>;
+  } else if (field === 'bellsEarned') {
+    if (!isRecord(bells) || !safeInt(bells.spent, 100_000) || (value as number) < bells.spent)
       throw new ApiError(400, 'bells_below_spent');
     player.guardianBells = { ...bells, earned: value };
   } else {
     player[field] = value;
-    if (field === 'xp') player.level = levelForXp(value);
+    if (field === 'xp') player.level = levelForXp(value as number);
   }
   sanitizeDigitalPlayer(player, customerId);
   const auditField = data.customer.audit;
@@ -120,7 +126,8 @@ async function updateGamePlayer(config: ShopifyConfig, request: ShopifyFetch, cu
     try { const old: unknown = JSON.parse(auditField.value); if (Array.isArray(old)) history = old.slice(-24); }
     catch { throw new ApiError(502, 'invalid_admin_audit'); }
   }
-  const changes = [...history, auditEntry(actor, field, original, value, now)];
+  const changes = [...history, auditEntry(actor, field, original, field === 'cosmetic' && isRecord(value)
+    ? { kind: value.kind, key: value.key ?? value.slot ?? value.target ?? null, value: value.value ?? value.owned ?? value.productId ?? null } : value, now)];
   const input = [
     { ownerId: gid(customerId), namespace: PLAYER_NAMESPACE, key: PLAYER_KEY, type: 'json',
       value: JSON.stringify(player), compareDigest: saved.compareDigest },
@@ -140,22 +147,30 @@ async function updateGamePlayer(config: ShopifyConfig, request: ShopifyFetch, cu
   return { changed: field, value };
 }
 
-async function updateEmail(config: ShopifyConfig, request: ShopifyFetch, customerId: string,
-  value: string, expected: string) {
-  if (value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || expected.length > 320)
-    throw new ApiError(400, 'invalid_email');
-  const data = await shopifyGraphql(config, `query AdminCustomerEmail($id:ID!){customer(id:$id){id email}}`, { id: gid(customerId) }, request);
+/** Full digital snapshot only after verified Shopify staff authentication. */
+async function dashboardPlayerDetail(config: ShopifyConfig, request: ShopifyFetch, customerId: string) {
+  const data = await shopifyGraphql(config, `query PfuschAdminDetail($id:ID!,$ns:String!,$player:String!){
+    customer(id:$id){id game:metafield(namespace:$ns,key:$player){value}}
+  }`, { id: gid(customerId), ns: PLAYER_NAMESPACE, player: PLAYER_KEY }, request);
   if (!isRecord(data.customer) || data.customer.id !== gid(customerId)) throw new ApiError(404, 'customer_not_found');
-  if ((data.customer.email ?? '') !== expected) throw new ApiError(409, 'email_changed_reload');
-  const updated = await shopifyGraphql(config, `mutation PfuschAdminEmail($input:CustomerInput!){
-    customerUpdate(input:$input){customer{id email} userErrors{field code}}
-  }`, { input: { id: gid(customerId), email: value } }, request);
-  const payload = updated.customerUpdate;
-  if (!isRecord(payload) || !Array.isArray(payload.userErrors)) throw new ApiError(502, 'invalid_email_update');
-  if (payload.userErrors.length) throw new ApiError(409, 'email_update_rejected');
-  if (!isRecord(payload.customer) || payload.customer.id !== gid(customerId) || payload.customer.email !== value)
-    throw new ApiError(502, 'invalid_email_update');
-  return { changed: 'email', value };
+  const field = data.customer.game;
+  if (!isRecord(field) || typeof field.value !== 'string' || field.value.length > 50_000)
+    return { id: customerId, player: null };
+  try {
+    const decoded: unknown = JSON.parse(field.value);
+    const player = sanitizeDigitalPlayer(decoded, customerId);
+    // Never return identity cookies, server secrets or Shopify purchase entitlements.
+    return { id: customerId, player: {
+      coins: player.coins, xp: player.xp, level: player.level, leaderboardName: player.leaderboardName,
+      highScore: player.highScore, runsPlayed: player.runsPlayed, totalDistance: player.totalDistance,
+      totalNearMisses: player.totalNearMisses, totalWheelieMeters: player.totalWheelieMeters,
+      guardianBells: player.guardianBells, ownedItems: player.ownedItems, equipped: player.equipped,
+      variants: player.variants, bike: player.bike, paint: player.paint, rims: player.rims,
+      helmet: player.helmet, helmetColor: player.helmetColor, helmetVisor: player.helmetVisor,
+      pantsColor: player.pantsColor, shoesColor: player.shoesColor,
+      stickers: Object.fromEntries(Object.entries(player.stickers).map(([key, value]) => [key, value.length])),
+    } };
+  } catch { throw new ApiError(502, 'invalid_saved_player'); }
 }
 
 /** Admin pages require signed short-lived Shopify ID tokens on EVERY API call. */
@@ -165,7 +180,14 @@ export async function handleDashboardPlayers(request: Request, config: ShopifyCo
   try {
     const staffId = await verifyAdminIdToken(request.headers.get('authorization'), config, now);
     if (request.method === 'GET') {
-      const result = await listDashboardPlayers(config, fetcher, new URL(request.url), now);
+      const url = new URL(request.url);
+      if (url.searchParams.has('catalog')) return json(200, { catalog: adminCosmeticsCatalog() });
+      if (url.searchParams.has('id')) {
+        const id = parseId(url.searchParams.get('id'));
+        if (!id) throw new ApiError(400, 'invalid_customer');
+        return json(200, await dashboardPlayerDetail(config, fetcher, id));
+      }
+      const result = await listDashboardPlayers(config, fetcher, url, now);
       return json(200, { ...result, editor: isDashboardEditor(staffId, editorIds), staffId });
     }
     if (request.method !== 'POST') return json(405, { error: 'method_not_allowed' });
@@ -180,10 +202,14 @@ export async function handleDashboardPlayers(request: Request, config: ShopifyCo
       throw new ApiError(400, 'invalid_input');
     const customerId = parseId(value.id);
     if (!customerId) throw new ApiError(400, 'invalid_customer');
-    if (value.field === 'email' && typeof value.value === 'string' && typeof value.expected === 'string')
-      return json(200, await updateEmail(config, fetcher, customerId, value.value, value.expected));
-    if ((value.field === 'coins' || value.field === 'xp' || value.field === 'bellsEarned') && typeof value.value === 'number')
+    // E-mail updates are deliberately forbidden, even for allowlisted editors.
+    if (value.field === 'email') throw new ApiError(403, 'email_read_only');
+    if ((value.field === 'coins' || value.field === 'xp' || value.field === 'bellsEarned' ||
+      value.field === 'highScore' || value.field === 'runsPlayed' || value.field === 'totalDistance' ||
+      value.field === 'totalNearMisses' || value.field === 'totalWheelieMeters') && typeof value.value === 'number')
       return json(200, await updateGamePlayer(config, fetcher, customerId, value.field, value.value, staffId, now));
+    if (value.field === 'cosmetic' && isRecord(value.value))
+      return json(200, await updateGamePlayer(config, fetcher, customerId, 'cosmetic', value.value, staffId, now));
     throw new ApiError(400, 'invalid_field');
   } catch (error) { return adminError(error); }
 }

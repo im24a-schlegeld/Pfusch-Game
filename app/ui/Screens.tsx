@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/prefer-tag-over-role -- The existing leaderboard is a custom CSS grid with deliberate ARIA table semantics; restructuring it would change existing gameplay layout. */
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -38,6 +39,7 @@ import { dailySignMask } from '../domain/dailySigns';
 import { isReferralCode, rankedGameShare, sharePeriodLabel, type SharePeriod } from '../domain/gameShare';
 import { ShareAction } from './GameShare';
 import OfflineSettings from './OfflineSettings';
+import './settingsConfirm.css';
 import SignProgress from './SignProgress';
 import { useTouchInput } from './useTouchInput';
 import './ride-touch-controls.css';
@@ -273,7 +275,7 @@ export function Rewards({
       <p className="catalog-note">
         Alle Level-Belohnungen gelten im Spiel. Ausrüstung findest du in der Garage.
       </p>
-      <RealRewardCard service={services.rewards.real} loginHref={loginHref} onSignIn={onLogin ?? services.auth.login} />
+      <RealRewardCard service={services.rewards.real} loginHref={loginHref} onSignIn={onLogin ?? (services.auth.login ? () => { services.auth.login?.(); } : undefined)} />
     </main>
   );
 }
@@ -319,7 +321,7 @@ export function Leaderboard({
     const savedAtStart = saveRevision.current;
     const date = dayKey();
     setResult({ snapshot: null, period, date, loading: true, error: false });
-    const fetch = services.leaderboard.fetch;
+    const fetch = services.leaderboard.fetch?.bind(services.leaderboard);
     if (!fetch) {
       setResult({ snapshot: { entries: services.leaderboard.list(player, period), source: 'local', message: 'Deine gespeicherten Fahrten auf diesem Gerät.' }, period, date, loading: false, error: false });
       return;
@@ -446,6 +448,8 @@ export function SettingsScreen({
   accountKind = 'guest',
 }: Base & { services: Services; update: (p: Player) => void; onTutorial?: () => void; onAccess?: () => void; loginHref?: string; backLabel?: string; duringRide?: boolean; accountKind?: 'guest' | 'customer' }) {
   const { touchCapable } = useTouchInput();
+  const [confirmSaving, setConfirmSaving] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('Einstellungen werden automatisch vorgemerkt. Mit Speichern bestätigen.');
   const buttonMode = player.settings.touchControls === 'buttons';
   const syncStatus = services.players.syncStatus;
   const access = services.players.getAccess?.();
@@ -453,6 +457,22 @@ export function SettingsScreen({
     key: 'muted' | 'reducedMotion' | 'quality',
     value: boolean | 'auto' | 'low',
   ) => update({ ...player, settings: { ...player.settings, [key]: value } });
+  async function confirmSettings() {
+    if (confirmSaving) return;
+    setConfirmSaving(true);
+    setConfirmMessage('Speichere deine Einstellungen …');
+    try {
+      await services.players.flush?.();
+      const currentState = services.players.syncStatus;
+      if (currentState && ['offline', 'conflict', 'loading', 'saving', 'unavailable'].includes(currentState.state)) {
+        setConfirmMessage(currentState.message || 'Noch nicht synchronisiert. Bitte Verbindung prüfen und erneut speichern.');
+        return;
+      }
+      back();
+    } catch {
+      setConfirmMessage('Speichern nicht bestätigt. Bitte Verbindung prüfen und erneut versuchen.');
+    } finally { setConfirmSaving(false); }
+  }
   function exportSave() {
     const blob = new Blob([services.players.export(player)], {
       type: 'application/json',
@@ -561,7 +581,7 @@ export function SettingsScreen({
         {access && access.reason !== 'subscribed' && <p>{Math.min(access.completedRuns, access.freeRuns)} von {access.freeRuns} freien Fahrten abgeschlossen. Danach ist ein aktives PFUSCH-Newsletter-Abo für weitere Fahrten und neue Spielstände nötig.</p>}
         <div className="settings-actions">
           {!duringRide && accountKind === 'guest' && (loginHref ? <a className="button" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN</a>
-            : services.auth.login && <button className="button" onClick={services.auth.login}>MIT PFUSCH-KONTO ANMELDEN</button>)}
+            : services.auth.login && <button className="button" onClick={() => { services.auth.login?.(); }}>MIT PFUSCH-KONTO ANMELDEN</button>)}
           {onAccess && <button className="button" onClick={onAccess}><Mail size={18} aria-hidden="true" /> NEWSLETTER-STATUS</button>}
           <button className="button" onClick={exportSave}>
             <Download size={18} aria-hidden="true" /> SPIELSTAND EXPORTIEREN
@@ -569,6 +589,13 @@ export function SettingsScreen({
         </div>
       </section>
       {!duringRide && <OfflineSettings />}
+      <section className="settings-confirm-footer" aria-label="Einstellungen speichern">
+        <output aria-live="polite">{confirmMessage}</output>
+        <button type="button" className="button primary" disabled={confirmSaving}
+          onClick={() => { void confirmSettings(); }} aria-label="Einstellungen speichern">
+          {confirmSaving ? 'SPEICHERT …' : 'EINSTELLUNGEN SPEICHERN'}
+        </button>
+      </section>
       <footer className="settings-section">
         <span className="eyebrow">WHEELIE ESCAPE · PFUSCH · V1.0</span>
         <p>Echte Strassen sind keine Rennstrecke. Risiko bleibt im Spiel.</p>
