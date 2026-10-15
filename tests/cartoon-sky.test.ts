@@ -19,7 +19,7 @@ function fixture() {
   const mesh = (name: string) => sky.root.getObjectByName(`cartoon-${name}`) as Mesh;
   return {
     scene, camera, world, sky, mesh, tunnel,
-    lighting(from: WorldLighting, to = from) {
+    lighting: (from: WorldLighting, to: WorldLighting = from) => {
       at.mockImplementation(distance => distance < 100
         ? { ...segment, id: 0, start: 0, end: 100, lighting: from }
         : { ...segment, lighting: to });
@@ -36,6 +36,9 @@ describe('cartoon sky', () => {
     expect(clouds.count).toBeGreaterThan(0);
     expect(clouds.count).toBeLessThanOrEqual(56);
     for (let time = 0; time < 120; time++) sky.update(world, 150, time * 10);
+    expect(clouds.visible).toBe(false);
+    expect(mesh('cloud-outline').visible).toBe(false);
+    expect(mesh('stars').geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(sky.root.children.map(object => (object as Mesh).geometry)).toEqual(geometries);
     for (const object of sky.root.children as Mesh[]) {
       expect(object.castShadow).toBe(false);

@@ -132,11 +132,11 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
           float pfuschFarRoad = smoothstep(4.0, 10.0, pfuschLightRange) *
                                 (1.0 - smoothstep(40.0, 72.0, pfuschLightRange));
           pfuschRoadForwardFill += spotLights[pfuschLampIndex].color *
-                                   (0.052 * pfuschBeamEdge * pfuschFarRoad);
+                                   (0.034 * pfuschBeamEdge * pfuschFarRoad);
         }
       #endif
       // Calibrated, bounded diffuse fill; no emissive override of the road paint.
-      outgoingLight += diffuseColor.rgb * min(pfuschRoadForwardFill, vec3(2.1));` : ''}
+      outgoingLight += diffuseColor.rgb * min(pfuschRoadForwardFill, vec3(1.45));` : ''}
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
       float cartoonWidth = min(0.12, max(0.025, fwidth(cartoonFacing) * 1.15));
       float cartoonInk = (1.0 - smoothstep(0.045, 0.045 + cartoonWidth, cartoonFacing)) * cartoonFacingInkStrength;

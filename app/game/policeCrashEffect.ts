@@ -24,7 +24,7 @@ export function policeImpactPlacement(
     // Camera-local lateral offset keeps a crash behind the rider on its true
     // side; perspective projection would mirror it across the screen.
     x: 50 + Math.max(-1, Math.min(1, local.x / 2.8)) * 30,
-    y: 100,
+    y: 103,
   };
 }
 
@@ -89,8 +89,13 @@ export function createPoliceCrashEffect(host: HTMLElement, initialSerial = 0) {
         const position = policeImpactPlacement(impact, camera, distance);
         elapsed = position.show ? 0 : 2;
         root.dataset.policeImpact = String(seen);
-        root.style.left = `${position.x}%`;
-        root.style.top = `${position.y}%`;
+      }
+      // Camera/player lane movement must not freeze the overlay at its old
+      // screen coordinate. Reproject the stored, real police impact position.
+      if (elapsed < 1.05) {
+        const anchor = policeImpactPlacement(impact, camera, distance);
+        root.style.left = `${anchor.x}%`;
+        root.style.top = `${anchor.y}%`;
       }
       if (active) elapsed += Math.max(0, Math.min(0.1, dt));
       const duration = 1.05;

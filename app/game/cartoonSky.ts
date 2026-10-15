@@ -124,7 +124,7 @@ function makeStarsGeometry() {
     // Stable low-discrepancy positions; visual RNG never touches the game seed.
     const x = ((i * 0.61803398875) % 1) * 1.92 - 0.96;
     const y = 0.16 + ((i * 0.38196601125 + i * i * 0.071) % 1) * 0.78;
-    const r = i % 5 === 0 ? 0.0075 : 0.0035;
+    const r = i % 5 === 0 ? 0.0045 : 0.0024;
     positions.push(
       x, y + r, 0, x - r * 0.65, y, 0, x, y - r, 0,
       x, y + r, 0, x, y - r, 0, x + r * 0.65, y, 0,
@@ -275,6 +275,10 @@ export function makeCartoonSky(scene: THREE.Scene, camera: THREE.PerspectiveCame
   stars.renderOrder = -103;
   for (const object of [sun, moon, stars, sunHalo, moonHalo]) object.frustumCulled = false;
   root.add(clouds, cloudOutline, sun, moon, stars, sunHalo, moonHalo);
+  // No clouds in any weather/lighting state. Keep the geometry pooled but
+  // completely skip both cloud GPU draws; the sun, moon and stars stay.
+  clouds.visible = false;
+  cloudOutline.visible = false;
   scene.add(root);
   const matrix = new THREE.Matrix4();
   const clusterMatrix = new THREE.Matrix4();

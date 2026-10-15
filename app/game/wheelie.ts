@@ -185,3 +185,12 @@ export function wheelieScoreFactor(
   );
   return lift * (1 + 2 * lift) * steadiness;
 }
+
+/** Bounded multiplier for uninterrupted wheelie/risky-wheelie streaks.
+ * Used by both the real game and server replay, so rewards stay verifiable. */
+export function wheelieDurationMultiplier(seconds: number, riskySeconds: number) {
+  if (!Number.isFinite(seconds) || !Number.isFinite(riskySeconds)) return 1;
+  const sustained = 1 + Math.min(Math.max(seconds, 0) / 8, 1.5);
+  const danger = 1 + Math.min(Math.max(riskySeconds, 0) / 5, 1.2);
+  return sustained * danger;
+}

@@ -293,7 +293,7 @@ for (const device of ['mobile', 'desktop'] as const) {
         expect(sample.drawCalls).toBeGreaterThan(20);
         expect(sample.triangles).toBeGreaterThan(1000);
         expect(sample.sky.visible).toBe(true);
-        expect(sample.sky.cloudsVisible).toBe(true);
+        expect(sample.sky.cloudsVisible).toBe(false);
         expect(sample.sky.cloudCount).toBeGreaterThan(0);
         // Seven irregular clouds now share one bounded instanced puff mesh.
         expect(sample.sky.cloudCount).toBeLessThanOrEqual(56);

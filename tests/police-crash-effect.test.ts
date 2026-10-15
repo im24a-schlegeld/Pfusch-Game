@@ -38,7 +38,7 @@ describe('offscreen police impact feedback', () => {
         expect(placement.show).toBe(true);
         expect(placement.x).toBeGreaterThanOrEqual(20);
         expect(placement.x).toBeLessThanOrEqual(80);
-        expect(placement.y).toBe(100);
+        expect(placement.y).toBe(103);
       }
       expect([
         ...camera.position.toArray(),
@@ -66,8 +66,8 @@ describe('offscreen police impact feedback', () => {
     expect(left.x).toBeLessThan(40);
     expect(right.x).toBeGreaterThan(60);
     expect(left.x + right.x).toBeCloseTo(100);
-    expect(left.y).toBe(100);
-    expect(right.y).toBe(100);
+    expect(left.y).toBe(103);
+    expect(right.y).toBe(103);
     // Moving the same wreck farther behind the rider preserves its side.
     expect(policeImpactPlacement(impact, camera, 130).x).toBeCloseTo(left.x);
   });
@@ -90,7 +90,7 @@ describe('offscreen police impact feedback', () => {
     );
     expect(placement.show).toBe(true);
     expect(placement.x).toBeLessThan(40);
-    expect(placement.y).toBe(100);
+    expect(placement.y).toBe(103);
   });
 });
 
@@ -214,6 +214,17 @@ describe('police burst lifecycle', () => {
     effect.dispose();
   });
 
+  it('reprojects the recorded crash position if the camera changes lanes during the burst', () => {
+    const { node, effect, camera, impact } = setup();
+    effect.update(impact, camera, 100, 0.03, true, false);
+    const first = node.style.left;
+    camera.position.x = 0.9;
+    camera.lookAt(0.9, 1.4, -12);
+    effect.update(impact, camera, 100, 0.03, true, false);
+    expect(node.style.left).not.toBe(first);
+    expect(node.style.top).toBe('103%');
+  });
+
   it('freezes throughout pause or blur and expires without replay during an active crash presentation', () => {
     const { node, effect, camera, impact, shapes } = setup();
     effect.update(impact, camera, 100, 0.05, true, false);
@@ -231,7 +242,7 @@ describe('police burst lifecycle', () => {
       effect.update(impact, camera, 100, 0.1, false, false);
     expect(node.style).toEqual(paused);
     expect(shapes.map((shape) => shape.attributes)).toEqual(pausedShapes);
-    expect(node.style.top).toBe('100%');
+    expect(node.style.top).toBe('103%');
     expect(node.style.transform).toBe('translate(-50%, -100%)');
     expect(node.innerHTML).not.toMatch(
       /<text\b|police-impact-(?:smoke|cloud)/i,

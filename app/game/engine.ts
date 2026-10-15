@@ -15,6 +15,7 @@ import {
   advanceBalance,
   balanceAccuracy,
   wheelieScoreFactor,
+  wheelieDurationMultiplier,
   tailScrape,
 } from './wheelie';
 import {
@@ -176,6 +177,9 @@ export class Engine {
   blitzerFlashSerial = 0;
   blitzerFlashRemaining = 0;
   balancedSeconds = 0;
+  // Separate uninterrupted streaks. They reset after landing/revive.
+  wheelieStreakSeconds = 0;
+  riskyWheelieStreakSeconds = 0;
   wheelieMeters = 0;
   nearMisses = 0;
   jumps = 0;
@@ -435,6 +439,7 @@ export class Engine {
     this.height = this.velocityY = this.wheelieAngle = this.wheelieAngularVelocity = 0;
     this.throttleLoad = this.forwardLoad = this.liftPull = this.balanceQuality = 0;
     this.towPitch = this.scrapeIntensity = this.balancedSeconds = 0;
+    this.wheelieStreakSeconds = this.riskyWheelieStreakSeconds = 0;
     this.wheelie = this.towJumpActive = this.constructionJumpActive = this.airLaneChangeUsed = false;
     this.liftArmed = true;
     this.scrapeMaterial = null;
@@ -1545,6 +1550,9 @@ export class Engine {
       this.wheelieMeters += travel;
       this.balancedSeconds += dt * this.balanceQuality;
       const risky = this.wheelieAngle > this.balanceProfile.balancePoint + 0.18;
+      this.wheelieStreakSeconds += dt;
+      this.riskyWheelieStreakSeconds = risky ? this.riskyWheelieStreakSeconds + dt : 0;
+      const durationBonus = wheelieDurationMultiplier(this.wheelieStreakSeconds, this.riskyWheelieStreakSeconds);
       const tunnelWheelieBonus = this.environment.kind === 'tunnel' ? 1.1 : 1;
       this.gain(
         risky ? 'RISKY WHEELIE' : 'WHEELIE',
@@ -1552,10 +1560,15 @@ export class Engine {
           6 *
           wheelieScoreFactor(this, this.balanceProfile) *
           (this.speed / 22) *
-          tunnelWheelieBonus,
+          tunnelWheelieBonus *
+          durationBonus,
         'wheelie',
       );
-    } else this.balancedSeconds = 0;
+    } else {
+      this.balancedSeconds = 0;
+      this.wheelieStreakSeconds = 0;
+      this.riskyWheelieStreakSeconds = 0;
+    }
     this.spawnIn -= travel;
     let policeEscapeTarget: Obstacle | null = null;
     // Landing ends eligibility. An already-entered side contact lasts only

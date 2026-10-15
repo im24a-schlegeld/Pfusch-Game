@@ -148,7 +148,7 @@ it('adds a controlled forward light pool only to asphalt inside the real headlam
   expect(roadShader).toContain('spotLights[pfuschLampIndex].coneCos');
   expect(roadShader).toContain('spotLights[pfuschLampIndex].color');
   expect(roadShader).toContain('smoothstep(4.0, 10.0, pfuschLightRange)');
-  expect(roadShader).toContain('min(pfuschRoadForwardFill, vec3(2.1))');
+  expect(roadShader).toContain('min(pfuschRoadForwardFill, vec3(1.45))');
   expect(roadShader).not.toContain('uniform float pfuschRoadFakeLamp');
   const wall = new THREE.MeshStandardMaterial({ color: '#b0b9b5' });
   applyCartoonMaterial(wall);
