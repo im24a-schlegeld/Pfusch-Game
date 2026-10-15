@@ -138,6 +138,26 @@ it('keeps projected asphalt light continuous without changing the world or hero 
   applyCartoonMaterial(rider);
   expect(compile(rider).fragmentShader).not.toContain('outgoingLight = cartoonDiffuse + totalEmissiveRadiance;');
 });
+it('adds a controlled forward light pool only to asphalt inside the real headlamp cones', () => {
+  const road = new THREE.MeshStandardMaterial({ color: '#3c4651' });
+  road.userData.pfuschSmoothRoadLighting = true;
+  applyCartoonMaterial(road, false, false);
+  const roadShader = compile(road).fragmentShader;
+  expect(roadShader).toContain('PFUSCH_ROAD_FORWARD_BEAM');
+  expect(roadShader).toContain('spotLights[pfuschLampIndex].position + vViewPosition');
+  expect(roadShader).toContain('spotLights[pfuschLampIndex].coneCos');
+  expect(roadShader).toContain('spotLights[pfuschLampIndex].color');
+  expect(roadShader).toContain('smoothstep(4.0, 10.0, pfuschLightRange)');
+  expect(roadShader).toContain('min(pfuschRoadForwardFill, vec3(2.1))');
+  expect(roadShader).not.toContain('uniform float pfuschRoadFakeLamp');
+  const wall = new THREE.MeshStandardMaterial({ color: '#b0b9b5' });
+  applyCartoonMaterial(wall);
+  expect(compile(wall).fragmentShader).not.toContain('PFUSCH_ROAD_FORWARD_BEAM');
+  const rider = new THREE.MeshStandardMaterial();
+  rider.userData.pfuschCartoonHero = true;
+  applyCartoonMaterial(rider);
+  expect(compile(rider).fragmentShader).not.toContain('PFUSCH_ROAD_FORWARD_BEAM');
+});
 it('composes streamed surface coordinates and box ink without noisy asphalt grain', () => {
   const material = new THREE.MeshStandardMaterial();
   const origin = { value: 120 };

@@ -115,6 +115,28 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       ${!hero ? `// Continuous real spotlight irradiance on roadway and tunnel walls.
       // Preserve painted surfaces and their independent outlines; hero stays cel-shaded.
       outgoingLight = cartoonDiffuse + totalEmissiveRadiance;` : ''}
+      ${smoothRoad ? `// PFUSCH_ROAD_FORWARD_BEAM: asphalt only; spot lights alone control this pool.
+      // The actual headlight position, cone and strength come from Three's
+      // existing lighting uniforms, so daylight (intensity 0) stays unchanged.
+      // Avoid a second bright disk by fading up beyond the first few metres.
+      vec3 pfuschRoadForwardFill = vec3(0.0);
+      #if NUM_SPOT_LIGHTS > 0
+        for (int pfuschLampIndex = 0; pfuschLampIndex < NUM_SPOT_LIGHTS; pfuschLampIndex++) {
+          vec3 pfuschToLamp = spotLights[pfuschLampIndex].position + vViewPosition;
+          float pfuschLightRange = length(pfuschToLamp);
+          float pfuschSpotCos = dot(pfuschToLamp / max(pfuschLightRange, 0.001),
+                                   spotLights[pfuschLampIndex].direction);
+          float pfuschBeamEdge = smoothstep(spotLights[pfuschLampIndex].coneCos,
+                                           spotLights[pfuschLampIndex].penumbraCos,
+                                           pfuschSpotCos);
+          float pfuschFarRoad = smoothstep(4.0, 10.0, pfuschLightRange) *
+                                (1.0 - smoothstep(40.0, 72.0, pfuschLightRange));
+          pfuschRoadForwardFill += spotLights[pfuschLampIndex].color *
+                                   (0.052 * pfuschBeamEdge * pfuschFarRoad);
+        }
+      #endif
+      // Calibrated, bounded diffuse fill; no emissive override of the road paint.
+      outgoingLight += diffuseColor.rgb * min(pfuschRoadForwardFill, vec3(2.1));` : ''}
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
       float cartoonWidth = min(0.12, max(0.025, fwidth(cartoonFacing) * 1.15));
       float cartoonInk = (1.0 - smoothstep(0.045, 0.045 + cartoonWidth, cartoonFacing)) * cartoonFacingInkStrength;
