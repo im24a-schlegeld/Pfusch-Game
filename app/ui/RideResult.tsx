@@ -10,6 +10,7 @@ export default function RideResult({
   reward,
   start,
   startLocked = false,
+  shopRewardMessage = '',
   garage,
 }: {
   player: Player;
@@ -17,6 +18,7 @@ export default function RideResult({
   reward: RunReward;
   start: () => void;
   startLocked?: boolean;
+  shopRewardMessage?: string;
   garage: () => void;
 }) {
   const score = fmt(run.score);
@@ -60,6 +62,7 @@ export default function RideResult({
             <strong>+{reward.xp} XP</strong>
             <strong>+{reward.coins} Coins</strong>
           </div>
+          {shopRewardMessage && <output className="result-access-notice">{shopRewardMessage}</output>}
           <p className="result-level-v38">
             Stufe {player.level}
             {player.level >= 10

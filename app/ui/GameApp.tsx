@@ -89,6 +89,7 @@ export default function GameApp() {
   } | null>(null);
   const [runKey, setRunKey] = useState(0);
   const [verifiedChallenge, setVerifiedChallenge] = useState<VerifiedRunChallenge | null>(null);
+  const [shopRewardMessage, setShopRewardMessage] = useState('');
   const activeRun = useRef(0);
   const activeRunOwner = useRef<string | null>(null);
   const pendingResult = useRef<{ run: RunStats; reward: RunReward } | null>(
@@ -292,7 +293,22 @@ export default function GameApp() {
       activeRunOwner.current = current.current.id;
       pendingResult.current = null;
       setResult(null);
-      setVerifiedChallenge(services.rewards.real?.takeChallenge(current.current.bike) ?? null);
+      // Wait for the signed server challenge before fixing the ride seed.
+      // A background preparation request may still be in flight when the user
+      // taps Start; consuming it early silently loses real-shop reward credit.
+      const rewardService = services.rewards.real;
+      const shopCustomer = current.current.id.startsWith('shopify:');
+      if (shopCustomer && rewardService) {
+        await rewardService.prepare(current.current.bike);
+        if (request !== accessRequest.current || !current.current) return;
+      }
+      const challenge = shopCustomer && rewardService
+        ? rewardService.takeChallenge(current.current.bike) : null;
+      setVerifiedChallenge(challenge);
+      setShopRewardMessage(shopCustomer
+        ? challenge ? 'Shop-Fahrt wird verifiziert. Die Gutschrift erfolgt nach Fahrtende.'
+          : 'Diese Fahrt hat keinen bestätigten Shop-Nachweis. Prüfe Anmeldung, Verbindung und Belohnungsstatus.'
+        : 'Gastfahrt: Punkte zählen lokal, nicht für den Shopify-Rabatt.');
       setRunKey(activeRun.current);
       setScreen('ride');
       enteredRide = true;
@@ -326,7 +342,29 @@ export default function GameApp() {
     update(outcome.player);
     pendingResult.current = { run, reward: outcome.reward };
     setResult(pendingResult.current);
-    if (verified) void services.rewards.real?.finish(verified).catch(() => {});
+    if (verified && services.rewards.real) {
+      const rewardService = services.rewards.real;
+      const owner = current.current.id;
+      setShopRewardMessage('Shop-Gutschrift wird vom Server geprüft …');
+      void rewardService.finish(verified).then(status => {
+        if (generation !== activeRun.current || current.current?.id !== owner) return;
+        const progress = status.campaign
+          ? `${status.campaign.progress.toLocaleString('de-CH')} / ${status.campaign.target.toLocaleString('de-CH')}`
+          : status.verifiedPoints.toLocaleString('de-CH');
+        const credited = (status as typeof status & { creditedPoints?: number }).creditedPoints;
+        setShopRewardMessage(typeof credited === 'number'
+          ? credited > 0
+            ? `Shop-Server bestätigt: +${credited.toLocaleString('de-CH')} Punkte. Aufgabenfortschritt: ${progress}.`
+            : `Shop-Server bestätigt, aber 0 Punkte gutgeschrieben. Prüfe 20 s Mindestdauer, 100 Punkte und Tageslimit. Fortschritt: ${progress}.`
+          : `Shop-Server antwortete. Aufgabenfortschritt: ${progress}.`);
+      }).catch((reason: unknown) => {
+        if (generation !== activeRun.current || current.current?.id !== owner) return;
+        const code = reason instanceof Error ? reason.message : 'unbekannt';
+        setShopRewardMessage(`Shop-Gutschrift NICHT bestätigt (${code}). Prüfe dein Konto unter Belohnungen.`);
+      });
+    } else if (current.current.id.startsWith('shopify:')) {
+      setShopRewardMessage('Diese Fahrt wurde ohne gültigen Shop-Nachweis gestartet und zählt nicht zur Rabattaufgabe.');
+    }
     services.analytics.track('run_finished', {
       score: run.score,
       distance: run.distance,
@@ -423,6 +461,8 @@ export default function GameApp() {
         {startingRide && (
           <LoadingScreen label="FAHRT WIRD VORBEREITET" fullScreen reducedMotion={player.settings.reducedMotion} />
         )}
+        {player.id.startsWith('shopify:') && !verifiedChallenge &&
+          <output className="toast">{shopRewardMessage}</output>}
       </>
     );
   const back = () => navigate('garage');
@@ -513,7 +553,8 @@ export default function GameApp() {
       {screen === 'invitation' && sharedGame && <SharedGame share={sharedGame} start={start} garage={back} />}
       {screen === 'results' && result && (
         <RideResult player={player} run={result.run} reward={result.reward}
-          start={start} startLocked={!access.allowed} garage={() => navigate('garage')} />
+          start={start} startLocked={!access.allowed} shopRewardMessage={shopRewardMessage}
+          garage={() => navigate('garage')} />
       )}
       {screen === 'challenges' && (
         <Challenges player={player} back={back} start={start} />

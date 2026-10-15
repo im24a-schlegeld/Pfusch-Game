@@ -9,9 +9,17 @@ test('one Bell bursts, is saved before countdown, then continues the same ride o
   player.settings.tutorialSeen = true;
   player.settings.tutorialHintsSeen = ['controls', 'ramp', 'police', 'radar', 'traffic', 'signs'];
   player.settings.muted = true;
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
     Math.random = () => 5489 / 0xffffffff;
+    // The production Bell has an 800 ms fallback. Extend only that test's
+    // timer while its DOM overlay exists; a synthetic animationend will
+    // complete the same real React handler immediately after screenshot.
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) =>
+      nativeSetTimeout(handler, delay === 800 && document.querySelector('.guardian-bell-burst')
+        ? 60_000 : delay, ...args)) as typeof window.setTimeout;
   });
   await page.route('**/api/player', route => {
     if (route.request().method() === 'POST') player = route.request().postDataJSON().player;
@@ -36,6 +44,8 @@ test('one Bell bursts, is saved before countdown, then continues the same ride o
   await page.keyboard.down('ArrowDown');
   await expect(ride).toHaveAttribute('data-phase', 'crashed', { timeout: 20000 });
   await page.keyboard.up('ArrowDown');
+  // Keep only the test's CSS animation visible until the screenshot is saved.
+  await page.addStyleTag({ content: '.guardian-bell-burst { --guardian-bell-duration: 60000ms !important; }' });
   await page.getByRole('button', { name: /1 BELL EINLÖSEN/ }).click();
   await expect(ride).toHaveAttribute('data-revives', '0');
   await expect(ride).toHaveAttribute('data-resume-countdown', '0');
@@ -49,12 +59,19 @@ test('one Bell bursts, is saved before countdown, then continues the same ride o
     if (animations.length < 6) throw new Error('Guardian Bell burst animation is missing');
     for (const animation of animations) {
       animation.pause();
-      animation.currentTime = 200;
+      // 25% of the deliberately extended test animation: the whole bell is visible.
+      animation.currentTime = 15000;
     }
   });
   await expect(bellBurst.locator('.guardian-bell-burst-whole')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: 'outputs/browser-pwa/guardian-bell-burst-mobile.png', animations: 'allow' });
-  // The real timeout completes the burst independently of CSS animations.
+  // Trigger the component's real animation-completion handler now that the
+  // artwork has been recorded, rather than racing its 800 ms production timer.
+  await bellBurst.evaluate(element => {
+    element.dispatchEvent(new AnimationEvent('animationend', {
+      bubbles: true, animationName: 'guardian-bell-overlay',
+    }));
+  });
   // Do not locate the bell again: it may have unmounted after the screenshot.
   await expect.poll(() => player.guardianBells.spent).toBe(1);
   await expect(ride).toHaveAttribute('data-revives', '1');
