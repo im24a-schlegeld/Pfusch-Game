@@ -136,7 +136,14 @@ it.each(['125', 'moped', 'scooter', '450', '701'] as const)(
     const samples = [2, 3, 5, 8, 12, 20, 30].map(ahead => ({ ahead,
       factor: Math.max(...lighting.headlights.slice(0, rig.count).map(light =>
         roadBeamFactor(light, new Vector3(0, 0.04, front.z - ahead)))) }));
-    expect(samples.every(sample => sample.factor > 0.5)).toBe(true);
+    expect(samples.every(sample => sample.factor > 0.5), `${model}: ${JSON.stringify(samples)}`).toBe(true);
+    const roadIrradiance = (ahead: number) => {
+      const sample = new Vector3(0, 0.04, front.z - ahead);
+      return lighting.headlights.slice(0, rig.count).reduce((sum, light) =>
+        sum + light.intensity * roadBeamFactor(light, sample) /
+          Math.pow(Math.max(1, light.position.distanceTo(sample)), light.decay), 0);
+    };
+    expect(roadIrradiance(24)).toBeGreaterThan(roadIrradiance(5) * 0.18);
     const nearRoad = new Vector3(0, 0.04, front.z - 2);
     const grounded = lighting.headlights[0].target.position.clone();
     // Wheelies must still lift the physical rays instead of locking light to
@@ -323,10 +330,10 @@ describe('assembled motorcycle headlights and the world light pool', () => {
         expect(pooled[0].visible).toBe(true);
         expect(dark).toBeCloseTo(expectedDark, 12);
         expect(pooled[0].intensity + pooled[1].intensity).toBeCloseTo(
-          55 * dark,
+          40 * dark,
           12,
         );
-        expect(pooled[0].intensity).toBeCloseTo((55 * dark) / count, 12);
+        expect(pooled[0].intensity).toBeCloseTo((40 * dark) / count, 12);
         if (count === 2) {
           expect(pooled[1].intensity).toBeCloseTo(pooled[0].intensity, 12);
           expect(pooled[1].visible).toBe(true);
@@ -372,7 +379,7 @@ describe('assembled motorcycle headlights and the world light pool', () => {
     expect(
       lighting.headlights[0].position.distanceTo(previousSource),
     ).toBeGreaterThan(0.5);
-    expect(lighting.headlights[0].intensity).toBe(55);
+    expect(lighting.headlights[0].intensity).toBe(40);
     expect(lighting.headlights[1].intensity).toBe(0);
     expect(lighting.headlights[1].visible).toBe(false);
 
@@ -385,7 +392,7 @@ describe('assembled motorcycle headlights and the world light pool', () => {
     expectSourceAndAim(sport, '701', lighting.headlights);
     expect(lighting.headlights[1].visible).toBe(true);
     expect(lighting.headlights.map((light) => light.intensity)).toEqual([
-      27.5, 27.5,
+      20, 20,
     ]);
     expect(lighting.headlights[0]).toBe(pooled[0]);
     expect(lighting.headlights[1]).toBe(pooled[1]);

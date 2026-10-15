@@ -37,6 +37,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
   if (applied.get(material) === material.onBeforeCompile) return;
   const before = material.onBeforeCompile;
   const previousKey = material.customProgramCacheKey.call(material);
+  const smoothRoad = material.userData.pfuschSmoothRoadLighting === true;
   const hero = material.userData.pfuschCartoonHero === true;
   const rim = hero && material.userData.rimPalette === true;
   const rimTireBand = rim && material.userData.rimTireBand === true;
@@ -111,6 +112,9 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       ` : ''}
       vec3 cartoonTint = mix(vec3(1.0), cartoonDiffuse / max(max(cartoonDiffuse.r, cartoonDiffuse.g), max(cartoonDiffuse.b, 0.001)), 0.12);
       outgoingLight = diffuseColor.rgb * cartoonTint * cartoonBand + totalEmissiveRadiance;
+      ${!hero ? `// Continuous real spotlight irradiance on roadway and tunnel walls.
+      // Preserve painted surfaces and their independent outlines; hero stays cel-shaded.
+      outgoingLight = cartoonDiffuse + totalEmissiveRadiance;` : ''}
       float cartoonFacing = abs(dot(normal, normalize(vViewPosition)));
       float cartoonWidth = min(0.12, max(0.025, fwidth(cartoonFacing) * 1.15));
       float cartoonInk = (1.0 - smoothstep(0.045, 0.045 + cartoonWidth, cartoonFacing)) * cartoonFacingInkStrength;
@@ -132,7 +136,7 @@ export function applyCartoonMaterial(material: THREE.Material, boxInk = false, c
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}${rimTireBand ? ':tire-band-v2' : ''}`;
+  material.customProgramCacheKey = () => `${previousKey}:pfusch-cartoon-v1:${boxInk ? 'box' : 'round'}:${ink}:${hero ? 'hero' : 'world'}${rim ? ':rim-v1' : ''}${rimTireBand ? ':tire-band-v2' : ''}${smoothRoad ? ':smooth-road-v1' : ''}`;
   material.userData.pfuschCartoon = true;
   material.userData.pfuschCartoonRimShading = rim;
   material.needsUpdate = true;

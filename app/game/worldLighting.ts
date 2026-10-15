@@ -85,8 +85,8 @@ export function makeWorldLighting(
   // Keep the authored optical cone narrow, but leave enough bright core to
   // cover the near road. A 70% fringe made that footprint almost disappear.
   const headlights = [
-    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.35, 1.2),
-    new THREE.SpotLight('#e2eced', 0, 75, 0.48, 0.35, 1.2),
+    new THREE.SpotLight('#e2eced', 0, 84, 0.55, 0.52, 0.70),
+    new THREE.SpotLight('#e2eced', 0, 84, 0.55, 0.52, 0.70),
   ] as const;
   headlights[0].name = 'road-headlight';
   headlights[1].name = 'road-headlight-secondary';
@@ -138,7 +138,7 @@ export function makeWorldLighting(
       // Keep the light count stable so entering a tunnel does not recompile
       // every lit material. Daylight switches intensity off, not the light.
       headlights[i].visible = active;
-      headlights[i].intensity = active ? (dark * 55) / headlightCount : 0;
+      headlights[i].intensity = active ? (dark * 40) / headlightCount : 0;
     }
     return dark;
   };

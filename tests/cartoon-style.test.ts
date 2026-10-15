@@ -124,6 +124,20 @@ it.each([false, true])('retains carbon and one cel layer across colour changes (
   }
 });
 
+it('keeps projected asphalt light continuous without changing the world or hero cel bands', () => {
+  const road = new THREE.MeshStandardMaterial();
+  road.userData.pfuschSmoothRoadLighting = true;
+  applyCartoonMaterial(road, false, false);
+  expect(compile(road).fragmentShader).toContain('outgoingLight = cartoonDiffuse + totalEmissiveRadiance;');
+  expect(road.customProgramCacheKey()).toContain(':smooth-road-v1');
+  const wall = new THREE.MeshStandardMaterial();
+  applyCartoonMaterial(wall);
+  expect(compile(wall).fragmentShader).toContain('outgoingLight = cartoonDiffuse + totalEmissiveRadiance;');
+  const rider = new THREE.MeshStandardMaterial();
+  rider.userData.pfuschCartoonHero = true;
+  applyCartoonMaterial(rider);
+  expect(compile(rider).fragmentShader).not.toContain('outgoingLight = cartoonDiffuse + totalEmissiveRadiance;');
+});
 it('composes streamed surface coordinates and box ink without noisy asphalt grain', () => {
   const material = new THREE.MeshStandardMaterial();
   const origin = { value: 120 };

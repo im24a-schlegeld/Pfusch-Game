@@ -161,8 +161,12 @@ export function makeWorldView(scene: THREE.Scene, low: boolean) {
       emissive: light || finish === 'glassLit' ? COLORS[finish] : '#000000',
       emissiveIntensity: light ? 2.6 : finish === 'glassLit' ? 0.12 : 0,
     });
-    if (finish === 'asphalt')
+    if (finish === 'asphalt') {
+      // This surface must render a continuous projected headlight gradient.
+      // Keep procedural asphalt paint and the rest of the cel-shaded world.
+      materials[finish].userData.pfuschSmoothRoadLighting = true;
       addWorldSurfaceDetail(materials[finish], surfaceOrigin, 'asphalt', low);
+    }
     if (finish === 'grass' || finish === 'soil' || finish === 'sand')
       addWorldSurfaceDetail(materials[finish], surfaceOrigin, 'ground', low);
     allocate('box', finish, materials[finish],

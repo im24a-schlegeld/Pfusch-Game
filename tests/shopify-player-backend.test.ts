@@ -77,6 +77,16 @@ describe('server-authoritative Guardian Bell wallet', () => {
     expect(result.body.player).toMatchObject({ xp: 1000, guardianBells: current.guardianBells });
   });
 
+  it('grants one trusted starter Bell once on save without importing client earnings', async () => {
+    const initial = newPlayer();
+    const first = await handlePlayerRequest(post(initial), dependencies(shopify(null, 'SUBSCRIBED')));
+    expect(first.status).toBe(200);
+    expect(first.body.player).toMatchObject({ guardianBells: { earned: 1, spent: 0, spentRunIds: [] } });
+    const stored = { ...initial, id: 'shopify:12345', guardianBells: { earned: 1, spent: 0, spentRunIds: [] } };
+    const second = await handlePlayerRequest(post(stored, firstDigest), dependencies(shopify(stored, 'SUBSCRIBED')));
+    expect(second.status).toBe(200);
+    expect(second.body.player).toMatchObject({ guardianBells: { earned: 1, spent: 0, spentRunIds: [] } });
+  });
   it('never imports locally forged Bell earnings into a new account', async () => {
     const forged = { ...newPlayer(), guardianBells: { earned: 1, spent: 0, spentRunIds: [] } };
     expect((await handlePlayerRequest(post(forged), dependencies(shopify(null, 'SUBSCRIBED')))).status).toBe(400);
@@ -119,9 +129,10 @@ describe('Customer-scoped cloud save', () => {
     const deps = dependencies();
     expect((await handlePlayerRequest(input(), { ...deps, config: null })).status).toBe(503);
     const request = input('POST', {}, '/api/shopify/player?customerId=12345');
+    const readBodySpy = vi.spyOn(request, 'readBody');
     expect((await handlePlayerRequest(request, deps)).status).toBe(401);
-    expect(request.readBody).not.toHaveBeenCalled();
-    expect(deps.request).not.toHaveBeenCalled();
+    expect(readBodySpy.mock.calls).toHaveLength(0);
+    expect(deps.request.mock.calls).toHaveLength(0);
   });
   it('returns the signed customer, empty save and an opaque CSRF token from a no-save GET', async () => {
     const deps = dependencies();
@@ -177,14 +188,14 @@ describe('Customer-scoped cloud save', () => {
     if (kind === 'tampered') payload.csrfToken = `${String(payload.csrfToken).slice(0, -4)}ffff`;
     const deps = dependencies();
     expect((await handlePlayerRequest(input('POST', payload), deps)).status).toBe(403);
-    expect(deps.request).not.toHaveBeenCalled();
+    expect(deps.request.mock.calls).toHaveLength(0);
   });
   it('requires the digest field instead of permitting an unconditional overwrite', async () => {
     const payload = await post().readBody() as Record<string, unknown>;
     delete payload.compareDigest;
     const deps = dependencies();
     expect((await handlePlayerRequest(input('POST', payload), deps)).status).toBe(400);
-    expect(deps.request).not.toHaveBeenCalled();
+    expect(deps.request.mock.calls).toHaveLength(0);
   });
   it('does not overwrite concurrent changes or silently retry with a fresh digest', async () => {
     let current = firstDigest, writes = 0;

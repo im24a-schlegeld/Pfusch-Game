@@ -173,6 +173,13 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifi
  * old clients may omit the additive field, but cannot mint or refund Bells. */
 export function retainGuardianBells(incoming: Player, current: Player | null, provided: boolean): Player {
   const trusted = current?.guardianBells ?? readGuardianBells(undefined);
+  if (trusted.earned === 0 && trusted.spent === 0) {
+    // The first Bell is server-owned and can be issued only once per account.
+    // Do not import forged client earnings from a new or legacy player save.
+    if (provided && (incoming.guardianBells.earned !== 0 || incoming.guardianBells.spent !== 0 ||
+        incoming.guardianBells.spentRunIds.length !== 0)) invalid();
+    return { ...incoming, guardianBells: { earned: 1, spent: 0, spentRunIds: [] } };
+  }
   if (!provided) return { ...incoming, guardianBells: trusted };
   const next = incoming.guardianBells, spent = next.spent - trusted.spent;
   if (next.earned !== trusted.earned || spent < 0 || next.spent > trusted.earned) invalid();

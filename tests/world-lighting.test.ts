@@ -35,7 +35,7 @@ it.each(['day', 'night'] as const)('lights the tunnel only from the real headlam
       if (object instanceof THREE.SpotLight || object instanceof THREE.PointLight) localLights.push(object);
     });
     expect(localLights).toEqual([...lighting.headlights]);
-    expect(lighting.headlights[0].intensity).toBe(55);
+    expect(lighting.headlights[0].intensity).toBe(40);
     expect(lighting.headlights[1].intensity).toBe(0);
     expect(lighting.headlights[1].visible).toBe(false);
     // The existing broad fill keeps the rider readable without projecting a

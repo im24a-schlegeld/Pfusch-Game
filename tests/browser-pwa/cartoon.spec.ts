@@ -298,7 +298,12 @@ for (const device of ['mobile', 'desktop'] as const) {
         // Seven irregular clouds now share one bounded instanced puff mesh.
         expect(sample.sky.cloudCount).toBeLessThanOrEqual(56);
         if (lighting === 'night') {
-          expect(sample.headlight).toBeGreaterThan(50);
+          expect(sample.headlight).toBeGreaterThan(30);
+          const smoothRoad = await page.evaluate(() => {
+            const road = window.cartoonProbe.scene?.getObjectByName('world-box-asphalt') as THREE.Mesh | undefined;
+            return !!road && !Array.isArray(road.material) && road.material.userData.pfuschSmoothRoadLighting === true;
+          });
+          expect(smoothRoad, 'the rendered night asphalt must use a continuous spotlight gradient').toBe(true);
           expect(sample.sky.moonVisible).toBe(true);
           expect(sample.sky.starsVisible).toBe(true);
         } else {
