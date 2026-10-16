@@ -3,6 +3,7 @@ import { isRecord } from '../shopify/playerValidation.js';
 import { shopifyGraphql, PLAYER_KEY, PLAYER_NAMESPACE, type ShopifyFetch } from '../shopify/playerStore.js';
 import { REWARD_KEY } from '../shopify/rewardStore.js';
 import { verifyHmacHex } from '../shopify/crypto.js';
+import { isDashboardEditor } from './adminPermissions.js';
 
 const RANKING_KEY = 'leaderboard_v1';
 const SAMPLE_SIZE = 25;
@@ -144,11 +145,12 @@ export async function readAdminOverview(config: ShopifyConfig, request: ShopifyF
       discountsAccess: scopes.includes('write_discounts'), serverClock: new Date(now).toISOString() } };
 }
 
-export async function handleAdminOverview(request: Request, config: ShopifyConfig | null, shopifyFetch: ShopifyFetch = fetch, now = Date.now()): Promise<Response> {
+export async function handleAdminOverview(request: Request, config: ShopifyConfig | null, shopifyFetch: ShopifyFetch = fetch, now = Date.now(), editorIds?: string): Promise<Response> {
   if (request.method !== 'GET') return json(405, { error: 'method_not_allowed' });
   if (!config?.clientId) return json(503, { error: 'admin_not_configured' });
   try {
-    await verifyAdminIdToken(request.headers.get('Authorization'), config, now);
+    const staffId = await verifyAdminIdToken(request.headers.get('Authorization'), config, now);
+    if (!isDashboardEditor(staffId, editorIds)) throw new ApiError(403, 'admin_editor_not_authorized');
     return json(200, await readAdminOverview(config, shopifyFetch, now));
   } catch (error) {
     return json(error instanceof ApiError ? error.status : 503, { error: error instanceof ApiError ? error.code : 'admin_unavailable' });

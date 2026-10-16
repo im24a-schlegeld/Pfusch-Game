@@ -49,7 +49,7 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       if (!shopify?.clientId || !adminAuth) return harden(json(503, { error: 'admin_not_configured' }));
       if (url.origin !== adminAuth.origin) return harden(json(403, { error: 'invalid_origin' }));
       const response = path === '/api/admin/overview'
-        ? await handleAdminOverview(request, shopify, withFetchDeadline(fetcher, 10000))
+        ? await handleAdminOverview(request, shopify, withFetchDeadline(fetcher, 10000), Date.now(), env.SHOPIFY_DASHBOARD_EDITOR_IDS)
         : request.method === 'GET' ? renderAdminDashboard(shopify) : json(405, { error: 'method_not_allowed' });
       harden(response);
       response.headers.set('Content-Security-Policy', `frame-ancestors https://admin.shopify.com https://${shopify.shop}`);

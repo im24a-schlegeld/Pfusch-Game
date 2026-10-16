@@ -58,7 +58,10 @@ describe('independent motocross equipment geometry', () => {
       const sameHead = () => {
         expect(helmet.position.toArray()).toEqual(original.position.toArray());
         expect(helmet.rotation.toArray()).toEqual(original.rotation.toArray());
-        expect(helmet.scale.toArray()).toEqual(original.scale.toArray());
+        // Only the full-face equipment shell is enlarged in V9. Both styles
+        // keep their own fixed scale and the same human head/contact joint.
+        expect(helmet.scale.toArray()).toEqual([1.065, 1.065, 1.065]);
+        expect(original.scale.toArray()).toEqual([1.12, 1.12, 1.12]);
       };
       sameHead();
       for (let i = 0; i < 30; i++) {

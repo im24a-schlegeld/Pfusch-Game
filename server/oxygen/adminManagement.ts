@@ -2,6 +2,7 @@ import { ApiError, type ShopifyConfig } from '../shopify/auth.js';
 import { isRecord, sanitizeDigitalPlayer } from '../shopify/playerValidation.js';
 import { PLAYER_NAMESPACE, PLAYER_KEY, shopifyGraphql, type ShopifyFetch } from '../shopify/playerStore.js';
 import { verifyAdminIdToken } from './adminDashboard.js';
+import { isDashboardEditor } from './adminPermissions.js';
 import { levelForXp } from '../../app/domain/progression.js';
 import { applyAdminCosmeticEdit, cosmeticEditSummary, adminCosmeticsCatalog } from './adminCosmetics.js';
 import type { Player } from '../../app/domain/types.js';
@@ -24,10 +25,7 @@ function adminError(error: unknown) {
   });
 }
 
-/** Writes are DENIED until a trusted Oxygen variable explicitly lists a staff ID. */
-export function isDashboardEditor(staffId: string, raw: string | undefined) {
-  return Boolean(raw && raw.split(',').map(part => part.trim()).some(id => /^[1-9]\d{0,19}$/.test(id) && id === staffId));
-}
+export { isDashboardEditor } from './adminPermissions.js';
 
 function isLive(value: unknown, now: number): boolean {
   if (!isRecord(value) || typeof value.value !== 'string' || value.value.length > 128) return false;
@@ -179,6 +177,9 @@ export async function handleDashboardPlayers(request: Request, config: ShopifyCo
   if (!config?.clientId) return json(503, { error: 'admin_not_configured' });
   try {
     const staffId = await verifyAdminIdToken(request.headers.get('authorization'), config, now);
+    // Shopify ID tokens establish identity only; the app-wide Admin API token
+    // does not enforce this staff member's customer permissions.
+    if (!isDashboardEditor(staffId, editorIds)) throw new ApiError(403, 'admin_editor_not_authorized');
     if (request.method === 'GET') {
       const url = new URL(request.url);
       if (url.searchParams.has('catalog')) return json(200, { catalog: adminCosmeticsCatalog() });
@@ -191,7 +192,6 @@ export async function handleDashboardPlayers(request: Request, config: ShopifyCo
       return json(200, { ...result, editor: isDashboardEditor(staffId, editorIds), staffId });
     }
     if (request.method !== 'POST') return json(405, { error: 'method_not_allowed' });
-    if (!isDashboardEditor(staffId, editorIds)) throw new ApiError(403, 'admin_editor_not_authorized');
     if (request.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json')
       throw new ApiError(415, 'json_required');
     const raw = await request.text();

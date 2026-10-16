@@ -59,7 +59,7 @@ describe('imported motorcycle dimensions with one unchanged adult', () => {
             7,
           );
           const helmet = bike.rider.getObjectByName('full-face-helmet')!;
-          expect(helmet.getWorldScale(new Vector3()).x).toBeCloseTo(1.065, 12);
+          expect(helmet.getWorldScale(new Vector3()).x).toBeCloseTo(1.12, 12);
         }
     },
   );

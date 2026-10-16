@@ -69,7 +69,7 @@ describe('hip cap attachment on the shared rider', () => {
         expect(bounds.min.y).toBeGreaterThan(0);
         expect(carried.quaternion.equals(rest)).toBe(true);
         expect(carried.position.equals(childPosition)).toBe(true);
-        expect(helmet.scale.toArray()).toEqual([1.065, 1.065, 1.065]);
+        expect(helmet.scale.toArray()).toEqual([1.12, 1.12, 1.12]);
       }
     },
   );
