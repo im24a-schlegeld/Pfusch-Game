@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { isRoadEvent, ROAD_EVENTS } from './roadEvents';
 import { cloneTrafficColor, makeDetailedTraffic } from './trafficModels';
 import { CONSTRUCTION_RAMP } from './constructionRamp';
@@ -115,6 +116,33 @@ export function makeTraffic(kind: string, colorIndex: number) {
       stripe.rotation.z = -0.4;
     }
     group.add(createTrafficContour([plate], []));
+    return group;
+  }
+  if (kind === 'spikes') {
+    const { width, length, height } = ROAD_EVENTS.spikes;
+    group.name = 'police-nail-strip';
+    const baseHeight = 0.045;
+    const base = box(group, width, baseHeight, length, 0, baseHeight / 2, 0, '#202629');
+    base.name = 'spike-base';
+    // Merge twelve low metal pyramids once. Pool clones share this geometry;
+    // neither individual teeth nor contours need animation or extra lights.
+    const pieces: THREE.BufferGeometry[] = [];
+    for (const z of [-0.16, 0.16]) for (let i = 0; i < 6; i++) {
+      const tooth = new THREE.ConeGeometry(0.065, height - baseHeight, 4);
+      tooth.rotateY(Math.PI / 4);
+      tooth.translate((i - 2.5) * 0.36, baseHeight + (height - baseHeight) / 2, z);
+      pieces.push(tooth);
+    }
+    const teeth = new THREE.Mesh(mergeGeometries(pieces, false)!, mat('#c4ced0', 0.1));
+    pieces.forEach(piece => piece.dispose());
+    teeth.name = 'spike-teeth';
+    group.add(teeth);
+    for (const side of [-1, 1]) {
+      const marker = box(group, 0.14, 0.052, length - 0.08,
+        side * (width / 2 - 0.11), 0.026, 0, '#d1b04e');
+      marker.name = 'spike-end-marker';
+    }
+    group.add(createTrafficContour([base, teeth], []));
     return group;
   }
   if (isRoadEvent(kind)) {

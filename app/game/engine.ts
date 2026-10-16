@@ -85,6 +85,8 @@ export interface Obstacle {
   airNearMiss: boolean;
   lateEvade: boolean;
   police: boolean;
+  /** Stationary partial blockade; passing it never starts a patrol pursuit. */
+  roadblock?: boolean;
   laneShift: TrafficLaneShift | null;
 }
 export interface GameEvent {
@@ -225,6 +227,8 @@ export class Engine {
   private spawnIn = 24;
   private spawnSerial = 0;
   private nextPatrolDistance = 900;
+  private nextRoadblockDistance = 0;
+  private pendingPuncture: { obstacle: Obstacle; spawnId: number; crashAt: number } | null = null;
   private policeReadyAt = 0;
   private nextSafe = 0;
   private safeDirection = 1;
@@ -232,6 +236,7 @@ export class Engine {
     section: string;
     kinds: ObstacleKind[];
     velocity: number;
+    roadblockLane?: -1 | 1;
   } | null = null;
   private scoreGainSerial = 0;
   private accumulator = 0;
@@ -444,6 +449,7 @@ export class Engine {
     this.liftArmed = true;
     this.scrapeMaterial = null;
     this.crashObstacle = null;
+    this.pendingPuncture = null;
     this.towCarrier = null;
     this.constructionCarrier = null;
     this.towSafeObstacles.clear();
@@ -612,9 +618,26 @@ export class Engine {
         this.random() < oncomingTrafficChance(this.score))
         velocity = -TRAFFIC_PROGRESSION.oncomingSpeed;
       this.pendingWave = { section, kinds, velocity };
+      // One seeded choice per wave. Keep both the pair and its open route
+      // across spacing retries, without changing ordinary low-score traffic.
+      if (this.distance >= this.nextRoadblockDistance && this.roadblockClear() &&
+        this.random() < 0.22) {
+        const freeLane = this.nextSafe === 0
+          ? (this.random() < 0.5 ? -1 : 1)
+          : this.nextSafe;
+        this.pendingWave = { section, kinds: ['car', 'spikes'], velocity: 0,
+          roadblockLane: -freeLane as -1 | 1 };
+      }
     }
-    const { kinds: nextKinds, velocity } = this.pendingWave;
+    const { kinds: nextKinds, velocity, roadblockLane } = this.pendingWave;
     const count = nextKinds.length;
+    // No half-blockade when the bounded pool is saturated. Check before
+    // mutating the safe route, consuming spawn IDs or starting the cooldown.
+    if (roadblockLane !== undefined && (!this.roadblockClear() ||
+      this.obstacles.filter(o => !o.active).length < 2)) {
+      this.spawnIn = trafficSpawnRetry(this.score);
+      return;
+    }
     const candidates = [-1, 0, 1];
     const nextHalfLength = Math.max(
       ...nextKinds.map((k) => isRoadEvent(k)
@@ -667,13 +690,17 @@ export class Engine {
     // Each new wave closes the previous safe lane. Sweep through adjacent
     // lanes, so no lane can be camped and the next opening is always reachable.
     const previousSafe = this.nextSafe;
-    if (Math.abs(this.nextSafe) === 1) this.safeDirection = -this.nextSafe;
-    this.nextSafe += this.safeDirection;
-    const lanes = [
+    if (roadblockLane !== undefined) this.nextSafe = -roadblockLane;
+    else {
+      if (Math.abs(this.nextSafe) === 1) this.safeDirection = -this.nextSafe;
+      this.nextSafe += this.safeDirection;
+    }
+    const lanes = roadblockLane !== undefined ? [0, roadblockLane] : [
       previousSafe,
       ...candidates.filter((l) => l !== this.nextSafe && l !== previousSafe),
     ];
     const patrolReady =
+      roadblockLane === undefined &&
       this.distance >= this.nextPatrolDistance &&
       this.elapsed >= this.policeReadyAt &&
       this.score >= SPEED_CAMERA.firstScore &&
@@ -692,10 +719,18 @@ export class Engine {
         velocity,
         patrol,
       );
+      if (vehicle && roadblockLane !== undefined && i === 0) {
+        vehicle.police = true;
+        vehicle.roadblock = true;
+      }
       patrolSpawned ||= patrol && !!vehicle;
       if (vehicle && count === 1) this.planTrafficLaneChange(vehicle);
     }
     if (patrolSpawned) this.nextPatrolDistance = this.distance + 1800;
+    if (roadblockLane !== undefined) {
+      this.nextRoadblockDistance = this.distance + 1600 + this.random() * 300;
+      this.nextPatrolDistance = Math.max(this.nextPatrolDistance, this.distance + 1800);
+    }
     this.pendingWave = null;
     this.spawnIn = Math.max(
       10,
@@ -709,6 +744,14 @@ export class Engine {
         this.random() * 4,
     );
     this.spawnWaveSign();
+  }
+  private roadblockClear() {
+    return this.score >= 75_000 && !this.policeChase &&
+      this.policeVehicle.phase === 'idle' && this.elapsed >= this.policeReadyAt &&
+      !this.speedCamera.active && this.height === 0 && !this.towCarrier &&
+      !this.constructionCarrier && !this.towJumpActive && !this.constructionJumpActive &&
+      !this.obstacles.some(o => o.active &&
+        (o.police || o.kind === 'ramp' || o.kind === 'towtruck'));
   }
   private planTrafficLaneChange(vehicle: Obstacle) {
     // Eligibility is drawn once per spawned wave, never once per frame. The
@@ -887,6 +930,7 @@ export class Engine {
         airNearMiss: false,
         lateEvade: false,
         police,
+        roadblock: false,
         laneShift: null,
       });
     }
@@ -1678,6 +1722,14 @@ export class Engine {
         if (gap < 0) {
           if (isRoadEvent(o.kind)) {
             if (!o.cleared) {
+              if (o.kind === 'spikes' && !this.pendingPuncture && this.reviveProtection <= 0) {
+                // Height is real rear-tire clearance. A wheelie angle alone
+                // cannot protect the rear tire; fail seven metres past the
+                // strip's fixed world position, even after changing lanes.
+                this.pendingPuncture = { obstacle: o, spawnId: o.spawnId,
+                  crashAt: this.distance + o.z + 7 };
+                this.event = { text: 'REIFEN GETROFFEN', kind: 'warning', serial: this.event.serial + 1 };
+              }
               const response = roadResponse(
                 o.kind,
                 this.bike.id,
@@ -1725,7 +1777,7 @@ export class Engine {
       }
       if (!o.passed && o.z < frontContact) {
         o.passed = true;
-        if (o.police) this.startPoliceChase(o);
+        if (o.police && !o.roadblock) this.startPoliceChase(o);
         const closeCall =
           !road && (o.closest < CLOSE_CALL.gap || o.lateEvade || o.airNearMiss);
         if (o.cleared && o.rewardPoints > 0) {
@@ -1760,6 +1812,12 @@ export class Engine {
         this.policeVehicle.phase === 'approach';
       if (!awaitingImpact && o.z < (retained ? POLICE.retireZ : -18))
         o.active = false;
+    }
+    const puncture = this.pendingPuncture;
+    if (this.phase === 'playing' && puncture && this.distance >= puncture.crashAt) {
+      this.pendingPuncture = null;
+      this.crash('REIFENPLATZER · NAGELSPERRE',
+        puncture.obstacle.spawnId === puncture.spawnId ? puncture.obstacle : null);
     }
     if (landedTowJump && this.phase === 'playing') {
       this.jumps++;

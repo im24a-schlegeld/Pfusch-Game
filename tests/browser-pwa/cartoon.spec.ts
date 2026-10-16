@@ -321,6 +321,33 @@ for (const device of ['mobile', 'desktop'] as const) {
         movingFrames.push(await captureMovingRide(page, motion, `outputs/browser-pwa/cartoon-motion-${motion}-${device}.png`));
       await info.attach('cartoon-moving-camera-measurements', { body: JSON.stringify(movingFrames, null, 2), contentType: 'application/json' });
       await info.attach('cartoon-render-measurements', { body: JSON.stringify(samples, null, 2), contentType: 'application/json' });
+      await showWorldLighting(page, 'day');
+      const beforeBlockade = await page.evaluate(() => {
+        const probe = window.cartoonProbe, engine = probe.engine!;
+        engine.clearInput();
+        engine.phase = 'ready';
+        engine.x = 0; engine.lane = 0;
+        engine.wheelieAngle = 0; engine.height = 0;
+        for (const obstacle of engine.obstacles) obstacle.active = false;
+        const police = engine.spawn('car', 0, 22, 0, 0, true)!;
+        police.roadblock = true;
+        engine.spawn('spikes', -1, 22);
+        window.dispatchEvent(new Event('focus'));
+        return probe.frames;
+      });
+      await expect.poll(() => page.evaluate(() => window.cartoonProbe.frames)).toBeGreaterThan(beforeBlockade);
+      const strip = await page.evaluate(() => {
+        const model = window.cartoonProbe.scene!.getObjectByName('police-nail-strip');
+        const teeth = model?.getObjectByName('spike-teeth') as THREE.Mesh | undefined;
+        const contour = model?.getObjectByName('cartoon-traffic-contour') as THREE.LineSegments | undefined;
+        return { tips: teeth?.geometry.getAttribute('position').count ?? 0,
+          outlined: (contour?.material as THREE.LineBasicMaterial | undefined)?.color.getHexString() === '080a0e',
+          lanes: window.cartoonProbe.engine!.obstacles.filter(o => o.active).map(o => o.lane).sort() };
+      });
+      expect(strip.tips).toBeGreaterThan(0);
+      expect(strip.outlined).toBe(true);
+      expect(strip.lanes).toEqual([-1, 0]);
+      await page.screenshot({ path: `outputs/browser-pwa/police-roadblock-${device}.png` });
       expect(errors).toEqual([]);
     });
   });
