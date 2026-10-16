@@ -1,0 +1,19 @@
+/* Keep controls easy to tap; hide repetitive decoration, never interactive feedback. */
+/* The workshop also lives inside the clipped offline-install garage wrapper. */
+.app-shell .sticker-workshop{
+ display:block;min-width:0;min-height:0;height:100%;max-height:100%;
+ overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;
+}
+.app-shell .sticker-loading{min-height:0;height:100%;overflow-y:auto;touch-action:pan-y}
+.sticker-workshop .sticker-settings h2{font-size:15px;letter-spacing:0;margin:4px 0 10px}
+.sticker-workshop .sticker-shortcuts{gap:6px}
+.sticker-workshop .sticker-shortcuts button{flex:1 1 76px;padding:8px 5px;min-height:44px}
+.sticker-workshop .sticker-hint{min-height:0;margin:5px 0 9px}
+.sticker-workshop .sticker-original{font-size:11px}
+@media(max-width:540px){
+ .sticker-workshop{gap:7px}
+ .sticker-workshop .sticker-settings{margin:4px 0;padding:7px 0}
+ .sticker-workshop .sticker-settings .sticker-adjust{gap:8px}
+ .sticker-workshop .sticker-shortcuts button{flex:1 1 75px;font-size:12px}
+ .sticker-workshop .sticker-footer{padding-top:8px}
+}

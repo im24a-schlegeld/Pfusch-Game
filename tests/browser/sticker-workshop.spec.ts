@@ -4,12 +4,63 @@ import { digitalPrice, newPlayer } from '../../app/domain/progression';
 import type { Player, Product } from '../../app/domain/types';
 import { chooseArea, choosePart, primaryAction } from './garage-helpers';
 
+test.use({ hasTouch: true });
+
 declare global {
   interface Window { stickerScenes: THREE.Scene[] }
 }
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pfusch:player:v1')!) as Player);
 const footerAction = (page: Page) => page.locator('.sticker-footer').getByRole('button');
 const placedButtons = (page: Page) => page.locator('.sticker-items').getByRole('button', { name: /^STICKER \d+$/ });
+
+async function checkWorkshopScroll(page: Page, viewport: { width: number; height: number }) {
+  await page.setViewportSize(viewport);
+  const workshop = page.getByRole('main', { name: 'Sticker-Werkstatt' });
+  // The garage wrapper clips overflow; the workshop must own its scrolling.
+  await expect(workshop).toHaveCSS('overflow-y', 'auto');
+  await expect(workshop).toHaveCSS('touch-action', 'pan-y');
+  const metrics = await workshop.evaluate(element => ({
+    client: element.clientHeight, content: element.scrollHeight,
+    top: element.getBoundingClientRect().top,
+  }));
+  expect(metrics.client).toBeGreaterThan(200);
+  expect(metrics.client + metrics.top).toBeLessThanOrEqual(viewport.height);
+  expect(metrics.content).toBeGreaterThan(metrics.client + 20);
+  await workshop.evaluate(element => { element.scrollTop = 0; });
+  const box = (await workshop.boundingBox())!;
+  // Real touch panning must work outside the canvas whose gestures rotate/zoom.
+  const touch = await page.context().newCDPSession(page);
+  const x = box.x + 4, y = box.y + box.height * 0.8;
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let step = 1; step <= 8; step++) {
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - step * 24 }] });
+    await page.waitForTimeout(35);
+  }
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(() => workshop.evaluate(element => element.scrollTop)).toBeGreaterThan(20);
+  await touch.detach();
+  // Wheel input also scrolls the workshop instead of its clipped parent.
+  await page.mouse.move(box.x + 4, box.y + box.height / 2);
+  await page.mouse.wheel(0, 1600);
+  await expect.poll(() => workshop.evaluate(element => element.scrollTop)).toBeGreaterThan(20);
+  const reset = page.getByRole('button', { name: 'Stickergröße zurücksetzen', exact: true });
+  await reset.scrollIntoViewIfNeeded();
+  await expect(reset).toBeInViewport();
+  await expect(reset).toBeEnabled();
+  const original = page.locator('.sticker-original');
+  await original.scrollIntoViewIfNeeded();
+  await expect(original).toBeInViewport();
+  await expect(original.locator('img')).toBeVisible();
+  await footerAction(page).scrollIntoViewIfNeeded();
+  await expect(footerAction(page)).toBeInViewport();
+  const actionBox = (await footerAction(page).boundingBox())!;
+  expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(viewport.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await page.screenshot({ path: test.info().outputPath(`sticker-tools-${viewport.width}x${viewport.height}.png`) });
+  await page.mouse.move(box.x + 4, box.y + box.height / 2);
+  await page.mouse.wheel(0, -1600);
+  await expect.poll(() => workshop.evaluate(element => element.scrollTop)).toBe(0);
+}
 
 async function openSticker(page: Page, target: 'Helm' | 'Motorrad', product: Product) {
   await expect(primaryAction(page)).toBeEnabled({ timeout: 90000 });
@@ -59,6 +110,9 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await openSticker(page, 'Helm', product);
+  await checkWorkshopScroll(page, { width: 390, height: 844 });
+  await checkWorkshopScroll(page, { width: 320, height: 568 });
+  await page.setViewportSize({ width: 390, height: 844 });
   const before = await saved(page);
   await expect(footerAction(page)).toHaveText('Sticker platzieren');
   await expect(footerAction(page)).toBeDisabled();
@@ -82,6 +136,10 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   await expect(size).toHaveValue('0.09');
   await placedButtons(page).first().click();
   await expect(size).toHaveValue('0.12');
+  await page.getByRole('button', { name: 'Ausgewählten Sticker duplizieren', exact: true }).click();
+  await expect(placedButtons(page)).toHaveCount(2);
+  await expect(footerAction(page)).toHaveText(`Für ${digitalPrice(product)} Coins kaufen & speichern`);
+  expect(await saved(page)).toEqual(before);
 
   await page.locator('.sticker-targets').getByRole('button', { name: 'MOTORRAD', exact: true }).click();
   await expect(size).toHaveValue('0.09');
@@ -89,7 +147,7 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   await placeOnSurface(page);
   await expect(placedButtons(page)).toHaveCount(1);
   await page.locator('.sticker-targets').getByRole('button', { name: 'HELM', exact: true }).click();
-  await expect(placedButtons(page)).toHaveCount(1);
+  await expect(placedButtons(page)).toHaveCount(2);
   await page.locator('.sticker-targets').getByRole('button', { name: 'MOTORRAD', exact: true }).click();
   await expect(placedButtons(page)).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => {
@@ -111,7 +169,10 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   expect(confirmed.coins).toBe(before.coins - digitalPrice(product));
   expect(confirmed.ownedItems.filter(id => id === product.id)).toHaveLength(1);
   expect(confirmed.stickers['125']).toHaveLength(1);
-  expect(confirmed.stickers['helmet:fullface']).toHaveLength(1);
+  expect(confirmed.stickers['helmet:fullface']).toHaveLength(2);
+  const [original, copy] = confirmed.stickers['helmet:fullface'];
+  expect(copy.id).not.toBe(original.id);
+  expect(copy).toEqual({ ...original, id: copy.id });
   expect(confirmed.stickers['125'][0].size).toBe(0.09);
   expect(confirmed.stickers['helmet:fullface'][0].size).toBe(0.12);
   expect(confirmed.helmetColor).toBe(before.helmetColor);
@@ -120,9 +181,12 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openSticker(page, 'Helm', product);
   expect((await saved(page)).stickers).toEqual(confirmed.stickers);
-  await expect(placedButtons(page)).toHaveCount(1);
+  await expect(placedButtons(page)).toHaveCount(2);
   await placedButtons(page).first().click();
   await expect(size).toHaveValue('0.12');
+  await page.getByRole('button', { name: 'Ausgewählten Sticker entfernen', exact: true }).click();
+  await expect(placedButtons(page)).toHaveCount(1);
+  await placedButtons(page).first().click();
   await page.getByRole('button', { name: 'Ausgewählten Sticker entfernen', exact: true }).click();
   await expect(placedButtons(page)).toHaveCount(0);
   await expect(size).toHaveValue('0.09');

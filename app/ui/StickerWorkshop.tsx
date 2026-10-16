@@ -13,6 +13,7 @@ import { rendererSessions } from '../game/rendererSession';
 import { applyBikeStickers, applyHelmetStickers, helmetStickerSurfaces, stickerHelmet, stickerSurfaces } from '../game/bikeStickers';
 import './stickerWorkshop.css';
 import './stickerWorkshopUpdate.css';
+import './stickerWorkshopV9.css';
 
 type Target = 'bike' | 'helmet';
 const emptyPlacements: StickerPlacement[] = [];
@@ -33,7 +34,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [assetRevision, setAssetRevision] = useState(0);
-  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Tippe auf die Helmschale. Ziehen dreht die Ansicht.' : 'Tippe auf Verkleidung, Tank, Heckplastik oder Mudflap. Ziehen dreht die Ansicht.');
+  const [hint, setHint] = useState(initialTarget === 'helmet' ? 'Helmschale antippen · Ziehen dreht die Ansicht' : 'Fläche antippen · Ziehen dreht die Ansicht');
   const state = useRef({ placements, drafts, target, targetKey, size, rotation, selected });
   state.current = { placements, drafts, target, targetKey, size, rotation, selected };
   const view = useRef<((angle: number) => void) | null>(null);
@@ -195,7 +196,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     finally { savePending.current = false; setSaving(false); }
   }
   return <main className="sticker-workshop" aria-label="Sticker-Werkstatt">
-    <header><button className="button small" disabled={saving} onClick={onClose}>ZURÜCK</button><div><p className="eyebrow">KOSTENLOSE VORSCHAU</p><h1>STICKER PLATZIEREN</h1></div><span>{target === 'helmet' ? HELMETS.find((entry) => entry.id === player.helmet)?.name : BIKES.find((b) => b.id === player.bike)?.name}</span></header>
+    <header><button className="button small" disabled={saving} onClick={onClose}>ZURÜCK</button><div><h1>STICKER PLATZIEREN</h1></div><span>{target === 'helmet' ? HELMETS.find((entry) => entry.id === player.helmet)?.name : BIKES.find((b) => b.id === player.bike)?.name}</span></header>
     <fieldset className="sticker-targets" aria-label="Sticker-Ziel"><button type="button" disabled={saving} aria-pressed={target === 'bike'} onClick={() => selectTarget('bike')}>MOTORRAD</button><button type="button" disabled={saving} aria-pressed={target === 'helmet'} onClick={() => selectTarget('helmet')}>HELM</button></fieldset>
     <div className="sticker-views" aria-label="Ansicht wählen">{[['LINKS', -Math.PI / 2], ['VORNE', Math.PI], ['RECHTS', Math.PI / 2], ['HINTEN', 0]].map(([label, angle]) => <button key={String(label)} disabled={!ready || saving} onClick={() => view.current?.(Number(angle))}>{label}</button>)}</div>
     <div className="sticker-stage" ref={host} data-testid="sticker-stage">
@@ -208,15 +209,30 @@ export default function StickerWorkshop({ player, account, products, initialTarg
         {placements.length > 0 && <button disabled={saving || placements.length >= MAX_STICKERS} onClick={() => { setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0); setHint('Tippe eine Fläche für den nächsten Sticker an.'); }}>+ WEITERER STICKER</button>}
         {selected && <button disabled={saving} aria-label="Ausgewählten Sticker entfernen" onClick={() => { setPlacements((p) => p.filter((s) => s.id !== selected)); setSelected(null); setSize(DEFAULT_STICKER_SIZE); setRotation(0); setHint('Sticker entfernt. Speichern übernimmt die Änderung.'); }}>ENTFERNEN</button>}
       </div>
-      <section className="sticker-more sticker-settings" aria-label="Sticker-Werkzeuge"><h2>GRÖSSE & DREHUNG</h2><div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input disabled={saving} aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input disabled={saving} aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label><div className="sticker-shortcuts" aria-label="Schnell einstellen">
+      <section className="sticker-more sticker-settings" aria-label="Sticker-Werkzeuge"><h2>STICKER ANPASSEN</h2><div className="sticker-adjust"><label>GRÖSSE · {Math.round(size * 100)} CM <input disabled={saving} aria-label="Stickergröße" type="range" min="0.04" max={stickerMaxSize(targetKey)} step="0.01" value={size} onChange={(e) => change(Number(e.target.value), 'size')}/></label><label>DREHUNG <input disabled={saving} aria-label="Stickerdrehung" type="range" min={-Math.PI} max={Math.PI} step="0.05" value={rotation} onChange={(e) => change(Number(e.target.value), 'rotation')}/></label><div className="sticker-shortcuts" aria-label="Schnell einstellen">
         <button type="button" disabled={saving} onClick={() => change(Math.max(0.04, Math.round((size - 0.01) * 100) / 100), 'size')} aria-label="Sticker kleiner machen">− KLEINER</button>
         <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), Math.round((size + 0.01) * 100) / 100), 'size')} aria-label="Sticker größer machen">+ GRÖSSER</button>
         <button type="button" disabled={saving} onClick={() => change(Math.max(-Math.PI, rotation - Math.PI / 4), 'rotation')} aria-label="Sticker 45 Grad nach links drehen">↶ 45°</button>
         <button type="button" disabled={saving} onClick={() => change(Math.min(Math.PI, rotation + Math.PI / 4), 'rotation')} aria-label="Sticker 45 Grad nach rechts drehen">↷ 45°</button>
-        <button type="button" disabled={saving} onClick={() => change(0, 'rotation')} aria-label="Drehung zurücksetzen">DREHUNG 0°</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.max(-Math.PI, rotation - Math.PI / 36), 'rotation')} aria-label="Sticker 5 Grad nach links drehen">↶ 5°</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.min(Math.PI, rotation + Math.PI / 36), 'rotation')} aria-label="Sticker 5 Grad nach rechts drehen">↷ 5°</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), 0.06), 'size')} aria-label="Stickergröße 6 Zentimeter">6 CM</button>
+        <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), 0.12), 'size')} aria-label="Stickergröße 12 Zentimeter">12 CM</button>
+        <button type="button" disabled={saving} onClick={() => change(DEFAULT_STICKER_SIZE, 'size')} aria-label="Stickergröße zurücksetzen">STANDARD</button>
+        <button type="button" disabled={saving} onClick={() => change(0, 'rotation')} aria-label="Drehung zurücksetzen">0°</button>
+        {selected && placements.length < MAX_STICKERS && <button type="button" disabled={saving} aria-label="Ausgewählten Sticker duplizieren" onClick={() => {
+          if (savePending.current) return;
+          const original = placements.find(sticker => sticker.id === selected);
+          if (!original) return;
+          const id = crypto.randomUUID();
+          // Keep the attachment and geometry; a copy is still only a draft.
+          setPlacements(previous => previous.length >= MAX_STICKERS ? previous : [...previous, { ...structuredClone(original), id }]);
+          setSelected(id);
+          setHint('Kopie erstellt – tippe auf eine Stelle, um sie zu verschieben.');
+        }}>DUPLIZIEREN</button>}
       </div></div></section>
-      <p className="sticker-save-note">Erst Speichern übernimmt deine Sticker auf Helm und Motorrad.</p>
-      {product && <a className="sticker-original" href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>{product.title} · Original im Shop</span></a>}
+
+      {product && <a className="sticker-original" href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>Im Shop ansehen</span></a>}
     </section>
     <footer className="sticker-footer"><span>{stickerOwned ? 'Sticker in deinem Besitz' : `Sticker · ${price} Coins`}<small>Guthaben: {account.coins.toLocaleString('de-CH')} Coins</small></span><button className="button primary" disabled={saving || !!disabledReason || !ready || Boolean(error)} onClick={() => { void save(); }}>{saving ? 'Wird gespeichert …' : disabledReason || (purchaseRequired ? `Für ${price} Coins kaufen & speichern` : 'Speichern')}</button></footer>
   </main>;

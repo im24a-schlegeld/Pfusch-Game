@@ -438,7 +438,7 @@ function makeHelmet(
   }
   const helmet = createFullfaceHelmet(color, visorColor);
   helmet.position.set(...center);
-  helmet.scale.setScalar(1.065);
+  helmet.scale.setScalar(1.12);
   helmet.rotation.x = -0.07;
   helmet.name = 'full-face-helmet';
   helmet.userData.helmetStyle = style;

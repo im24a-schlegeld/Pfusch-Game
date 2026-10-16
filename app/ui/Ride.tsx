@@ -255,6 +255,7 @@ export default function Ride({
     const showGesture = () => updateGestureIndicator(gestureIndicator.current,
       !buttonMode && touchFeedback.current && engine.phase === 'playing' ? gestures.feedback() : null, gestureBounds.current);
     const down = (event: PointerEvent) => {
+      if (!event.isTrusted) return;
       if (pauseSettingsOpen || engine.resumeRemaining > 0) return;
       const target = event.target instanceof Element ? event.target : null;
       if (tutorialRef.current) {
@@ -294,6 +295,7 @@ export default function Ride({
       showGesture();
     };
     const move = (event: PointerEvent) => {
+      if (!event.isTrusted) return;
       if (tutorialRef.current) {
         const start = tutorialPointer.current;
         if (!start || start.id !== event.pointerId ||
@@ -305,6 +307,7 @@ export default function Ride({
       showGesture();
     };
     const up = (event: PointerEvent) => {
+      if (!event.isTrusted) return;
       heldInput.release(event.pointerId);
       if (tutorialPointer.current?.id === event.pointerId) tutorialPointer.current = null;
       gestures.up(event.pointerId, event.timeStamp);
@@ -348,6 +351,7 @@ export default function Ride({
   }, [engine.phase, clearGestures]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
+      if (!e.isTrusted) return;
       const k = e.key.toLowerCase();
       if (pauseSettingsOpen || engine.phase === 'crashed') return;
       // Escape belongs to the open pause dialog; avoid two competing resumes.
@@ -393,6 +397,7 @@ export default function Ride({
       if (k === 'arrowdown' || k === 's') heldInput.key(k, 'wheelie', true);
     };
     const keyup = (e: KeyboardEvent) => {
+      if (!e.isTrusted) return;
       const k = e.key.toLowerCase();
       if (k === 'arrowup' || k === 'w') heldInput.key(k, 'brake', false);
       if (k === 'arrowdown' || k === 's') heldInput.key(k, 'wheelie', false);
@@ -418,7 +423,7 @@ export default function Ride({
     };
   }, [audio, clearGestures, dismissTutorial, engine, heldInput, pauseSettingsOpen]);
   function pressTouchButton(action: RideHoldAction, event: ReactPointerEvent<HTMLButtonElement>) {
-    if (!buttonMode || !['touch', 'pen'].includes(event.pointerType) || engine.resumeRemaining > 0) return;
+    if (!event.nativeEvent.isTrusted || !buttonMode || !['touch', 'pen'].includes(event.pointerType) || engine.resumeRemaining > 0) return;
     event.preventDefault();
     // Capture on the permanent ride surface so the initiating finger keeps its
     // hold when the tutorial card is removed on this very pointerdown.

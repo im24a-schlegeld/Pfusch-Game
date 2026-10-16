@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
-import { newPlayer } from '../app/domain/progression';
+import { finishRun, newPlayer } from '../app/domain/progression';
 import { authenticateProxy, createCsrf, readShopifyConfig, type ShopifyConfig } from '../server/shopify/auth';
 import { handlePlayerRequest, type PlayerRequest } from '../server/shopify/playerEndpoint';
 import { readBoundedJson, withFetchDeadline, type NodeRequest } from '../server/shopify/http';
@@ -125,6 +125,32 @@ describe('Shopify App Proxy authentication', () => {
 });
 
 describe('Customer-scoped cloud save', () => {
+  it('rejects implausible progress before writing or publishing a leaderboard snapshot', async () => {
+    const saved = newPlayer();
+    for (const changes of [{ coins: 100_000_000 }, { xp: 100_000_000 },
+      { totalDistance: 900_000_000 }, { highScore: 900_000_000 }]) {
+      const request = shopify(saved, 'SUBSCRIBED'), afterSave = vi.fn();
+      const result = await handlePlayerRequest(post({ ...saved, ...changes }, firstDigest), { ...dependencies(request), afterSave });
+      expect(result).toEqual({ status: 422, body: { error: 'implausible_game_progress' } });
+      expect(request.mock.calls.filter(([, options]) => JSON.parse(String(options?.body)).query.startsWith('mutation'))).toHaveLength(0);
+      expect(afterSave).not.toHaveBeenCalled();
+    }
+  });
+
+  it('saves a legitimately settled long ride and its first-time offline import', async () => {
+    const previous = newPlayer();
+    const next = finishRun(previous, { id: 'legitimate-endless-ride', distance: 50_000, score: 250_000,
+      seconds: 1500, bestCombo: 1, nearMisses: 0, jumps: 0, wheelieMeters: 50_000,
+      maxSpeed: 140, cause: 'Ride ended' }, '2026-10-05')!.player;
+    for (const saved of [previous, null]) {
+      const request = shopify(saved, 'SUBSCRIBED');
+      const result = await handlePlayerRequest(post(next, saved ? firstDigest : null), dependencies(request));
+      expect(result.status).toBe(200);
+      expect(result.body.player).toMatchObject({ totalDistance: 50_000, runsPlayed: 1 });
+      expect(request.mock.calls.filter(([, options]) => JSON.parse(String(options?.body)).query.startsWith('mutation'))).toHaveLength(1);
+    }
+  });
+
   it('fails closed when unconfigured and never contacts Shopify for unauthenticated requests', async () => {
     const deps = dependencies();
     expect((await handlePlayerRequest(input(), { ...deps, config: null })).status).toBe(503);

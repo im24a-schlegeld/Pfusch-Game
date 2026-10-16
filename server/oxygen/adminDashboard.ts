@@ -175,14 +175,49 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 .color-dot{display:inline-block;width:16px;height:16px;border:1px solid #bbb;border-radius:5px;vertical-align:middle;margin-right:6px}
 .readonly-field{padding:12px;border-radius:8px;border:1px solid #dedede;background:#f6f6f6;overflow-wrap:anywhere}
 #inventorySearch{max-width:420px}.hidden{display:none!important}@media(max-width:1040px){.kpis{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}}@media(max-width:580px){main{padding:16px 10px 80px}.stat{padding:14px}.stat .num{font-size:23px}.top{margin-bottom:12px}h1{font-size:23px}.cols,.catalog-grid{grid-template-columns:1fr}.filters{flex-wrap:wrap}.card-head,.card-body{padding:15px}}
+
+/* V9: desktop stays Shopify-like, mobile switches to touch-friendly cards. */
+@media(max-width:760px){
+ main{padding:16px 12px 50px;max-width:100%}
+ .top{gap:9px;margin-bottom:12px}.top h1{font-size:23px;margin:3px 0}
+ .top .actions{width:100%;justify-content:flex-start;gap:7px}
+ .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+ .stat{padding:13px 12px}.stat .num{font-size:23px;margin:7px 0 2px}.stat .label{font-size:12px;line-height:1.25}
+ .layout{grid-template-columns:minmax(0,1fr);gap:10px}.card{min-width:0;border-radius:11px}
+ .card-head{padding:13px;gap:6px}.card-head h2{font-size:16px}
+ .filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px 12px}
+ .filters input{min-width:0}.filters select{grid-column:1/-1;max-width:none;width:100%}
+ .filters button,.filters select,.table-actions button,.btn,.catalog-row button{min-height:44px}
+ .table-wrap{padding:0 10px;overflow:visible}
+ table,tbody{display:block;width:100%}thead{display:none}
+ tbody tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 7px;border:1px solid #e7e7e7;border-radius:10px;padding:12px;margin:0 0 8px;background:#fff}
+ td{display:block;padding:5px 3px;border:0;min-width:0;overflow-wrap:anywhere;font-size:12px}
+ td:first-child{grid-column:1/-1;border-bottom:1px solid #eee;padding-bottom:10px;font-size:14px}
+ td:nth-child(2)::before{content:'Fahrten';display:block;color:#727272;font-size:11px;margin-bottom:4px}
+ td:nth-child(3)::before{content:'Coins';display:block;color:#727272;font-size:11px;margin-bottom:4px}
+ td:nth-child(4)::before{content:'Aktivität';display:block;color:#727272;font-size:11px;margin-bottom:4px}
+ .player-btn{min-height:44px;width:100%}
+ .table-actions{padding:10px 12px;gap:8px}
+ .editor,.card-body{padding:13px}.editor .cols{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .editor label{margin:10px 0 5px}.editor input,.editor select{padding:12px 10px;min-height:44px}
+ .editor .buttons .btn{width:100%}.catalog-grid{grid-template-columns:minmax(0,1fr);gap:10px;padding:12px}
+ .catalog-section{padding:0 12px 12px}.catalog-row{gap:7px;padding:11px 0}
+ .catalog-row .asset-name{min-width:120px;flex-basis:100%}
+ .catalog-row .asset-actions{width:100%;gap:6px;flex-wrap:wrap}
+ .catalog-row .asset-actions button{flex:1 1 100px}
+ .cols{grid-template-columns:repeat(2,minmax(0,1fr))}.cols b{overflow-wrap:anywhere}
+ #inventorySearch{max-width:none;width:100%}.notice{font-size:12px;line-height:1.45}
+ #garageEditor .card-head{flex-wrap:wrap}
+}
+@media(max-width:350px){.kpis{grid-template-columns:1fr 1fr}.editor .cols{grid-template-columns:1fr}}
 </style></head><body><main>
-<header class="top"><div><div class="eyebrow">Shopify / Apps / Wheelie Escape</div><h1>Spielerverwaltung</h1><div class="muted">Shop-Daten, digitale Spielstände und aktuelle Spielsitzungen</div></div><div class="actions"><span class="pill" id="connection">Verbindung wird geprüft</span><button class="btn" id="refresh" type="button">↻ Aktualisieren</button></div></header>
+<header class="top"><div><h1>Spielerverwaltung</h1></div><div class="actions"><span class="pill" id="connection">Verbindung wird geprüft</span><button class="btn" id="refresh" type="button">↻ Aktualisieren</button></div></header>
 <div id="message" role="status"></div>
 <section class="kpis" aria-label="Dashboard Kennzahlen">
-<div class="card stat"><div class="label">Live-Spieler</div><div class="num" id="live">–</div><div class="mini">Angemeldet, in den letzten 2 Minuten · aktuelle Kundenliste</div></div>
-<div class="card stat"><div class="label">Spieler mit Spielstand</div><div class="num" id="players">–</div><div class="mini">Letzte 25 Kunden · Stichprobe</div></div>
-<div class="card stat"><div class="label">Gespeicherte Fahrten</div><div class="num" id="runs">–</div><div class="mini">In der Stichprobe</div></div>
-<div class="card stat"><div class="label">Verifizierte Belohnungspunkte</div><div class="num" id="verified">–</div><div class="mini">Nur lesbar · getrennt vom Spielstand</div></div>
+<div class="card stat"><div class="label">Live · aktuelle Kundenliste</div><div class="num" id="live">–</div></div>
+<div class="card stat"><div class="label">Spielstände · Stichprobe</div><div class="num" id="players">–</div></div>
+<div class="card stat"><div class="label">Fahrten · Stichprobe</div><div class="num" id="runs">–</div></div>
+<div class="card stat"><div class="label">Verifizierte Punkte · Stichprobe</div><div class="num" id="verified">–</div></div>
 </section>
 <div class="layout">
 <section class="card"><div class="card-head"><h2>Benutzer und E-Mail-Adressen</h2><span class="badge" id="resultCount">–</span></div>
@@ -193,7 +228,7 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 <div id="empty" class="detail-empty">Wähle links einen Benutzer aus.</div>
 <form id="editor" class="editor hidden">
 <div class="eyebrow" id="customerId">–</div><h3 id="customerName">–</h3><div class="notice" id="permissionHint">Coins und Ausrüstung können erst nach der Freigabe deiner Staff-ID in Oxygen verändert werden.</div>
-<label>E-Mail-Adresse (Shopify-Kundenkonto)</label><div id="editEmail" class="readonly-field" aria-label="E-Mail nur lesen">–</div><div class="section-sub">E-Mail ist ausschließlich lesbar. Änderungen nur direkt über Shopify → Kunden.</div>
+<label>E-Mail-Adresse (Shopify-Kundenkonto)</label><div id="editEmail" class="readonly-field" aria-label="E-Mail nur lesen">–</div>
 <div class="cols"><div><label for="editCoins">Coins</label><input id="editCoins" type="number" min="0" max="1000000000" step="1"></div>
 <div><label for="editXp">XP</label><input id="editXp" type="number" min="0" max="1000000000" step="1"></div>
 <div><label for="editBells">Bells verdient</label><input id="editBells" type="number" min="0" max="100000" step="1"></div></div>
@@ -203,11 +238,11 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 <div><label for="editWheelie">Wheelie-Meter</label><input id="editWheelie" type="number" min="0" max="1000000000" step="1"></div></div>
 <div class="section-sub" id="playerDetails">Gespeicherte digitale Spielwerte.</div>
 <div class="buttons"><button class="btn primary" id="saveGame" type="button">Spielwerte speichern</button></div>
-<div class="notice">Bearbeitungen werden serverseitig geprüft und protokolliert. Bereits verbrauchte Bells lassen sich nicht rückwirkend ausgeben. Verifizierte Shop-Punkte, Rabatte und Gutscheine sind nicht bearbeitbar. Eine offene Spielsession kann beim nächsten Speichern einen Konflikt auslösen.</div>
+<div class="notice">Digitale Änderungen werden geprüft und protokolliert. Verifizierte Shop-Punkte, Rabatte und Gutscheine sind hier nicht bearbeitbar. Eine offene Spielsession kann beim nächsten Speichern einen Konflikt auslösen.</div>
 <div id="editMessage" role="status" class="mini"></div>
 </form></aside></div>
 <section class="card hidden" id="garageEditor" style="margin-top:14px" aria-label="Vollständige digitale Garage-Verwaltung">
-<div class="card-head"><div><h2>Digitale Garage &amp; Inventar</h2><p class="section-sub">Alle im Spiel vorhandenen Shop-Artikel, Farbvarianten, Motorräder und digitale Ausrüstung.</p></div><span class="badge" id="garageStatus">Nur Lesen</span></div>
+<div class="card-head"><div><h2>Digitale Garage &amp; Inventar</h2></div><span class="badge" id="garageStatus">Nur Lesen</span></div>
 <div class="catalog-grid" id="appearanceSelectors"></div>
 <div class="catalog-section"><label for="editRiderName">Name in der Bestenliste</label><div class="actions" style="margin-top:7px"><input class="search" id="editRiderName" maxlength="24" style="max-width:320px" placeholder="RIDER" aria-label="Bestenlistenname"><button class="btn" type="button" id="saveRiderName">Name speichern</button></div></div>
 <div class="catalog-section"><input class="search" type="search" id="inventorySearch" placeholder="Inventar durchsuchen: Artikel, Farben, Motorrad …" aria-label="Inventar durchsuchen"><div id="inventoryContent"></div></div>

@@ -3,6 +3,7 @@ import { loadCustomerPlayer, saveCustomerPlayer, type ShopifyFetch } from './pla
 import { isRecord, retainGuardianBells, sanitizeDigitalPlayer } from './playerValidation.js';
 import type { Player } from '../../app/domain/types.js';
 import { canSave, retainRunCount, storageAccess, type StorageAccess } from './storagePolicy.js';
+import { assertPlausibleDigitalSave } from './progressAntiCheat.js';
 import type { VerifiedPurchases } from './purchaseStore.js';
 
 export interface PlayerRequest {
@@ -57,6 +58,7 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
         return { status: 403, body: { error: storage.reason === 'unsubscribed' ? 'newsletter_unsubscribed' : 'newsletter_required', storage } };
       if (body.compareDigest !== current.compareDigest) throw new ApiError(409, 'conflict');
       player = retainGuardianBells(player, current.player, isRecord(body.player) && body.player.guardianBells !== undefined);
+      assertPlausibleDigitalSave(current.player, player);
       result = await saveCustomerPlayer(config, identity.customerId,
         player, body.compareDigest as string | null, dependencies.request);
       // A secondary digital leaderboard outage must never turn an acknowledged
