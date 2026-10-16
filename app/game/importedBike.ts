@@ -147,7 +147,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
     const definition = typeof part.material === 'number' ? manifest.materials[part.material] : manifest.materials.find((candidate) => candidate.name === part.material);
     mesh.userData.bikePaintSurface = part.paintable ?? definition?.paintable ?? /livery|paint|fairing|bodywork/i.test(material.name);
     finishHardware(mesh, part);
-    if (id === 'scooter' && material.userData.rimPalette && /Wheel$/.test(part.rig)) {
+    if (id === 'scooter' && material.userData.rimPalette && part.rig.endsWith('Wheel')) {
       // Nitro's outer lip and cast spokes share one authored mesh/material.
       // In the source frame its colored inner rings end at radius .166;
       // the outermost band begins at .178 and overlaps the tire at .1945.
