@@ -18,6 +18,8 @@ Die Distanzgrenze folgt dem vorhandenen XP-Budget statt einer pauschalen Kilomet
 
 Die Sticker-Werkstatt erhält auch innerhalb des Containers für den Installationshinweis einen eigenen begrenzten Scrollbereich. Die Scrollsperre während der Fahrt bleibt davon getrennt.
 
+Der erste vollständige Browserlauf zeigte zusätzlich einen Fehler im neuen Scrolltest: Sein pauschaler Startpunkt lag neben dem Größenregler und wurde von Chromiums Touch-Zielkorrektur auf dessen Minimum von 4 cm gezogen. Die Browseraufzeichnung zeigte vorher korrekt 9 cm. Der Test beginnt nun gezielt auf einer nicht interaktiven Überschrift und prüft nach dem Scrollen zusätzlich, dass Größe und Drehung unverändert bleiben. Die produktive Standardgröße von 9 cm bleibt erhalten.
+
 ## Kundendatenprüfung nach dem Patch-Push
 
 Die separate Prüfung fand einen zu weit gefassten Admin-Lesezugriff: Ein gültiger App-Bridge-ID-Token identifizierte einen Mitarbeiter, berechtigte ihn aber bisher bereits zum Abrufen der Kundenliste, einzelner Spielstände und der Übersicht. Die bestehende Mitarbeiterfreigabe wurde nur beim Schreiben geprüft. Ein mit einem Testschlüssel signierter, nicht freigegebener Mitarbeiter konnte dies mit ausschließlich erfundenen Kundendaten reproduzieren.

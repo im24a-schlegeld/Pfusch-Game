@@ -16,6 +16,9 @@ const placedButtons = (page: Page) => page.locator('.sticker-items').getByRole('
 async function checkWorkshopScroll(page: Page, viewport: { width: number; height: number }) {
   await page.setViewportSize(viewport);
   const workshop = page.getByRole('main', { name: 'Sticker-Werkstatt' });
+  const size = page.getByRole('slider', { name: 'Stickergröße', exact: true });
+  const rotation = page.getByRole('slider', { name: 'Stickerdrehung', exact: true });
+  const beforeSize = await size.inputValue(), beforeRotation = await rotation.inputValue();
   // The garage wrapper clips overflow; the workshop must own its scrolling.
   await expect(workshop).toHaveCSS('overflow-y', 'auto');
   await expect(workshop).toHaveCSS('touch-action', 'pan-y');
@@ -28,17 +31,26 @@ async function checkWorkshopScroll(page: Page, viewport: { width: number; height
   expect(metrics.content).toBeGreaterThan(metrics.client + 20);
   await workshop.evaluate(element => { element.scrollTop = 0; });
   const box = (await workshop.boundingBox())!;
+  // Start on a known noninteractive heading. A viewport-relative point at the
+  // left edge can be touch-adjusted onto the size slider and set it to 4 cm.
+  const panOrigin = workshop.getByRole('heading', { name: 'STICKER ANPASSEN', exact: true });
+  await panOrigin.scrollIntoViewIfNeeded();
+  const panBox = (await panOrigin.boundingBox())!;
+  const x = panBox.x + panBox.width / 2, y = panBox.y + panBox.height / 2;
+  expect(await panOrigin.evaluate((element, point) => element.contains(document.elementFromPoint(point.x, point.y)), { x, y })).toBe(true);
+  const beforePan = await workshop.evaluate(element => element.scrollTop);
   // Real touch panning must work outside the canvas whose gestures rotate/zoom.
   const touch = await page.context().newCDPSession(page);
-  const x = box.x + 4, y = box.y + box.height * 0.8;
   await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
   for (let step = 1; step <= 8; step++) {
     await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - step * 24 }] });
     await page.waitForTimeout(35);
   }
   await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await expect.poll(() => workshop.evaluate(element => element.scrollTop)).toBeGreaterThan(20);
+  await expect.poll(() => workshop.evaluate(element => element.scrollTop)).toBeGreaterThan(beforePan + 20);
   await touch.detach();
+  await expect(size).toHaveValue(beforeSize);
+  await expect(rotation).toHaveValue(beforeRotation);
   // Wheel input also scrolls the workshop instead of its clipped parent.
   await page.mouse.move(box.x + 4, box.y + box.height / 2);
   await page.mouse.wheel(0, 1600);
@@ -60,6 +72,8 @@ async function checkWorkshopScroll(page: Page, viewport: { width: number; height
   await page.mouse.move(box.x + 4, box.y + box.height / 2);
   await page.mouse.wheel(0, -1600);
   await expect.poll(() => workshop.evaluate(element => element.scrollTop)).toBe(0);
+  await expect(size).toHaveValue(beforeSize);
+  await expect(rotation).toHaveValue(beforeRotation);
 }
 
 async function openSticker(page: Page, target: 'Helm' | 'Motorrad', product: Product) {
@@ -110,6 +124,7 @@ test('mobile sticker placement previews both targets, buys once on save, persist
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await openSticker(page, 'Helm', product);
+  await expect(page.getByRole('slider', { name: 'Stickergröße', exact: true })).toHaveValue('0.09');
   await checkWorkshopScroll(page, { width: 390, height: 844 });
   await checkWorkshopScroll(page, { width: 320, height: 568 });
   await page.setViewportSize({ width: 390, height: 844 });
