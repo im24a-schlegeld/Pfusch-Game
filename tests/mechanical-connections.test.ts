@@ -112,7 +112,9 @@ describe('assembled motorcycle connections', () => {
     for (const actual of trim) {
       const definition = definitions.find(material => material.name === actual.name)!;
       expect(definition).toBeDefined();
-      const expected = actual.userData.fixedHardwareFinish ? new Color('#101214')
+      // Vertex-colored cockpit buckets carry their original/black finishes in
+      // the static color attribute; white is the neutral material multiplier.
+      const expected = actual.vertexColors ? new Color('#ffffff') : actual.userData.fixedHardwareFinish ? new Color('#101214')
         : Array.isArray(definition.color) ? new Color().fromArray(definition.color) : new Color(definition.color);
       // "trim" contains "rim": selecting wheel paint must not recolor it.
       expect(actual.color.equals(expected)).toBe(true);
