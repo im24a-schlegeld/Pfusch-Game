@@ -25,6 +25,7 @@ describe('existing Shopify app / admin dashboard', () => {
     const network = vi.fn<typeof fetch>();
     expect((await handleAdminOverview(request(), config, network)).status).toBe(401);
     expect((await handleAdminOverview(request('a.b.c'), config, network)).status).toBe(401);
+    expect((await handleAdminOverview(request(await jwt()), config, network)).status).toBe(403);
     expect((await handleAdminOverview(request(await jwt(), 'POST'), config, network)).status).toBe(405);
     expect(network.mock.calls).toHaveLength(0);
   });
@@ -59,6 +60,7 @@ describe('existing Shopify app / admin dashboard', () => {
     expect(overview.top).toEqual([{ name: 'RIDER TEST', score: 805 }]);
     expect(overview.sampleOnly).toBe(true);
     expect(overview.moreCustomers).toBe(true);
+    expect(overview.statistics.find(topic => topic.id === 'device')?.rows).toEqual([{ label: 'Unbekannt', count: 1 }]);
     expect(JSON.stringify(overview)).not.toContain(customerId);
     expect(JSON.stringify(overview)).not.toContain(config.secret);
     expect(graphql.mock.calls.some(call => fetchUrl(call[0]).includes('/graphql.json'))).toBe(true);
@@ -70,6 +72,8 @@ describe('existing Shopify app / admin dashboard', () => {
     expect(html).toContain('shopify-api-key');
     expect(html).toContain('cdn.shopify.com/shopifycloud/app-bridge.js');
     expect(html).toContain('/api/admin/overview');
+    expect(html).toContain('id="statisticsTopic"');
+    expect(html).toContain('keine Besucher- oder Sessionstatistik');
     expect(html).not.toContain(config.secret);
     expect(html).not.toContain('metafieldsSet');
   });

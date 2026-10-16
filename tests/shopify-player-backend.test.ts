@@ -42,6 +42,24 @@ function shopify(saved: unknown = null, state = 'NOT_SUBSCRIBED') {
   });
 }
 
+describe('advisory save device metadata', () => {
+  it('overrides client categories after authentication and validation using HTTP headers only', async () => {
+    const player = newPlayer();
+    player.settings.deviceType = 'desktop';
+    const network = shopify(null, 'SUBSCRIBED');
+    const saved = await handlePlayerRequest({ ...post(player), userAgent: 'Mozilla iPhone Mobile' }, dependencies(network));
+    expect(saved.status).toBe(200);
+    expect((saved.body.player as typeof player).settings.deviceType).toBe('mobile');
+    const mutation = network.mock.calls.map(([, options]) => JSON.parse(options!.body as string))
+      .find(body => body.query.startsWith('mutation'));
+    const payload = JSON.stringify(mutation);
+    expect(payload).toContain('mobile');
+    expect(payload).not.toContain('Mozilla');
+    const unknown = await handlePlayerRequest(post(player), dependencies(shopify(null, 'SUBSCRIBED')));
+    expect((unknown.body.player as typeof player).settings.deviceType).toBe('unknown');
+  });
+});
+
 describe('server-authoritative Guardian Bell wallet', () => {
   const saved = () => ({ ...newPlayer(), id: 'shopify:12345',
     guardianBells: { earned: 3, spent: 1, spentRunIds: ['used-run'] } });

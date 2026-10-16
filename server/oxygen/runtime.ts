@@ -114,6 +114,7 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
         readBody: () => readBoundedWebJson(request, rewardAction === 'run/finish' ? MAX_REWARD_FINISH_BODY_BYTES : undefined) }, { config: shopify, request: boundedFetch, authenticate, enabled: env.SHOPIFY_GAME_REWARDS_ENABLED === 'true' })
       : path === '/api/player'
       ? await handlePlayerRequest({ method: request.method, url: request.url, contentType: request.headers.get('content-type') ?? undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined, mobileHint: request.headers.get('sec-ch-ua-mobile') ?? undefined,
         readBody: () => readBoundedWebJson(request) }, { config: shopify, request: requestPlayer, authenticate,
         purchases: shopify ? customerId => loadCustomerPurchases(shopify, customerId, withFetchDeadline(fetcher, 5000)) : undefined,
         afterSave: shopify ? async (customerId, player) => {

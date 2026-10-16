@@ -2,7 +2,7 @@ import { LEVELS } from './config.js';
 import { DAILY_SIGN_CHALLENGE, dailyChallengesForDate, normalizeDailyProgress } from './dailyChallenges.js';
 import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR, HELMET_INVENTORY_MIGRATION } from './helmet.js';
 import { ownsProductColor } from './productOwnership.js';
-import { equipmentSlot } from './preview.js';
+import { equipmentSlot, supportsHood } from './preview.js';
 import { DEFAULT_PANTS_COLOR, DEFAULT_SHOES_COLOR } from './riderColors.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const LEADERBOARD_NAME_MAX_LENGTH = 24;
@@ -166,8 +166,15 @@ export function ownership(p: Player, product: Product, variantId = p.variants[pr
   if (ownsProductColor(p, product, variantId, p.irlItems)) return 'OWNED_IRL';
   return 'UNLOCKED_DIGITAL';
 }
-export const digitalPrice = (p: Product) =>
-  p.category === 'cape' ? 5000 : p.category === 'upper' ? 150 : p.category === 'head' ? 90 : 75;
+/** Shared by offers and checkout: shop-relative cosmetics, small consumable decals. */
+export function digitalPrice(product: Product): number {
+  if (product.category === 'cape') return 5000;
+  const shopPrice = Number.isFinite(product.price) && product.price > 0 ? product.price : 10;
+  if (product.handle === 'chrome-sticker')
+    return Math.max(20, Math.min(60, Math.round(shopPrice * 10 / 5) * 5));
+  const visualOption = product.handle.startsWith('keep-up-') || supportsHood(product) || product.preview?.numberCustomization;
+  return Math.max(50, Math.round(shopPrice * 18 * (visualOption ? 1.2 : 1) / 5) * 5);
+}
 export const digitalLevel = (p: Product) => p.category === 'cape' ? 8 : 1;
 export function unlock(
   p: Player,

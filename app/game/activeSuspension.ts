@@ -49,6 +49,7 @@ export function activeSuspensionPose(
   front: number,
   radius: number,
   wheelieLoad = 0,
+  frontLoad = 0,
 ) {
   const profile = profiles[model] ?? profiles['125'];
   const wheelie = clamp(wheelieLoad, 0, 1);
@@ -57,7 +58,7 @@ export function activeSuspensionPose(
   // absolute limits, so lowering consumes travel instead of risking the tyre.
   const staticSag = model === '450' ? SUPERMOTO_STATIC_SAG : 0;
   const frontTravel = clamp(
-    staticSag + travel - wheelie * 0.009,
+    staticSag + travel + frontLoad - wheelie * 0.009,
     -profile.rebound,
     profile.front,
   );

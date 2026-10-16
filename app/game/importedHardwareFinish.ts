@@ -63,6 +63,10 @@ function blackComponent(id: ImportedBikeId, part: ImportedBikePart, c: HardwareC
   // The Ciao fork and its painted fender happen to share the same source mesh.
   if (id === '125' && part.name === 'ciao_livery:fork') return width > 0.13;
   if (id === 'moped' && part.name === 'moped_fork_alloy:fork') return true;
+  // Source atlas classification gave the left lever a silver material and
+  // the right one dark trim. Finish both complete authored lever shells.
+  if (id === '450' && /^fs450_cockpit_(metal|dark):steering$/.test(part.name))
+    return width > 0.1 && height < 0.035 && c.min[1] > 1.13 && c.max[1] < 1.16 && c.max[2] < -0.28;
   if (id === '450' && part.name === 'fs450_fork_steel:steering')
     return height > 0.45 && width < 0.08;
   if (id === '450' && part.name === 'fs450_hardware_metal:fork')
@@ -112,6 +116,28 @@ export function createImportedHardwareFinisher(id: ImportedBikeId, binary: Array
     return material;
   };
   return (mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>, part: ImportedBikePart) => {
+    if (id === '450' && /^fs450_cockpit_(metal|dark):steering$/.test(part.name)) {
+      // Lever triangles are interleaved with fittings in each source bucket.
+      // A static color attribute retains one draw and the original index order.
+      const components = hardwareComponents(part, binary).filter(component => blackComponent(id, part, component));
+      if (!components.length) return;
+      const indices = new Uint16Array(binary, part.index.offset, part.index.count);
+      const colors = new Float32Array(part.position.count * 3);
+      for (let vertex = 0; vertex < part.position.count; vertex++) mesh.material.color.toArray(colors, vertex * 3);
+      const black = new THREE.Color('#101214');
+      for (const component of components) for (const triangle of component.triangles)
+        for (let corner = 0; corner < 3; corner++) black.toArray(colors, indices[triangle * 3 + corner] * 3);
+      const material = mesh.material.clone();
+      material.color.set('#ffffff');
+      material.vertexColors = true;
+      material.userData.fixedHardwareFinish = true;
+      delete material.userData.appearanceColorSlot;
+      mesh.material = material;
+      mesh.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      mesh.userData.bikePaintSurface = false;
+      mesh.userData.hardwareLeverMask = true;
+      return;
+    }
     if (id === '701' && part.name === 'r6_brake_caliper:fork') {
       // The source joins each axle casting to its bronze brake caliper in one
       // continuous shell. Color the forward casting only, in the source frame;

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';
 import { suspensionTarget } from './activeSuspension';
+import { createWheelieLoadUp, type WheelieVisualContact } from './rideVisualFeedback';
+import { createSpeedEdges } from './speedEdges';
 import { wheelieLanePose } from './riderMotion';
 import { handlebarSteeringInput } from './bikeMotion';
 import { rendererSessions } from './rendererSession';
@@ -194,6 +196,8 @@ export default function SceneView({
       0.1,
       190,
     );
+    scene.add(camera);
+    const speedEdges = mode === 'ride' ? createSpeedEdges(camera) : null;
     const hemisphere = new THREE.HemisphereLight('#e3f0f2', '#343a2f', 1.4);
     scene.add(hemisphere);
     const sunlight = new THREE.DirectionalLight('#fff5e6', 3.4);
@@ -326,6 +330,8 @@ export default function SceneView({
     const collisionTraffic = new Map<THREE.Group, THREE.Vector3>();
     let launchSerial = 0,
       launchPulse = 0;
+    let wheelieLoadUp = createWheelieLoadUp();
+    const wheelieContact: WheelieVisualContact = { height: 0, velocityY: 0, pitch: 0, onTowTruck: false };
     let anchors = particleAnchors(bike.body, player.bike);
     const exhaustPosition = new THREE.Vector3(),
       tailPosition = new THREE.Vector3();
@@ -625,6 +631,7 @@ export default function SceneView({
           collisionTraffic.clear();
           crashNotified = crashReported = false;
           tilt = suspension = landing = launchPulse = 0;
+          wheelieLoadUp = createWheelieLoadUp();
           previousSpeed = engine.speed;
           previousXPosition = engine.x;
           previousLateralSpeed = 0;
@@ -636,8 +643,17 @@ export default function SceneView({
           camera.lookAt(engine.x * 0.38, 1.4, -12);
           hud = 1;
         }
+        // Read both-wheel contact before the unchanged fixed-step simulation.
+        // Compression observes the lift immediately; it never delays throttle.
+        wheelieContact.height = engine.height;
+        wheelieContact.velocityY = engine.velocityY;
+        wheelieContact.pitch = Math.max(engine.wheelieAngle, engine.towPitch);
+        wheelieContact.onTowTruck = engine.onTowTruck;
         engine.advance(dt);
         const moving = engine.phase === 'playing';
+        const frontLoad = wheelieLoadUp.update(
+          wheelieContact, engine.wheelieAngle, moving && focused && visible, reduceMotion, dt,
+        ) * 0.045;
         const crashed =
           engine.phase === 'crashed' && engine.event.text !== 'Ride ended';
         const crashActive = focused && visible;
@@ -938,6 +954,7 @@ export default function SceneView({
                   1,
                   engine.wheelieAngle / engine.balanceProfile.balancePoint,
                 ),
+            frontLoad,
           );
         // Final ordinary/crash pose: accessory gravity and both light endpoints
         // consume these same transforms before the scene is rendered.
@@ -1024,6 +1041,7 @@ export default function SceneView({
           camera.fov = fov;
           camera.updateProjectionMatrix();
         }
+        speedEdges?.update(dt, engine.speed, moving && focused && visible, reduceMotion);
         sky?.update(engine.world, distance, reducedMotion() ? 0 : engine.elapsed);
         // Observe already-rendered encounter models at most seven times per
         // second. React receives only changed viewport anchors, never frames.
@@ -1109,6 +1127,7 @@ export default function SceneView({
       cancelAnimationFrame(raf);
       if (tutorialCue) tutorial.current.callback?.(null);
       policeCrashEffect?.dispose();
+      speedEdges?.dispose();
       observer.disconnect();
       window.removeEventListener('blur', visualBlur);
       window.removeEventListener('focus', visualFocus);

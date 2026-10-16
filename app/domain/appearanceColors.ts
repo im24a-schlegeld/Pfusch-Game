@@ -29,7 +29,18 @@ export interface AppearanceColor { name: string; value: string }
 
 type NamedColor = AppearanceColor & { source: 'catalog' | 'basic' | 'legacy' };
 
+export const RAINBOW_COLORS: readonly AppearanceColor[] = [
+  { name: 'Rot', value: '#e53935' },
+  { name: 'Orange', value: '#f28c28' },
+  { name: 'Gelb', value: '#f1cf3a' },
+  { name: 'Grün', value: '#36a85e' },
+  { name: 'Blau', value: '#2878d4' },
+  { name: 'Indigo', value: '#494bb7' },
+  { name: 'Violett', value: '#aa48c7' },
+];
+
 const BASIC_COLORS: readonly NamedColor[] = [
+  ...RAINBOW_COLORS.map(color => ({ ...color, source: 'basic' as const })),
   { name: 'Tiefschwarz', value: '#181818', source: 'basic' },
   { name: 'Polarweiß', value: '#eeeeee', source: 'basic' },
   { name: 'Graphit', value: '#757575', source: 'basic' },

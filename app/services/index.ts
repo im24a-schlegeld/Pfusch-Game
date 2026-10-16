@@ -211,6 +211,9 @@ export function decodePlayer(raw: string): Player {
       if (Object.keys(customization).length) p.customizations[id] = customization;
     }
   if (isRecord(v.settings)) {
+    // Additive v1 migration: preserve absence rather than inventing historical device data.
+    if (typeof v.settings.deviceType === 'string' && ['mobile', 'tablet', 'desktop', 'unknown'].includes(v.settings.deviceType))
+      p.settings.deviceType = v.settings.deviceType as Player['settings']['deviceType'];
     for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const)
       if (typeof v.settings[field] === 'boolean')
         p.settings[field] = v.settings[field];

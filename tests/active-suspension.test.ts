@@ -26,6 +26,27 @@ const closeMatrix = (a: Matrix4, b: Matrix4) =>
 
 describe('active fork and rear suspension', () => {
   it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
+    '%s adds optical front load without adding rear travel or moving the wheel contacts',
+    (model) => {
+      const neutral = activeSuspensionPose(model, 0.2, 0.01, 0.7, -0.72, 0.31);
+      const loaded = activeSuspensionPose(model, 0.2, 0.01, 0.7, -0.72, 0.31, 0, 0.04);
+      expect(loaded.frontTravel - neutral.frontTravel).toBeCloseTo(0.04, 10);
+      expect(loaded.rearTravel).toBe(neutral.rearTravel);
+      const bike = makeBike({ ...newPlayer(), bike: model }, []);
+      bike.animateSuspension(0.2, 0.01);
+      bike.root.updateMatrixWorld(true);
+      const contacts = bike.wheels.map(wheel => wheel.getWorldPosition(new Vector3()));
+      const riderScale = bike.rider.getWorldScale(new Vector3());
+      const neutralY = bike.body.position.y;
+      bike.animateSuspension(0.2, 0.01, 0, 0.04);
+      bike.root.updateMatrixWorld(true);
+      bike.wheels.forEach((wheel, index) =>
+        expect(wheel.getWorldPosition(new Vector3()).distanceTo(contacts[index])).toBeLessThan(1e-9));
+      expect(bike.body.position.y).toBeLessThan(neutralY);
+      expect(bike.rider.getWorldScale(new Vector3()).distanceTo(riderScale)).toBeLessThan(1e-12);
+    },
+  );
+  it.each(['125', 'scooter', 'moped', '450', '701'] as const)(
     '%s visibly compresses and returns without moving tire contacts or changing the rider',
     (model) => {
       const bike = makeBike({ ...newPlayer(), bike: model }, []);

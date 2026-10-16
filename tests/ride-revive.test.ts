@@ -177,36 +177,32 @@ describe('one continuation of the same run', () => {
   });
 });
 
-describe('native-share continuation gate', () => {
+describe('explicit invitation-draft continuation gate', () => {
   const content = { kind: 'invite' as const, name: '' };
   it('accepts one successful handoff and blocks parallel or repeated claims', async () => {
     const gate = new ShareReviveGate();
-    let finishShare: (() => void) | undefined;
-    const platform = { share: vi.fn(() => new Promise<void>(resolve => { finishShare = resolve; })) };
-    const pending = gate.request(content, platform);
-    expect(await gate.request(content, platform)).toBe('unavailable');
-    finishShare!();
+    const platform = { open: vi.fn(() => true) };
+    const pending = gate.request(content, 'whatsapp', platform);
+    expect(await gate.request(content, 'telegram', platform)).toBe('unavailable');
     expect(await pending).toBe('ready');
-    expect(await gate.request(content, platform)).toBe('unavailable');
-    expect(platform.share).toHaveBeenCalledTimes(1);
+    expect(await gate.request(content, 'whatsapp', platform)).toBe('unavailable');
+    expect(platform.open).toHaveBeenCalledTimes(1);
   });
-  it('rejects dismissal, failure and copy-only platforms; cancellation can be retried', async () => {
+  it('rejects blocked drafts and copy-only platforms; an opening failure can be retried', async () => {
     const gate = new ShareReviveGate();
-    const share = vi.fn().mockRejectedValueOnce(Object.assign(new Error('cancel'), { name: 'AbortError' }))
-      .mockRejectedValueOnce(new Error('share failed')).mockResolvedValueOnce(undefined);
-    expect(await gate.request(content, { share })).toBe('cancelled');
-    expect(await gate.request(content, { share })).toBe('failed');
+    const open = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
+    expect(await gate.request(content, 'whatsapp', { open })).toBe('failed');
     const writeText = vi.fn();
-    expect(await gate.request(content, { clipboard: { writeText } })).toBe('unavailable');
+    const copyOnly = { clipboard: { writeText }, open: undefined };
+    expect(await gate.request(content, 'whatsapp', copyOnly)).toBe('unavailable');
     expect(writeText).not.toHaveBeenCalled();
-    expect(await gate.request(content, { share })).toBe('ready');
+    expect(await gate.request(content, 'telegram', { open })).toBe('ready');
   });
-  it('cannot resume after the player finishes while a share promise is pending', async () => {
+  it('cannot resume after the player finishes before handoff settlement', async () => {
     const gate = new ShareReviveGate();
-    let finishShare: (() => void) | undefined;
-    const pending = gate.request(content, { share: () => new Promise<void>(resolve => { finishShare = resolve; }) });
-    gate.close(); finishShare!();
+    const pending = gate.request(content, 'whatsapp', { open: () => true });
+    gate.close();
     expect(await pending).toBe('cancelled');
-    expect(await gate.request(content, { share: vi.fn() })).toBe('unavailable');
+    expect(await gate.request(content, 'telegram', { open: vi.fn() })).toBe('unavailable');
   });
 });

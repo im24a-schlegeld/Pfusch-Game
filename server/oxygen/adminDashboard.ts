@@ -4,6 +4,7 @@ import { shopifyGraphql, PLAYER_KEY, PLAYER_NAMESPACE, type ShopifyFetch } from 
 import { REWARD_KEY } from '../shopify/rewardStore.js';
 import { verifyHmacHex } from '../shopify/crypto.js';
 import { isDashboardEditor } from './adminPermissions.js';
+import { savedPlayerStatistics } from './adminStatistics.js';
 
 const RANKING_KEY = 'leaderboard_v1';
 const SAMPLE_SIZE = 25;
@@ -64,7 +65,7 @@ function decodeBytes(text: string) {
   return Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(text.length / 4) * 4, '=')), value => value.charCodeAt(0));
 }
 
-interface SampledPlayer { runsPlayed: number; coins: number; totalDistance: number; bellsRemaining: number; bellsSpent: number }
+interface SampledPlayer { runsPlayed: number; coins: number; totalDistance: number; bellsRemaining: number; bellsSpent: number; saved: Record<string, unknown> }
 function playerSummary(raw: unknown): SampledPlayer | null {
   if (typeof raw !== 'string' || raw.length > 50000) return null;
   try {
@@ -75,7 +76,7 @@ function playerSummary(raw: unknown): SampledPlayer | null {
     const spent = isRecord(bells) && nonnegative(bells.spent) ? bells.spent : 0;
     if (spent > earned || earned > 100000) return null;
     return { runsPlayed: p.runsPlayed, coins: p.coins, totalDistance: Math.floor(p.totalDistance),
-      bellsRemaining: earned - spent, bellsSpent: spent };
+      bellsRemaining: earned - spent, bellsSpent: spent, saved: p };
   } catch { return null; }
 }
 async function rewardSummary(raw: unknown, config: ShopifyConfig, customerId: string) {
@@ -110,12 +111,14 @@ export async function readAdminOverview(config: ShopifyConfig, request: ShopifyF
   const metrics = { players: 0, runs: 0, distanceKm: 0, coins: 0, bellsAvailable: 0, bellsSpent: 0,
     verifiedRuns: 0, verifiedPoints: 0, issuedCoupons: 0 };
   const rows: { rider: string; runs: number; coins: number; bells: number }[] = [];
+  const savedPlayers: Record<string, unknown>[] = [];
   for (const node of data.customers.nodes) {
     if (!isRecord(node) || typeof node.id !== 'string') continue;
     const match = /^gid:\/\/shopify\/Customer\/([1-9]\d{0,19})$/.exec(node.id);
     if (!match) continue;
     const summary = isRecord(node.playerField) ? playerSummary(node.playerField.value) : null;
     if (summary) {
+      savedPlayers.push(summary.saved);
       metrics.players++; metrics.runs += summary.runsPlayed; metrics.coins += summary.coins;
       metrics.distanceKm += summary.totalDistance / 1000; metrics.bellsAvailable += summary.bellsRemaining;
       metrics.bellsSpent += summary.bellsSpent;
@@ -141,7 +144,7 @@ export async function readAdminOverview(config: ShopifyConfig, request: ShopifyF
     ? data.currentAppInstallation.accessScopes.filter(isRecord).map(scope => scope.handle).filter((value): value is string => typeof value === 'string') : [];
   return { shop: data.shop.name.slice(0, 100), currency: data.shop.currencyCode === 'CHF' ? 'CHF' : 'other',
     sampledCustomers: data.customers.nodes.length, moreCustomers: isRecord(data.customers.pageInfo) && data.customers.pageInfo.hasNextPage === true,
-    sampleOnly: true, metrics, rows, top, diagnostics: { customersAccess: scopes.includes('write_customers') || scopes.includes('read_customers'),
+    sampleOnly: true, metrics, rows, top, statistics: savedPlayerStatistics(savedPlayers), diagnostics: { customersAccess: scopes.includes('write_customers') || scopes.includes('read_customers'),
       discountsAccess: scopes.includes('write_discounts'), serverClock: new Date(now).toISOString() } };
 }
 
@@ -221,6 +224,7 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 <div class="card stat"><div class="label">Fahrten · Stichprobe</div><div class="num" id="runs">–</div></div>
 <div class="card stat"><div class="label">Verifizierte Punkte · Stichprobe</div><div class="num" id="verified">–</div></div>
 </section>
+<section class="card" style="margin-bottom:14px" aria-label="Spielstatistik Stichprobe"><div class="card-head" style="flex-wrap:wrap"><h2>Spielstatistik · Stichprobe</h2><select class="filter-select" style="max-width:100%;min-height:44px" id="statisticsTopic" aria-label="Statistikthema"><option>Daten werden geladen …</option></select></div><div class="card-body"><div id="statisticsRows" role="status">–</div><p class="section-sub" id="statisticsSample">Höchstens 25 zuletzt aktualisierte Shopify-Kunden. Je ein letzter gespeicherter Spielstand, keine Besucher- oder Sessionstatistik. Fehlende historische Angaben bleiben unbekannt. Geräte sind grobe, unverifizierte HTTP-Kategorien.</p></div></section>
 <div class="layout">
 <section class="card"><div class="card-head"><h2>Benutzer und E-Mail-Adressen</h2><span class="badge" id="resultCount">–</span></div>
 <div class="filters"><input class="search" type="search" id="search" maxlength="80" placeholder="Kundenname oder E-Mail suchen" aria-label="Shopify-Kunden suchen"><button class="btn" id="searchBtn" type="button">Suchen</button><select class="filter-select" id="registrationFilter" aria-label="Kunden nach Spielstand filtern"><option value="all">Alle Shopify-Kunden</option><option value="with">Mit Spielstand</option><option value="without">Ohne Spielstand</option></select></div>
@@ -257,6 +261,10 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 (function(){
  const $=id=>document.getElementById(id);let selected=null,rows=[],cursor=null,more=false,editor=false,busy=false,editing=false,search='',staffId='',catalog=null,full=null;
  const num=n=>new Intl.NumberFormat('de-CH').format(Number.isFinite(Number(n))?Number(n):0);
+ let statistics=[],statisticsPlayers=0;
+ function drawStatistics(){const topic=statistics.find(item=>item.id===$('statisticsTopic').value);$('statisticsRows').replaceChildren();if(!topic||!topic.rows.length){$('statisticsRows').textContent='Keine gespeicherten Spielstände in der Stichprobe.';return}for(const row of topic.rows){const line=document.createElement('div');line.className='catalog-row';const label=document.createElement('span');label.className='asset-name';label.textContent=row.label;const count=document.createElement('b');count.textContent=num(row.count)+' · '+(statisticsPlayers?Math.round(row.count/statisticsPlayers*100):0)+' %';line.append(label,count);$('statisticsRows').append(line)}}
+ function loadStatistics(overview){const previous=$('statisticsTopic').value;statistics=Array.isArray(overview.statistics)?overview.statistics:[];statisticsPlayers=overview.metrics.players;$('statisticsTopic').replaceChildren();for(const topic of statistics){const option=document.createElement('option');option.value=topic.id;option.textContent=topic.label;$('statisticsTopic').append(option)}if(statistics.some(topic=>topic.id===previous))$('statisticsTopic').value=previous;drawStatistics()}
+ $('statisticsTopic').addEventListener('change',drawStatistics);
  function status(text,kind){$('message').textContent=text||'';$('message').className=kind||''}
  function detail(text,kind){$('editMessage').textContent=text||'';$('editMessage').className=kind||'mini'}
  async function api(path,body){if(!window.shopify||typeof window.shopify.idToken!=='function')throw Error('Bitte das Dashboard in Shopify → Apps → Wheelie Escape öffnen.');const token=await window.shopify.idToken();const response=await fetch(path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,credentials:'omit',cache:'no-store'});let result;try{result=await response.json()}catch{result={error:'invalid_response'}}if(!response.ok)throw Error(response.status===401?'Shopify-Sitzung abgelaufen. Bitte App erneut öffnen.':(result.error||'Serverfehler')+' (HTTP '+response.status+')');return result}
@@ -288,7 +296,7 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
   $('resultCount').textContent=shown.length+' von '+rows.length+' Kunden';$('live').textContent=num(rows.filter(r=>r.online).length);$('next').disabled=!more;
   $('pagingInfo').textContent='Filter gilt für die aktuelle Shopify-Kundenseite (max. 25 Einträge). '+(more?'Weitere Seiten verfügbar.':'Letzte Seite.')+' Gäste ohne Shopify-Konto sind nicht einzeln erfasst.';
  }
- async function load(next){if(busy)return;busy=true;$('refresh').disabled=true;$('searchBtn').disabled=true;status('');try{const query=new URLSearchParams();if(search)query.set('q',search);if(next&&cursor)query.set('after',cursor);const [d,overview]=await Promise.all([api('/api/admin/players?'+query.toString()),next?Promise.resolve(null):api('/api/admin/overview')]);editor=d.editor===true;staffId=d.staffId||'';rows=d.rows||[];cursor=d.cursor;more=d.more===true;draw();$('role').textContent=editor?'Freigegeben':'Nur Lesen – Oxygen-Staff-ID freigeben';$('staff').textContent=staffId;if(overview){$('shopName').textContent=overview.shop||'–';$('players').textContent=num(overview.metrics.players);$('runs').textContent=num(overview.metrics.runs);$('verified').textContent=num(overview.metrics.verifiedPoints)}$('connection').textContent='● Shopify verbunden';$('connection').className='pill green';if(selected){const update=rows.find(r=>r.id===selected.id);if(update&&!editing)showEditor(update);else if(!update){$('editor').classList.add('hidden');$('empty').classList.remove('hidden');selected=null}}}catch(e){status(e instanceof Error?e.message:'Kunden konnten nicht geladen werden','error');$('connection').textContent='Verbindung prüfen'}finally{busy=false;$('refresh').disabled=false;$('searchBtn').disabled=false}}
+ async function load(next){if(busy)return;busy=true;$('refresh').disabled=true;$('searchBtn').disabled=true;status('');try{const query=new URLSearchParams();if(search)query.set('q',search);if(next&&cursor)query.set('after',cursor);const [d,overview]=await Promise.all([api('/api/admin/players?'+query.toString()),next?Promise.resolve(null):api('/api/admin/overview')]);editor=d.editor===true;staffId=d.staffId||'';rows=d.rows||[];cursor=d.cursor;more=d.more===true;draw();$('role').textContent=editor?'Freigegeben':'Nur Lesen – Oxygen-Staff-ID freigeben';$('staff').textContent=staffId;if(overview){loadStatistics(overview);$('shopName').textContent=overview.shop||'–';$('players').textContent=num(overview.metrics.players);$('runs').textContent=num(overview.metrics.runs);$('verified').textContent=num(overview.metrics.verifiedPoints)}$('connection').textContent='● Shopify verbunden';$('connection').className='pill green';if(selected){const update=rows.find(r=>r.id===selected.id);if(update&&!editing)showEditor(update);else if(!update){$('editor').classList.add('hidden');$('empty').classList.remove('hidden');selected=null}}}catch(e){status(e instanceof Error?e.message:'Kunden konnten nicht geladen werden','error');$('connection').textContent='Verbindung prüfen'}finally{busy=false;$('refresh').disabled=false;$('searchBtn').disabled=false}}
  async function saveField(field,value,expected){if(!selected||!editor)return false;const id=selected.id;detail('Speichere …');try{await api('/api/admin/players',{id,field,value,...(expected!==undefined?{expected}:{})});detail('Gespeichert. Daten werden neu geladen.','success');editing=false;await load(false);return true}catch(e){detail((e instanceof Error?e.message:'Speichern fehlgeschlagen')+' – Daten prüfen und erneut laden.','error');return false}}
  function numberValue(id,max){const raw=$(id).value.trim();if(!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw))||Number(raw)>max)throw Error('Bitte eine gültige ganze Zahl zwischen 0 und '+max+' eingeben.');return Number(raw)}
  $('refresh').addEventListener('click',()=>load(false));$('next').addEventListener('click',()=>load(true));$('searchBtn').addEventListener('click',()=>{search=$('search').value.trim();cursor=null;load(false)});$('search').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('searchBtn').click()}});

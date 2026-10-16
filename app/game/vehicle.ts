@@ -880,20 +880,6 @@ function buildBike(player: Player, products: Product[]) {
         engine,
       ).name = 'fan-cover-rib';
     }
-    tube(
-      body,
-      [
-        [0.245, 1.25, -0.4],
-        [0.13, 1.12, -0.49],
-        [0.065, 0.91, -0.53],
-        [0.075, 0.49, -0.635],
-        [0.072, radius + 0.035, front + 0.035],
-      ],
-      [0.004, 0.004, 0.004, 0.004, 0.004],
-      rubber,
-      24,
-      8,
-    ).name = 'front-brake-cable';
     loft(
       body,
       [
@@ -1369,7 +1355,7 @@ function buildBike(player: Player, products: Product[]) {
           control(0.02, -0.01, -0.07),
         ],
         [0.007, 0.007, 0.009],
-        alloy,
+        matteBlack,
         12,
         8,
       ).name = 'supermoto-lever';
@@ -2000,7 +1986,7 @@ function buildBike(player: Player, products: Product[]) {
   const movedLower = new THREE.Vector3(),
     direction = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
-  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0) => {
+  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0, frontLoad = 0) => {
     const pose = activeSuspensionPose(
       player.bike,
       pitch,
@@ -2009,6 +1995,7 @@ function buildBike(player: Player, products: Product[]) {
       front,
       rearRadius,
       wheelieLoad,
+      frontLoad / modelScale,
     );
     body.rotation.x = pose.pitch;
     body.position.copy(pose.position).multiplyScalar(modelScale);

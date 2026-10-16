@@ -5,7 +5,7 @@ import { equipConfiguration, equipmentSlot, equippable, previewLoadout, validCon
 import { digitalLevel, digitalPrice, unlock } from './progression';
 import { colorName } from './paletteView';
 import { getPantsColor, getShoesColor, isPantsColor, isRiderColor, RIDER_COLORS } from './riderColors';
-import { isSticker, saveStickerTargets } from './stickers';
+import { isSticker, saveStickerTargets, stickerEditPrice } from './stickers';
 import type { Player, Product, ProductConfiguration, Slot, StickerPlacement } from './types';
 
 /** A draft contains one logical part only. Inventory and progress always come from the account. */
@@ -112,14 +112,18 @@ export function commitGarageEdit(player: Player, edit: GarageEdit, products: Pro
   return garageAppearance(unlocked, edit, products);
 }
 
-/** Buying the sticker and saving every edited surface is one all-or-nothing account update. */
+/** Pay for each new copy and save every edited surface in one account update. */
 export function commitStickerEdit(player: Player, drafts: Record<string, StickerPlacement[]>, products: Product[]): Player | null {
   if (Object.keys(drafts).length === 0) return null;
   const sticker = products.find(isSticker);
   if (!sticker) return null;
-  const needsSticker = Object.values(drafts).some(placements => placements.length > 0);
-  const unlocked = needsSticker ? unlock(player, sticker.id, digitalPrice(sticker)) : player;
-  return unlocked ? saveStickerTargets(unlocked, drafts, products) : null;
+  const cost = stickerEditPrice(player, drafts, products);
+  if (cost === null || player.coins < cost) return null;
+  const hasSticker = Object.values(drafts).some(placements => placements.length > 0);
+  const purchased = { ...player, coins: player.coins - cost,
+    ownedItems: hasSticker && !player.ownedItems.includes(sticker.id)
+      ? [...player.ownedItems, sticker.id] : player.ownedItems };
+  return saveStickerTargets(purchased, drafts, products);
 }
 
 export function garageEditChanged(player: Player, edit: GarageEdit | null, products: Product[]): boolean {

@@ -3,14 +3,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Player, Product, StickerPlacement } from '../domain/types';
 import { BIKES } from '../domain/config';
-import { DEFAULT_STICKER_SIZE, helmetStickerTarget, isSticker, MAX_STICKERS, ownsStickerTarget, stickerMaxSize } from '../domain/stickers';
+import { DEFAULT_STICKER_SIZE, helmetStickerTarget, isSticker, MAX_STICKERS, ownsStickerTarget, stickerEditPrice, stickerMaxSize } from '../domain/stickers';
 import { HELMETS } from '../domain/helmet';
 import { imagePath } from '../domain/preview';
 import { digitalPrice } from '../domain/progression';
 import { makeBike } from '../game/vehicle';
 import { importedBikeReady, preloadImportedBike } from '../game/importedBikeAsset';
 import { rendererSessions } from '../game/rendererSession';
-import { applyBikeStickers, applyHelmetStickers, helmetStickerSurfaces, stickerHelmet, stickerSurfaces } from '../game/bikeStickers';
+import { adjustStickerPlacement, applyBikeStickers, applyHelmetStickers, helmetStickerSurfaces, stickerHelmet, stickerSurfaces } from '../game/bikeStickers';
 import './stickerWorkshop.css';
 import './stickerWorkshopUpdate.css';
 import './stickerWorkshopV9.css';
@@ -38,17 +38,17 @@ export default function StickerWorkshop({ player, account, products, initialTarg
   const state = useRef({ placements, drafts, target, targetKey, size, rotation, selected });
   state.current = { placements, drafts, target, targetKey, size, rotation, selected };
   const view = useRef<((angle: number) => void) | null>(null);
+  const adjustPosition = useRef<((placement: StickerPlacement, action: 'center' | 'mirror') => StickerPlacement | undefined) | null>(null);
   const product = products.find(isSticker);
   // Inventory updates independently of the frozen preview: buying must not reset
   // the camera, renderer or unsaved sticker positions.
-  const stickerOwned = Boolean(product && (account.ownedItems.includes(product.id) || account.irlItems.includes(product.id)));
   const hasChanges = Object.keys(drafts).length > 0;
   const targetOwned = Object.keys(drafts).every((key) => ownsStickerTarget(account, key));
-  const needsSticker = Object.values(drafts).some(items => items.length > 0);
   const price = product ? digitalPrice(product) : 0;
-  const purchaseRequired = !stickerOwned && needsSticker;
+  const total = stickerEditPrice(account, drafts, products);
+  const purchaseRequired = total !== null && total > 0;
   const disabledReason = !hasChanges ? 'Sticker platzieren' : !targetOwned ? 'Motorrad zuerst freischalten'
-    : purchaseRequired && account.coins < price ? `Dir fehlen ${price - account.coins} Coins` : '';
+    : total === null ? 'Positionen prüfen' : account.coins < total ? `Dir fehlen ${total - account.coins} Coins` : '';
   useEffect(() => {
     if (importedBikeReady(player.bike)) return;
     let cancelled = false;
@@ -89,6 +89,13 @@ export default function StickerWorkshop({ player, account, products, initialTarg
       helmet.position.set(0, 1, 0);
       helmet.rotation.set(0, 0, 0);
     }
+    adjustPosition.current = (placement, action) => {
+      const helmetView = state.current.target === 'helmet';
+      if (helmetView && !helmet) return undefined;
+      return adjustStickerPlacement(helmetView ? helmet! : bike.body,
+        helmetView ? helmetStickerSurfaces(helmet!) : stickerSurfaces(bike.body, bike.rider, player.paint),
+        placement, action, helmetView);
+    };
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 1, 0); controls.minDistance = 2.2; controls.maxDistance = 7;
     controls.minPolarAngle = 0.3; controls.maxPolarAngle = Math.PI * 0.65; controls.enablePan = false;
@@ -158,7 +165,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     };
     render(); setReady(true);
     return () => {
-      cancelAnimationFrame(raf); observer.disconnect(); controls.dispose(); view.current = null;
+      cancelAnimationFrame(raf); observer.disconnect(); controls.dispose(); view.current = null; adjustPosition.current = null;
       renderer.domElement.removeEventListener('pointerdown', pointerDown);
       renderer.domElement.removeEventListener('pointerup', pointerUp);
       renderer.domElement.removeEventListener('webglcontextlost', lost);
@@ -185,6 +192,15 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     if (field === 'size') setSize(value); else setRotation(value);
     if (selected) setPlacements((previous) => previous.map((p) => p.id === selected ? { ...p, [field]: value } : p));
   }
+  function move(action: 'center' | 'mirror') {
+    if (savePending.current) return;
+    const original = state.current.placements.find(placement => placement.id === state.current.selected);
+    if (!original) return;
+    const moved = adjustPosition.current?.(original, action);
+    if (!moved) { setHint('Keine passende feste Fläche gefunden. Die Position bleibt erhalten.'); return; }
+    setPlacements(previous => previous.map(placement => placement.id === original.id ? moved : placement));
+    setHint(action === 'center' ? 'Sticker auf dieser Fläche zentriert. Speichern übernimmt die Position.' : 'Stickerposition auf die andere Seite verschoben. Das Motiv bleibt unverändert.');
+  }
   async function save() {
     if (savePending.current || disabledReason || !ready || error) return;
     savePending.current = true; setSaving(true);
@@ -201,7 +217,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     <div className="sticker-views" aria-label="Ansicht wählen">{[['LINKS', -Math.PI / 2], ['VORNE', Math.PI], ['RECHTS', Math.PI / 2], ['HINTEN', 0]].map(([label, angle]) => <button key={String(label)} disabled={!ready || saving} onClick={() => view.current?.(Number(angle))}>{label}</button>)}</div>
     <div className="sticker-stage" ref={host} data-testid="sticker-stage">
       {!ready && !error && <div className="scene-loading"><span className="spinner"/>SIMULATION WIRD GELADEN</div>}
-      {error && <p className="graphics-error" role="alert">{error}</p>}
+      {error && <div className="graphics-error" role="alert"><p>{error}</p><button type="button" className="button small" onClick={() => window.location.reload()}>NEU LADEN</button></div>}
     </div>
     <section className="sticker-tools">
       <output className="sticker-hint">{hint}</output>
@@ -220,6 +236,8 @@ export default function StickerWorkshop({ player, account, products, initialTarg
         <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), 0.12), 'size')} aria-label="Stickergröße 12 Zentimeter">12 CM</button>
         <button type="button" disabled={saving} onClick={() => change(DEFAULT_STICKER_SIZE, 'size')} aria-label="Stickergröße zurücksetzen">STANDARD</button>
         <button type="button" disabled={saving} onClick={() => change(0, 'rotation')} aria-label="Drehung zurücksetzen">0°</button>
+        <button type="button" disabled={saving || !selected || !ready || Boolean(error)} onClick={() => move('center')} aria-label="Sticker auf Fläche zentrieren">ZENTRIEREN</button>
+        <button type="button" disabled={saving || !selected || !ready || Boolean(error)} onClick={() => move('mirror')} aria-label="Stickerposition auf andere Seite spiegeln">POSITION SPIEGELN</button>
         {selected && placements.length < MAX_STICKERS && <button type="button" disabled={saving} aria-label="Ausgewählten Sticker duplizieren" onClick={() => {
           if (savePending.current) return;
           const original = placements.find(sticker => sticker.id === selected);
@@ -234,6 +252,6 @@ export default function StickerWorkshop({ player, account, products, initialTarg
 
       {product && <a className="sticker-original" href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>Im Shop ansehen</span></a>}
     </section>
-    <footer className="sticker-footer"><span>{stickerOwned ? 'Sticker in deinem Besitz' : `Sticker · ${price} Coins`}<small>Guthaben: {account.coins.toLocaleString('de-CH')} Coins</small></span><button className="button primary" disabled={saving || !!disabledReason || !ready || Boolean(error)} onClick={() => { void save(); }}>{saving ? 'Wird gespeichert …' : disabledReason || (purchaseRequired ? `Für ${price} Coins kaufen & speichern` : 'Speichern')}</button></footer>
+    <footer className="sticker-footer"><span>{price} Coins pro neuem Sticker<small>Gesamt: {total ?? '–'} Coins · Guthaben: {account.coins.toLocaleString('de-CH')} Coins</small></span><button className="button primary" disabled={saving || !!disabledReason || !ready || Boolean(error)} onClick={() => { void save(); }}>{saving ? 'Wird gespeichert …' : disabledReason || (purchaseRequired ? `Für ${total} Coins kaufen & speichern` : 'Speichern')}</button></footer>
   </main>;
 }

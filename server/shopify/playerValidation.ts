@@ -135,8 +135,13 @@ export function sanitizeDigitalPlayer(value: unknown, customerId: string, verifi
   const values: Record<string, number> = {};
   for (const [key, value] of Object.entries(record(challenges.values, 40))) values[key] = numeric(value);
   player.challenges = { date: date(challenges.date), values, claimed: stringList(challenges.claimed, 40) };
-  const settings = record(input.settings, 6);
-  if (Object.keys(settings).some(key => !['muted', 'reducedMotion', 'tutorialSeen', 'quality', 'tutorialHintsSeen', 'touchControls'].includes(key))) invalid();
+  const settings = record(input.settings, 7);
+  if (Object.keys(settings).some(key => !['muted', 'reducedMotion', 'tutorialSeen', 'quality', 'tutorialHintsSeen', 'touchControls', 'deviceType'].includes(key))) invalid();
+  // Additive v1 migration; the endpoint replaces this advisory category from HTTP headers.
+  if (settings.deviceType !== undefined) {
+    if (typeof settings.deviceType !== 'string' || !['mobile', 'tablet', 'desktop', 'unknown'].includes(settings.deviceType)) invalid();
+    player.settings.deviceType = settings.deviceType as Player['settings']['deviceType'];
+  }
   for (const field of ['muted', 'reducedMotion', 'tutorialSeen'] as const) {
     if (typeof settings[field] !== 'boolean') invalid();
     player.settings[field] = settings[field] as boolean;

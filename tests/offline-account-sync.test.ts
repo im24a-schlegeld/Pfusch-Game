@@ -14,12 +14,13 @@ function storage() {
 const run = (id: string): RunStats => ({ id, score: 4321, distance: 1000, seconds: 60,
   bestCombo: 1, nearMisses: 2, jumps: 1, wheelieMeters: 500, maxSpeed: 25, cause: 'crash' });
 function fixture(driver = storage()) {
-  const state = { online: true, id: '123', player: newPlayer(), digest: 'a'.repeat(64), posts: 0, loseAck: false, unauthorized: false };
+  const state = { online: true, id: '123', player: newPlayer(), digest: 'a'.repeat(64), posts: 0, loseAck: false, unauthorized: false, failureStatus: 0 };
   const data = () => ({ customer: { id: state.id }, player: state.player, compareDigest: state.digest,
     csrfToken: 'fresh-csrf-token-for-test', storage: { allowed: true, reason: 'subscribed', completedRuns: state.player.runsPlayed, freeRuns: 5 },
     purchases: { items: ['shop-product', 'product:shop-product:color:shop-variant'], available: true, history: 'all' } });
   const request = vi.fn<CloudTransport['request']>(async (method, body) => {
     if (!state.online) throw new Error('offline');
+    if (state.failureStatus) return { status: state.failureStatus, data: { error: 'temporarily_unavailable' } };
     if (state.unauthorized) return { status: 401, data: { error: 'login_required' } };
     if (method === 'POST') {
       const payload = body as { player: Player; compareDigest: string; csrfToken: string };
@@ -38,6 +39,41 @@ function fixture(driver = storage()) {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe('offline account progress', () => {
+  it.each([408, 429, 500, 503])('retains identity and the persisted run through HTTP %s, then uploads once', async failureStatus => {
+    vi.useFakeTimers();
+    const f = fixture(), repo = f.reopen();
+    const finished = finishRun(await repo.load(), run(`outage-${failureStatus}`))!.player;
+    f.state.failureStatus = failureStatus;
+    repo.save(finished); await repo.flush();
+    expect(repo.syncStatus.state).toBe('offline');
+    expect(await repo.getUser()).toEqual({ id: '123', kind: 'customer' });
+    expect(JSON.parse(f.driver.getItem(`${accountKey}:pending`)!).player.processedRuns).toEqual([`outage-${failureStatus}`]);
+    await repo.refreshAccess();
+    expect(await repo.getUser()).toMatchObject({ kind: 'customer' });
+    f.state.failureStatus = 0;
+    await repo.refreshAccess(); await repo.refreshAccess();
+    expect(f.state.posts).toBe(1);
+    expect(f.state.player.processedRuns).toEqual([`outage-${failureStatus}`]);
+    expect(repo.syncStatus.state).toBe('synced');
+  });
+  it('does not revive a rejected session or retire its outbox when an old save acknowledgement arrives', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    let acknowledge!: (value: { status: number; data: unknown }) => void;
+    const transport: CloudTransport = { request: (method, body, resource, period) => method === 'POST'
+      ? new Promise(resolve => { acknowledge = resolve; }) : f.request(method, body, resource, period) };
+    const repo = new ShopifyCloudRepository(transport, f.driver, new LocalPlayerRepository(f.driver), decodePlayer);
+    const finished = finishRun(await repo.load(), run('late-ack'))!.player;
+    repo.save(finished);
+    const saving = repo.flush();
+    repo.invalidateSession();
+    acknowledge({ status: 200, data: { customer: { id: '123' }, player: finished, compareDigest: 'b'.repeat(64),
+      csrfToken: 'accepted-old-account-token', storage: { allowed: true, reason: 'subscribed', completedRuns: 1, freeRuns: 5 } } });
+    await saving;
+    expect(await repo.getUser()).toMatchObject({ kind: 'guest' });
+    expect((await repo.load()).id).toBe('guest-local');
+    expect(JSON.parse(f.driver.getItem(`${accountKey}:pending`)!).player.processedRuns).toEqual(['late-ack']);
+  });
   it('does not import a locally edited guest Bell ledger when creating a new customer save', async () => {
     vi.useFakeTimers();
     const driver = storage();

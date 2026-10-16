@@ -9,7 +9,7 @@ import type { CarriedCapMotionInput } from './carriedCapMotion';
 import { addIgnitionKey, updateCrossbodyMotion } from './vehicleAccessories';
 import { getImportedBikeAsset, type ImportedBikeId, type ImportedBikeMaterial } from './importedBikeAsset';
 import { IMPORTED_BIKE_WHEELBASE } from './importedBikeDimensions';
-import { createImportedHardwareFinisher, hardwareComponents } from './importedHardwareFinish';
+import { createImportedHardwareFinisher, hardwareComponents, type HardwareComponent } from './importedHardwareFinish';
 import { roundImportedRimProfile } from './importedRimProfile';
 import { tagImportedSupermotoMudflap } from './supermotoMudflap';
 
@@ -23,6 +23,19 @@ interface ImportedRiderController {
 type RiderFactory = (parent: THREE.Object3D, pose: RiderPose, player: Player, products: Product[]) => ImportedRiderController;
 const xAxis = new THREE.Vector3(1, 0, 0);
 const nominalLean: Record<ImportedBikeId, number> = { '125': 0.16, moped: 0.25, '450': 0.42, '701': 0.88, scooter: 0.25 };
+
+/** The indicator lenses, stalks and housings are separate supplied shells. */
+function mopedIndicatorShell(name: string, c: HardwareComponent) {
+  if (name === 'moped_chrome:steering')
+    return c.min[1] > 0.77 && c.max[1] < 0.79 && c.max[2] < -0.32;
+  if (name === 'moped_chrome:body')
+    return c.min[1] > 0.43 && c.max[1] < 0.45 && c.min[2] > 0.85;
+  if (name === 'moped_dark:steering')
+    return c.min[1] > 0.74 && c.max[1] < 0.81 && c.max[2] < -0.32;
+  if (name === 'moped_dark:body')
+    return c.min[1] > 0.4 && c.max[1] < 0.47 && c.min[2] > 0.85;
+  return false;
+}
 
 /** Source meshes retain their shape; only one uniform vehicle-size conversion is applied. */
 export function makeImportedBike(player: Player, products: Product[], makeRider: RiderFactory) {
@@ -89,6 +102,7 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   const materialByName = new Map(manifest.materials.map((definition, index) => [definition.name, materials[index]]));
   const finishHardware = createImportedHardwareFinisher(id, binary, player.paint);
   for (const part of manifest.parts) {
+    if (id === 'moped' && part.name.startsWith('moped_indicator:')) continue;
     const geometry = new THREE.BufferGeometry();
     // Copy once: cached CPU buffers are immutable and scene disposal stays local.
     geometry.setAttribute('position', new THREE.BufferAttribute(
@@ -97,8 +111,22 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
       new Float32Array(binary, part.normal.offset, part.normal.count * 3).slice(), 3));
     if (part.uv) geometry.setAttribute('uv', new THREE.BufferAttribute(
       new Float32Array(binary, part.uv.offset, part.uv.count * 2).slice(), 2));
-    geometry.setIndex(new THREE.BufferAttribute(
-      new Uint16Array(binary, part.index.offset, part.index.count).slice(), 1));
+    let indices = new Uint16Array(binary, part.index.offset, part.index.count).slice();
+    if (id === '125' && part.name === 'ciao_dark:steering') {
+      // The two long supplied cable shells run from each control to the fork.
+      // Retain every other original triangle, including bars, grips and levers.
+      const removed = new Set(hardwareComponents(part, binary)
+        .filter(component => component.max[1] - component.min[1] > 0.6)
+        .flatMap(component => component.triangles));
+      indices = indices.filter((_, index) => !removed.has(Math.floor(index / 3)));
+    }
+    if (id === 'moped' && /^moped_(chrome|dark):(steering|body)$/.test(part.name)) {
+      const removed = new Set(hardwareComponents(part, binary)
+        .filter(component => mopedIndicatorShell(part.name, component))
+        .flatMap(component => component.triangles));
+      if (removed.size) indices = indices.filter((_, index) => !removed.has(Math.floor(index / 3)));
+    }
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.scale(size, size, size);
     let parent: THREE.Group = body;
     if (part.rig === 'frontWheel') { parent = frontWheel; geometry.translate(-frontCenter.x, -frontCenter.y, -frontCenter.z); }
@@ -286,8 +314,8 @@ export function makeImportedBike(player: Player, products: Product[], makeRider:
   const movedShock = new THREE.Vector3(), shockDirection = new THREE.Vector3();
   const shockRotation = new THREE.Quaternion(), rotationMatrix = new THREE.Matrix4(), stretch = new THREE.Matrix4();
   shock.matrixAutoUpdate = false;
-  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0) => {
-    const frontTravel = THREE.MathUtils.clamp(travel / modelScale - wheelieLoad * 0.009, -0.025, id === '450' ? 0.125 : id === '125' ? 0.065 : 0.085);
+  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0, frontLoad = 0) => {
+    const frontTravel = THREE.MathUtils.clamp((travel + frontLoad) / modelScale - wheelieLoad * 0.009, -0.025, id === '450' ? 0.125 : id === '125' ? 0.065 : 0.085);
     // The Ciao is a hardtail: its rear axle and frame remain one rigid assembly.
     const rearTravel = id === '125' ? 0 : THREE.MathUtils.clamp(travel / modelScale * 0.7 + wheelieLoad * 0.012, -0.025, 0.065);
     const movedY = THREE.MathUtils.clamp(arm.y + rearTravel, -armLength + 0.000001, armLength - 0.000001);

@@ -186,6 +186,64 @@ function savedSurface(
   return nearest;
 }
 
+/** Move the attachment on real triangles; artwork orientation/UVs never change.
+ * Symmetry belongs to the bike/helmet, not a mesh's possibly baked local axes. */
+export function adjustStickerPlacement(
+  target: THREE.Object3D,
+  surfaces: Map<string, THREE.Mesh>,
+  placement: StickerPlacement,
+  action: 'center' | 'mirror',
+  helmet = false,
+): StickerPlacement | undefined {
+  const source = savedSurface(surfaces, placement);
+  if (!source) return undefined;
+  target.updateWorldMatrix(true, true);
+  const targetInverse = target.matrixWorld.clone().invert();
+  const sourceToTarget = new THREE.Matrix4().multiplyMatrices(targetInverse, source.matrixWorld);
+  const desired = new THREE.Vector3(...placement.point).applyMatrix4(sourceToTarget);
+  const facing = new THREE.Vector3(...placement.normal).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(sourceToTarget));
+  if (action === 'mirror') {
+    desired.x *= -1;
+    facing.x *= -1;
+  } else {
+    source.geometry.computeBoundingBox();
+    if (!source.geometry.boundingBox) return undefined;
+    source.geometry.boundingBox.getCenter(desired).applyMatrix4(sourceToTarget);
+  }
+  const triangle = new THREE.Triangle(), localNormal = new THREE.Vector3();
+  const point = new THREE.Vector3(), targetPoint = new THREE.Vector3(), targetNormal = new THREE.Vector3();
+  let nearest: StickerPlacement | undefined, distance = Infinity;
+  for (const [surface, mesh] of surfaces) {
+    if (action === 'center' && mesh !== source) continue;
+    const positions = mesh.geometry.getAttribute('position');
+    if (!positions) continue;
+    const index = mesh.geometry.getIndex(), count = index?.count ?? positions.count;
+    const toTarget = new THREE.Matrix4().multiplyMatrices(targetInverse, mesh.matrixWorld);
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(toTarget);
+    const localDesired = desired.clone().applyMatrix4(toTarget.clone().invert());
+    for (let i = 0; i < count; i += 3) {
+      // Helmet lenses share a mesh with the shell, but only group 0 is paint.
+      if (helmet && mesh.geometry.groups.length && !mesh.geometry.groups.some(group => group.materialIndex === 0 && i >= group.start && i < group.start + group.count)) continue;
+      triangle.a.fromBufferAttribute(positions, index ? index.getX(i) : i);
+      triangle.b.fromBufferAttribute(positions, index ? index.getX(i + 1) : i + 1);
+      triangle.c.fromBufferAttribute(positions, index ? index.getX(i + 2) : i + 2);
+      if (triangle.getArea() < 1e-12) continue;
+      triangle.getNormal(localNormal);
+      targetNormal.copy(localNormal).applyNormalMatrix(normalMatrix);
+      if (targetNormal.dot(facing) <= 0.15) continue;
+      triangle.closestPointToPoint(localDesired, point);
+      targetPoint.copy(point).applyMatrix4(toTarget);
+      // A missing opposite panel must not snap back to the starting side.
+      if (action === 'mirror' && Math.abs(desired.x) > 0.001 && targetPoint.x * desired.x < 0) continue;
+      const gap = targetPoint.distanceToSquared(desired);
+      if (gap >= distance) continue;
+      distance = gap;
+      nearest = { ...placement, surface, point: point.toArray(), normal: localNormal.toArray() };
+    }
+  }
+  return nearest;
+}
+
 function projectedStickerGeometry(
   source: THREE.Mesh,
   point: THREE.Vector3,

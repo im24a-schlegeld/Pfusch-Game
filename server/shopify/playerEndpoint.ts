@@ -5,11 +5,14 @@ import type { Player } from '../../app/domain/types.js';
 import { canSave, retainRunCount, storageAccess, type StorageAccess } from './storagePolicy.js';
 import { assertPlausibleDigitalSave } from './progressAntiCheat.js';
 import type { VerifiedPurchases } from './purchaseStore.js';
+import { classifySaveDevice } from './playerDevice.js';
 
 export interface PlayerRequest {
   method: string;
   url: string;
   contentType?: string;
+  userAgent?: string;
+  mobileHint?: string;
   readBody(): Promise<unknown>;
 }
 export interface PlayerEndpointDependencies {
@@ -59,6 +62,8 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       if (body.compareDigest !== current.compareDigest) throw new ApiError(409, 'conflict');
       player = retainGuardianBells(player, current.player, isRecord(body.player) && body.player.guardianBells !== undefined);
       assertPlausibleDigitalSave(current.player, player);
+      // Client metadata cannot claim the category. Only the coarse category is stored.
+      player.settings.deviceType = classifySaveDevice(input.userAgent, input.mobileHint);
       result = await saveCustomerPlayer(config, identity.customerId,
         player, body.compareDigest as string | null, dependencies.request);
       // A secondary digital leaderboard outage must never turn an acknowledged

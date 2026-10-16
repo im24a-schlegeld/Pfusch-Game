@@ -3,6 +3,11 @@ import { expect, test } from '@playwright/test';
 test('installed app shell and playable ride survive a genuinely offline reload', async ({ page, context }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    // Inspect only the draft URL; never send an invitation to a real app.
+    window.open = (_url, target) => {
+      document.documentElement.dataset.shareWindowTarget = target ?? '';
+      return { opener: null, location: { set href(value: string) { document.documentElement.dataset.shareDraft = value; } }, close() {} } as unknown as Window;
+    };
   });
   await page.goto('/', { waitUntil: 'load' });
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
@@ -42,11 +47,15 @@ test('installed app shell and playable ride survive a genuinely offline reload',
   await page.getByRole('navigation', { name: 'Spielnavigation' }).getByRole('button', { name: 'RANG', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Freunde einladen.', exact: true })).toBeVisible();
   await page.locator('.game-share-section').scrollIntoViewIfNeeded();
-  const invite = page.locator('.game-invite-section').getByRole('link', { name: 'Über WhatsApp teilen', exact: true });
+  const invite = page.locator('.game-invite-section').getByRole('button', { name: 'FREUND EINLADEN', exact: true });
   await expect(invite).toBeEnabled();
-  await expect(invite).toHaveAttribute('href', /^https:\/\/wa\.me\/\?text=/);
-  await expect(invite).toHaveAttribute('target', '_blank');
-  const draft = new URL((await invite.getAttribute('href'))!);
+  await invite.click();
+  const choices = page.locator('.game-invite-section .game-share-choices');
+  await expect(choices.getByRole('button')).toHaveText(['WhatsApp', 'Telegram', 'E-Mail']);
+  await choices.getByRole('button', { name: 'WhatsApp', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-share-window-target', '_blank');
+  const draft = new URL((await page.locator('html').getAttribute('data-share-draft'))!);
+  expect(draft.origin).toBe('https://wa.me');
   expect([...draft.searchParams.keys()]).toEqual(['text']);
   const [message, gameUrl] = draft.searchParams.get('text')!.split('\n');
   expect(message).toContain('PFUSCH Wheelie Escape');
@@ -55,7 +64,8 @@ test('installed app shell and playable ride survive a genuinely offline reload',
   expect(destination.searchParams.get('share')).toBe('invite');
   expect(destination.searchParams.has('points')).toBe(false);
   expect(destination.searchParams.has('ref')).toBe(false);
-  await expect(page.getByRole('button', { name: 'FREUND EINLADEN', exact: true })).toHaveCount(0);
+  await expect(invite).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('button', { name: 'Link kopieren', exact: true })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Link zum Teilen', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'outputs/browser-pwa/sharing-390x844.png' });
   await page.setViewportSize({ width: 320, height: 568 });

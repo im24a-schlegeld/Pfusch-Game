@@ -1,12 +1,65 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BIKES } from '../app/domain/config';
-import { OxygenVerifiedRewards, VerifiedRewardsError } from '../app/services/verifiedRewards';
+import { OxygenVerifiedRewards, rewardRunNotice, VerifiedRewardsError } from '../app/services/verifiedRewards';
 
 const status = { available: true, csrfToken: 'csrf', verifiedPoints: 0, verifiedRuns: 0,
   pointsRequired: 50000, runsRequired: 10, dailyPoints: 0, dailyCap: 10000, eligible: false, pending: false, reward: null };
 const json = (data: unknown, code = 200) => new Response(JSON.stringify(data), { status: code, headers: { 'Content-Type': 'application/json' } });
 afterEach(() => vi.useRealTimers());
 describe('server-owned real rewards adapter', () => {
+  it.each([
+    ['network_error', undefined, 'Verbindung unterbrochen', true],
+    ['request_timeout', undefined, 'zu langsam', true],
+    ['rewards_unavailable', 503, 'vorübergehend nicht erreichbar', true],
+    ['login_required', 401, 'Anmeldung ist abgelaufen', false],
+    ['invalid_run_proof', 400, 'invalid_run_proof', false],
+  ] as const)('keeps %s distinct from genuine identity and proof failures', (code, http, message, transient) => {
+    expect(rewardRunNotice(new VerifiedRewardsError(code, http), 'finish')).toMatchObject({ message: expect.stringContaining(message), transient });
+  });
+  it('retains the actual preparation outage and does not invalidate login on server/network errors', async () => {
+    const unauthorized = vi.fn();
+    const service = new OxygenVerifiedRewards(async () => json({ error: 'upstream_unavailable' }, 503), 30000, unauthorized);
+    await service.prepare(BIKES[0].id);
+    expect(service.preparationIssue).toMatchObject({ code: 'upstream_unavailable', status: 503 });
+    expect(service.takeChallenge(BIKES[0].id)).toBeNull();
+    expect(unauthorized).not.toHaveBeenCalled();
+  });
+  it('refreshes CSRF and retries the exact pending proof on reconnect without replaying a second successful finish', async () => {
+    const submission = { token: 'signed-run', proof: { ticks: 1200, events: [] } };
+    const request = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(json({ ...status, csrfToken: 'fresh-token' }))
+      .mockResolvedValueOnce(json({ ...status, verifiedPoints: 300, verifiedRuns: 1 }));
+    const service = new OxygenVerifiedRewards(request);
+    await expect(service.finish(submission)).rejects.toMatchObject({ code: 'network_error' });
+    expect((await service.retryPending())?.verifiedPoints).toBe(300);
+    expect(await service.retryPending()).toBeNull();
+    expect(request).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(String(request.mock.calls[2][1]?.body))).toEqual({ ...submission, csrfToken: 'fresh-token' });
+  });
+  it('retires an old account proof on a real session rejection and never retries it under a later login', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ error: 'login_required' }, 401)).mockResolvedValueOnce(json(status));
+    const service = new OxygenVerifiedRewards(request);
+    await expect(service.finish({ token: 'old-account-proof', proof: { ticks: 1200, events: [] } })).rejects.toMatchObject({ status: 401 });
+    expect(await service.retryPending()).toBeNull();
+    await service.status();
+    expect(request.mock.calls.map(call => call[0])).toEqual(['/api/rewards/run/finish', '/api/rewards/status']);
+  });
+  it('ignores an old response after identity reset without invalidating the new account', async () => {
+    let respond!: (response: Response) => void;
+    const unauthorized = vi.fn();
+    const request = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(resolve => { respond = resolve; }))
+      .mockResolvedValueOnce(json(status));
+    const service = new OxygenVerifiedRewards(request, 30000, unauthorized);
+    const stale = service.status();
+    const rejected = expect(stale).rejects.toMatchObject({ status: 401 });
+    await Promise.resolve();
+    service.resetSession();
+    respond(json({ error: 'login_required' }, 401));
+    await rejected;
+    await service.status();
+    expect(unauthorized).not.toHaveBeenCalled();
+    expect(service.preparationIssue).toBeNull();
+  });
   const campaign = { id: 'launch-million-2026', metric: 'points', target: 1000000, progress: 0, rewardCHF: 5,
     minimumSubtotalCHF: 50, offerEndsAt: '2026-10-26T00:00:00.000Z', startedAt: null, expiresAt: null,
     completedAt: null, attempt: 0, phase: 'not_started' };

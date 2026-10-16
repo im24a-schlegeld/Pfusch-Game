@@ -24,6 +24,7 @@ import { RideHeldInput, type RideHoldAction } from './rideHeldInput';
 import { useTouchInput } from './useTouchInput';
 import { RideCompletion, reserveBellRevive } from './rideCompletion';
 import { ShareReviveGate } from '../services/shareRevive';
+import { openShareDraft, type ShareTarget } from '../services/gameShare';
 import RideRevive from './RideRevive';
 import { GuardianBellBurst } from './GuardianBell';
 import './ride-guidance.css';
@@ -71,12 +72,12 @@ export default function Ride({
   const engine = round.engine;
   const ridingPlayer = useMemo(() => player.bike === engine.bike.id ? player : { ...player, bike: engine.bike.id }, [player, engine]);
   const verifier = useMemo(() => round.challenge ? new VerifiedRunRecorder(round.engine) : null, [round]);
-  const nativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const directShare = typeof window !== 'undefined' && typeof window.open === 'function';
   const playerSnapshot = useRef(player), bellAction = useRef(onUseGuardianBell), bellReserved = useRef(false);
   const bellReservation = useRef<ReturnType<typeof reserveBellRevive> | null>(null);
   playerSnapshot.current = player; bellAction.current = onUseGuardianBell;
-  const completion = useMemo(() => new RideCompletion(engine, () => nativeShare || bellReserved.current ||
-    (!!bellAction.current && guardianBellBalance(playerSnapshot.current) > 0)), [engine, nativeShare]);
+  const completion = useMemo(() => new RideCompletion(engine, () => directShare || bellReserved.current ||
+    (!!bellAction.current && guardianBellBalance(playerSnapshot.current) > 0)), [engine, directShare]);
   const [reviveGate] = useState(() => new ShareReviveGate());
   const [reviveOpen, setReviveOpen] = useState(false);
   const [reviveBusy, setReviveBusy] = useState(false);
@@ -457,14 +458,14 @@ export default function Ride({
     settle(true);
     completion.reveal(runId => resultsReady.current(runId));
   }
-  async function shareAndRevive() {
-    if (playerSnapshot.current.id !== round.ownerId || reviveSharing.current || !nativeShare || !completion.offersRevive) return;
+  async function shareAndRevive(target: Exclude<ShareTarget, 'email'>) {
+    if (playerSnapshot.current.id !== round.ownerId || reviveSharing.current || !directShare || !completion.offersRevive) return;
     reviveSharing.current = true;
     setReviveBusy(true);
     setReviveMessage('');
     try {
       const result = await reviveGate.request({ kind: 'invite', name: player.leaderboardName,
-        ...(inviteCode ? { referral: inviteCode } : {}) }, navigator);
+        ...(inviteCode ? { referral: inviteCode } : {}) }, target, { open: url => openShareDraft(url) });
       if (!mounted.current || playerSnapshot.current.id !== round.ownerId) return;
       if (result === 'ready' && completion.revive()) {
         clearGestures();
@@ -476,7 +477,7 @@ export default function Ride({
         audio.unlock();
         setTick(n => n + 1);
       } else if (result === 'cancelled') setReviveMessage('Teilen abgebrochen. Du kannst es erneut versuchen.');
-      else if (result !== 'ready') setReviveMessage('Teilen konnte nicht abgeschlossen werden. Versuche es erneut oder beende die Fahrt.');
+      else if (result !== 'ready') setReviveMessage('Entwurf konnte nicht geöffnet werden. Erlaube Pop-ups, wähle eine andere App oder beende die Fahrt.');
     } finally {
       reviveSharing.current = false;
       if (mounted.current) setReviveBusy(false);
@@ -696,8 +697,8 @@ export default function Ride({
         </output>
       )}
       <RideRevive open={reviveOpen} score={engine.score} busy={reviveBusy} message={reviveMessage}
-        bellBalance={guardianBellBalance(player)} canShare={nativeShare}
-        useBell={useGuardianBell} share={() => { void shareAndRevive(); }} finish={declineRevive} />
+        bellBalance={guardianBellBalance(player)} canShare={directShare}
+        useBell={useGuardianBell} share={target => { void shareAndRevive(target); }} finish={declineRevive} />
       {bellBurst && <GuardianBellBurst reducedMotion={player.settings.reducedMotion} onComplete={finishBellBurst} />}
       <Dialog
         open={engine.phase === 'paused' && !resuming && !tutorial}

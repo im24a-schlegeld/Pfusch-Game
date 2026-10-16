@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { gameShareText, gameShareUrl, rankedGameShare, readGameShare, sharePeriodLabel, type GameShare } from '../app/domain/gameShare';
-import { shareGame, whatsappGameShareUrl } from '../app/services/gameShare';
+import { directGameShareUrl, openShareDraft, shareGame, whatsappGameShareUrl } from '../app/services/gameShare';
 
 describe('public game sharing', () => {
   const score: GameShare = { kind: 'score', name: 'Fahrer + #1 & Crew', score: 158863, date: '2026-10-13' };
@@ -44,22 +44,32 @@ describe('public game sharing', () => {
     expect(readGameShare(new URL(gameShareUrl(rank!)).search)).toEqual(rank);
     expect(sharePeriodLabel('week', '2026-10-13')).toBe('Wochenrangliste · ab 12.10.2026 (UTC)');
   });
-  it('opens the system share sheet, treating a user cancellation as a normal outcome', async () => {
+  it('opens only the explicitly chosen message draft without an OS share sheet', async () => {
+    const platform = { open: vi.fn((_url: string) => true) };
+    expect(await shareGame(score, 'telegram', platform)).toBe('opened');
+    const url = new URL(platform.open.mock.calls[0][0]);
+    expect(url.origin).toBe('https://t.me');
+    expect(readGameShare(new URL(url.searchParams.get('url')!).search)).toEqual(score);
+    expect(url.searchParams.get('text')).toBe(gameShareText(score));
+    const email = new URL(directGameShareUrl(score, 'email'));
+    expect(email.protocol).toBe('mailto:');
+    expect(email.searchParams.get('body')).toBe(`${gameShareText(score)}\n${gameShareUrl(score)}`);
+  });
+  it('never falls back to copying when a message draft cannot open', async () => {
     const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
-    const share = vi.fn().mockResolvedValue(undefined);
-    expect(await shareGame(score, { share, clipboard })).toBe('shared');
-    expect(share).toHaveBeenCalledWith({ title: 'PFUSCH · Wheelie Escape', text: gameShareText(score), url: gameShareUrl(score) });
-    share.mockRejectedValue({ name: 'AbortError' });
-    expect(await shareGame(score, { share, clipboard })).toBe('cancelled');
+    const platform = { clipboard, open: undefined };
+    expect(await shareGame(score, 'whatsapp', platform)).toBe('unavailable');
+    expect(await shareGame(score, 'whatsapp', { open: () => false })).toBe('failed');
+    expect(await shareGame(score, 'whatsapp', { open: () => { throw new Error('blocked'); } })).toBe('failed');
     expect(clipboard.writeText).not.toHaveBeenCalled();
   });
-  it('leaves the clipboard untouched when native sharing is unavailable or fails', async () => {
-    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
-    expect(await shareGame(score, { clipboard })).toBe('unavailable');
-    const share = vi.fn().mockRejectedValue({ name: 'NotAllowedError' });
-    expect(await shareGame(score, { share, clipboard })).toBe('failed');
-    expect(await shareGame(score, {})).toBe('unavailable');
-    expect(clipboard.writeText).not.toHaveBeenCalled();
+  it('severs the opener before navigating a draft and detects blocked windows', () => {
+    const draft = { opener: 'game', location: { href: '' }, close: vi.fn() };
+    const open = vi.fn(() => draft) as unknown as Window['open'];
+    expect(openShareDraft('https://wa.me/?text=hello', { open })).toBe(true);
+    expect(draft.opener).toBeNull();
+    expect(draft.location.href).toBe('https://wa.me/?text=hello');
+    expect(openShareDraft('https://wa.me', { open: () => null })).toBe(false);
   });
   it.each<GameShare>([
     score,

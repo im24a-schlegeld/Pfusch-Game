@@ -22,6 +22,7 @@ import { startOxygenLogin } from '../services/oxygenRuntime';
 import { rideViewportParentOrigin, syncShopifyRideViewport } from '../services/shopifyViewport';
 import { GameAudio } from '../game/audio';
 import type { VerifiedRunChallenge, VerifiedRunSubmission } from '../game/verifiedRun';
+import { rewardRunNotice, type RealRewardStatus, type VerifiedRewardsError } from '../services/verifiedRewards';
 import { Coin } from './shared';
 import { spendGuardianBell } from '../domain/guardianBells';
 import Ride from './Ride';
@@ -52,6 +53,16 @@ type Screen =
   | 'leaderboard'
   | 'invitation'
   | 'settings';
+function shopRunConfirmation(status: RealRewardStatus) {
+  const progress = status.campaign
+    ? `${status.campaign.progress.toLocaleString('de-CH')} / ${status.campaign.target.toLocaleString('de-CH')}`
+    : status.verifiedPoints.toLocaleString('de-CH');
+  const credited = (status as RealRewardStatus & { creditedPoints?: number }).creditedPoints;
+  return typeof credited === 'number'
+    ? credited > 0 ? `Shop-Server bestätigt: +${credited.toLocaleString('de-CH')} Punkte. Aufgabenfortschritt: ${progress}.`
+      : `Shop-Server bestätigt, aber 0 Punkte gutgeschrieben. Prüfe 20 s Mindestdauer, 100 Punkte und Tageslimit. Fortschritt: ${progress}.`
+    : `Shop-Server antwortete. Aufgabenfortschritt: ${progress}.`;
+}
 export default function GameApp() {
   const embedded = window.parent !== window;
   const parentOrigin = shopifyParentOrigin(embedded, document.referrer);
@@ -90,6 +101,12 @@ export default function GameApp() {
   const [runKey, setRunKey] = useState(0);
   const [verifiedChallenge, setVerifiedChallenge] = useState<VerifiedRunChallenge | null>(null);
   const [shopRewardMessage, setShopRewardMessage] = useState('');
+  const [shopRewardTransient, setShopRewardTransient] = useState(false);
+  const runPreparationIssue = useRef<VerifiedRewardsError | null>(null);
+  const pendingShopRun = useRef<{ owner: string; generation: number } | null>(null);
+  const showShopReward = useCallback((message: string, transient = false) => {
+    setShopRewardMessage(message); setShopRewardTransient(transient);
+  }, []);
   const activeRun = useRef(0);
   const activeRunOwner = useRef<string | null>(null);
   const pendingResult = useRef<{ run: RunStats; reward: RunReward } | null>(
@@ -137,6 +154,29 @@ export default function GameApp() {
     const t = setTimeout(() => setNotice(''), 3800);
     return () => clearTimeout(t);
   }, [notice]);
+  useEffect(() => {
+    if (!shopRewardMessage || !shopRewardTransient) return;
+    const timer = window.setTimeout(() => setShopRewardMessage(''), 3800);
+    return () => window.clearTimeout(timer);
+  }, [shopRewardMessage, shopRewardTransient]);
+  useEffect(() => {
+    let active = true;
+    const retry = () => {
+      const pending = pendingShopRun.current, service = services.rewards.real;
+      if (!pending || !service?.retryPending || current.current?.id !== pending.owner) return;
+      void service.retryPending().then(status => {
+        if (!active || !status || pending !== pendingShopRun.current || current.current?.id !== pending.owner || activeRun.current !== pending.generation) return;
+        pendingShopRun.current = null;
+        showShopReward(shopRunConfirmation(status));
+      }).catch((reason: unknown) => {
+        if (!active || pending !== pendingShopRun.current || current.current?.id !== pending.owner || activeRun.current !== pending.generation) return;
+        const note = rewardRunNotice(reason, 'finish');
+        showShopReward(note.message, note.transient);
+      });
+    };
+    window.addEventListener('online', retry);
+    return () => { active = false; window.removeEventListener('online', retry); };
+  }, [services, showShopReward]);
   const update = useCallback(
     (p: Player) => {
       // A late edit/result from the previous identity must not replace the
@@ -151,12 +191,17 @@ export default function GameApp() {
   const syncAccount = useCallback(async () => {
     const [latest, user] = await Promise.all([services.players.load(), services.auth.getUser()]);
     if (latest !== current.current) {
+      if (current.current && latest.id !== current.current.id) {
+        services.rewards.real?.resetSession?.();
+        pendingShopRun.current = null;
+        showShopReward('');
+      }
       current.current = latest;
       setPlayer(latest);
     }
     setAccountKind(user.kind);
     return latest;
-  }, [services]);
+  }, [services, showShopReward]);
   useEffect(() => {
     let alive = true;
     let refresh = 0;
@@ -168,13 +213,18 @@ export default function GameApp() {
         if (!alive || request !== refresh || latest.id !== (user.kind === 'customer' ? `shopify:${user.id}` : 'guest-local')) return;
         setAccountKind(user.kind);
         if (current.current && (current.current === observed || current.current.id !== latest.id)) {
+          if (current.current.id !== latest.id) {
+            services.rewards.real?.resetSession?.();
+            pendingShopRun.current = null;
+            showShopReward('');
+          }
           current.current = latest;
           setPlayer(latest);
         }
       }).catch(() => {});
     });
     return () => { alive = false; unsubscribe?.(); };
-  }, [services]);
+  }, [services, showShopReward]);
   const beginLogin = useCallback(async () => {
     if ((!services.auth.login && !oxygenRuntime) || loginPending.current) return;
     loginPending.current = true;
@@ -297,18 +347,20 @@ export default function GameApp() {
       // A background preparation request may still be in flight when the user
       // taps Start; consuming it early silently loses real-shop reward credit.
       const rewardService = services.rewards.real;
+      const owner = current.current.id, bikeId = current.current.bike;
       const shopCustomer = current.current.id.startsWith('shopify:');
       if (shopCustomer && rewardService) {
-        await rewardService.prepare(current.current.bike);
-        if (request !== accessRequest.current || !current.current) return;
+        await rewardService.prepare(bikeId);
+        if (request !== accessRequest.current || current.current?.id !== owner || current.current.bike !== bikeId) return;
       }
       const challenge = shopCustomer && rewardService
-        ? rewardService.takeChallenge(current.current.bike) : null;
+        ? rewardService.takeChallenge(bikeId) : null;
+      runPreparationIssue.current = rewardService?.preparationIssue ?? null;
       setVerifiedChallenge(challenge);
-      setShopRewardMessage(shopCustomer
-        ? challenge ? 'Shop-Fahrt wird verifiziert. Die Gutschrift erfolgt nach Fahrtende.'
-          : 'Diese Fahrt hat keinen bestätigten Shop-Nachweis. Prüfe Anmeldung, Verbindung und Belohnungsstatus.'
-        : 'Gastfahrt: Punkte zählen lokal, nicht für den Shopify-Rabatt.');
+      const note = rewardRunNotice(runPreparationIssue.current, 'start');
+      showShopReward(shopCustomer
+        ? challenge ? 'Shop-Fahrt wird verifiziert. Die Gutschrift erfolgt nach Fahrtende.' : note.message
+        : 'Gastfahrt: Punkte zählen lokal, nicht für den Shopify-Rabatt.', !challenge && note.transient);
       setRunKey(activeRun.current);
       setScreen('ride');
       enteredRide = true;
@@ -345,25 +397,20 @@ export default function GameApp() {
     if (verified && services.rewards.real) {
       const rewardService = services.rewards.real;
       const owner = current.current.id;
-      setShopRewardMessage('Shop-Gutschrift wird vom Server geprüft …');
+      showShopReward('Shop-Gutschrift wird vom Server geprüft …');
+      pendingShopRun.current = { owner, generation };
       void rewardService.finish(verified).then(status => {
         if (generation !== activeRun.current || current.current?.id !== owner) return;
-        const progress = status.campaign
-          ? `${status.campaign.progress.toLocaleString('de-CH')} / ${status.campaign.target.toLocaleString('de-CH')}`
-          : status.verifiedPoints.toLocaleString('de-CH');
-        const credited = (status as typeof status & { creditedPoints?: number }).creditedPoints;
-        setShopRewardMessage(typeof credited === 'number'
-          ? credited > 0
-            ? `Shop-Server bestätigt: +${credited.toLocaleString('de-CH')} Punkte. Aufgabenfortschritt: ${progress}.`
-            : `Shop-Server bestätigt, aber 0 Punkte gutgeschrieben. Prüfe 20 s Mindestdauer, 100 Punkte und Tageslimit. Fortschritt: ${progress}.`
-          : `Shop-Server antwortete. Aufgabenfortschritt: ${progress}.`);
+        pendingShopRun.current = null;
+        showShopReward(shopRunConfirmation(status));
       }).catch((reason: unknown) => {
         if (generation !== activeRun.current || current.current?.id !== owner) return;
-        const code = reason instanceof Error ? reason.message : 'unbekannt';
-        setShopRewardMessage(`Shop-Gutschrift NICHT bestätigt (${code}). Prüfe dein Konto unter Belohnungen.`);
+        const note = rewardRunNotice(reason, 'finish');
+        showShopReward(note.message, note.transient);
       });
     } else if (current.current.id.startsWith('shopify:')) {
-      setShopRewardMessage('Diese Fahrt wurde ohne gültigen Shop-Nachweis gestartet und zählt nicht zur Rabattaufgabe.');
+      const note = rewardRunNotice(runPreparationIssue.current, 'start');
+      showShopReward(note.message, note.transient);
     }
     services.analytics.track('run_finished', {
       score: run.score,
@@ -461,7 +508,7 @@ export default function GameApp() {
         {startingRide && (
           <LoadingScreen label="FAHRT WIRD VORBEREITET" fullScreen reducedMotion={player.settings.reducedMotion} />
         )}
-        {player.id.startsWith('shopify:') && !verifiedChallenge &&
+        {player.id.startsWith('shopify:') && !verifiedChallenge && shopRewardMessage &&
           <output className="toast">{shopRewardMessage}</output>}
       </>
     );

@@ -1441,8 +1441,8 @@ export function makeScooter(
     direction = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0),
     xAxis = new THREE.Vector3(1, 0, 0);
-  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0) => {
-    const pose = activeSuspensionPose('scooter', pitch, travel, rear, front, rearRadius, wheelieLoad);
+  const animateSuspension = (pitch: number, travel: number, wheelieLoad = 0, frontLoad = 0) => {
+    const pose = activeSuspensionPose('scooter', pitch, travel, rear, front, rearRadius, wheelieLoad, frontLoad);
     body.rotation.x = pose.pitch;
     body.position.copy(pose.position);
     frontAssembly.rotation.x = pose.axleAngle;

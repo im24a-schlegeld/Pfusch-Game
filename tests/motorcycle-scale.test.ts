@@ -7,11 +7,44 @@ import { makeBike } from '../app/game/vehicle';
 import { BIKE_MODEL_SCALES } from '../app/game/vehicleScale';
 import { IMPORTED_BIKE_WHEELBASE } from '../app/game/importedBikeDimensions';
 import { getImportedBikeAsset } from '../app/game/importedBikeAsset';
+import { hardwareComponents } from '../app/game/importedHardwareFinish';
 vi.mock('../app/game/garmentTexture', () => ({
   garmentMaterial: () => new MeshStandardMaterial(), fabricMaterial: () => new MeshStandardMaterial(),
   sleeveMaterial: () => new MeshStandardMaterial(), accessoryMaterial: () => new MeshStandardMaterial(),
 }));
 describe('imported motorcycle dimensions with one unchanged adult', () => {
+  it('removes only the two long Ciao control cables while retaining every other steering shell', () => {
+    const source = getImportedBikeAsset('125');
+    const part = source.manifest.parts.find(part => part.name === 'ciao_dark:steering')!;
+    const components = hardwareComponents(part, source.binary);
+    const cables = components.filter(c => c.max[1] - c.min[1] > 0.6);
+    expect(cables).toHaveLength(2);
+    const removed = new Set(cables.flatMap(c => c.triangles));
+    expect(removed.size).toBe(1004);
+    const sourceIndices = new Uint16Array(source.binary, part.index.offset, part.index.count);
+    const bike = makeBike({ ...newPlayer(), bike: '125' }, []);
+    const mesh = bike.body.getObjectByName(part.name) as Mesh;
+    expect(mesh.geometry.index!.count).toBe(part.index.count - 1004 * 3);
+    expect(Array.from(mesh.geometry.index!.array)).toEqual(Array.from(sourceIndices)
+      .filter((_, index) => !removed.has(Math.floor(index / 3))));
+    expect(mesh.geometry.getAttribute('position').count).toBe(part.position.count);
+    expect(bike.body.getObjectByName('front-brake-cable')).toBeUndefined();
+  });
+  it('reduces only the classic moped by four percent and removes the entire front/rear indicator assemblies', () => {
+    const bike = makeBike({ ...newPlayer(), bike: 'moped' }, []);
+    expect(BIKE_MODEL_SCALES.moped).toBeCloseTo(1.25 * 0.96, 12);
+    expect(bike.body.getObjectByName('moped_indicator:steering')).toBeUndefined();
+    expect(bike.body.getObjectByName('moped_indicator:body')).toBeUndefined();
+    const source = getImportedBikeAsset('moped');
+    for (const [name, removed] of [
+      ['moped_chrome:steering', 12], ['moped_chrome:body', 12],
+      ['moped_dark:steering', 68], ['moped_dark:body', 68],
+    ] as const) {
+      const part = source.manifest.parts.find(part => part.name === name)!;
+      const mesh = bike.body.getObjectByName(name) as Mesh;
+      expect(mesh.geometry.index!.count).toBe(part.index.count - removed * 3);
+    }
+  });
   it.each(['125', 'moped', '450', '701', 'scooter'] as const)('%s keeps the source proportions, circular tyres and canonical wheelbase', id => {
     const source = getImportedBikeAsset(id).manifest.anchors;
     const size = IMPORTED_BIKE_WHEELBASE[id] / (source.rearAxle[2] - source.frontAxle[2]);

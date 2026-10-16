@@ -5,6 +5,7 @@ import { newPlayer } from '../app/domain/progression';
 import { createPreviewColorUpdater } from '../app/game/previewAppearance';
 import { getImportedBikeAsset, type ImportedBikeId } from '../app/game/importedBikeAsset';
 import { installImportedBikeFixtures } from './importedBikeFixture';
+import { hardwareComponents } from '../app/game/importedHardwareFinish';
 
 installImportedBikeFixtures();
 vi.mock('../app/game/garmentTexture', () => ({
@@ -13,6 +14,45 @@ vi.mock('../app/game/garmentTexture', () => ({
   sleeveMaterial: () => new MeshStandardMaterial(),
   accessoryMaterial: () => new MeshStandardMaterial(),
 }));
+
+it('keeps both authored Supermoto levers matte black through paint/rim previews', () => {
+  const player = { ...newPlayer(), bike: '450', paint: '#ffffff', rims: '#ffffff' };
+  const bike = makeBike(player, []), source = getImportedBikeAsset('450');
+  const update = createPreviewColorUpdater(bike.body, bike.rider, player);
+  const levers: { material: MeshStandardMaterial; colors: number[]; mesh: Mesh }[] = [];
+  for (const name of ['fs450_cockpit_metal:steering', 'fs450_cockpit_dark:steering']) {
+    const part = source.manifest.parts.find(part => part.name === name)!;
+    const mesh = bike.body.getObjectByName(name) as Mesh;
+    const colors = mesh.geometry.getAttribute('color');
+    expect(mesh.userData.hardwareLeverMask).toBe(true);
+    expect(mesh.geometry.groups).toHaveLength(0);
+    const components = hardwareComponents(part, source.binary).filter(c =>
+      c.max[0] - c.min[0] > 0.1 && c.max[1] - c.min[1] < 0.035 &&
+      c.min[1] > 1.13 && c.max[1] < 1.16 && c.max[2] < -0.28);
+    expect(components).toHaveLength(1);
+    for (const triangle of components[0].triangles) {
+      const group = mesh.geometry.groups.find(group => triangle * 3 >= group.start && triangle * 3 < group.start + group.count);
+      const material = (Array.isArray(mesh.material) ? mesh.material[group?.materialIndex ?? 0] : mesh.material) as MeshStandardMaterial;
+      const black = new Color('#101214');
+      for (let corner = 0; corner < 3; corner++) {
+        const vertex = mesh.geometry.index!.getX(triangle * 3 + corner);
+        expect(colors.getX(vertex)).toBeCloseTo(black.r, 7);
+        expect(colors.getY(vertex)).toBeCloseTo(black.g, 7);
+        expect(colors.getZ(vertex)).toBeCloseTo(black.b, 7);
+      }
+      expect(material.userData.fixedHardwareFinish).toBe(true);
+      levers.push({ material, colors: Array.from(colors.array), mesh });
+    }
+  }
+  for (const paint of ['#ffffff', 'carbon-dark', '#bf2633']) {
+    update({ ...player, paint });
+    for (const { material, colors, mesh } of levers) {
+      expect(material.color.getHexString()).toBe('ffffff');
+      expect(Array.from(mesh.geometry.getAttribute('color').array)).toEqual(colors);
+      expect(material.map).toBeNull();
+    }
+  }
+});
 
 it.each(['125', 'moped', '450', '701', 'scooter'] as ImportedBikeId[])(
   '%s separates black hardware, painted springs and metallic sliding tubes through preview changes',

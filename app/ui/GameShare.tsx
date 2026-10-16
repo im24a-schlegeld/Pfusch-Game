@@ -1,37 +1,34 @@
 import { useState } from 'react';
 import { ArrowRight, Share2, UserPlus } from 'lucide-react';
 import { sharePeriodLabel, type GameShare } from '../domain/gameShare';
-import { shareGame, whatsappGameShareUrl } from '../services/gameShare';
+import { openShareDraft, shareGame, type ShareTarget } from '../services/gameShare';
 import { fmt } from './shared';
 import './game-share.css';
 
 export function ShareAction({ share, label, disabled = false }: { share: GameShare; label: string; disabled?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState('');
-  const [fallback, setFallback] = useState(false);
-  const nativeAvailable = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
-  async function openShare() {
+  const [choices, setChoices] = useState(false);
+  async function openShare(target: ShareTarget) {
     if (busy || disabled) return;
     setBusy(true);
     setOutcome('');
-    setFallback(false);
     try {
-      const result = await shareGame(share, navigator);
+      const result = await shareGame(share, target, { open: url => openShareDraft(url) });
       if (result === 'failed' || result === 'unavailable') {
-        setOutcome('Direktes Teilen ist gerade nicht verfügbar. Versuche es über WhatsApp.');
-        setFallback(true);
-      }
+        setOutcome('Nachrichtenentwurf konnte nicht geöffnet werden. Erlaube Pop-ups oder wähle eine andere App.');
+      } else { setOutcome('Nachrichtenentwurf geöffnet. Sende die Einladung in der gewählten App.'); setChoices(false); }
     } finally { setBusy(false); }
   }
   return <div className="game-share-action">
-    {nativeAvailable && <button type="button" className="button small" disabled={busy || disabled} onClick={() => { void openShare(); }}>
+    <button type="button" className="button small" disabled={busy || disabled} aria-expanded={choices} onClick={() => setChoices(value => !value)}>
       {share.kind === 'invite' ? <UserPlus size={17} aria-hidden="true" /> : <Share2 size={17} aria-hidden="true" />}{label}
-    </button>}
+    </button>
+    {choices && <div className="game-share-choices" aria-label="App zum Teilen wählen">
+      {(['whatsapp', 'telegram', 'email'] as const).map(target => <button type="button" className="button small" key={target}
+        disabled={busy || disabled} onClick={() => { void openShare(target); }}>{target === 'whatsapp' ? 'WhatsApp' : target === 'telegram' ? 'Telegram' : 'E-Mail'}</button>)}
+    </div>}
     <output aria-live="polite">{outcome}</output>
-    {(!nativeAvailable || fallback) && <a className="button small game-share-whatsapp" href={busy || disabled ? undefined : whatsappGameShareUrl(share)}
-      target="_blank" rel="noopener noreferrer" aria-disabled={busy || disabled || undefined} tabIndex={busy || disabled ? -1 : undefined}>
-      <Share2 size={17} aria-hidden="true" />Über WhatsApp teilen
-    </a>}
   </div>;
 }
 

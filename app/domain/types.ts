@@ -83,6 +83,8 @@ export interface Bike {
 }
 export type TutorialHint = 'controls' | 'ramp' | 'police' | 'radar' | 'traffic' | 'signs';
 export interface Settings {
+  /** Additive v1 metadata: last authenticated save device; absent historical saves stay unknown. */
+  deviceType?: 'mobile' | 'tablet' | 'desktop' | 'unknown';
   muted: boolean;
   reducedMotion: boolean;
   quality: 'auto' | 'low';

@@ -41,6 +41,11 @@ async function prepareMenu(page: Page) {
   await page.addInitScript(saved => {
     if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    // Capture app-draft handoffs without navigating to an external messenger.
+    window.open = (_url, target) => {
+      document.documentElement.dataset.shareWindowTarget = target ?? '';
+      return { opener: null, location: { set href(value: string) { document.documentElement.dataset.shareDraft = value; } }, close() {} } as unknown as Window;
+    };
     window.menuPreviewProbe = { frames: 0, capture: false };
     window.__THREE_DEVTOOLS__ = new EventTarget();
     window.__THREE_DEVTOOLS__.addEventListener('observe', event => {
@@ -220,9 +225,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
           const table = page.getByRole('table', { name: 'Deine Bestleistungen', exact: true });
           await expect(table).toBeVisible();
           await expect(table.locator('.you')).toContainText('Fahrer mit langem Namen');
-          const scoreShare = page.locator('.game-share-section').getByRole('link', { name: 'Über WhatsApp teilen', exact: true });
+          const scoreShare = page.locator('.game-share-section').getByRole('button', { name: 'TEILEN', exact: true });
           await expect(scoreShare).toBeEnabled();
-          await expect(page.getByRole('button', { name: 'TEILEN', exact: true })).toHaveCount(0);
+          await expect(scoreShare).toHaveAttribute('aria-expanded', 'false');
           expect(await page.evaluate(() => {
             const table = document.querySelector('.ranking-list')!;
             const editor = document.querySelector('.ranking-name-editor')!;
@@ -237,9 +242,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
           await expect(table.locator('.you')).toContainText('Alex');
           await page.locator('.ranking-name-editor > summary').click();
           if (viewport.width === 390) {
-            // Unsupported native sharing offers an encoded WhatsApp draft
-            // containing the actual result, without a link-copy control.
-            const draft = new URL((await scoreShare.getAttribute('href'))!);
+            await scoreShare.click();
+            const choices = page.locator('.game-share-section .game-share-choices');
+            await expect(choices.getByRole('button')).toHaveText(['WhatsApp', 'Telegram', 'E-Mail']);
+            await choices.getByRole('button', { name: 'WhatsApp', exact: true }).click();
+            const draft = new URL((await page.locator('html').getAttribute('data-share-draft'))!);
+            await expect(page.locator('html')).toHaveAttribute('data-share-window-target', '_blank');
             expect(draft.origin).toBe('https://wa.me');
             expect([...draft.searchParams.keys()]).toEqual(['text']);
             const [message, gameUrl] = draft.searchParams.get('text')!.split('\n');
@@ -253,6 +261,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
             expect(url.searchParams.get('date')).toBe(new Date().toISOString().slice(0, 10));
             await expect(page.getByRole('textbox', { name: 'Link zum Teilen', exact: true })).toHaveCount(0);
             await expect(page.locator('.game-share-copy')).toHaveCount(0);
+            await expect(page.getByRole('button', { name: 'Link kopieren', exact: true })).toHaveCount(0);
           }
           await page.locator('.ranking-page').evaluate(node => { node.scrollTop = 0; });
         }

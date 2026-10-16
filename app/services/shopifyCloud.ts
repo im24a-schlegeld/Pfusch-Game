@@ -22,6 +22,7 @@ const importedGuestKey = 'pfusch:player:v1:guest-imported';
 const offlineAccountKey = 'pfusch:player:v1:offline-account';
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const digest = (value: unknown): value is string | null => value === null || (typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value));
+const transientStatus = (status: number) => status >= 500 || status === 408 || status === 429;
 const sameDigitalProgress = (left: Player, right: Player) => {
   const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
     : record(value) ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
@@ -334,7 +335,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         this.store(offlineAccountKey, '');
         return this.useLocalGuest();
       }
-      return response.status >= 500 ? this.restoreOfflineAccount() ?? this.useLocalGuest() : this.useLocalGuest();
+      return transientStatus(response.status) ? this.restoreOfflineAccount() ?? this.useLocalGuest() : this.useLocalGuest();
     }
     let next: Snapshot;
     try { next = snapshot(response.data, this.decode); }
@@ -427,15 +428,17 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     let networkFailure = true;
     try {
       let response = await this.transport.request('POST', { player, compareDigest: session.compareDigest, csrfToken: session.csrfToken });
-      if (response.status >= 500) throw new Error('Shop nicht erreichbar');
+      if (authRevision !== this.authRevision || session !== this.session) return;
+      if (transientStatus(response.status)) throw new Error('Shop nicht erreichbar');
       networkFailure = false;
       if (this.newsletterDenial(response)) return;
       if (response.status === 403 && record(response.data) && response.data.error === 'csrf') {
         networkFailure = true;
         const refresh = await this.transport.request('GET');
+        if (authRevision !== this.authRevision || session !== this.session) return;
         if (refresh.status !== 200) {
           if (refresh.status === 401) this.invalidateSession();
-          else if (refresh.status >= 500) this.offlineStatus();
+          else if (transientStatus(refresh.status)) this.offlineStatus();
           else this.deny(unavailableAccess(this.localCompletedRuns), `Shop-Anmeldung prüfen. ${this.recoveryMessage()}`);
           return;
         }
@@ -460,7 +463,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         if (!next.storage.allowed) { this.deny(next.storage); return; }
         networkFailure = true;
         response = await this.transport.request('POST', { player, compareDigest: session.compareDigest, csrfToken: session.csrfToken });
-        if (response.status >= 500) throw new Error('Shop nicht erreichbar');
+        if (authRevision !== this.authRevision || session !== this.session) return;
+        if (transientStatus(response.status)) throw new Error('Shop nicht erreichbar');
         networkFailure = false;
         if (this.newsletterDenial(response)) return;
       }
@@ -468,7 +472,8 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         if (!creditRetried) {
           networkFailure = true;
           const refresh = await this.transport.request('GET');
-          if (refresh.status >= 500) throw new Error('Shop nicht erreichbar');
+          if (authRevision !== this.authRevision || session !== this.session) return;
+          if (transientStatus(refresh.status)) throw new Error('Shop nicht erreichbar');
           networkFailure = false;
           if (refresh.status === 401) { this.invalidateSession(); return; }
           if (authRevision !== this.authRevision) return;
@@ -518,6 +523,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       if (!result.storage.allowed) { this.deny(result.storage); return; }
       if (!this.pending) this.status('synced', this.backupWritable ? 'Im Kundenkonto gespeichert.' : 'Im Kundenkonto gespeichert; lokale Sicherung nicht verfügbar.');
     } catch {
+      if (authRevision !== this.authRevision || session !== this.session) return;
       if (networkFailure) this.offlineStatus();
       else this.deny(unavailableAccess(this.localCompletedRuns), `Kontodaten konnten nicht sicher bestätigt werden. ${this.recoveryMessage()}`);
     }
@@ -530,12 +536,13 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     await this.load();
     await this.flush();
     if (!this.isOnline()) { this.offlineStatus(); return this.access; }
+    const authRevision = this.authRevision;
     let receivedResponse = false;
     try {
-      const authRevision = this.authRevision;
       const requestedDigest = this.session?.compareDigest;
       const response = await this.transport.request('GET');
       receivedResponse = true;
+      if (authRevision !== this.authRevision) return this.access;
       if (response.status === 401 && !this.session) {
         await this.useLocalGuest();
         return this.access;
@@ -543,7 +550,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       if (response.status !== 200) {
         if (!this.session) return this.useLocalGuest().then(() => this.access);
         if (response.status === 401) { this.invalidateSession(); await this.useLocalGuest(); }
-        else if (response.status >= 500) this.offlineStatus();
+        else if (transientStatus(response.status)) this.offlineStatus();
         else this.deny(unavailableAccess(this.localCompletedRuns), 'Shop-Freigabe nicht erreichbar. Status erneut prüfen.');
         return this.access;
       }
@@ -606,6 +613,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       else this.status('synced', 'Newsletter-Freigabe im Shop bestätigt.');
       return this.access;
     } catch {
+      if (authRevision !== this.authRevision) return this.access;
       if (!this.session) return this.useLocalGuest().then(() => this.access);
       if (receivedResponse) this.deny(unavailableAccess(this.localCompletedRuns), 'Kontodaten konnten nicht sicher bestätigt werden. Bitte erneut prüfen.');
       else this.offlineStatus();

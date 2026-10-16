@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../app/domain/types';
-import { newPlayer } from '../app/domain/progression';
+import { digitalPrice, newPlayer } from '../app/domain/progression';
 import { commitGarageEdit, garageOffer } from '../app/domain/garageEdit';
 import { equipConfiguration, initialConfiguration } from '../app/domain/preview';
 import { migrateProductInventory, ownsProductColor, productColorKey } from '../app/domain/productOwnership';
@@ -16,11 +16,12 @@ const edit = (variantId: string) => ({ kind: 'product' as const, productId: prod
 
 describe('color-specific ownership', () => {
   it('charges once per color, shares sizes, and never unlocks another color through Equip', () => {
-    const player = { ...newPlayer(), coins: 500 };
+    const price = digitalPrice(product);
+    const player = { ...newPlayer(), coins: 2 * price + 200 };
     const black = commitGarageEdit(player, edit(blackS), [product])!;
-    expect(black.coins).toBe(350);
+    expect(black.coins).toBe(player.coins - price);
     expect(ownsProductColor(black, product, blackM)).toBe(true);
-    expect(commitGarageEdit(black, edit(blackM), [product])!.coins).toBe(350);
+    expect(commitGarageEdit(black, edit(blackM), [product])!.coins).toBe(black.coins);
     expect(ownsProductColor(black, product, white)).toBe(false);
     expect(equipConfiguration(black, product, edit(white).configuration)).toBeNull();
     expect(garageOffer(black, edit(white), [product]).owned).toBe(false);

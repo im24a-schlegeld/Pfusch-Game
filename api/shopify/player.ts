@@ -16,7 +16,9 @@ export default async function player(request: NodeRequest, response: ServerRespo
   let playerFetch: typeof fetch | undefined;
   const requestPlayer: typeof fetch = (input, init) => (playerFetch ??= withFetchDeadline(fetch, 10000))(input, init);
   const result = await handlePlayerRequest({ method: request.method ?? '', url: request.url ?? '',
-    contentType: request.headers['content-type'], readBody: () => readBoundedJson(request) },
+    contentType: request.headers['content-type'], userAgent: typeof request.headers['user-agent'] === 'string' ? request.headers['user-agent'] : undefined,
+    mobileHint: typeof request.headers['sec-ch-ua-mobile'] === 'string' ? request.headers['sec-ch-ua-mobile'] : undefined,
+    readBody: () => readBoundedJson(request) },
   { config, request: requestPlayer, purchases: config ? customerId => loadCustomerPurchases(config, customerId, withFetchDeadline(fetch, 5000)) : undefined,
     afterSave: config ? (customerId, saved) =>
     updateRanking(config, customerId, saved, withFetchDeadline(fetch, 1500)) : undefined });

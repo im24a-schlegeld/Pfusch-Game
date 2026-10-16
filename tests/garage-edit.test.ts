@@ -3,7 +3,7 @@ import catalog from '../public/catalog/products.json';
 import { PAINTS, RIMS } from '../app/domain/config';
 import { commitGarageEdit, commitStickerEdit, garageAppearance, garageEditChanged, garageOffer, type GarageEdit } from '../app/domain/garageEdit';
 import { initialConfiguration } from '../app/domain/preview';
-import { newPlayer } from '../app/domain/progression';
+import { digitalPrice, newPlayer } from '../app/domain/progression';
 import type { Product, StickerPlacement } from '../app/domain/types';
 
 const products = catalog as Product[];
@@ -44,13 +44,13 @@ describe('one-part garage edits and atomic purchases', () => {
   });
   it('commits product variant, number and hood options only on explicit confirmation', () => {
     for (const handle of ['racing-zipper', 'unisex-windbreaker']) {
-      const player = { ...newPlayer(), coins: 1000 };
+      const player = { ...newPlayer(), coins: 3000 };
       const product = products.find(p => p.handle === handle)!;
       const configuration = { ...initialConfiguration(player, product),
         ...(handle === 'racing-zipper' ? { customNumber: '07' } : { hoodEnabled: true }) };
       const edit: GarageEdit = { kind: 'product', productId: product.id, configuration };
       garageAppearance(player, edit, products);
-      expect(player.equipped.upper).toBeUndefined(); expect(player.coins).toBe(1000);
+      expect(player.equipped.upper).toBeUndefined(); expect(player.coins).toBe(3000);
       const next = commitGarageEdit(player, edit, products)!;
       expect(next.equipped.upper).toBe(product.id); expect(next.variants[product.id]).toBe(configuration.variantId);
       expect(next.customizations[product.id]).toMatchObject(handle === 'racing-zipper' ? { customNumber: '07' } : { hoodEnabled: true });
@@ -65,12 +65,12 @@ describe('one-part garage edits and atomic purchases', () => {
     expect(preview.paint).toBe(captured.value); expect(preview.rims).toBe(newer.value);
     expect(preview.coins).toBe(confirmed.coins);
   });
-  it('buys once and saves bike and helmet sticker positions together', () => {
+  it('buys each copy once and saves bike and helmet sticker positions together', () => {
     const player = newPlayer(), sticker = products.find(product => product.handle === 'chrome-sticker')!;
     const helmet: StickerPlacement = { id: 'helmet', productId: sticker.id, surface: 'helmet/fullface/full-face-helmet', point: [0, 0, 0], normal: [1, 0, 0], size: .07, rotation: 0 };
     const drafts = { '125': [{ ...helmet, id: 'bike', surface: 'body/moped-main-frame:0' }], 'helmet:fullface': [helmet] };
     const next = commitStickerEdit(player, drafts, products)!;
-    expect(next.coins).toBe(player.coins - 75);
+    expect(next.coins).toBe(player.coins - 2 * digitalPrice(sticker));
     expect(next.stickers).toEqual(drafts);
     expect(commitStickerEdit(next, drafts, products)!.coins).toBe(next.coins);
     expect(player.stickers).toEqual({});

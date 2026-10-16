@@ -1,6 +1,7 @@
 import type { Helmet, Player, Product, StickerPlacement } from './types';
 import { BIKES } from './config.js';
 import { HELMETS } from './helmet.js';
+import { digitalPrice } from './progression.js';
 
 export const MAX_STICKERS = 8;
 /** New workshop placements start at 9 cm; existing saved sizes stay unchanged. */
@@ -30,6 +31,21 @@ export function validStickerForTarget(target: string, value: unknown): value is 
   return isHelmetStickerTarget(target)
     ? value.surface.startsWith(`helmet/${target.slice('helmet:'.length)}/`)
     : !value.surface.startsWith('helmet/');
+}
+/** New placement identities cost one unit each; editing the same copy stays free. */
+export function stickerEditPrice(player: Player, drafts: Record<string, StickerPlacement[]>, products: Product[]): number | null {
+  let total = 0;
+  for (const [target, placements] of Object.entries(drafts)) {
+    if (!ownsStickerTarget(player, target) || placements.length > MAX_STICKERS ||
+      new Set(placements.map(placement => placement.id)).size !== placements.length) return null;
+    for (const placement of placements) {
+      const product = products.find(product => product.id === placement.productId && isSticker(product));
+      if (!product || !validStickerForTarget(target, placement)) return null;
+      const existing = player.stickers[target]?.some(saved => saved.id === placement.id && saved.productId === placement.productId);
+      if (!existing) total += digitalPrice(product);
+    }
+  }
+  return total;
 }
 /** Only an explicit save commits placements; previews may use locked shop items. */
 export function saveStickers(player: Player, target: string, placements: StickerPlacement[], products: Product[]): Player | null {

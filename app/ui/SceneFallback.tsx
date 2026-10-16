@@ -28,5 +28,6 @@ export default function SceneFallback({ player, products }: { player: Player; pr
       <span><i style={{ background: finishSwatch(player.helmetVisor) }} />Visier: {VISOR_COLORS.find((item) => item.value === player.helmetVisor)?.name ?? player.helmetVisor}</span>
     </div>
     <p>Die 3D-Vorschau ist gerade nicht verfügbar. Du kannst dein Setup weiter auswählen und ausrüsten.</p>
+    <button className="button" type="button" onClick={() => window.location.reload()}>RELOAD</button>
   </fieldset>;
 }

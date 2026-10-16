@@ -40,13 +40,17 @@ describe.each(['125', 'moped', '450', '701', 'scooter'] as const)('Imported %s a
   it('shares the exact imported tail with deterministic wheelie physics', () => {
     expect(IMPORTED_BIKE_TAIL[id].tail).toEqual(manifest.anchors.tail.map((value) => value * size));
   });
-  it('reproduces every exported part in its original neutral source pose', () => {
+  it('reproduces every retained exported part in its original neutral source pose', () => {
     const model = bike(); model.root.updateMatrixWorld(true);
     const inverse = model.body.matrixWorld.clone().invert();
     const point = new Vector3(), matrix = new Matrix4();
     for (const part of manifest.parts) {
       let found: Mesh | undefined;
       model.body.traverse((object) => { if (object instanceof Mesh && object.userData.importedPart === part.name) found = object; });
+      if (id === 'moped' && part.name.startsWith('moped_indicator:')) {
+        expect(found, part.name).toBeUndefined();
+        continue;
+      }
       expect(found, part.name).toBeDefined();
       const mesh = found!;
       const raw = new Float32Array(buffer.buffer, buffer.byteOffset + part.position.offset, part.position.count * 3);
