@@ -363,7 +363,23 @@ describe('Live Shopify newsletter authority', () => {
     expect(result.body.storage).toMatchObject({ allowed: true, completedRuns: 4 });
   });
 
-  it.each([null, undefined, {}, { marketingState: 'UNKNOWN' }])('fails closed when live consent is unavailable: %j', async consent => {
+  it('accepts an authenticated new customer with null consent as NOT_SUBSCRIBED for five trial rides', async () => {
+    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, emailMarketingConsent: null, metafield: null } }));
+    const result = await handlePlayerRequest(input(), dependencies(request));
+    expect(result.status).toBe(200);
+    expect(result.body.customer).toEqual({ id: '12345' });
+    expect(result.body.storage).toEqual({ allowed: true, reason: 'trial', completedRuns: 0, freeRuns: 5 });
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('does not grant a newsletter entitlement when a customer has null consent and five completed rides', async () => {
+    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, emailMarketingConsent: null, metafield: { value: JSON.stringify(played(5)), compareDigest: firstDigest } } }));
+    const result = await handlePlayerRequest(input(), dependencies(request));
+    expect(result.status).toBe(200);
+    expect(result.body.storage).toMatchObject({ allowed: false, reason: 'newsletter_required', completedRuns: 5 });
+  });
+
+  it.each([undefined, {}, { marketingState: 'UNKNOWN' }])('fails closed when live consent is unavailable: %j', async consent => {
     const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, emailMarketingConsent: consent, metafield: null } }));
     const result = await handlePlayerRequest(post(), dependencies(request));
     expect(result).toEqual({ status: 503, body: { error: 'consent_unavailable' } });

@@ -15,6 +15,9 @@ export interface StorageAccess {
 /** Consent comes only from the authenticated Admin API response. Missing or
  * unrecognized authority must never silently become an available trial. */
 export function readMarketingState(consent: unknown): MarketingState {
+  // Shopify returns null for a newly created customer without a consent record.
+  // This is NOT a subscription, and never grants access beyond the free trial.
+  if (consent === null) return 'NOT_SUBSCRIBED';
   if (!isRecord(consent) || !marketingStates.includes(consent.marketingState as MarketingState))
     throw new ApiError(503, 'consent_unavailable');
   return consent.marketingState as MarketingState;

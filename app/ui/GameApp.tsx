@@ -157,6 +157,10 @@ export default function GameApp() {
     const timer = window.setTimeout(() => setLoginHint(false), 2600);
     return () => window.clearTimeout(timer);
   }, [loginHint]);
+  // Dismiss a stale access dialog after a fresh server verification succeeds.
+  useEffect(() => {
+    if (accessOpen && !checkingAccess && accessStatus?.allowed) setAccessOpen(false);
+  }, [accessOpen, checkingAccess, accessStatus?.allowed]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(''), 3800);
@@ -630,6 +634,7 @@ export default function GameApp() {
         <Leaderboard player={player} services={services} update={update} back={back} />
       )}
       <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
+        authenticated={accountKind === 'customer'}
         loginHref={oxygenLoginHref}
         onLogin={services.auth.login || oxygenRuntime ? () => { void beginLogin(); } : undefined}
         message={accessError} onStart={start} back={() => setAccessOpen(false)}
