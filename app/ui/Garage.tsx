@@ -9,7 +9,7 @@ import { digitalLevel, digitalPrice, ownership } from '../domain/progression';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS, helmetOptionPrice, ownsHelmetOption } from '../domain/helmet';
 import { isSticker } from '../domain/stickers';
 import { getPantsColor, getShoesColor, PANTS_COLORS, RIDER_COLORS } from '../domain/riderColors';
-import { equipmentSlot, equippable, imagePath, initialConfiguration, productColors, supportsHood } from '../domain/preview';
+import { equipmentSlot, equippable, firstColorImageView, imagePath, initialConfiguration, productColors, productImage, supportsHood, type ProductImageView } from '../domain/preview';
 import { commitGarageEdit, commitStickerEdit, garageAppearance, garageEditChanged, garageOffer, type GarageEdit } from '../domain/garageEdit';
 import { colorName, perceptualDistance } from '../domain/paletteView';
 import { Coin, Preview } from './shared';
@@ -81,7 +81,7 @@ export default function Garage({ player, products, update, services, notify, sta
   const [angle, setAngle] = useState(2.35);
   const [inspectionRevision, setInspectionRevision] = useState(0);
   const [previewReady, setPreviewReady] = useState(false);
-  const [productView, setProductView] = useState<'front' | 'back'>('front');
+  const [productView, setProductView] = useState<ProductImageView>('shop');
   const [stickerBike, setStickerBike] = useState<Player | null>(null);
   const [stickerTarget, setStickerTarget] = useState<'bike' | 'helmet'>('bike');
   const pending = useRef(false);
@@ -107,7 +107,7 @@ export default function Garage({ player, products, update, services, notify, sta
   const colors = useMemo(() => selectedProduct ? productColors(selectedProduct) : [], [selectedProduct]);
   const selectedColor = colors.find(color => color.variantIds.includes(configuration?.variantId ?? '')) ?? colors[0];
   const placingSticker = Boolean(selectedProduct && isSticker(selectedProduct));
-  const mockup = productView === 'back' ? selectedColor?.back ?? selectedColor?.front : selectedColor?.front ?? selectedColor?.back;
+  const mockup = selectedProduct ? productImage(selectedProduct, productView, configuration?.variantId) : '';
   const focus = part === 'model' || part === 'paint' || part === 'rims' || part === 'upper' ? part
     : part === 'pantsColor' ? 'lower' : part === 'shoesColor' ? 'feet'
     : part === 'helmet' ? 'head' : part === 'head' ? 'cap' : part === 'extras' && selectedProduct?.handle === 'schlusselanhanger' ? 'keychain'
@@ -119,13 +119,13 @@ export default function Garage({ player, products, update, services, notify, sta
   function selectPart(next: Part) {
     if (next === part) return;
     setNotice(changed ? 'Unbestätigte Vorschau verworfen. Dein ausgerüstetes Setup bleibt erhalten.' : '');
-    setPreviewEdit(null); editRef.current = null; setPart(next); setProductView('front');
+    setPreviewEdit(null); editRef.current = null; setPart(next); setProductView('shop');
   }
   function setEdit(edit: GarageEdit) { editRef.current = edit; setPreviewEdit(edit); setNotice(''); }
   function selectProduct(product: Product) {
     if (previewEdit?.kind === 'product' && previewEdit.productId === product.id) return;
     setEdit({ kind: 'product', productId: product.id, configuration: initialConfiguration(player, product) });
-    setProductView('front'); services.analytics.track('product_viewed', { id: product.id });
+    setProductView('shop'); services.analytics.track('product_viewed', { id: product.id });
   }
   function editProduct(patch: Partial<ProductConfiguration>) {
     if (!selectedProduct || !configuration) return;
@@ -258,9 +258,8 @@ export default function Garage({ player, products, update, services, notify, sta
           <div className="gc-products" aria-label="Artikelauswahl">{activeProducts.map(product => {
             const active = selectedProduct?.id === product.id;
             const config = active && configuration ? configuration : initialConfiguration(player, product);
-            const color = productColors(product).find(item => item.variantIds.includes(config.variantId));
             return <button key={product.id} className="gc-product" data-testid="product-card" aria-label={`${product.title} · ${productStatus(product, config.variantId)}`} aria-pressed={active} onClick={() => selectProduct(product)}>
-              <span className="gc-product-image"><img src={imagePath(color?.front?.localImage ?? product.localImage ?? product.image)} alt={product.title} loading="lazy" />{active && <Check size={16} aria-hidden="true" />}</span><strong>{product.title}</strong><span>{productStatus(product, config.variantId)}</span>
+              <span className="gc-product-image"><img src={imagePath(productImage(product))} alt={product.title} loading="lazy" />{active && <Check size={16} aria-hidden="true" />}</span><strong>{product.title}</strong><span>{productStatus(product, config.variantId)}</span>
             </button>;
           })}</div>
           <div className="gc-remove-options">{([...new Set(activeProducts.filter(equippable).map(equipmentSlot))]).map(slot => player.equipped[slot] && <button key={slot} className="gc-text-button" onClick={() => removeSlot(slot)}>{slot === 'upper' ? 'Standard-Outfit' : `Ohne ${slot === 'head' ? 'Cap' : slot === 'cape' ? 'Cape' : slot === 'keychain' ? 'Schlüsselanhänger' : 'Accessoire'}`}</button>)}</div>
@@ -268,12 +267,12 @@ export default function Garage({ player, products, update, services, notify, sta
         {selectedProduct && configuration && <section className="gc-product-options" aria-label={`${selectedProduct.title} konfigurieren`}>
           <div className="gc-selected-heading"><h3>{selectedProduct.title}</h3><span>{productStatus(selectedProduct, configuration.variantId)}</span></div>
           {colors.length > 0 && <Palette key={selectedProduct.id} title="Artikelfarbe" colors={colors.map(color => ({ name: color.label, value: color.baseColor }))}
-            value={selectedColor?.baseColor ?? selectedProduct.baseColor} status={color => productStatus(selectedProduct, colors.find(item => item.baseColor === color.value)?.variantIds[0])} onChange={value => { const color = colors.find(item => item.baseColor === value); if (color?.variantIds[0]) editProduct({ variantId: color.variantIds[0] }); }} />}
+            value={selectedColor?.baseColor ?? selectedProduct.baseColor} status={color => productStatus(selectedProduct, colors.find(item => item.baseColor === color.value)?.variantIds[0])} onChange={value => { const color = colors.find(item => item.baseColor === value); if (color?.variantIds[0]) { setProductView(firstColorImageView(selectedProduct, color.variantIds[0])); editProduct({ variantId: color.variantIds[0] }); } }} />}
           {selectedProduct.preview?.numberCustomization && <label className="gc-number">Deine Racing-Nummer<input aria-label={`${selectedProduct.title} Nummer`} inputMode="numeric" pattern="[0-9]{1,2}" maxLength={2} placeholder="23" value={configuration.customNumber ?? ''} onChange={event => editProduct({ customNumber: event.target.value.replace(/\D/g, '').slice(0, 2) })} /><small>1–2 Ziffern · Pflichtfeld</small></label>}
           {supportsHood(selectedProduct) && <fieldset className="gc-field"><legend>Kapuze</legend><div className="gc-toggle">{[false, true].map(hoodEnabled => <button key={String(hoodEnabled)} aria-pressed={(configuration.hoodEnabled === true) === hoodEnabled} onClick={() => editProduct({ hoodEnabled })}>{hoodEnabled ? 'Mit Kapuze' : 'Ohne Kapuze'}</button>)}</div></fieldset>}
-          {selectedColor?.front && selectedColor?.back && <button className="gc-text-button" onClick={() => { const next = productView === 'front' ? 'back' : 'front'; setProductView(next); setAngle(next === 'front' ? Math.PI : 0); setInspectionRevision(revision => revision + 1); }}>{productView === 'front' ? 'Rückseite zeigen' : 'Vorderseite zeigen'}</button>}
+          {selectedColor?.front && selectedColor?.back && <button className="gc-text-button" onClick={() => { const currentView = productView === 'shop' ? firstColorImageView(selectedProduct, configuration.variantId) : productView; const next = currentView === 'front' ? 'back' : 'front'; setProductView(next); setAngle(next === 'front' ? Math.PI : 0); setInspectionRevision(revision => revision + 1); }}>{(productView === 'shop' ? firstColorImageView(selectedProduct, configuration.variantId) : productView) === 'front' ? 'Rückseite zeigen' : 'Vorderseite zeigen'}</button>}
           {isSticker(selectedProduct) && <div className="gc-placement"><p>Wo soll dein Sticker hin?</p><div className="gc-toggle" aria-label="Sticker-Ziel"><button aria-pressed={stickerTarget === 'bike'} onClick={() => setStickerTarget('bike')}>Motorrad</button><button aria-pressed={stickerTarget === 'helmet'} onClick={() => setStickerTarget('helmet')}>Helm</button></div><p>Mit „Platzieren“ kostenlos ausprobieren. Gekauft wird erst beim Speichern.</p></div>}
-          <details className="gc-details"><summary>Artikeldetails & Originalbild</summary><img src={imagePath(mockup?.localImage ?? selectedProduct.localImage ?? selectedProduct.image)} alt={selectedProduct.title} loading="lazy" /><p>{selectedProduct.description}</p><p>Digitaler Spielartikel · kein physischer Versand</p><a href={selectedProduct.url} target="_blank" rel="noreferrer">Original im PFUSCH-Shop <ExternalLink size={14} aria-hidden="true" /></a></details>
+          <details className="gc-details"><summary>Artikeldetails & Originalbild</summary><img src={imagePath(mockup)} alt={selectedProduct.title} loading="lazy" /><p>{selectedProduct.description}</p><p>Digitaler Spielartikel · kein physischer Versand</p><a href={selectedProduct.url} target="_blank" rel="noreferrer">Original im PFUSCH-Shop <ExternalLink size={14} aria-hidden="true" /></a></details>
         </section>}
         <div className="gc-utilities"><a href="https://pfusch-clothing.ch" target="_blank" rel="noreferrer">PFUSCH-Shop <ExternalLink size={13} aria-hidden="true" /></a></div>
         <SavedSetups player={player} products={products} services={services} update={next => { account.current = next; update(next); }} notify={notify} previewing={changed || !!purchase} onEquip={discard} />

@@ -95,3 +95,24 @@ export function productColors(product: Product) {
 }
 export const imagePath = (path: string) =>
   path.startsWith('http') || path.startsWith('/') ? path : `/${path}`;
+
+export type ProductImageView = 'shop' | 'front' | 'back';
+/** The catalog cache is the first Shopify image; side mappings are explicit views only. */
+export function productImage(product: Product, view: ProductImageView = 'shop', variantId?: string): string {
+  const first = product.localImage || product.images[0] || product.image;
+  if (view === 'shop') return first;
+  const colors = productColors(product);
+  const color = colors.find(item => item.variantIds.includes(variantId ?? '')) ?? colors[0];
+  const photo = color?.[view] ?? color?.front ?? color?.back;
+  const variant = product.variants.find(item => item.id === variantId);
+  return photo?.localImage || photo?.source || variant?.image || first;
+}
+
+/** Changing color retains its real photos in their original Shopify order. */
+export function firstColorImageView(product: Product, variantId?: string): 'front' | 'back' {
+  const colors = productColors(product);
+  const color = colors.find(item => item.variantIds.includes(variantId ?? '')) ?? colors[0];
+  const front = color?.front ? product.images.indexOf(color.front.source) : -1;
+  const back = color?.back ? product.images.indexOf(color.back.source) : -1;
+  return back >= 0 && (front < 0 || back < front) ? 'back' : 'front';
+}

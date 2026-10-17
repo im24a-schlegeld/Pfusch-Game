@@ -12,10 +12,13 @@ import type { Player, Product, ProductConfiguration } from '../domain/types';
 import {
   canEquip,
   equippable,
+  firstColorImageView,
   imagePath,
   productColors,
+  productImage,
   supportsHood,
   validConfiguration,
+  type ProductImageView,
 } from '../domain/preview';
 import { ownership, digitalPrice } from '../domain/progression';
 import { Coin, ExternalArrow, money } from './shared';
@@ -47,20 +50,16 @@ export default function ProductPreview({
   onSelect,
   onInspect,
 }: Props) {
-  const [view, setView] = useState<'front' | 'back'>('front');
+  const [inspection, setInspection] = useState<{ productId: string; view: ProductImageView }>({ productId: product.id, view: 'shop' });
+  const view = inspection.productId === product.id ? inspection.view : 'shop';
+  const setView = (next: ProductImageView) => setInspection({ productId: product.id, view: next });
+  useEffect(() => { setInspection({ productId: product.id, view: 'shop' }); }, [product.id]);
   const colors = productColors(product),
     color =
       colors.find((c) => c.variantIds.includes(configuration.variantId)) ??
       colors[0];
-  const variant =
-      product.variants.find((v) => v.id === configuration.variantId) ??
-      product.variants[0],
-    selectedImage = view === 'back' && color.back ? color.back : color.front;
-  const src =
-    selectedImage?.localImage ??
-    variant?.image ??
-    product.localImage ??
-    product.image;
+  const variant = product.variants.find((v) => v.id === configuration.variantId) ?? product.variants[0];
+  const src = productImage(product, view, configuration.variantId);
   const permanent = canEquip(player, product, configuration.variantId),
     state = ownership(player, product, configuration.variantId),
     numberEnabled = product.preview?.numberCustomization;
@@ -94,7 +93,7 @@ export default function ProductPreview({
     const next = colors.find((c) => c.id === id);
     if (next) {
       onConfiguration({ ...configuration, variantId: next.variantIds[0] });
-      if (!next.back) setView('front');
+      setView(firstColorImageView(product, next.variantIds[0]));
     }
   }
   return (

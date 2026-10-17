@@ -2,6 +2,7 @@ import type { Player, Product } from '../domain/types';
 import { finishSwatch } from '../domain/carbon';
 import { BIKES, PAINTS, RIMS } from '../domain/config';
 import { HELMETS, HELMET_COLORS, VISOR_COLORS } from '../domain/helmet';
+import { imagePath, productImage } from '../domain/preview';
 import '../scene-fallback.css';
 
 /** Available even when the Three.js chunk or WebGL itself cannot load. */
@@ -16,8 +17,7 @@ export default function SceneFallback({ player, products }: { player: Player; pr
     {selected.length > 0 && <div className="scene-fallback-images">
       {selected.map((product) => {
         const color = product.preview?.colors.find((item) => item.variantIds.includes(player.variants[product.id]));
-        const variant = product.variants.find((item) => item.id === player.variants[product.id]);
-        const src = color?.front?.localImage || variant?.image || product.localImage || product.image;
+        const src = imagePath(productImage(product));
         return <figure key={product.id}><img src={src} alt={`${product.title}${color ? ` · ${color.label}` : ''}`} /><figcaption>{product.title}{color && <span>{color.label}</span>}</figcaption></figure>;
       })}
     </div>}
