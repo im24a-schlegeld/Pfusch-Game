@@ -11,7 +11,8 @@ describe('continuous cap embroidery UVs', () => {
   it.each(['p-zero-cap', 'logo-cap-1'])('%s keeps its complete rear embroidery above the adjustment opening', handle => {
     const print = CAP_PRINTS[handle][0];
     const lowestPoint = .144 * (1 - (print.y + print.height / 2) / 1024);
-    expect(lowestPoint).toBeGreaterThan(.072);
+    // The actual crown edge above the rear opening reaches 0.0594 m.
+    expect(lowestPoint).toBeGreaterThan(.060);
   });
   it('does not smear front or rear artwork across the cylindrical seam', () => {
     const product = (catalog as Product[]).find(item => item.handle === 'p-zero-cap')!;
