@@ -5,6 +5,7 @@ import fabricAudit from '../../public/catalog/fabric-samples.json';
 import { loadNumberFont } from './numberFont';
 import { createKeepUpInkGlow } from './garmentGlow';
 import { SLEEVE_UV_METRES } from './sleeveSurface';
+import { CAP_PRINTS } from './capPrints';
 type Placement = { center: number[]; width: number; height: number };
 type Side = {
   crop: number[];
@@ -393,6 +394,7 @@ export function accessoryMaterial(
   map.colorSpace = THREE.SRGBColorSpace;
   map.anisotropy = 4;
   const material = new THREE.MeshStandardMaterial({ map, roughness: 0.96 });
+  if (product.category === 'head') map.wrapS = THREE.RepeatWrapping;
   let disposed = false;
   material.addEventListener('dispose', () => {
     disposed = true;
@@ -420,5 +422,13 @@ export function accessoryMaterial(
         map.needsUpdate = true;
       })
       .catch((error) => console.error(error));
+  for (const print of CAP_PRINTS[product.handle] ?? []) {
+    void load(print.source).then(img => {
+      if (disposed) return;
+      ctx.drawImage(printedCrop(img, print.crop, img, print.brightOnly),
+        print.x - print.width / 2, print.y - print.height / 2, print.width, print.height);
+      map.needsUpdate = true;
+    }).catch(error => console.error(error));
+  }
   return material;
 }

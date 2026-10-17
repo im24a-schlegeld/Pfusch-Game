@@ -31,6 +31,18 @@ function capGeometry() {
     cached.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     cached.setIndex(new THREE.BufferAttribute(indices, 1));
     for (const group of asset.groups) cached.addGroup(group.start, group.count, group.material);
+    // Separate seam vertices once, so a rear triangle never interpolates
+    // through the entire front print. The texture repeats around the crown.
+    const expanded = cached.toNonIndexed();
+    const surfaceUV = expanded.getAttribute('uv');
+    for (let i = 0; i < surfaceUV.count; i += 3) {
+      const values = [surfaceUV.getX(i), surfaceUV.getX(i + 1), surfaceUV.getX(i + 2)];
+      if (Math.max(...values) - Math.min(...values) <= .5) continue;
+      for (let corner = 0; corner < 3; corner++)
+        if (values[corner] < .75) surfaceUV.setX(i + corner, values[corner] + 1);
+    }
+    cached.dispose();
+    cached = expanded;
     cached.computeBoundingBox(); cached.computeBoundingSphere();
   }
   return cached.clone();

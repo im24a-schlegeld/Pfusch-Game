@@ -81,7 +81,7 @@ test('locked previews cover the catalog, discard on part changes and never chang
       }
     }
     if (product.preview?.numberCustomization) {
-      await page.getByRole('textbox', { name: `${product.title} Nummer`, exact: true }).fill('17');
+      await page.getByRole('combobox', { name: `${product.title} Nummer`, exact: true }).selectOption('17');
       await expect(page.getByTestId('garage-model')).toHaveAttribute(
         'data-number',
         '17',
@@ -131,7 +131,7 @@ test('number and variant save only on explicit Equip and survive reload on mobil
   await page.goto('/');
   await expect(primaryAction(page)).toBeEnabled({ timeout: 90000 });
   await chooseProduct(page, product);
-  await page.getByRole('textbox', { name: `${product.title} Nummer`, exact: true }).fill('8');
+  await page.getByRole('combobox', { name: `${product.title} Nummer`, exact: true }).selectOption('8');
   await expect(primaryAction(page)).toHaveText('Ausrüsten');
   await primaryAction(page).click();
   await expect(primaryAction(page)).toHaveText('Fahrt starten');
@@ -139,7 +139,7 @@ test('number and variant save only on explicit Equip and survive reload on mobil
   await expect(primaryAction(page)).toBeEnabled({ timeout: 90000 });
   await chooseProduct(page, product);
   await expect(
-    page.getByRole('textbox', { name: `${product.title} Nummer`, exact: true }),
+    page.getByRole('combobox', { name: `${product.title} Nummer`, exact: true }),
   ).toHaveValue('8');
   await page.getByRole('button', { name: 'Rückseite zeigen', exact: true }).click();
   await page.screenshot({ path: 'outputs/preview-mobile.png' });

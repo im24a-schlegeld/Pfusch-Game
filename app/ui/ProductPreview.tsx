@@ -22,6 +22,7 @@ import {
 } from '../domain/preview';
 import { ownership, digitalPrice } from '../domain/progression';
 import { Coin, ExternalArrow, money } from './shared';
+import RacingNumberInput from './RacingNumberInput';
 interface Props {
   product: Product;
   products: Product[];
@@ -254,21 +255,16 @@ export default function ProductPreview({
               DEINE RÜCKENNUMMER{' '}
               <small>1–2 Ziffern · kostenlose Vorschau</small>
             </label>
-            {numberFont === 'ready' ? (
+            {(
               <>
-                <input
+                <RacingNumberInput
                   id="zipper-number"
-                  aria-label="Rückennummer"
+                  label="Rückennummer"
                   value={configuration.customNumber ?? ''}
-                  inputMode="numeric"
-                  pattern="[0-9]{1,2}"
-                  maxLength={2}
-                  onChange={(e) =>
+                  onChange={(customNumber) =>
                     onConfiguration({
                       ...configuration,
-                      customNumber: e.target.value
-                        .replace(/\D/g, '')
-                        .slice(0, 2),
+                      customNumber,
                     })
                   }
                 />
@@ -279,7 +275,8 @@ export default function ProductPreview({
                   {configuration.customNumber || '—'}
                 </output>
               </>
-            ) : (
+            )}
+            {numberFont !== 'ready' && (
               <output>
                 {numberFont === 'error'
                   ? 'Schrift konnte nicht geladen werden. Bitte neu laden.'
