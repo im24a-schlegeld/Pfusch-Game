@@ -425,8 +425,12 @@ export function accessoryMaterial(
   for (const print of CAP_PRINTS[product.handle] ?? []) {
     void load(print.source).then(img => {
       if (disposed) return;
-      ctx.drawImage(printedCrop(img, print.crop, img, print.brightOnly),
-        print.x - print.width / 2, print.y - print.height / 2, print.width, print.height);
+      const artwork = printedCrop(img, print.crop, img, print.brightOnly);
+      // A side print can straddle the cylindrical texture's 0/1024 seam.
+      for (const x of [print.x - canvas.width, print.x, print.x + canvas.width]) {
+        if (x + print.width / 2 <= 0 || x - print.width / 2 >= canvas.width) continue;
+        ctx.drawImage(artwork, x - print.width / 2, print.y - print.height / 2, print.width, print.height);
+      }
       map.needsUpdate = true;
     }).catch(error => console.error(error));
   }
