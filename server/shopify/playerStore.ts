@@ -51,14 +51,14 @@ export async function shopifyGraphql(config: ShopifyConfig, query: string, varia
 export async function loadCustomerPlayer(config: ShopifyConfig, customerId: string, request: ShopifyFetch, verifiedItems: string[] = []): Promise<CustomerPlayer> {
   const data = await shopifyGraphql(config, `query GamePlayer($id: ID!, $namespace: String!, $key: String!, $gifts: String!) {
     customer(id: $id) {
-      id emailMarketingConsent { marketingState }
+      id defaultEmailAddress { marketingState } emailMarketingConsent { marketingState }
       metafield(namespace: $namespace, key: $key) { value compareDigest }
       gifts: metafield(namespace: $namespace, key: $gifts) { value compareDigest }
     }
   }`, { id: ownerId(customerId), namespace: PLAYER_NAMESPACE, key: PLAYER_KEY, gifts: GIFT_KEY }, request);
   if (data.customer === null) throw new ApiError(401, 'unauthorized');
   if (!isRecord(data.customer) || data.customer.id !== ownerId(customerId)) throw new ApiError(502, 'invalid_shopify_response');
-  const marketingState = readMarketingState(data.customer.emailMarketingConsent);
+  const marketingState = readMarketingState(data.customer.emailMarketingConsent, data.customer.defaultEmailAddress);
   const gifts = pendingGifts(readGiftLedger(data.customer.gifts).ledger);
   const field = data.customer.metafield;
   if (field === null) return { player: null, compareDigest: null, marketingState, gifts };

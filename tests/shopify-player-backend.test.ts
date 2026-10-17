@@ -191,6 +191,33 @@ describe('Customer-scoped cloud save', () => {
     expect(JSON.parse(options!.body as string).query).toContain('emailMarketingConsent { marketingState }');
     expect(options!.redirect).toBe('manual');
   });
+  it('returns a new authenticated account using its current email state when legacy consent is null', async () => {
+    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid,
+      defaultEmailAddress: { marketingState: 'NOT_SUBSCRIBED' }, emailMarketingConsent: null, metafield: null } }));
+    const result = await handlePlayerRequest(input(), dependencies(request));
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ customer: { id: '12345' }, player: null, compareDigest: null,
+      storage: { allowed: true, reason: 'trial', completedRuns: 0, freeRuns: 5 } });
+  });
+  it('preserves a current unsubscribe despite stale subscribed legacy consent', async () => {
+    const request = vi.fn<typeof fetch>(async (_url, options) => JSON.parse(options?.body as string).query.startsWith('mutation')
+      ? saveResponse() : response({ customer: { id: gid,
+      defaultEmailAddress: { marketingState: 'UNSUBSCRIBED' },
+      emailMarketingConsent: { marketingState: 'SUBSCRIBED' }, metafield: null } }));
+    const result = await handlePlayerRequest(post(), dependencies(request));
+    expect(result).toMatchObject({ status: 403, body: { error: 'newsletter_unsubscribed', storage: { allowed: false, reason: 'unsubscribed' } } });
+    expect(request).toHaveBeenCalledOnce();
+  });
+  it.each([{}, { marketingState: 'UNKNOWN' }])('fails closed for malformed current email consent without trusting stale legacy consent: %j', async modern => {
+    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid,
+      defaultEmailAddress: modern, emailMarketingConsent: { marketingState: 'SUBSCRIBED' }, metafield: null } }));
+    expect(await handlePlayerRequest(input(), dependencies(request))).toEqual({ status: 503, body: { error: 'consent_unavailable' } });
+  });
+  it('uses valid legacy consent when the current email address is absent', async () => {
+    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid,
+      defaultEmailAddress: null, emailMarketingConsent: { marketingState: 'NOT_SUBSCRIBED' }, metafield: null } }));
+    expect((await handlePlayerRequest(input(), dependencies(request))).body.storage).toMatchObject({ allowed: true, reason: 'trial' });
+  });
   it('never serves a different customer object returned upstream', async () => {
     const deps = dependencies(vi.fn(async () => response({ customer: { id: 'gid://shopify/Customer/999', metafield: null } })));
     expect((await handlePlayerRequest(input(), deps)).status).toBe(502);

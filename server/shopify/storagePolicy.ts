@@ -14,10 +14,14 @@ export interface StorageAccess {
 
 /** Consent comes only from the authenticated Admin API response. Missing or
  * unrecognized authority must never silently become an available trial. */
-export function readMarketingState(consent: unknown): MarketingState {
-  if (!isRecord(consent) || !marketingStates.includes(consent.marketingState as MarketingState))
+export function readMarketingState(consent: unknown, defaultEmailAddress?: unknown): MarketingState {
+  // The current address owns its live consent. Legacy consent is nullable on
+  // newer accounts; use it only when the current address was not returned.
+  // A malformed current state must never fall back to stale subscribed data.
+  const source = defaultEmailAddress ?? consent;
+  if (!isRecord(source) || !marketingStates.includes(source.marketingState as MarketingState))
     throw new ApiError(503, 'consent_unavailable');
-  return consent.marketingState as MarketingState;
+  return source.marketingState as MarketingState;
 }
 
 export function storageAccess(state: MarketingState, completedRuns: number): StorageAccess {

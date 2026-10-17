@@ -114,6 +114,12 @@ export default function GameApp() {
   );
   const rideViewport = !error && !!player && (screen === 'ride' || screen === 'results');
   useEffect(() => {
+    if (accountKind === 'customer' && accessStatus?.allowed) {
+      setAccessError('');
+      setAccessOpen(false);
+    }
+  }, [accountKind, accessStatus]);
+  useEffect(() => {
     if (!embedded && accountKind === 'customer' && !offlineApp.installed && screen === 'garage')
       setShowInstallHint(services.installHint?.shouldShow() ?? false);
   }, [embedded, accountKind, offlineApp.installed, screen, services]);
@@ -268,7 +274,13 @@ export default function GameApp() {
   useEffect(() => {
     const recheck = () => {
       if (current.current && document.visibilityState === 'visible')
-        void services.players.refreshAccess?.().then(() => syncAccount()).catch(() => {});
+        void services.players.refreshAccess?.().then(async access => {
+          const latest = await syncAccount();
+          if (access.allowed && latest.id.startsWith('shopify:')) {
+            setAccessError('');
+            setAccessOpen(false);
+          }
+        }).catch(() => {});
     };
     window.addEventListener('focus', recheck);
     window.addEventListener('pageshow', recheck);
@@ -345,8 +357,8 @@ export default function GameApp() {
         setAccessOpen(true);
         return;
       }
-      if (!startRide) return;
       setAccessOpen(false);
+      if (!startRide) return;
       activeRun.current += 1;
       activeRunOwner.current = current.current.id;
       pendingResult.current = null;
@@ -629,14 +641,15 @@ export default function GameApp() {
       {screen === 'leaderboard' && (
         <Leaderboard player={player} services={services} update={update} back={back} />
       )}
-      <SaveAccessGate open={accessOpen && !vercelPreview} access={access} checking={checkingAccess}
+      <SaveAccessGate open={accessOpen && !vercelPreview} access={access} authenticated={accountKind === 'customer'} checking={checkingAccess}
         loginHref={oxygenLoginHref}
         onLogin={services.auth.login || oxygenRuntime ? () => { void beginLogin(); } : undefined}
         message={accessError} onStart={start} back={() => setAccessOpen(false)}
-        onNewsletter={newsletterOrigin ? () => {
+        onNewsletter={() => {
           setAccessOpen(false);
-          window.parent.postMessage({ type: 'pfusch:open-newsletter', version: 1 }, newsletterOrigin);
-        } : undefined} />
+          if (newsletterOrigin) window.parent.postMessage({ type: 'pfusch:open-newsletter', version: 1 }, newsletterOrigin);
+          else window.location.assign(`${SHOPIFY_STOREFRONT_ORIGIN}/`);
+        }} />
       {screen === 'settings' && (
         <SettingsScreen
           player={player}

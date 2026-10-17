@@ -7,6 +7,7 @@ import './save-access.css';
 interface Props {
   open: boolean;
   access: PlayerAccess;
+  authenticated?: boolean;
   checking: boolean;
   message?: string;
   onNewsletter?: () => void;
@@ -17,7 +18,7 @@ interface Props {
 }
 
 /** Visiting the shop never grants access; only the repository's fresh check can. */
-export default function SaveAccessGate({ open, access, checking, message, onNewsletter, onLogin, loginHref, onStart, back }: Props) {
+export default function SaveAccessGate({ open, access, authenticated = false, checking, message, onNewsletter, onLogin, loginHref, onStart, back }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   const unavailable = access.reason === 'unavailable';
   const unsubscribed = access.reason === 'unsubscribed';
@@ -35,18 +36,18 @@ export default function SaveAccessGate({ open, access, checking, message, onNews
             : 'Deine fünf freien Fahrten sind aufgebraucht. Weitere Fahrten und neue Spielstände benötigen ein aktives PFUSCH-Newsletter-Abo.'}</DialogDescription>
       {!access.allowed && !unavailable && <ol className="save-access-steps">
         <li><span>01</span><p>Abonniere den PFUSCH-Newsletter im Shop bewusst mit deiner E-Mail-Adresse. Falls du eine Bestätigungs-E-Mail erhältst, bestätige das Abo dort.</p></li>
-        <li><span>02</span><p>Melde dich im Shop mit derselben E-Mail-Adresse an. Kehre danach zum Spiel zurück; der Zugang wird automatisch geprüft.</p></li>
+        <li><span>02</span><p>{authenticated ? 'Verwende dieselbe E-Mail-Adresse wie in deinem PFUSCH-Konto. Kehre nach der Newsletter-Bestätigung zum Spiel zurück; der Zugang wird automatisch geprüft.' : 'Melde dich im Shop mit derselben E-Mail-Adresse an. Kehre danach zum Spiel zurück; der Zugang wird automatisch geprüft.'}</p></li>
       </ol>}
       {!access.allowed && !unavailable && !onNewsletter && <p>Die Newsletter-Verbindung ist nur im Spiel innerhalb des PFUSCH-Shops verfügbar. In diesem Fenster kann kein Abo bestätigt werden.</p>}
       {message && <output className="save-access-message">{message}</output>}
       <div className="save-access-actions">
-        {!access.allowed && loginHref && <a className="button" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN <ExternalLink size={18} aria-hidden="true" /></a>}
-        {!access.allowed && !loginHref && onLogin && <button className="button" onClick={onLogin}>MIT PFUSCH-KONTO ANMELDEN <ExternalLink size={18} aria-hidden="true" /></button>}
+        {!authenticated && !access.allowed && loginHref && <a className="button" href={loginHref} target="_top" rel="noopener">MIT PFUSCH-KONTO ANMELDEN <ExternalLink size={18} aria-hidden="true" /></a>}
+        {!authenticated && !access.allowed && !loginHref && onLogin && <button className="button" onClick={onLogin}>MIT PFUSCH-KONTO ANMELDEN <ExternalLink size={18} aria-hidden="true" /></button>}
         {access.allowed ? <button className="button primary" onClick={onStart} disabled={checking}>FAHRT STARTEN <ArrowRight size={18} aria-hidden="true" /></button>
           : !unavailable && onNewsletter ? <button className="button primary" onClick={onNewsletter}>ZUM NEWSLETTER <ExternalLink size={18} aria-hidden="true" /></button> : null}
         {unavailable && <button className="button" onClick={() => window.location.reload()}>NEU LADEN</button>}
       </div>
-      {!access.allowed && <p className="save-access-footnote"><LockKeyhole size={15} aria-hidden="true" />Das Öffnen des Formulars meldet dich nicht an und schaltet nichts frei. Bei einer späteren Newsletter-Abmeldung stoppen neue Fahrten und das Speichern wieder.</p>}
+      {!access.allowed && <p className="save-access-footnote"><LockKeyhole size={15} aria-hidden="true" />{authenticated ? 'Das Öffnen des Formulars allein bestätigt kein Newsletter-Abo.' : 'Das Öffnen des Formulars meldet dich nicht an und schaltet nichts frei.'} Bei einer späteren Newsletter-Abmeldung stoppen neue Fahrten und das Speichern wieder.</p>}
       <button className="save-access-back" onClick={back}>ZURÜCK ZUM SPIEL</button>
     </DialogContent>
   </Dialog>;
