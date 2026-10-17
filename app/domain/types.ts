@@ -22,6 +22,8 @@ export interface ProductVariant {
   image?: string;
 }
 export interface Product {
+  /** Coin price in game; the original Shopify CHF price is unchanged. */
+  gameCoinPrice?: number;
   id: string;
   title: string;
   handle: string;

@@ -336,7 +336,23 @@ export class LocalProductProvider implements ProductProvider {
     // Reuse it instead of delaying startup with a second copy over the network.
     if (!Array.isArray(catalog) || catalog.length === 0)
       throw new Error('Der Kleidungskatalog ist leer.');
-    return shadeClothingCatalog(catalog as Product[]);
+    const products=shadeClothingCatalog(catalog as Product[]);
+    // Shopify coin prices are optional during outages and not a replacement for CHF prices.
+    if (typeof document === 'undefined' || !readOxygenRuntime(document)) return products;
+    try {
+      const response=await fetch('/api/game-prices',{method:'GET',credentials:'omit',cache:'no-store',
+        headers:{Accept:'application/json'},signal:AbortSignal.timeout(4500)});
+      if(!response.ok)return products;
+      const data:unknown=await response.json();
+      if(!data || typeof data!=='object' || !('prices' in data) || !data.prices ||
+        typeof data.prices!=='object' || Array.isArray(data.prices))return products;
+      const prices=data.prices as Record<string,unknown>;
+      return products.map(product=>{
+        const price=prices[product.id];
+        return product.category!=='cape' && typeof price==='number' && Number.isSafeInteger(price) &&
+          price>=0 && price<=10000 ? {...product,gameCoinPrice:price} : product;
+      });
+    }catch{return products;}
   }
 }
 export class MockRewardService implements RewardService {

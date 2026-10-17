@@ -80,6 +80,28 @@ async function loadBoard(config: ShopifyConfig, request: ShopifyFetch, now: numb
   try { raw = JSON.parse(field.value); } catch { throw new ApiError(502, 'invalid_ranking'); }
   return { ownerId: data.shop.id, board: decodeBoard(raw, now), compareDigest: field.compareDigest };
 }
+/**
+ * A staff-authorized Highscore edit replaces only the all-time entry.
+ * Day/week entries still reflect genuine dated ride history.
+ * Returned metafield is saved in the SAME atomic metafieldsSet mutation as
+ * player_v1 and the admin audit, with compareDigest protecting both owners.
+ */
+export async function adminHighScoreRankingMetafield(config: ShopifyConfig, customerId: string,
+  score: number, leaderboardName: unknown, request: ShopifyFetch, now = Date.now()) {
+  if (!Number.isSafeInteger(score) || score < 0 || score > 1_000_000_000)
+    throw new ApiError(400, 'invalid_value');
+  const saved = await loadBoard(config, request, now);
+  const alias = await playerAlias(config, customerId);
+  const board = decodeBoard(saved.board, now);
+  const name = normalizeLeaderboardName(leaderboardName);
+  const rows = board.all.rows.filter(row => row.alias !== alias);
+  if (score > 0) rows.push({ alias, score, ...(name ? { name } : {}) });
+  board.all.rows = rows.sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias)).slice(0, LIMIT);
+  if (JSON.stringify(board) === JSON.stringify(saved.board)) return null;
+  return { ownerId: saved.ownerId, namespace: PLAYER_NAMESPACE, key: KEY, type: 'json',
+    value: JSON.stringify(board), compareDigest: saved.compareDigest };
+}
+
 export async function updateRanking(config: ShopifyConfig, customerId: string, player: Player, request: ShopifyFetch, now?: number) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const attemptNow = now ?? Date.now();

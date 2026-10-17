@@ -1,1 +1,31 @@
-.racing-number-input { appearance:auto; min-width:88px; min-height:44px; padding:8px; border:1px solid #959595; border-radius:0; background:#222; color:#fff; font:inherit; font-size:19px; touch-action:manipulation; pointer-events:auto; }
+/* A responsive touch target without device-specific native dropdown behaviour. */
+.racing-number-input {
+  box-sizing: border-box;
+  appearance: none;
+  width: 148px;
+  min-width: 132px;
+  max-width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid #959595;
+  border-radius: 4px;
+  background: #222;
+  color: #fff;
+  font-family: inherit;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  touch-action: manipulation;
+  pointer-events: auto;
+}
+/* Override legacy .gc-number input { width:66px } in the Garage stylesheet. */
+.gc-number .racing-number-input {
+  width: 148px;
+  min-width: 132px;
+  min-height: 56px;
+  font-size: 22px;
+}
+.racing-number-input:focus-visible {
+  outline: 2px solid #eee;
+  outline-offset: 2px;
+}

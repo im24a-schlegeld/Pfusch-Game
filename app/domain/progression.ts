@@ -169,6 +169,8 @@ export function ownership(p: Player, product: Product, variantId = p.variants[pr
 /** Shared by offers and checkout: shop-relative cosmetics, small consumable decals. */
 export function digitalPrice(product: Product): number {
   if (product.category === 'cape') return 5000;
+  if (product.gameCoinPrice !== undefined && Number.isSafeInteger(product.gameCoinPrice) &&
+    product.gameCoinPrice >= 0 && product.gameCoinPrice <= 10000) return product.gameCoinPrice;
   if (product.handle === 'chrome-sticker') return 15;
   if (equipmentSlot(product) === 'keychain') return 40;
   const shopPrice = Number.isFinite(product.price) && product.price > 0 ? product.price : 10;
