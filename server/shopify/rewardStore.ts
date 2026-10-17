@@ -11,6 +11,8 @@ export const REWARD_KEY = 'verified_rewards_v1';
 export const VERIFIED_POINTS_REQUIRED = 1_000_000;
 export const VERIFIED_RUNS_REQUIRED = 0;
 export const DAILY_VERIFIED_CAP = 1_000_000;
+/** Bounds durable challenge issuance without cutting off legitimate short-crash sessions. */
+export const DAILY_REWARD_START_CAP = 2_000;
 export type RunChallenge = Omit<VerifiedRunChallenge, 'token'>;
 export interface DiscountReservation {
   state: 'reserved' | 'issued'; code: string; startsAt: string; expiresAt: string; discountId?: string;
@@ -57,7 +59,7 @@ function validLedger(value: unknown): value is RewardLedger {
     keys.some(key => ![...legacyKeys, 'campaign', 'rewardHistory'].includes(key)) || legacyKeys.some(key => !Object.hasOwn(value, key)) ||
     (keys.length === 12 && (!Object.hasOwn(value, 'campaign') || !Object.hasOwn(value, 'rewardHistory'))) ||
     !integer(value.points) || !integer(value.runs) || typeof value.day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.day) ||
-    !integer(value.dailyPoints, DAILY_VERIFIED_CAP) || !integer(value.dailyStarts, 40) || !integer(value.lastStartAt) ||
+    !integer(value.dailyPoints, DAILY_VERIFIED_CAP) || !integer(value.dailyStarts, DAILY_REWARD_START_CAP) || !integer(value.lastStartAt) ||
     !Array.isArray(value.consumed) || value.consumed.length > 100 || !value.consumed.every(entry =>
       isRecord(entry) && Object.keys(entry).length === 2 && typeof entry.runId === 'string' && /^[a-f0-9]{32}$/.test(entry.runId) && integer(entry.points, DAILY_VERIFIED_CAP))) return false;
   if (value.active !== null) {

@@ -263,6 +263,89 @@ describe('server-verified Shopify reward authority', () => {
     expect(f.state.creates).toBe(0);
   });
 
+  it('reuses an unfinished same-bike preparation without another write or consuming the daily allowance', async () => {
+    const f = fixture();
+    const first = await f.call('run/start', { bikeId: '450' });
+    const writes = f.state.writes;
+    f.state.clock += 10_000;
+    const repeated = await f.call('run/start', { bikeId: '450' });
+    expect(repeated.status).toBe(200);
+    expect(repeated.body.challenge).toEqual(first.body.challenge);
+    expect(f.state.writes).toBe(writes);
+    expect((await loadRewardLedger(config, '123', f.state.clock, f.request)).ledger.dailyStarts).toBe(1);
+  });
+
+  it('converges concurrent duplicate preparations to one signed challenge and one counted start', async () => {
+    const f = fixture();
+    const preparations = await Promise.all(Array.from({ length: 5 }, () => f.call('run/start', { bikeId: '450' })));
+    expect(preparations.map(result => result.status)).toEqual([200, 200, 200, 200, 200]);
+    expect(new Set(preparations.map(result => JSON.stringify(result.body.challenge))).size).toBe(1);
+    expect((await loadRewardLedger(config, '123', f.state.clock, f.request)).ledger.dailyStarts).toBe(1);
+    expect(f.state.writes).toBe(1);
+  });
+
+  it('allows the next genuine short-crash ride without waiting thirty seconds', async () => {
+    const f = fixture();
+    const first = (await f.call('run/start', { bikeId: '125' })).body.challenge as replayModule.VerifiedRunChallenge;
+    f.state.clock += 2_000;
+    const finish = await f.call('run/finish', { token: first.token, proof: { ticks: 60, events: [{ tick: 60, input: { type: 'end' } }] } });
+    expect(finish.status).toBe(200);
+    const next = await f.call('run/start', { bikeId: '125' });
+    expect(next.status).toBe(200);
+    expect((next.body.challenge as replayModule.VerifiedRunChallenge).runId).not.toBe(first.runId);
+    expect((await loadRewardLedger(config, '123', f.state.clock, f.request)).ledger.dailyStarts).toBe(2);
+  });
+
+  it('retains legacy starts while allowing more than forty legitimate rides in a day', async () => {
+    const f = fixture();
+    await f.seedLedger({ dailyStarts: 40, lastStartAt: now - 31_000 });
+    expect((await f.call('run/start', { bikeId: '125' })).status).toBe(200);
+    expect((await loadRewardLedger(config, '123', f.state.clock, f.request)).ledger.dailyStarts).toBe(41);
+  });
+
+  it('keeps bounded new issuance while allowing the existing proof to be recovered at the allowance', async () => {
+    const f = fixture();
+    const { challenge } = await f.active({ dailyStarts: 2_000, lastStartAt: now - 31_000 });
+    const writes = f.state.writes;
+    const recovered = await f.call('run/start', { bikeId: '125' });
+    expect(recovered.status).toBe(200);
+    expect(recovered.body.challenge).toMatchObject(challenge);
+    expect((await f.call('run/start', { bikeId: '450' })).body.error).toBe('reward_run_limit');
+    expect(f.state.writes).toBe(writes);
+    f.state.clock += 86_400_000;
+    expect((await f.call('run/start', { bikeId: '450' })).status).toBe(200);
+    expect((await loadRewardLedger(config, '123', f.state.clock, f.request)).ledger.dailyStarts).toBe(1);
+  });
+
+  it('replaces expired challenges and permits a deliberate bike change after the short issuance guard', async () => {
+    const f = fixture();
+    const first = (await f.call('run/start', { bikeId: '125' })).body.challenge as replayModule.VerifiedRunChallenge;
+    expect((await f.call('run/start', { bikeId: '450' })).body).toEqual({ error: 'reward_run_cooldown', retryAfterMs: 1_000 });
+    f.state.clock += 1_001;
+    const changed = await f.call('run/start', { bikeId: '450' });
+    expect(changed.status).toBe(200);
+    expect(changed.body.challenge).toMatchObject({ bikeId: '450', startedAt: now + 1_001 });
+    f.state.clock = now + 1_801_002;
+    const fresh = await f.call('run/start', { bikeId: '450' });
+    expect(fresh.status).toBe(200);
+    expect((fresh.body.challenge as replayModule.VerifiedRunChallenge).runId).not.toBe(first.runId);
+    expect(fresh.body.challenge).not.toEqual(changed.body.challenge);
+  });
+
+  it('returns the precise remaining short cooldown and renews preparations too close to expiry', async () => {
+    const f = fixture();
+    const first = (await f.call('run/start', { bikeId: '125' })).body.challenge as replayModule.VerifiedRunChallenge;
+    f.state.clock += 400;
+    const limited = await f.call('run/start', { bikeId: '450' });
+    expect(limited.status).toBe(429);
+    expect(limited.body).toEqual({ error: 'reward_run_cooldown', retryAfterMs: 600 });
+    f.state.clock = now + 1_740_001;
+    const renewed = await f.call('run/start', { bikeId: '125' });
+    expect(renewed.status).toBe(200);
+    expect((renewed.body.challenge as replayModule.VerifiedRunChallenge).runId).not.toBe(first.runId);
+    expect(renewed.body.challenge).toMatchObject({ startedAt: f.state.clock, expiresAt: f.state.clock + 1_800_000 });
+  });
+
   it('rejects fabricated scores, excess ticks, time travel, altered tokens and expired runs', async () => {
     const f = fixture(), { token } = await f.active();
     f.state.clock += 1000;

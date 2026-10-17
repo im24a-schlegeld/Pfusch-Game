@@ -6,7 +6,7 @@ import { isRecord } from './playerValidation.js';
 import type { JsonResult, PlayerRequest } from './playerEndpoint.js';
 import type { ShopifyFetch } from './playerStore.js';
 import { issueRewardDiscount, reserveRewardDiscount } from './rewardDiscount.js';
-import { DAILY_VERIFIED_CAP, emptyRewardLedger, loadRewardLedger, saveRewardLedger,
+import { DAILY_REWARD_START_CAP, DAILY_VERIFIED_CAP, emptyRewardLedger, loadRewardLedger, saveRewardLedger,
   VERIFIED_POINTS_REQUIRED, VERIFIED_RUNS_REQUIRED, type RewardLedger, type RunChallenge } from './rewardStore.js';
 import { currentRewardOffer, freshRewardCampaign, publicRewardOffer, REWARD_ATTEMPT_MS, type RewardOffer } from './rewardCampaign.js';
 
@@ -19,6 +19,11 @@ export interface RewardEndpointDependencies {
   request: ShopifyFetch;
   now?: () => number;
   authenticate?: CustomerAuthenticator;
+}
+const MIN_REWARD_START_INTERVAL_MS = 1_000;
+const MIN_REUSABLE_CHALLENGE_MS = 60_000;
+class RewardRunCooldownError extends ApiError {
+  constructor(readonly retryAfterMs: number) { super(429, 'reward_run_cooldown'); }
 }
 const encode = (text: string) => btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const tokenMessage = (value: string) => `pfusch-verified-run-v1\n${value}`;
@@ -129,13 +134,20 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
       if (typeof body.bikeId !== 'string' || !BIKES.some(bike => bike.id === body.bikeId)) throw new ApiError(400, 'invalid_bike');
       const challenge: RunChallenge = { version: 1, runId: randomHex(16), seed: Number.parseInt(randomHex(4), 16),
         bikeId: body.bikeId, startedAt: now, expiresAt: now + 1_800_000 };
-      await persist(ledger => {
+      const prepared = await persist(ledger => {
         if (ledger.campaign?.completedAt !== null) throw new ApiError(409, 'reward_already_reserved');
-        if (ledger.dailyStarts >= 40 || (ledger.lastStartAt && now - ledger.lastStartAt < 30_000)) throw new ApiError(429, 'reward_run_limit');
+        // Garage reloads and concurrent preparations must recover the same proof,
+        // rather than discard it and spend another daily start. CAS retries repeat
+        // this check against the winning ledger, so all callers receive its token.
+        if (ledger.active && ledger.active.bikeId === body.bikeId && ledger.active.expiresAt - now > MIN_REUSABLE_CHALLENGE_MS) return ledger;
+        if (ledger.dailyStarts >= DAILY_REWARD_START_CAP) throw new ApiError(429, 'reward_run_limit');
+        if (ledger.lastStartAt && now - ledger.lastStartAt < MIN_REWARD_START_INTERVAL_MS)
+          throw new RewardRunCooldownError(Math.min(MIN_REWARD_START_INTERVAL_MS, ledger.lastStartAt + MIN_REWARD_START_INTERVAL_MS - now));
         if (ledger.dailyPoints >= DAILY_VERIFIED_CAP) throw new ApiError(429, 'reward_daily_limit');
         return { ...ledger, active: challenge, dailyStarts: ledger.dailyStarts + 1, lastStartAt: now };
       });
-      return { status: 200, body: { challenge: { ...challenge, token: await signRunChallenge(challenge, identity, config.secret) }, csrfToken } };
+      const active = prepared.active!;
+      return { status: 200, body: { challenge: { ...active, token: await signRunChallenge(active, identity, config.secret) }, csrfToken } };
     }
     if (action === 'run/finish') {
       const challenge = await verifyRunChallenge(body.token, identity, config.secret, now);
@@ -193,7 +205,8 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
     });
     return { status: 200, body: { ...status(issued, offer, now), csrfToken } };
   } catch (error) {
-    return error instanceof ApiError ? { status: error.status, body: { error: error.code } }
+    return error instanceof ApiError ? { status: error.status, body: { error: error.code,
+      ...(error instanceof RewardRunCooldownError ? { retryAfterMs: error.retryAfterMs } : {}) } }
       : { status: 503, body: { error: 'service_unavailable' } };
   }
 }

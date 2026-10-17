@@ -204,7 +204,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.setAccess(this.session.storage);
     if (!this.access.allowed) { this.status('unavailable', accessMessage(this.access)); return; }
     this.status('offline', this.backupWritable
-      ? 'Offline: Spielstand auf diesem Gerät gespeichert. Punkte und Coins werden bei Verbindung ins Konto übertragen.'
+      ? 'Du spielst offline. Dein Spielstand wird synchronisiert, sobald du wieder Internet hast.'
       : 'Offline: Änderungen bleiben nur in dieser Sitzung. Bitte Spielstand exportieren, bevor du das Spiel schliesst.');
   }
   /** This local identity is only an offline play context. Reconnection must

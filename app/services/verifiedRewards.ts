@@ -68,7 +68,7 @@ function validCampaign(value: unknown): value is RealRewardCampaign {
 }
 
 export class VerifiedRewardsError extends Error {
-  constructor(readonly code: string, readonly status?: number) {
+  constructor(readonly code: string, readonly status?: number, readonly retryAfterMs?: number) {
     super(code);
     this.name = 'VerifiedRewardsError';
   }
@@ -77,8 +77,11 @@ export class VerifiedRewardsError extends Error {
 export function rewardRunNotice(error: unknown, phase: 'start' | 'finish'): { message: string; transient: boolean } {
   const issue = error instanceof VerifiedRewardsError ? error : null;
   const suffix = phase === 'start' ? 'Diese Fahrt zählt nur im Spiel.' : 'Die Shop-Prüfung wird bei Verbindung wiederholt.';
-  if (issue?.code === 'network_error') return { message: `Verbindung unterbrochen. ${suffix}`, transient: true };
+  if (issue?.code === 'network_error') return { message: 'Du spielst offline. Dein Spielstand wird synchronisiert, sobald du wieder Internet hast.', transient: true };
   if (issue?.code === 'request_timeout') return { message: `Shop antwortet zu langsam. ${suffix}`, transient: true };
+  if (issue?.code === 'reward_daily_limit') return { message: 'Das Tageslimit für Rabattpunkte ist erreicht. Morgen geht es weiter; Punkte und Coins sammelst du weiter.', transient: true };
+  if (issue?.code === 'reward_run_limit') return { message: 'Das heutige Startlimit für Shop-Fahrten ist erreicht. Punkte und Coins sammelst du weiter.', transient: true };
+  if (issue?.code === 'reward_run_cooldown') return { message: 'Die nächste Shop-Fahrt ist gleich bereit. Bitte kurz warten.', transient: true };
   if (issue?.status === 429) return { message: `Shop ist ausgelastet. ${suffix}`, transient: true };
   if (issue?.status === 408 || issue?.status && issue.status >= 500) return { message: `Shop vorübergehend nicht erreichbar. ${suffix}`, transient: true };
   if (issue?.status === 401) return { message: 'Shop-Anmeldung ist abgelaufen. Bitte erneut anmelden; dein Spielstand bleibt gesichert.', transient: false };
@@ -140,7 +143,9 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
       try { data = JSON.parse(raw); }
       catch { throw new VerifiedRewardsError('invalid_reward_response', response.status); }
       if (!isRecord(data) || !response.ok)
-        throw new VerifiedRewardsError(isRecord(data) && typeof data.error === 'string' ? data.error : 'rewards_unavailable', response.status);
+        throw new VerifiedRewardsError(isRecord(data) && typeof data.error === 'string' ? data.error : 'rewards_unavailable', response.status,
+          isRecord(data) && typeof data.retryAfterMs === 'number' && Number.isInteger(data.retryAfterMs)
+            && data.retryAfterMs > 0 && data.retryAfterMs <= 1000 ? data.retryAfterMs : undefined);
       if (epoch !== this.accountEpoch) throw new VerifiedRewardsError('login_required', 401);
       if (typeof data.csrfToken === 'string' && data.csrfToken.length <= 2048) this.csrfToken = data.csrfToken;
       return data;
@@ -200,7 +205,18 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
             : completed ? 'reward_completed' : !status.available ? status.reason || 'rewards_disabled' : 'invalid_reward_response');
           return;
         }
-        const data = await this.request('run/start', { bikeId });
+        const start = () => this.request('run/start', { bikeId });
+        let data: Record<string, unknown>;
+        try { data = await start(); }
+        catch (error) {
+          if (!(error instanceof VerifiedRewardsError) || error.status !== 429
+            || error.code !== 'reward_run_cooldown' || !error.retryAfterMs) throw error;
+          // A quick restart should retain shop verification. Wait only the
+          // server's bounded remainder, once; quotas and outages never loop.
+          await new Promise<void>(resolve => setTimeout(resolve, error.retryAfterMs));
+          if (revision !== this.revision) return;
+          data = await start();
+        }
         const challenge = data.challenge;
         if (!isRecord(challenge) || challenge.version !== 1 || challenge.bikeId !== bikeId
           || !BIKES.some(bike => bike.id === bikeId) || typeof challenge.runId !== 'string'

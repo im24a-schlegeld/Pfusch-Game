@@ -79,8 +79,7 @@ export default function GameApp() {
   const [player, setPlayer] = useState<Player | null>(null);
   const [accountKind, setAccountKind] = useState<'guest' | 'customer'>('guest');
   const offlineApp = useSyncExternalStore(subscribeOfflineApp, getOfflineAppState, getOfflineAppState);
-  // Session-only dismissal survives menu/ride navigation and account refreshes.
-  const [installHintDismissed, setInstallHintDismissed] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(false);
   const [loginHint, setLoginHint] = useState(false);
   const loginPending = useRef(false);
   const current = useRef<Player | null>(null);
@@ -114,6 +113,14 @@ export default function GameApp() {
     null,
   );
   const rideViewport = !error && !!player && (screen === 'ride' || screen === 'results');
+  useEffect(() => {
+    if (!embedded && accountKind === 'customer' && !offlineApp.installed && screen === 'garage')
+      setShowInstallHint(services.installHint?.shouldShow() ?? false);
+  }, [embedded, accountKind, offlineApp.installed, screen, services]);
+  const dismissInstallHint = () => {
+    services.installHint?.dismiss();
+    setShowInstallHint(false);
+  };
   useEffect(() => {
     if (accountKind === 'customer' && player?.bike && (screen === 'garage' || screen === 'results'))
       void services.rewards.real?.prepare(player.bike);
@@ -583,8 +590,8 @@ export default function GameApp() {
       </header>}
       {screen === 'garage' && (
         <div className="garage-with-install-hint">
-        {!embedded && accountKind === 'customer' && !offlineApp.installed && !installHintDismissed && <OfflineInstallHint offline={offlineApp}
-          dismiss={() => setInstallHintDismissed(true)} openSettings={() => { setInstallHintDismissed(true); navigate('settings'); }} />}
+        {!embedded && accountKind === 'customer' && !offlineApp.installed && showInstallHint && <OfflineInstallHint offline={offlineApp}
+          dismiss={dismissInstallHint} openSettings={() => { dismissInstallHint(); navigate('settings'); }} />}
         <Garage
           player={player}
           products={products}

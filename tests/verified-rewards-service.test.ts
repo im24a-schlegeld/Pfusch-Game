@@ -8,13 +8,24 @@ const json = (data: unknown, code = 200) => new Response(JSON.stringify(data), {
 afterEach(() => vi.useRealTimers());
 describe('server-owned real rewards adapter', () => {
   it.each([
-    ['network_error', undefined, 'Verbindung unterbrochen', true],
+    ['network_error', undefined, 'sobald du wieder Internet hast', true],
     ['request_timeout', undefined, 'zu langsam', true],
     ['rewards_unavailable', 503, 'vorübergehend nicht erreichbar', true],
     ['login_required', 401, 'Anmeldung ist abgelaufen', false],
     ['invalid_run_proof', 400, 'invalid_run_proof', false],
   ] as const)('keeps %s distinct from genuine identity and proof failures', (code, http, message, transient) => {
     expect(rewardRunNotice(new VerifiedRewardsError(code, http), 'finish')).toMatchObject({ message: expect.stringContaining(message), transient });
+  });
+  it.each(['start', 'finish'] as const)('describes offline %s as game-save synchronization without promising a discount', phase => {
+    const notice = rewardRunNotice(new VerifiedRewardsError('network_error'), phase);
+    expect(notice.message).toContain('Dein Spielstand wird synchronisiert, sobald du wieder Internet hast.');
+    expect(notice.message).not.toMatch(/zählt nur|Rabatt.*synchronisiert|Shop.*gutgeschrieben/);
+    expect(notice.transient).toBe(true);
+  });
+  it('identifies the verified daily cap separately from an overloaded shop', () => {
+    expect(rewardRunNotice(new VerifiedRewardsError('reward_daily_limit', 429), 'start').message).toContain('Tageslimit');
+    expect(rewardRunNotice(new VerifiedRewardsError('reward_run_limit', 429), 'start').message).toContain('Startlimit');
+    expect(rewardRunNotice(new VerifiedRewardsError('reward_daily_limit', 429), 'start').message).not.toContain('ausgelastet');
   });
   it('retains the actual preparation outage and does not invalidate login on server/network errors', async () => {
     const unauthorized = vi.fn();
@@ -142,6 +153,50 @@ describe('server-owned real rewards adapter', () => {
     expect(JSON.parse(String(request.mock.calls[1][1]?.body))).toEqual({ bikeId: BIKES[0].id, csrfToken: 'csrf' });
     expect(JSON.parse(String(request.mock.calls[2][1]?.body))).toEqual({ token: challenge.token, proof, csrfToken: 'csrf' });
     expect(request.mock.calls[2][1]).toMatchObject({ credentials: 'same-origin', cache: 'no-store', redirect: 'error' });
+  });
+  it('waits out a short server cooldown once instead of losing verified credit on a quick restart', async () => {
+    vi.useFakeTimers();
+    const challenge = { version: 1, runId: 'next-run', seed: 42, bikeId: BIKES[0].id,
+      startedAt: Date.now(), expiresAt: Date.now() + 1800000, token: 'signed-challenge' };
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status))
+      .mockResolvedValueOnce(json({ error: 'reward_run_cooldown', retryAfterMs: 600 }, 429))
+      .mockResolvedValueOnce(json({ challenge }));
+    const service = new OxygenVerifiedRewards(request);
+    const preparing = service.prepare(BIKES[0].id);
+    await vi.advanceTimersByTimeAsync(599);
+    expect(request).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);
+    await preparing;
+    expect(service.takeChallenge(BIKES[0].id)).toEqual(challenge);
+    expect(request).toHaveBeenCalledTimes(3);
+  });
+  it('never loops on a repeated cooldown and never retries a daily quota', async () => {
+    vi.useFakeTimers();
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status))
+      .mockImplementation(async () => json({ error: 'reward_run_cooldown', retryAfterMs: 1 }, 429));
+    const service = new OxygenVerifiedRewards(request);
+    const preparing = service.prepare(BIKES[0].id);
+    await vi.advanceTimersByTimeAsync(2);
+    await preparing;
+    expect(request).toHaveBeenCalledTimes(3);
+    expect(service.preparationIssue?.code).toBe('reward_run_cooldown');
+    const dailyRequest = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status))
+      .mockResolvedValue(json({ error: 'reward_daily_limit', retryAfterMs: 1 }, 429));
+    await new OxygenVerifiedRewards(dailyRequest).prepare(BIKES[0].id);
+    expect(dailyRequest).toHaveBeenCalledTimes(2);
+  });
+  it('does not retry a queued cooldown after the account has changed', async () => {
+    vi.useFakeTimers();
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json(status))
+      .mockResolvedValueOnce(json({ error: 'reward_run_cooldown', retryAfterMs: 500 }, 429));
+    const service = new OxygenVerifiedRewards(request);
+    const preparing = service.prepare(BIKES[0].id);
+    await vi.advanceTimersByTimeAsync(1);
+    service.resetSession();
+    await vi.advanceTimersByTimeAsync(500);
+    await preparing;
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(service.takeChallenge(BIKES[0].id)).toBeNull();
   });
   it('keeps disabled and unreachable reward servers out of the ride path', async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ ...status, available: false, reason: 'rewards_disabled' }));

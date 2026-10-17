@@ -34,6 +34,7 @@ import { OxygenInvites, withInvitations, type InviteService } from './referrals'
 import { createAccountFetch } from './accountFetch';
 import { readGuardianBells } from '../domain/guardianBells';
 import type { PlayerGift } from './playerGifts';
+import { InstallHintReminder } from './installHintReminder';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
@@ -396,6 +397,7 @@ export interface Services {
   leaderboard: LeaderboardService;
   analytics: AnalyticsService;
   invites?: InviteService;
+  installHint?: InstallHintReminder;
 }
 export function createServices(): Services {
   const storage: StorageDriver = {
@@ -427,5 +429,6 @@ export function createServices(): Services {
     leaderboard: transport ? new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), cloud ?? undefined) : new LocalLeaderboardService(),
     analytics: new LocalAnalyticsService(),
     invites,
+    installHint: new InstallHintReminder(storage),
   };
 }
