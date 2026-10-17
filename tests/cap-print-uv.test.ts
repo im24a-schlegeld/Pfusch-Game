@@ -4,9 +4,15 @@ import { createCarriedCap } from '../app/game/carriedCap';
 import { newPlayer } from '../app/domain/progression';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
+import { CAP_PRINTS } from '../app/game/capPrints';
 vi.mock('../app/game/garmentTexture', () => ({ accessoryMaterial: () => new MeshStandardMaterial() }));
 
 describe('continuous cap embroidery UVs', () => {
+  it.each(['p-zero-cap', 'logo-cap-1'])('%s keeps its complete rear embroidery above the adjustment opening', handle => {
+    const print = CAP_PRINTS[handle][0];
+    const lowestPoint = .144 * (1 - (print.y + print.height / 2) / 1024);
+    expect(lowestPoint).toBeGreaterThan(.072);
+  });
   it('does not smear front or rear artwork across the cylindrical seam', () => {
     const product = (catalog as Product[]).find(item => item.handle === 'p-zero-cap')!;
     const cap = createCarriedCap(product, newPlayer(), '#111111');
