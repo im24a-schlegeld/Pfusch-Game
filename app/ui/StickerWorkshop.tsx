@@ -196,10 +196,20 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     if (savePending.current) return;
     const original = state.current.placements.find(placement => placement.id === state.current.selected);
     if (!original) return;
+    if (action === 'mirror' && state.current.placements.length >= MAX_STICKERS) {
+      setHint(`Maximal ${MAX_STICKERS} Sticker pro ${target === 'helmet' ? 'Helm' : 'Fahrzeug'}.`); return;
+    }
     const moved = adjustPosition.current?.(original, action);
     if (!moved) { setHint('Keine passende feste Fläche gefunden. Die Position bleibt erhalten.'); return; }
-    setPlacements(previous => previous.map(placement => placement.id === original.id ? moved : placement));
-    setHint(action === 'center' ? `Sticker ${target === 'helmet' ? 'auf der Helmschale' : 'auf der Motorrad-Mittellinie'} zentriert. Speichern übernimmt die Position.` : 'Stickerposition auf die andere Seite verschoben. Das Motiv bleibt unverändert.');
+    if (action === 'mirror') {
+      const copy = { ...moved, id: crypto.randomUUID() };
+      setPlacements(previous => [...previous, copy]);
+      setSelected(copy.id);
+      setHint('Zweiter Sticker auf der anderen Seite platziert. Speichern übernimmt deine Vorschau.');
+    } else {
+      setPlacements(previous => previous.map(placement => placement.id === original.id ? moved : placement));
+      setHint(`Sticker ${target === 'helmet' ? 'auf der Helmschale' : 'auf der Motorrad-Mittellinie'} zentriert. Speichern übernimmt die Position.`);
+    }
   }
   async function save() {
     if (savePending.current || disabledReason || !ready || error) return;

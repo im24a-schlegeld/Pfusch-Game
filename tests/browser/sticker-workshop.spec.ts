@@ -242,6 +242,49 @@ test('mobile sticker placement previews freely, charges each new placement on sa
   expect(errors).toEqual([]);
 });
 
+test('mirroring keeps the paid original and buys a separate reflected sticker only on save', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const products = await (await page.request.get('/catalog/products.json')).json() as Product[];
+  const product = products.find(item => item.handle === 'chrome-sticker')!;
+  const initial = newPlayer(); initial.coins = 100;
+  initial.settings.quality = 'low'; initial.settings.reducedMotion = true; initial.settings.tutorialSeen = true;
+  await page.addInitScript(player => {
+    if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
+  }, initial);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await openSticker(page, 'Motorrad', product);
+  await placeOnSurface(page);
+  const size = page.getByRole('slider', { name: 'Stickergröße', exact: true });
+  const rotation = page.getByRole('slider', { name: 'Stickerdrehung', exact: true });
+  await size.press('ArrowRight');
+  await rotation.press('ArrowRight');
+  await footerAction(page).click();
+  await expect(page.locator('.sticker-workshop')).toHaveCount(0);
+  const paid = await saved(page), original = paid.stickers['125'][0];
+  await openSticker(page, 'Motorrad', product);
+  await placedButtons(page).first().click();
+  const originalSize = await size.inputValue(), originalRotation = await rotation.inputValue();
+  await page.getByRole('button', { name: 'Stickerposition auf andere Seite spiegeln', exact: true }).click();
+  await expect(placedButtons(page)).toHaveCount(2);
+  await expect(size).toHaveValue(originalSize);
+  await expect(rotation).toHaveValue(originalRotation);
+  await expect(footerAction(page)).toHaveText(`Für ${digitalPrice(product)} Coins kaufen & speichern`);
+  expect(await saved(page)).toEqual(paid);
+  await footerAction(page).click();
+  await expect(page.locator('.sticker-workshop')).toHaveCount(0);
+  const confirmed = await saved(page), [retained, mirrored] = confirmed.stickers['125'];
+  expect(confirmed.stickers['125']).toHaveLength(2);
+  expect(retained).toEqual(original);
+  expect(mirrored.id).not.toBe(original.id);
+  expect(mirrored).toMatchObject({ productId: original.productId, size: original.size, rotation: original.rotation });
+  expect({ surface: mirrored.surface, point: mirrored.point, normal: mirrored.normal }).not.toEqual({ surface: original.surface, point: original.point, normal: original.normal });
+  expect(confirmed.coins).toBe(paid.coins - digitalPrice(product));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await openSticker(page, 'Motorrad', product);
+  await expect(placedButtons(page)).toHaveCount(2);
+  expect((await saved(page)).stickers['125']).toEqual(confirmed.stickers['125']);
+});
+
 test('centering the original rear guard on the 450 motorcycle sagittal line preserves paid edits and persistence', async ({ page }) => {
   test.setTimeout(180000);
   await page.setViewportSize({ width: 390, height: 844 });

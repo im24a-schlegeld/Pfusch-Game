@@ -61,7 +61,7 @@ describe('sticker copies are individual purchases', () => {
     expect(commitStickerEdit(saved, drafts, products)!.coins).toBe(saved.coins);
     expect(player.stickers).toEqual({});
   });
-  it('does not charge again for moving, centering, mirroring or removing an existing placement', () => {
+  it('does not charge again for moving, centering or removing an existing placement', () => {
     const saved = commitStickerEdit({ ...newPlayer(), coins: 1000 }, { 'helmet:fullface': [placement('one')] }, products)!;
     const moved = { ...placement('one'), point: [-0.1, 0.01, 0] as [number, number, number], rotation: 0.4 };
     const edited = commitStickerEdit(saved, { 'helmet:fullface': [moved] }, products)!;
