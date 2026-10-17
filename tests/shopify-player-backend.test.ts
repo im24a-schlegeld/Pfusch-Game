@@ -187,7 +187,7 @@ describe('Customer-scoped cloud save', () => {
     expect(result.body.csrfToken).toMatch(/^\d{10}\.[a-f0-9]{36}\.[a-f0-9]{64}$/);
     const [url, options] = deps.request.mock.calls[0];
     expect(url).toBe(`https://${config.shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`);
-    expect(JSON.parse(options!.body as string).variables).toEqual({ id: gid, namespace: PLAYER_NAMESPACE, key: PLAYER_KEY });
+    expect(JSON.parse(options!.body as string).variables).toEqual({ id: gid, namespace: PLAYER_NAMESPACE, key: PLAYER_KEY, gifts: 'gifts_v1' });
     expect(JSON.parse(options!.body as string).query).toContain('emailMarketingConsent { marketingState }');
     expect(options!.redirect).toBe('manual');
   });

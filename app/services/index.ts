@@ -33,6 +33,7 @@ import { OxygenVerifiedRewards, type VerifiedRewardsService } from './verifiedRe
 import { OxygenInvites, withInvitations, type InviteService } from './referrals';
 import { createAccountFetch } from './accountFetch';
 import { readGuardianBells } from '../domain/guardianBells';
+import type { PlayerGift } from './playerGifts';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
@@ -49,6 +50,8 @@ export interface PlayerRepository {
   flush?(): Promise<void>;
   getAccess?(): PlayerAccess;
   refreshAccess?(): Promise<PlayerAccess>;
+  readonly gifts?: readonly PlayerGift[];
+  acknowledgeGifts?(ids: string[]): Promise<void>;
   readonly purchaseStatus?: { available: boolean; reason?: 'orders_scope_missing' | 'orders_unavailable'; history: 'all' | 'recent' };
 }
 export interface PlayerSyncStatus {

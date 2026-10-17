@@ -1,22 +1,16 @@
 import { gameShareText, gameShareUrl, type GameShare } from '../domain/gameShare';
 
 export interface SharePlatform {
+  share?: (data: { title: string; text: string; url: string }) => Promise<void>;
   open?: (url: string) => boolean;
 }
-export type ShareTarget = 'whatsapp' | 'telegram' | 'email';
 
 /** Opens a message draft; following the link does not confirm sharing. */
 export function whatsappGameShareUrl(share: GameShare): string {
   return `https://wa.me/?text=${encodeURIComponent(`${gameShareText(share)}\n${gameShareUrl(share)}`)}`;
 }
 
-export function directGameShareUrl(share: GameShare, target: ShareTarget): string {
-  if (target === 'whatsapp') return whatsappGameShareUrl(share);
-  if (target === 'telegram') return `https://t.me/share/url?url=${encodeURIComponent(gameShareUrl(share))}&text=${encodeURIComponent(gameShareText(share))}`;
-  return `mailto:?subject=${encodeURIComponent('PFUSCH · Wheelie Escape')}&body=${encodeURIComponent(`${gameShareText(share)}\n${gameShareUrl(share)}`)}`;
-}
-
-/** Open a chosen message draft without the OS sheet's copy-link action.
+/** Open the fallback message draft.
  * A successful handoff does not prove delivery or grant referral rewards. */
 export function openShareDraft(url: string, host: Pick<Window, 'open'> = window): boolean {
   const draft = host.open('about:blank', '_blank');
@@ -28,8 +22,17 @@ export function openShareDraft(url: string, host: Pick<Window, 'open'> = window)
   } catch { draft.close(); return false; }
 }
 
-export async function shareGame(share: GameShare, target: ShareTarget, platform: SharePlatform): Promise<'opened' | 'unavailable' | 'failed'> {
+export async function shareGame(share: GameShare, platform: SharePlatform): Promise<'shared' | 'opened' | 'cancelled' | 'unavailable' | 'failed'> {
+  if (platform.share) {
+    try {
+      await platform.share({ title: 'PFUSCH · Wheelie Escape', text: gameShareText(share), url: gameShareUrl(share) });
+      return 'shared';
+    } catch (error) {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') return 'cancelled';
+      return 'failed';
+    }
+  }
   if (!platform.open) return 'unavailable';
-  try { return platform.open(directGameShareUrl(share, target)) ? 'opened' : 'failed'; }
+  try { return platform.open(whatsappGameShareUrl(share)) ? 'opened' : 'failed'; }
   catch { return 'failed'; }
 }

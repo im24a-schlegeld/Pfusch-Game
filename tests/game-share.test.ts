@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { gameShareText, gameShareUrl, rankedGameShare, readGameShare, sharePeriodLabel, type GameShare } from '../app/domain/gameShare';
-import { directGameShareUrl, openShareDraft, shareGame, whatsappGameShareUrl } from '../app/services/gameShare';
+import { openShareDraft, shareGame, whatsappGameShareUrl } from '../app/services/gameShare';
 
 describe('public game sharing', () => {
   const score: GameShare = { kind: 'score', name: 'Fahrer + #1 & Crew', score: 158863, date: '2026-10-13' };
@@ -44,24 +45,43 @@ describe('public game sharing', () => {
     expect(readGameShare(new URL(gameShareUrl(rank!)).search)).toEqual(rank);
     expect(sharePeriodLabel('week', '2026-10-13')).toBe('Wochenrangliste · ab 12.10.2026 (UTC)');
   });
-  it('opens only the explicitly chosen message draft without an OS share sheet', async () => {
-    const platform = { open: vi.fn((_url: string) => true) };
-    expect(await shareGame(score, 'telegram', platform)).toBe('opened');
-    const url = new URL(platform.open.mock.calls[0][0]);
-    expect(url.origin).toBe('https://t.me');
-    expect(readGameShare(new URL(url.searchParams.get('url')!).search)).toEqual(score);
-    expect(url.searchParams.get('text')).toBe(gameShareText(score));
-    const email = new URL(directGameShareUrl(score, 'email'));
-    expect(email.protocol).toBe('mailto:');
-    expect(email.searchParams.get('body')).toBe(`${gameShareText(score)}\n${gameShareUrl(score)}`);
+  it('delegates native sharing to the embedded game in the Shopify wrapper', () => {
+    const section = readFileSync(new URL('../integrations/shopify/sections/pfusch-street-run.liquid', import.meta.url), 'utf8');
+    const frame = section.match(/<iframe\b[\s\S]*?>/)?.[0] ?? '';
+    const permissions = frame.match(/\ballow="([^"]*)"/)?.[1].split(';').map(permission => permission.trim()) ?? [];
+    expect(permissions).toContain('web-share');
   });
-  it('never falls back to copying when a message draft cannot open', async () => {
-    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
-    const platform = { clipboard, open: undefined };
-    expect(await shareGame(score, 'whatsapp', platform)).toBe('unavailable');
-    expect(await shareGame(score, 'whatsapp', { open: () => false })).toBe('failed');
-    expect(await shareGame(score, 'whatsapp', { open: () => { throw new Error('blocked'); } })).toBe('failed');
-    expect(clipboard.writeText).not.toHaveBeenCalled();
+  it('opens the native share menu before any fallback draft', async () => {
+    const open = vi.fn(() => false);
+    const share = vi.fn(async () => {});
+    expect(await shareGame(score, { share, open })).toBe('shared');
+    expect(share).toHaveBeenCalledWith({ title: 'PFUSCH · Wheelie Escape', text: gameShareText(score), url: gameShareUrl(score) });
+    expect(open).not.toHaveBeenCalled();
+  });
+  it('returns cancellation without opening WhatsApp or copying the link', async () => {
+    const open = vi.fn(() => true), writeText = vi.fn();
+    const platform = { share: async () => { throw new DOMException('Dismissed', 'AbortError'); }, open, clipboard: { writeText } };
+    expect(await shareGame(score, platform)).toBe('cancelled');
+    expect(open).not.toHaveBeenCalled();
+    expect(writeText).not.toHaveBeenCalled();
+  });
+  it('does not replace a failed native share with an app draft', async () => {
+    const open = vi.fn(() => true);
+    expect(await shareGame(score, { share: async () => { throw new Error('permission denied'); }, open })).toBe('failed');
+    expect(open).not.toHaveBeenCalled();
+  });
+  it('opens only WhatsApp when native sharing is unsupported', async () => {
+    let opened = '';
+    expect(await shareGame(score, { open: url => { opened = url; return true; } })).toBe('opened');
+    expect(opened).toBe(whatsappGameShareUrl(score));
+  });
+  it('never falls back to copying when WhatsApp cannot open', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const platform = { clipboard: { writeText }, open: undefined };
+    expect(await shareGame(score, platform)).toBe('unavailable');
+    expect(await shareGame(score, { open: () => false })).toBe('failed');
+    expect(await shareGame(score, { open: () => { throw new Error('blocked'); } })).toBe('failed');
+    expect(writeText).not.toHaveBeenCalled();
   });
   it('severs the opener before navigating a draft and detects blocked windows', () => {
     const draft = { opener: 'game', location: { href: '' }, close: vi.fn() };

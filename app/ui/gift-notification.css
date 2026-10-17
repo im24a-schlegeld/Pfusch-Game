@@ -1,0 +1,7 @@
+.gift-notification {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}

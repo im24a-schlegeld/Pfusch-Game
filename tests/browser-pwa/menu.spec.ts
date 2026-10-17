@@ -40,7 +40,9 @@ async function prepareMenu(page: Page) {
   player.history = [{ score: 7723, date: new Date().toISOString().slice(0, 10) }];
   await page.addInitScript(saved => {
     if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(saved));
-    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async (data: ShareData) => {
+      document.documentElement.dataset.nativeShare = JSON.stringify(data);
+    } });
     // Capture app-draft handoffs without navigating to an external messenger.
     window.open = (_url, target) => {
       document.documentElement.dataset.shareWindowTarget = target ?? '';
@@ -227,7 +229,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
           await expect(table.locator('.you')).toContainText('Fahrer mit langem Namen');
           const scoreShare = page.locator('.game-share-section').getByRole('button', { name: 'TEILEN', exact: true });
           await expect(scoreShare).toBeEnabled();
-          await expect(scoreShare).toHaveAttribute('aria-expanded', 'false');
+          await expect(page.locator('.game-share-choices')).toHaveCount(0);
           expect(await page.evaluate(() => {
             const table = document.querySelector('.ranking-list')!;
             const editor = document.querySelector('.ranking-name-editor')!;
@@ -243,17 +245,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
           await page.locator('.ranking-name-editor > summary').click();
           if (viewport.width === 390) {
             await scoreShare.click();
-            const choices = page.locator('.game-share-section .game-share-choices');
-            await expect(choices.getByRole('button')).toHaveText(['WhatsApp', 'Telegram', 'E-Mail']);
-            await choices.getByRole('button', { name: 'WhatsApp', exact: true }).click();
-            const draft = new URL((await page.locator('html').getAttribute('data-share-draft'))!);
-            await expect(page.locator('html')).toHaveAttribute('data-share-window-target', '_blank');
-            expect(draft.origin).toBe('https://wa.me');
-            expect([...draft.searchParams.keys()]).toEqual(['text']);
-            const [message, gameUrl] = draft.searchParams.get('text')!.split('\n');
-            expect(message).toContain('Alex');
-            expect(message).toContain('PFUSCH Wheelie Escape');
-            const url = new URL(gameUrl);
+            const shared = JSON.parse((await page.locator('html').getAttribute('data-native-share'))!) as ShareData;
+            expect(shared.text).toContain('Alex');
+            expect(shared.text).toContain('PFUSCH Wheelie Escape');
+            expect(await page.locator('html').getAttribute('data-share-draft')).toBeNull();
+            await expect(page.locator('.game-share-choices')).toHaveCount(0);
+            const url = new URL(shared.url!);
             expect(url.origin).toBe('https://game.pfusch-clothing.ch');
             expect(url.searchParams.get('share')).toBe('score');
             expect(url.searchParams.get('points')).toBe('7723');

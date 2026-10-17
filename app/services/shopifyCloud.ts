@@ -6,12 +6,14 @@ import { REWARDS } from '../domain/config';
 import type { AuthService, PlayerRepository, PlayerSyncStatus, StorageDriver } from './index';
 import type { CloudResponse, CloudTransport } from './shopifyBridge';
 import { accessMessage, serverAccess, trialAccess, unavailableAccess, type PlayerAccess } from './playerAccess';
+import { NO_GIFTS, readPlayerGifts, type PlayerGift } from './playerGifts';
 
 interface Snapshot {
   customer: { id: string };
   player: Player | null;
   compareDigest: string | null;
   csrfToken: string;
+  gifts: PlayerGift[];
   storage: PlayerAccess;
   purchases: { items: string[]; available: boolean; reason?: 'orders_scope_missing' | 'orders_unavailable'; history: 'all' | 'recent' };
 }
@@ -59,7 +61,7 @@ function snapshot(data: unknown, decode: Decoder): Snapshot {
   }
   const player = data.player === null ? null : { ...digitalPlayer(decode(JSON.stringify({ ...(record(data.player) ? data.player : {}), irlItems: purchases.items })), data.customer.id), irlItems: purchases.items };
   return { customer: { id: data.customer.id }, player, purchases,
-    compareDigest: data.compareDigest, csrfToken: data.csrfToken, storage: serverAccess(data.storage) };
+    compareDigest: data.compareDigest, csrfToken: data.csrfToken, storage: serverAccess(data.storage), gifts: readPlayerGifts(data.gifts) };
 }
 
 /** One shared bootstrap; every later ride explicitly refreshes live consent. */
@@ -87,12 +89,39 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   private offline = false;
   private lastAttempt: Player | null = null;
   private guestLoading: Promise<Player> | null = null;
+  private acknowledgedGifts = new Map<string, Set<string>>();
 
   constructor(private transport: CloudTransport, private storage: StorageDriver,
     private guest: PlayerRepository, private decode: Decoder, private debounceMs = 900,
     private isOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false) {}
 
   get purchaseStatus() { return this.authenticated ? this.session?.purchases : undefined; }
+  get gifts(): readonly PlayerGift[] { return this.authenticated ? this.session?.gifts ?? NO_GIFTS : NO_GIFTS; }
+
+  private receiveGifts(next: Snapshot) {
+    if (!this.session || next.customer.id !== this.session.customer.id) return;
+    const acknowledged = this.acknowledgedGifts.get(next.customer.id);
+    this.session.gifts = next.gifts.filter(gift => !acknowledged?.has(gift.id));
+  }
+
+  async acknowledgeGifts(ids: string[]): Promise<void> {
+    const session = this.session, revision = this.authRevision;
+    if (!session || !this.authenticated) throw new Error('Keine aktive Kontositzung');
+    const pending = [...new Set(ids)].filter(id => session.gifts.some(gift => gift.id === id)).slice(0, 20);
+    if (!pending.length) return;
+    const response = await this.transport.request('POST', { acknowledgedGiftIds: pending, csrfToken: session.csrfToken });
+    if (revision !== this.authRevision || session !== this.session) return;
+    if (response.status === 401) this.invalidateSession();
+    const confirmed = record(response.data) ? response.data.acknowledgedGiftIds : null;
+    if (response.status !== 200 || !record(response.data) || !Array.isArray(confirmed)
+      || !pending.every(id => confirmed.includes(id)))
+      throw new Error('Geschenkbestätigung nicht gespeichert');
+    const acknowledged = this.acknowledgedGifts.get(session.customer.id) ?? new Set<string>();
+    pending.forEach(id => acknowledged.add(id));
+    this.acknowledgedGifts.set(session.customer.id, acknowledged);
+    session.gifts = readPlayerGifts(response.data.gifts).filter(gift => !acknowledged.has(gift.id));
+    for (const listener of this.listeners) listener();
+  }
 
   getAccess = (): PlayerAccess => this.access;
   subscribeSync = (listener: () => void) => {
@@ -191,6 +220,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       const items = Array.isArray(saved.items) && saved.items.length <= 500 && saved.items.every(id => typeof id === 'string' && id.length <= 160)
         ? saved.items as string[] : [];
       this.session = { customer: { id: saved.customerId }, player: null, compareDigest: null, csrfToken: '', storage: access,
+        gifts: [],
         purchases: { items, available: false, reason: 'orders_unavailable', history: saved.history === 'all' ? 'all' : 'recent' } };
       const accepted = this.readBackup(), pending = this.readBackup(`${this.accountKey()}:pending`);
       const backup = pending?.dirty ? pending : accepted;
@@ -255,6 +285,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
   /** Adopt a server-authenticated customer after this page initially loaded as a guest. */
   private async adoptSession(next: Snapshot): Promise<Player> {
     this.session = next;
+    this.receiveGifts(next);
     this.authenticated = true;
     this.offline = false;
     this.guestMode = false;
@@ -413,6 +444,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.session.storage = next.storage;
     this.session.csrfToken = next.csrfToken;
     this.session.purchases = next.purchases;
+    this.receiveGifts(next);
     if (this.lastUnsaved) this.lastUnsaved = addServerCredit(this.lastUnsaved, credit);
     if (this.pending) this.pending = this.lastUnsaved ?? addServerCredit(this.pending, credit);
     this.lastAttempt = null;
@@ -460,6 +492,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
         }
         session.csrfToken = next.csrfToken;
         session.storage = next.storage;
+        this.receiveGifts(next);
         if (!next.storage.allowed) { this.deny(next.storage); return; }
         networkFailure = true;
         response = await this.transport.request('POST', { player, compareDigest: session.compareDigest, csrfToken: session.csrfToken });
@@ -503,6 +536,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       session.player = result.player;
       session.storage = result.storage;
       session.purchases = result.purchases;
+      this.receiveGifts(result);
       this.lastAttempt = null;
       // Persist only the exact snapshot the server just accepted. This includes
       // the fifth trial result, never later queued edits or a denied POST.
@@ -602,6 +636,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       this.session.storage = next.storage;
       this.session.purchases = next.purchases;
       this.session.csrfToken = next.csrfToken;
+      this.receiveGifts(next);
       this.rememberOfflineAccount();
       this.localCompletedRuns = Math.max(this.localCompletedRuns, next.storage.completedRuns);
       this.setAccess(next.storage);

@@ -169,11 +169,12 @@ export function ownership(p: Player, product: Product, variantId = p.variants[pr
 /** Shared by offers and checkout: shop-relative cosmetics, small consumable decals. */
 export function digitalPrice(product: Product): number {
   if (product.category === 'cape') return 5000;
+  if (product.handle === 'chrome-sticker') return 15;
+  if (equipmentSlot(product) === 'keychain') return 40;
   const shopPrice = Number.isFinite(product.price) && product.price > 0 ? product.price : 10;
-  if (product.handle === 'chrome-sticker')
-    return Math.max(20, Math.min(60, Math.round(shopPrice * 10 / 5) * 5));
+  const basePrice = Math.max(40, Math.min(240, Math.round(shopPrice * 4)));
   const visualOption = product.handle.startsWith('keep-up-') || supportsHood(product) || product.preview?.numberCustomization;
-  return Math.max(50, Math.round(shopPrice * 18 * (visualOption ? 1.2 : 1) / 5) * 5);
+  return Math.round(basePrice * (visualOption ? 1.12 : 1));
 }
 export const digitalLevel = (p: Product) => p.category === 'cape' ? 8 : 1;
 export function unlock(

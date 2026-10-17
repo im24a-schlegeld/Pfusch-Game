@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { StickerPlacement } from '../app/domain/types';
 import {
   applyBikeStickers,
+  adjustStickerPlacement,
   clearBikeStickers,
   stickerSurfaces,
 } from '../app/game/bikeStickers';
@@ -58,6 +59,55 @@ function decal(shell: THREE.Mesh, id = 'chrome-1') {
 }
 
 describe('bike sticker geometry', () => {
+  it.each(['125', 'moped', '450', '701', 'scooter'])(
+    'centers stickers from the fork and rear bodywork near the whole %s motorcycle center', model => {
+      const bike = makeBike({ ...newPlayer(), bike: model, paint }, []);
+      bike.rider.visible = false;
+      bike.root.updateMatrixWorld(true);
+      const surfaces = stickerSurfaces(bike.body, bike.rider, paint);
+      const toBody = bike.body.matrixWorld.clone().invert();
+      const bounds = new THREE.Box3();
+      bike.body.traverseVisible(object => {
+        if (!(object instanceof THREE.Mesh)) return;
+        object.geometry.computeBoundingBox();
+        bounds.union(object.geometry.boundingBox!.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toBody, object.matrixWorld)));
+      });
+      const center = bounds.getCenter(new THREE.Vector3());
+      const startingParts = ['fork', 'body'].map(rig => [...surfaces].find(([, mesh]) => mesh.userData.importedRig === rig && mesh.userData.bikePaintSurface)!);
+      for (const [surface, mesh] of startingParts) {
+        const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.getIndex()!;
+        const triangle = new THREE.Triangle(), point = new THREE.Vector3(), normal = new THREE.Vector3();
+        let start: StickerPlacement | undefined, farthest = -Infinity;
+        for (let i = 0; i < indices.count; i += 3) {
+          triangle.a.fromBufferAttribute(positions, indices.getX(i));
+          triangle.b.fromBufferAttribute(positions, indices.getX(i + 1));
+          triangle.c.fromBufferAttribute(positions, indices.getX(i + 2));
+          triangle.getNormal(normal);
+          if (normal.x < 0.9) continue;
+          triangle.getMidpoint(point);
+          const targetPoint = point.clone().applyMatrix4(mesh.matrixWorld).applyMatrix4(toBody);
+          if (targetPoint.x < 0.02) continue;
+          const z = targetPoint.z;
+          if (Math.abs(z - center.z) <= farthest) continue;
+          farthest = Math.abs(z - center.z);
+          start = { id: 'existing-sticker', productId: 'chrome-product', surface, point: point.toArray(), normal: normal.toArray(), size: 0.09, rotation: 0.42 };
+        }
+        expect(start).toBeDefined();
+        const before = structuredClone(start!);
+        const centered = adjustStickerPlacement(bike.body, surfaces, start!, 'center')!;
+        expect(centered).toMatchObject({ id: before.id, productId: before.productId, size: before.size, rotation: before.rotation });
+        expect(start).toEqual(before);
+        const shell = surfaces.get(centered.surface)!;
+        const actual = new THREE.Vector3(...centered.point).applyMatrix4(shell.matrixWorld).applyMatrix4(toBody);
+        expect(Math.abs(actual.z - center.z), JSON.stringify({ model, start: before.point, center, actual, surface: centered.surface })).toBeLessThan(0.25);
+        expect(actual.x).toBeGreaterThanOrEqual(-0.001);
+        if (mesh.userData.importedRig === 'fork') expect(shell).not.toBe(mesh);
+        applyBikeStickers(bike.body, bike.rider, paint, [centered]);
+        expect(decal(shell, centered.id).geometry.getIndex()!.count).toBeGreaterThan(0);
+      }
+    },
+  );
+
   it('places a 9 cm sticker on the authored black Supermoto rear guard without adding a tail plate', () => {
     const bike = makeBike({ ...newPlayer(), bike: '450', paint }, []);
     bike.root.updateMatrixWorld(true);

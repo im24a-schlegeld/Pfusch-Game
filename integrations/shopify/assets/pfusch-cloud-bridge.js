@@ -138,10 +138,18 @@
       let body;
       if (message.method === 'POST') {
         const value = message.payload;
-        if (!isRecord(value) || !isRecord(value.player) || !Object.hasOwn(value, 'compareDigest')
-          || !(value.compareDigest === null || (typeof value.compareDigest === 'string' && /^[a-f0-9]{64}$/i.test(value.compareDigest)))
-          || typeof value.csrfToken !== 'string' || value.csrfToken.length > 4096
-          || Object.keys(value).some(key => !['player', 'compareDigest', 'csrfToken'].includes(key))) { reply(400, { error: 'invalid_request' }); return; }
+        if (!isRecord(value) || typeof value.csrfToken !== 'string' || value.csrfToken.length > 4096) { reply(400, { error: 'invalid_request' }); return; }
+        const keys = Object.keys(value);
+        const playerSave = keys.length === 3 && keys.every(key => ['player', 'compareDigest', 'csrfToken'].includes(key))
+          && isRecord(value.player) && Object.hasOwn(value, 'compareDigest')
+          && (value.compareDigest === null || (typeof value.compareDigest === 'string' && /^[a-f0-9]{64}$/i.test(value.compareDigest)));
+        const ids = value.acknowledgedGiftIds;
+        // Acknowledging existing notifications cannot submit or mint a gift.
+        const giftAcknowledgment = keys.length === 2 && keys.every(key => ['acknowledgedGiftIds', 'csrfToken'].includes(key))
+          && Array.isArray(ids) && ids.length >= 1 && ids.length <= 20
+          && [...ids].every(id => typeof id === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id))
+          && new Set(ids).size === ids.length;
+        if (!playerSave && !giftAcknowledgment) { reply(400, { error: 'invalid_request' }); return; }
         try { body = JSON.stringify(value); }
         catch { reply(400, { error: 'invalid_request' }); return; }
         if (new TextEncoder().encode(body).length > maxBytes) { reply(413, { error: 'too_large' }); return; }

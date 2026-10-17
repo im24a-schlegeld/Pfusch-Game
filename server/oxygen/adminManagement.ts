@@ -6,6 +6,7 @@ import { isDashboardEditor } from './adminPermissions.js';
 import { levelForXp } from '../../app/domain/progression.js';
 import { applyAdminCosmeticEdit, cosmeticEditSummary, adminCosmeticsCatalog } from './adminCosmetics.js';
 import type { Player } from '../../app/domain/types.js';
+import { sendCustomerGift } from '../shopify/giftStore.js';
 
 const PRESENCE_KEY = 'last_active_v1';
 const AUDIT_KEY = 'dashboard_audit_v1';
@@ -204,6 +205,8 @@ export async function handleDashboardPlayers(request: Request, config: ShopifyCo
     if (!customerId) throw new ApiError(400, 'invalid_customer');
     // E-mail updates are deliberately forbidden, even for allowlisted editors.
     if (value.field === 'email') throw new ApiError(403, 'email_read_only');
+    if (value.field === 'gift')
+      return json(200, { changed: 'gift', ...await sendCustomerGift(config, customerId, value.value, staffId, fetcher, now) });
     if ((value.field === 'coins' || value.field === 'xp' || value.field === 'bellsEarned' ||
       value.field === 'highScore' || value.field === 'runsPlayed' || value.field === 'totalDistance' ||
       value.field === 'totalNearMisses' || value.field === 'totalWheelieMeters') && typeof value.value === 'number')

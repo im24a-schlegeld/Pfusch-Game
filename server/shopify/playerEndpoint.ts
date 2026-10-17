@@ -6,6 +6,7 @@ import { canSave, retainRunCount, storageAccess, type StorageAccess } from './st
 import { assertPlausibleDigitalSave } from './progressAntiCheat.js';
 import type { VerifiedPurchases } from './purchaseStore.js';
 import { classifySaveDevice } from './playerDevice.js';
+import { acknowledgeCustomerGifts } from './giftStore.js';
 
 export interface PlayerRequest {
   method: string;
@@ -38,13 +39,18 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
     let result, storage: StorageAccess;
     if (input.method === 'GET') {
       const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request, purchases?.items);
-      result = { player: current.player, compareDigest: current.compareDigest };
+      result = { player: current.player, compareDigest: current.compareDigest, gifts: current.gifts };
       storage = storageAccess(current.marketingState, current.player?.runsPlayed ?? 0);
     }
     else {
       if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(input.contentType ?? ''))
         throw new ApiError(415, 'json_required');
       const body = await input.readBody();
+      if (isRecord(body) && Object.keys(body).length === 2 && 'acknowledgedGiftIds' in body && 'csrfToken' in body) {
+        await verifyCsrf(body.csrfToken, identity, config.secret, now);
+        return { status: 200, body: { ...await acknowledgeCustomerGifts(config, identity.customerId,
+          body.acknowledgedGiftIds, dependencies.request), csrfToken: await createCsrf(identity, config.secret, now) } };
+      }
       if (!isRecord(body) || Object.keys(body).length !== 3 ||
         Object.keys(body).some(key => !['player', 'compareDigest', 'csrfToken'].includes(key)))
         throw new ApiError(400, 'invalid_request');
@@ -66,6 +72,7 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       player.settings.deviceType = classifySaveDevice(input.userAgent, input.mobileHint);
       result = await saveCustomerPlayer(config, identity.customerId,
         player, body.compareDigest as string | null, dependencies.request);
+      result = { ...result, gifts: current.gifts };
       // A secondary digital leaderboard outage must never turn an acknowledged
       // cloud save into a failed save or cause a client to overwrite it again.
       try { await dependencies.afterSave?.(identity.customerId, result.player); } catch { /* Save is already durable. */ }

@@ -201,20 +201,33 @@ export function adjustStickerPlacement(
   const targetInverse = target.matrixWorld.clone().invert();
   const sourceToTarget = new THREE.Matrix4().multiplyMatrices(targetInverse, source.matrixWorld);
   const desired = new THREE.Vector3(...placement.point).applyMatrix4(sourceToTarget);
+  const selectedSide = Math.sign(desired.x);
   const facing = new THREE.Vector3(...placement.normal).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(sourceToTarget));
   if (action === 'mirror') {
     desired.x *= -1;
     facing.x *= -1;
-  } else {
+  } else if (helmet) {
     source.geometry.computeBoundingBox();
     if (!source.geometry.boundingBox) return undefined;
     source.geometry.boundingBox.getCenter(desired).applyMatrix4(sourceToTarget);
+  } else {
+    // Center the whole visible motorcycle, including wheels and mechanical
+    // parts. The hidden rider and previous decals must not shift that target.
+    const bounds = new THREE.Box3();
+    target.traverseVisible(object => {
+      if (!(object instanceof THREE.Mesh) || object.userData.bikeSticker) return;
+      object.geometry.computeBoundingBox();
+      if (object.geometry.boundingBox) bounds.union(object.geometry.boundingBox.clone()
+        .applyMatrix4(new THREE.Matrix4().multiplyMatrices(targetInverse, object.matrixWorld)));
+    });
+    if (bounds.isEmpty()) return undefined;
+    bounds.getCenter(desired);
   }
   const triangle = new THREE.Triangle(), localNormal = new THREE.Vector3();
   const point = new THREE.Vector3(), targetPoint = new THREE.Vector3(), targetNormal = new THREE.Vector3();
   let nearest: StickerPlacement | undefined, distance = Infinity;
   for (const [surface, mesh] of surfaces) {
-    if (action === 'center' && mesh !== source) continue;
+    if (action === 'center' && helmet && mesh !== source) continue;
     const positions = mesh.geometry.getAttribute('position');
     if (!positions) continue;
     const index = mesh.geometry.getIndex(), count = index?.count ?? positions.count;
@@ -230,9 +243,13 @@ export function adjustStickerPlacement(
       if (triangle.getArea() < 1e-12) continue;
       triangle.getNormal(localNormal);
       targetNormal.copy(localNormal).applyNormalMatrix(normalMatrix);
-      if (targetNormal.dot(facing) <= 0.15) continue;
+      if ((action === 'mirror' || helmet) && targetNormal.dot(facing) <= 0.15) continue;
       triangle.closestPointToPoint(localDesired, point);
       targetPoint.copy(point).applyMatrix4(toTarget);
+      if (action === 'center' && !helmet && selectedSide && targetPoint.x * selectedSide < -0.001) continue;
+      // A new panel can face another way than the starting fender or mask.
+      // Prefer its outside skin rather than a triangle facing into the bike.
+      if (action === 'center' && !helmet && targetNormal.dot(targetPoint.clone().sub(desired)) < -0.000001) continue;
       // A missing opposite panel must not snap back to the starting side.
       if (action === 'mirror' && Math.abs(desired.x) > 0.001 && targetPoint.x * desired.x < 0) continue;
       const gap = targetPoint.distanceToSquared(desired);

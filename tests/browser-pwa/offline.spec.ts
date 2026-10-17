@@ -50,9 +50,7 @@ test('installed app shell and playable ride survive a genuinely offline reload',
   const invite = page.locator('.game-invite-section').getByRole('button', { name: 'FREUND EINLADEN', exact: true });
   await expect(invite).toBeEnabled();
   await invite.click();
-  const choices = page.locator('.game-invite-section .game-share-choices');
-  await expect(choices.getByRole('button')).toHaveText(['WhatsApp', 'Telegram', 'E-Mail']);
-  await choices.getByRole('button', { name: 'WhatsApp', exact: true }).click();
+  await expect(page.locator('.game-share-choices')).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-share-window-target', '_blank');
   const draft = new URL((await page.locator('html').getAttribute('data-share-draft'))!);
   expect(draft.origin).toBe('https://wa.me');
@@ -64,7 +62,7 @@ test('installed app shell and playable ride survive a genuinely offline reload',
   expect(destination.searchParams.get('share')).toBe('invite');
   expect(destination.searchParams.has('points')).toBe(false);
   expect(destination.searchParams.has('ref')).toBe(false);
-  await expect(invite).toHaveAttribute('aria-expanded', 'false');
+  await expect(invite).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Link kopieren', exact: true })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Link zum Teilen', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'outputs/browser-pwa/sharing-390x844.png' });

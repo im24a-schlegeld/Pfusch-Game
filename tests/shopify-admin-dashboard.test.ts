@@ -73,6 +73,9 @@ describe('existing Shopify app / admin dashboard', () => {
     expect(html).toContain('cdn.shopify.com/shopifycloud/app-bridge.js');
     expect(html).toContain('/api/admin/overview');
     expect(html).toContain('id="statisticsTopic"');
+    expect(html).toContain('aria-label="Geschenk senden"');
+    expect(html).toContain('id="giftAmount" type="number" min="1" max="2000"');
+    expect(html).toContain('id="giftMessage" type="text" maxlength="80"');
     expect(html).toContain('keine Besucher- oder Sessionstatistik');
     expect(html).not.toContain(config.secret);
     expect(html).not.toContain('metafieldsSet');

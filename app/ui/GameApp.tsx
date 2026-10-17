@@ -43,6 +43,7 @@ import { getOfflineAppState, subscribeOfflineApp } from '../services/offlineApp'
 import './account-header.css';
 import { readGameShare } from '../domain/gameShare';
 import { SharedGame } from './GameShare';
+import GiftNotification from './GiftNotification';
 type Screen =
   | 'ride'
   | 'results'
@@ -688,6 +689,7 @@ export default function GameApp() {
         </button>}
       </nav>}
       {notice && <output className="toast">{notice}</output>}
+      <GiftNotification repository={services.players} active={!startingRide} />
     </div>
     {loadingLabel && <LoadingScreen label={loadingLabel} fullScreen reducedMotion={player.settings.reducedMotion} />}
     </>

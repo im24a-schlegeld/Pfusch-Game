@@ -20,27 +20,33 @@ describe('proportional digital prices', () => {
     expect(digitalPrice(products.find(product => product.category === 'cape')!)).toBe(5000);
     expect(digitalPrice({ ...plain, price: Number.NaN })).toBeGreaterThan(0);
   });
-  it('adds a modest premium for actual glow, hood or number customization', () => {
+  it('prices ordinary clothing and caps in the requested shop-proportional range', () => {
+    expect(digitalPrice(plain)).toBe(120);
+    expect(digitalPrice(products.find(product => product.handle === 'p-zero-cap')!)).toBe(100);
+    expect(digitalPrice({ ...plain, price: 1 })).toBe(40);
+    expect(digitalPrice({ ...plain, price: 100 })).toBe(240);
+    expect(digitalPrice({ ...plain, price: Number.NaN })).toBe(40);
+  });
+  it('adds about twelve percent for actual glow, hood or number customization', () => {
     const normal = digitalPrice({ ...plain, price: 35 });
     for (const handle of ['keep-up-t-shirt', 'unisex-windbreaker', 'racing-zipper']) {
       const effect = products.find(product => product.handle === handle)!;
       const cost = digitalPrice({ ...effect, price: 35 });
-      expect(cost).toBeGreaterThan(normal);
-      expect(cost).toBeLessThanOrEqual(normal * 1.35);
+      expect(cost / normal).toBeCloseTo(1.12, 2);
     }
   });
-  it('keeps one sticker within a normal short ride while a shirt takes several rides', () => {
+  it('sets sticker copies to fifteen and the keychain to forty coins', () => {
+    expect(digitalPrice(sticker)).toBe(15);
+    expect(digitalPrice(products.find(product => product.handle === 'schlusselanhanger')!)).toBe(40);
+  });
+  it('preserves ride income independently of the lower catalog prices', () => {
     const run = { id: 'economy-example', score: 12000, distance: 1500, seconds: 60,
       bestCombo: 3, nearMisses: 4, jumps: 1, wheelieMeters: 400, maxSpeed: 35, cause: 'end' };
     const player = newPlayer();
-    player.challenges.claimed = ['three-rides', 'one-wheel', 'close-call', 'night-shift', 'take-off', 'score-hunter'];
+    player.challenges = { date: '2026-10-16', values: {}, claimed: ['three-rides', 'one-wheel', 'close-call', 'night-shift', 'take-off', 'score-hunter'] };
     const result = finishRun(player, run, '2026-10-16')!;
-    const coins = result.reward.coins;
-    expect(digitalPrice(sticker)).toBeGreaterThanOrEqual(20);
-    expect(digitalPrice(sticker)).toBeLessThanOrEqual(60);
-    expect(coins).toBeGreaterThanOrEqual(digitalPrice(sticker));
-    expect(digitalPrice(plain)).toBeGreaterThan(coins * 4);
-    expect(digitalPrice(plain)).toBeLessThanOrEqual(coins * 12);
+    expect(result.reward.coins).toBe(61);
+    expect(result.player.coins).toBe(player.coins + 61);
   });
 });
 
@@ -50,7 +56,7 @@ describe('sticker copies are individual purchases', () => {
     const drafts = { 'helmet:fullface': [placement('one'), placement('two')],
       '125': [{ ...placement('three'), surface: 'body/moped-main-frame:0' }] };
     const saved = commitStickerEdit(player, drafts, products)!;
-    expect(saved.coins).toBe(player.coins - 3 * digitalPrice(sticker));
+    expect(saved.coins).toBe(player.coins - 45);
     expect(saved.stickers).toEqual(drafts);
     expect(commitStickerEdit(saved, drafts, products)!.coins).toBe(saved.coins);
     expect(player.stickers).toEqual({});

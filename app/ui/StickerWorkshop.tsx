@@ -199,7 +199,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     const moved = adjustPosition.current?.(original, action);
     if (!moved) { setHint('Keine passende feste Fläche gefunden. Die Position bleibt erhalten.'); return; }
     setPlacements(previous => previous.map(placement => placement.id === original.id ? moved : placement));
-    setHint(action === 'center' ? 'Sticker auf dieser Fläche zentriert. Speichern übernimmt die Position.' : 'Stickerposition auf die andere Seite verschoben. Das Motiv bleibt unverändert.');
+    setHint(action === 'center' ? `Sticker ${target === 'helmet' ? 'auf der Helmschale' : 'am gesamten Motorrad'} zentriert. Speichern übernimmt die Position.` : 'Stickerposition auf die andere Seite verschoben. Das Motiv bleibt unverändert.');
   }
   async function save() {
     if (savePending.current || disabledReason || !ready || error) return;
@@ -230,24 +230,9 @@ export default function StickerWorkshop({ player, account, products, initialTarg
         <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), Math.round((size + 0.01) * 100) / 100), 'size')} aria-label="Sticker größer machen">+ GRÖSSER</button>
         <button type="button" disabled={saving} onClick={() => change(Math.max(-Math.PI, rotation - Math.PI / 4), 'rotation')} aria-label="Sticker 45 Grad nach links drehen">↶ 45°</button>
         <button type="button" disabled={saving} onClick={() => change(Math.min(Math.PI, rotation + Math.PI / 4), 'rotation')} aria-label="Sticker 45 Grad nach rechts drehen">↷ 45°</button>
-        <button type="button" disabled={saving} onClick={() => change(Math.max(-Math.PI, rotation - Math.PI / 36), 'rotation')} aria-label="Sticker 5 Grad nach links drehen">↶ 5°</button>
-        <button type="button" disabled={saving} onClick={() => change(Math.min(Math.PI, rotation + Math.PI / 36), 'rotation')} aria-label="Sticker 5 Grad nach rechts drehen">↷ 5°</button>
-        <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), 0.06), 'size')} aria-label="Stickergröße 6 Zentimeter">6 CM</button>
-        <button type="button" disabled={saving} onClick={() => change(Math.min(stickerMaxSize(targetKey), 0.12), 'size')} aria-label="Stickergröße 12 Zentimeter">12 CM</button>
-        <button type="button" disabled={saving} onClick={() => change(DEFAULT_STICKER_SIZE, 'size')} aria-label="Stickergröße zurücksetzen">STANDARD</button>
         <button type="button" disabled={saving} onClick={() => change(0, 'rotation')} aria-label="Drehung zurücksetzen">0°</button>
-        <button type="button" disabled={saving || !selected || !ready || Boolean(error)} onClick={() => move('center')} aria-label="Sticker auf Fläche zentrieren">ZENTRIEREN</button>
+        <button type="button" disabled={saving || !selected || !ready || Boolean(error)} onClick={() => move('center')} aria-label={target === 'helmet' ? 'Sticker auf Helmschale zentrieren' : 'Sticker auf gesamtem Motorrad zentrieren'}>ZENTRIEREN</button>
         <button type="button" disabled={saving || !selected || !ready || Boolean(error)} onClick={() => move('mirror')} aria-label="Stickerposition auf andere Seite spiegeln">POSITION SPIEGELN</button>
-        {selected && placements.length < MAX_STICKERS && <button type="button" disabled={saving} aria-label="Ausgewählten Sticker duplizieren" onClick={() => {
-          if (savePending.current) return;
-          const original = placements.find(sticker => sticker.id === selected);
-          if (!original) return;
-          const id = crypto.randomUUID();
-          // Keep the attachment and geometry; a copy is still only a draft.
-          setPlacements(previous => previous.length >= MAX_STICKERS ? previous : [...previous, { ...structuredClone(original), id }]);
-          setSelected(id);
-          setHint('Kopie erstellt – tippe auf eine Stelle, um sie zu verschieben.');
-        }}>DUPLIZIEREN</button>}
       </div></div></section>
 
       {product && <a className="sticker-original" href={product.url} target="_blank" rel="noreferrer"><img src={imagePath(product.localImage ?? product.image)} alt={product.title}/><span>Im Shop ansehen</span></a>}

@@ -21,8 +21,6 @@
 .game-share-action > .button { width: 100%; min-height: 44px; white-space: normal; }
 .game-share-action > output { display: block; margin-top: 6px; color: #d3d3d3; font: 12px/1.45 Arial, sans-serif; }
 .game-share-action > output:empty { display: none; }
-.game-share-choices { display: grid; gap: 8px; margin-top: 8px; }
-.game-share-choices .button { min-height: 44px; width: 100%; }
 .shared-game-page > h1 { font-size: clamp(28px, 7vw, 48px); margin-block: 14px; }
 .shared-game-page > p { max-width: 44ch; margin-block: 14px; }
 .shared-game-score { display: grid; gap: 8px; margin-block: 24px; padding-block: 20px; border-block: 1px solid #ffffff30; }

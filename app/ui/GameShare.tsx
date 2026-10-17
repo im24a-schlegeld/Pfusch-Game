@@ -1,33 +1,31 @@
 import { useState } from 'react';
 import { ArrowRight, Share2, UserPlus } from 'lucide-react';
 import { sharePeriodLabel, type GameShare } from '../domain/gameShare';
-import { openShareDraft, shareGame, type ShareTarget } from '../services/gameShare';
+import { openShareDraft, shareGame } from '../services/gameShare';
 import { fmt } from './shared';
 import './game-share.css';
 
 export function ShareAction({ share, label, disabled = false }: { share: GameShare; label: string; disabled?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState('');
-  const [choices, setChoices] = useState(false);
-  async function openShare(target: ShareTarget) {
+  async function openShare() {
     if (busy || disabled) return;
     setBusy(true);
     setOutcome('');
     try {
-      const result = await shareGame(share, target, { open: url => openShareDraft(url) });
+      const result = await shareGame(share, {
+        share: typeof navigator.share === 'function' ? data => navigator.share(data) : undefined,
+        open: url => openShareDraft(url),
+      });
       if (result === 'failed' || result === 'unavailable') {
-        setOutcome('Nachrichtenentwurf konnte nicht geöffnet werden. Erlaube Pop-ups oder wähle eine andere App.');
-      } else { setOutcome('Nachrichtenentwurf geöffnet. Sende die Einladung in der gewählten App.'); setChoices(false); }
+        setOutcome('Teilen ist gerade nicht verfügbar.');
+      }
     } finally { setBusy(false); }
   }
   return <div className="game-share-action">
-    <button type="button" className="button small" disabled={busy || disabled} aria-expanded={choices} onClick={() => setChoices(value => !value)}>
+    <button type="button" className="button small" disabled={busy || disabled} onClick={() => { void openShare(); }}>
       {share.kind === 'invite' ? <UserPlus size={17} aria-hidden="true" /> : <Share2 size={17} aria-hidden="true" />}{label}
     </button>
-    {choices && <div className="game-share-choices" aria-label="App zum Teilen wählen">
-      {(['whatsapp', 'telegram', 'email'] as const).map(target => <button type="button" className="button small" key={target}
-        disabled={busy || disabled} onClick={() => { void openShare(target); }}>{target === 'whatsapp' ? 'WhatsApp' : target === 'telegram' ? 'Telegram' : 'E-Mail'}</button>)}
-    </div>}
     <output aria-live="polite">{outcome}</output>
   </div>;
 }
