@@ -242,112 +242,104 @@ test('mobile sticker placement previews freely, charges each new placement on sa
   expect(errors).toEqual([]);
 });
 
-for (const model of ['450', '701']) {
-  test(`centering front, top and side stickers uses the entire ${model} motorcycle and saves existing edits freely`, async ({ page }) => {
-    test.setTimeout(180000);
-    await page.setViewportSize({ width: 390, height: 844 });
-    const products = await (await page.request.get('/catalog/products.json')).json() as Product[];
-    const product = products.find(item => item.handle === 'chrome-sticker')!;
-    const initial = newPlayer(); initial.bike = model; initial.coins = 0;
-    initial.settings.quality = 'low'; initial.settings.reducedMotion = true;
-    initial.ownedItems.push(`bike:${model}`, product.id); initial.settings.tutorialSeen = true;
-    await page.addInitScript(player => {
-      if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
-      window.stickerScenes = [];
-      window.__THREE_DEVTOOLS__ = new EventTarget();
-      window.__THREE_DEVTOOLS__.addEventListener('observe', event => {
-        const item = (event as CustomEvent).detail;
-        if (item.isScene) window.stickerScenes.push(item);
-      });
-    }, initial);
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await openSticker(page, 'Motorrad', product);
-    // Seed three already paid copies on real triangles with different facing
-    // directions. Read the shipped scene, so no hand-written mesh coordinates
-    // or dev-only imports can make this pass against the wrong bike geometry.
-    const source = await page.evaluate(({ model, productId }) => {
-      const body = window.stickerScenes.at(-1)!.getObjectByName('imported-motorcycle')!;
-      body.updateWorldMatrix(true, true);
-      const inverse = body.matrixWorld.clone().invert();
-      const transforms: Record<string, number[]> = {};
-      const meshes: Array<{ path: string; mesh: THREE.Mesh }> = [];
-      const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-      function visit(object: THREE.Object3D, path: string) {
-        if (!object.visible || object.userData.bikeSticker) return;
-        if (object instanceof Object && (object as THREE.Mesh).isMesh) {
-          const mesh = object as THREE.Mesh;
-          transforms[path] = inverse.clone().multiply(mesh.matrixWorld).toArray();
-          mesh.geometry.computeBoundingBox();
-          const box = mesh.geometry.boundingBox!;
-          for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
-            const point = body.worldToLocal(mesh.localToWorld(mesh.position.clone().set(x, y, z)));
-            [point.x, point.y, point.z].forEach((value, axis) => { min[axis] = Math.min(min[axis], value); max[axis] = Math.max(max[axis], value); });
-          }
-          if (mesh.userData.bikePaintSurface) meshes.push({ path, mesh });
-        }
-        object.children.forEach((child, index) => visit(child, `${path}/${child.name || 'mesh'}:${index}`));
-      }
-      visit(body, 'body');
-      const center = min.map((value, axis) => (value + max[axis]) / 2);
-      const placements = ['front', 'top', 'side'].map((name, order) => {
-        let best = -Infinity, result: Player['stickers'][string][number] | undefined;
-        for (const { path, mesh } of meshes) {
-          const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.getIndex()!;
-          for (let i = 0; i < indices.count; i += 3) {
-            const a = mesh.position.clone().fromBufferAttribute(positions, indices.getX(i));
-            const b = a.clone().fromBufferAttribute(positions, indices.getX(i + 1));
-            const c = a.clone().fromBufferAttribute(positions, indices.getX(i + 2));
-            const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
-            const point = a.clone().add(b).add(c).multiplyScalar(1 / 3);
-            const bodyPoint = body.worldToLocal(mesh.localToWorld(point.clone()));
-            if (bodyPoint.x < 0.02 || (name === 'front' ? normal.z > -0.7 : name === 'top' ? normal.y < 0.7 : normal.x < 0.9)) continue;
-            const score = Math.abs(bodyPoint.z - center[2]);
-            if (score <= best) continue;
-            best = score;
-            result = { id: `paid-${name}`, productId, surface: path, point: point.toArray(), normal: normal.toArray(), size: 0.09 + order * 0.02, rotation: [0.42, -0.35, 0.8][order] };
-          }
-        }
-        if (!result) throw new Error(`Missing ${name} painted triangle on ${model}`);
-        return result;
-      });
-      const player = JSON.parse(localStorage.getItem('pfusch:player:v1')!) as Player;
-      player.stickers[model] = placements;
-      localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
-      return { placements, center, transforms };
-    }, { model, productId: product.id });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await openSticker(page, 'Motorrad', product);
-    await expect(placedButtons(page)).toHaveCount(3);
-    for (let index = 0; index < 3; index++) {
-      await placedButtons(page).nth(index).click();
-      await page.getByRole('button', { name: 'Sticker auf gesamtem Motorrad zentrieren', exact: true }).click();
-      await expect(page.locator('.sticker-hint')).toContainText('am gesamten Motorrad zentriert');
-      await expect(footerAction(page)).toHaveText('Speichern');
+test('centering the original rear guard on the 450 motorcycle sagittal line preserves paid edits and persistence', async ({ page }) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const products = await (await page.request.get('/catalog/products.json')).json() as Product[];
+  const product = products.find(item => item.handle === 'chrome-sticker')!;
+  const initial = newPlayer(); initial.bike = '450'; initial.coins = 0;
+  initial.settings.quality = 'low'; initial.settings.reducedMotion = true;
+  initial.ownedItems.push('bike:450', product.id); initial.settings.tutorialSeen = true;
+  await page.addInitScript(player => {
+    if (!localStorage.getItem('pfusch:player:v1')) localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
+    window.stickerScenes = [];
+    window.__THREE_DEVTOOLS__ = new EventTarget();
+    window.__THREE_DEVTOOLS__.addEventListener('observe', event => {
+      const item = (event as CustomEvent).detail;
+      if (item.isScene) window.stickerScenes.push(item);
+    });
+  }, initial);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await openSticker(page, 'Motorrad', product);
+  // Seed one paid sticker on the authored rear guard using its real triangles.
+  // Intersect in XY as a rear-view ray would, without dev-only imports.
+  const source = await page.evaluate(productId => {
+    const body = window.stickerScenes.at(-1)!.getObjectByName('imported-motorcycle')!;
+    const shell = body.getObjectByName('fs450_inner_trim:body') as THREE.Mesh;
+    if (!shell?.userData.bikeStickerSurface) throw new Error('Missing authored rear guard');
+    body.updateWorldMatrix(true, true);
+    let surface = '';
+    function visit(object: THREE.Object3D, path: string) {
+      if (object === shell) surface = path;
+      object.children.forEach((child, index) => visit(child, `${path}/${child.name || 'mesh'}:${index}`));
     }
-    await page.getByRole('button', { name: 'Stickerposition auf andere Seite spiegeln', exact: true }).click();
-    await expect(page.locator('.sticker-hint')).toContainText('Das Motiv bleibt unverändert');
-    await expect(footerAction(page)).toHaveText('Speichern');
-    await expect.poll(() => page.evaluate(() => {
-      let decals = 0;
-      window.stickerScenes.at(-1)?.traverse(object => {
-        if (object.userData.bikeSticker && (object as THREE.Mesh).geometry.getIndex()!.count > 0) decals++;
-      });
-      return decals;
-    })).toBeGreaterThanOrEqual(3);
-    await page.screenshot({ path: test.info().outputPath(`sticker-centered-${model}-390x844.png`) });
-    await footerAction(page).click();
-    const confirmed = await saved(page);
-    expect(confirmed.coins).toBe(0);
-    for (const [index, placement] of confirmed.stickers[model].entries()) {
-      const before = source.placements[index];
-      expect(placement).toMatchObject({ id: before.id, productId: before.productId, size: before.size, rotation: before.rotation });
-      const transform = source.transforms[placement.surface], [x, y, z] = placement.point;
-      const actualX = transform[0] * x + transform[4] * y + transform[8] * z + transform[12];
-      const actualZ = transform[2] * x + transform[6] * y + transform[10] * z + transform[14];
-      expect(Math.abs(actualZ - source.center[2])).toBeLessThan(0.25);
-      if (index === 2) expect(actualX).toBeLessThanOrEqual(0.001);
-      else expect(actualX).toBeGreaterThanOrEqual(-0.001);
-      expect({ surface: placement.surface, point: placement.point }).not.toEqual({ surface: before.surface, point: before.point });
+    visit(body, 'body');
+    shell.geometry.computeBoundingBox();
+    const center = shell.geometry.boundingBox!.getCenter(shell.position.clone());
+    const x = center.x + 0.03, y = center.y;
+    const positions = shell.geometry.getAttribute('position'), indices = shell.geometry.getIndex()!;
+    let result: Player['stickers'][string][number] | undefined, nearestZ = -Infinity;
+    for (let i = 0; i < indices.count; i += 3) {
+      const a = shell.position.clone().fromBufferAttribute(positions, indices.getX(i));
+      const b = a.clone().fromBufferAttribute(positions, indices.getX(i + 1));
+      const c = a.clone().fromBufferAttribute(positions, indices.getX(i + 2));
+      const ab = b.clone().sub(a), ac = c.clone().sub(a);
+      const denominator = ab.x * ac.y - ab.y * ac.x;
+      if (Math.abs(denominator) < 1e-12) continue;
+      const u = ((x - a.x) * ac.y - (y - a.y) * ac.x) / denominator;
+      const v = (ab.x * (y - a.y) - ab.y * (x - a.x)) / denominator;
+      if (u < 0 || v < 0 || u + v > 1) continue;
+      const z = a.z + u * ab.z + v * ac.z;
+      if (z <= nearestZ) continue;
+      nearestZ = z;
+      result = { id: 'paid-rear-guard', productId, surface, point: [x, y, z], normal: ab.cross(ac).normalize().toArray(), size: 0.09, rotation: 0.42 };
     }
-  });
-}
+    if (!result) throw new Error('Missing rear guard triangle under the rear ray');
+    const player = JSON.parse(localStorage.getItem('pfusch:player:v1')!) as Player;
+    player.stickers['450'] = [result];
+    localStorage.setItem('pfusch:player:v1', JSON.stringify(player));
+    const inverse = body.matrixWorld.clone().invert();
+    return { placement: result, transform: inverse.multiply(shell.matrixWorld).toArray() };
+  }, product.id);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await openSticker(page, 'Motorrad', product);
+  await expect(placedButtons(page)).toHaveCount(1);
+  await placedButtons(page).first().click();
+  const size = page.getByRole('slider', { name: 'Stickergröße', exact: true });
+  const rotation = page.getByRole('slider', { name: 'Stickerdrehung', exact: true });
+  const beforeSize = await size.inputValue(), beforeRotation = await rotation.inputValue();
+  const before = await saved(page);
+  await page.getByRole('button', { name: 'Sticker auf gesamtem Motorrad zentrieren', exact: true }).click();
+  await expect(page.locator('.sticker-hint')).toContainText('auf der Motorrad-Mittellinie zentriert');
+  await expect(footerAction(page)).toHaveText('Speichern');
+  await expect(size).toHaveValue(beforeSize);
+  await expect(rotation).toHaveValue(beforeRotation);
+  expect(await saved(page)).toEqual(before);
+  await expect.poll(() => page.evaluate(() => {
+    const shell = window.stickerScenes.at(-1)?.getObjectByName('fs450_inner_trim:body');
+    const sticker = shell?.getObjectByName('sticker-paid-rear-guard') as THREE.Mesh | undefined;
+    return sticker?.geometry.getIndex()?.count ?? 0;
+  })).toBeGreaterThan(0);
+  await page.locator('.sticker-views').getByRole('button', { name: 'HINTEN', exact: true }).click();
+  await page.getByTestId('sticker-stage').scrollIntoViewIfNeeded();
+  await page.getByTestId('sticker-stage').screenshot({ path: test.info().outputPath('sticker-centered-450-rear-390x844.png') });
+  await footerAction(page).click();
+  await expect(page.locator('.sticker-workshop')).toHaveCount(0);
+  const confirmed = await saved(page);
+  expect(confirmed.coins).toBe(0);
+  const placement = confirmed.stickers['450'][0], original = source.placement;
+  expect(confirmed.stickers['450']).toHaveLength(1);
+  expect(placement).toMatchObject({ id: original.id, productId: original.productId, surface: original.surface, size: original.size, rotation: original.rotation });
+  const [x, y, z] = placement.point, t = source.transform;
+  expect(t[0] * x + t[4] * y + t[8] * z + t[12]).toBeCloseTo(0, 8);
+  expect(Math.abs(y - original.point[1])).toBeLessThan(0.04);
+  expect(Math.abs(z - original.point[2])).toBeLessThan(0.04);
+  expect(placement.point).not.toEqual(original.point);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await openSticker(page, 'Motorrad', product);
+  expect((await saved(page)).stickers['450']).toEqual(confirmed.stickers['450']);
+  await expect(placedButtons(page)).toHaveCount(1);
+  expect(errors).toEqual([]);
+});

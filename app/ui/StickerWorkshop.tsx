@@ -199,7 +199,7 @@ export default function StickerWorkshop({ player, account, products, initialTarg
     const moved = adjustPosition.current?.(original, action);
     if (!moved) { setHint('Keine passende feste Fläche gefunden. Die Position bleibt erhalten.'); return; }
     setPlacements(previous => previous.map(placement => placement.id === original.id ? moved : placement));
-    setHint(action === 'center' ? `Sticker ${target === 'helmet' ? 'auf der Helmschale' : 'am gesamten Motorrad'} zentriert. Speichern übernimmt die Position.` : 'Stickerposition auf die andere Seite verschoben. Das Motiv bleibt unverändert.');
+    setHint(action === 'center' ? `Sticker ${target === 'helmet' ? 'auf der Helmschale' : 'auf der Motorrad-Mittellinie'} zentriert. Speichern übernimmt die Position.` : 'Stickerposition auf die andere Seite verschoben. Das Motiv bleibt unverändert.');
   }
   async function save() {
     if (savePending.current || disabledReason || !ready || error) return;

@@ -186,6 +186,55 @@ function savedSurface(
   return nearest;
 }
 
+/** Align to the bike's longitudinal centerline on the selected panel itself. */
+function centerOnBike(
+  source: THREE.Mesh,
+  sourceToTarget: THREE.Matrix4,
+  desired: THREE.Vector3,
+  placement: StickerPlacement,
+  surface: string,
+): StickerPlacement | undefined {
+  const positions = source.geometry.getAttribute('position');
+  if (!positions) return undefined;
+  const index = source.geometry.getIndex(), count = index?.count ?? positions.count;
+  const triangle = new THREE.Triangle(), transformed = new THREE.Triangle();
+  const normal = new THREE.Vector3(), facing = new THREE.Vector3(...placement.normal).normalize();
+  const plane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0), edge = new THREE.Line3();
+  const candidate = new THREE.Vector3(), toSource = sourceToTarget.clone().invert();
+  let nearest: StickerPlacement | undefined, distance = Infinity;
+  desired.x = 0;
+  for (let i = 0; i < count; i += 3) {
+    triangle.a.fromBufferAttribute(positions, index ? index.getX(i) : i);
+    triangle.b.fromBufferAttribute(positions, index ? index.getX(i + 1) : i + 1);
+    triangle.c.fromBufferAttribute(positions, index ? index.getX(i + 2) : i + 2);
+    if (triangle.getArea() < 1e-12 || triangle.getNormal(normal).dot(facing) <= .15) continue;
+    transformed.copy(triangle);
+    transformed.a.applyMatrix4(sourceToTarget);
+    transformed.b.applyMatrix4(sourceToTarget);
+    transformed.c.applyMatrix4(sourceToTarget);
+    const vertices = [transformed.a, transformed.b, transformed.c];
+    if (vertices.every(vertex => Math.abs(vertex.x) < 1e-8)) {
+      transformed.closestPointToPoint(desired, candidate);
+    } else {
+      const intersections: THREE.Vector3[] = [];
+      for (let corner = 0; corner < 3; corner++) {
+        edge.set(vertices[corner], vertices[(corner + 1) % 3]);
+        const hit = plane.intersectLine(edge, new THREE.Vector3());
+        if (hit && !intersections.some(point => point.distanceToSquared(hit) < 1e-16)) intersections.push(hit);
+      }
+      if (!intersections.length) continue;
+      if (intersections.length === 1) candidate.copy(intersections[0]);
+      else edge.set(intersections[0], intersections[1]).closestPointToPoint(desired, true, candidate);
+    }
+    candidate.x = 0;
+    const gap = candidate.distanceToSquared(desired);
+    if (gap >= distance) continue;
+    distance = gap;
+    nearest = { ...placement, surface, point: candidate.clone().applyMatrix4(toSource).toArray(), normal: normal.toArray() };
+  }
+  return nearest;
+}
+
 /** Move the attachment on real triangles; artwork orientation/UVs never change.
  * Symmetry belongs to the bike/helmet, not a mesh's possibly baked local axes. */
 export function adjustStickerPlacement(
@@ -201,27 +250,18 @@ export function adjustStickerPlacement(
   const targetInverse = target.matrixWorld.clone().invert();
   const sourceToTarget = new THREE.Matrix4().multiplyMatrices(targetInverse, source.matrixWorld);
   const desired = new THREE.Vector3(...placement.point).applyMatrix4(sourceToTarget);
-  const selectedSide = Math.sign(desired.x);
+  if (action === 'center' && !helmet) {
+    const surface = [...surfaces].find(([, mesh]) => mesh === source)![0];
+    return centerOnBike(source, sourceToTarget, desired, placement, surface);
+  }
   const facing = new THREE.Vector3(...placement.normal).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(sourceToTarget));
   if (action === 'mirror') {
     desired.x *= -1;
     facing.x *= -1;
-  } else if (helmet) {
+  } else {
     source.geometry.computeBoundingBox();
     if (!source.geometry.boundingBox) return undefined;
     source.geometry.boundingBox.getCenter(desired).applyMatrix4(sourceToTarget);
-  } else {
-    // Center the whole visible motorcycle, including wheels and mechanical
-    // parts. The hidden rider and previous decals must not shift that target.
-    const bounds = new THREE.Box3();
-    target.traverseVisible(object => {
-      if (!(object instanceof THREE.Mesh) || object.userData.bikeSticker) return;
-      object.geometry.computeBoundingBox();
-      if (object.geometry.boundingBox) bounds.union(object.geometry.boundingBox.clone()
-        .applyMatrix4(new THREE.Matrix4().multiplyMatrices(targetInverse, object.matrixWorld)));
-    });
-    if (bounds.isEmpty()) return undefined;
-    bounds.getCenter(desired);
   }
   const triangle = new THREE.Triangle(), localNormal = new THREE.Vector3();
   const point = new THREE.Vector3(), targetPoint = new THREE.Vector3(), targetNormal = new THREE.Vector3();
@@ -246,10 +286,6 @@ export function adjustStickerPlacement(
       if ((action === 'mirror' || helmet) && targetNormal.dot(facing) <= 0.15) continue;
       triangle.closestPointToPoint(localDesired, point);
       targetPoint.copy(point).applyMatrix4(toTarget);
-      if (action === 'center' && !helmet && selectedSide && targetPoint.x * selectedSide < -0.001) continue;
-      // A new panel can face another way than the starting fender or mask.
-      // Prefer its outside skin rather than a triangle facing into the bike.
-      if (action === 'center' && !helmet && targetNormal.dot(targetPoint.clone().sub(desired)) < -0.000001) continue;
       // A missing opposite panel must not snap back to the starting side.
       if (action === 'mirror' && Math.abs(desired.x) > 0.001 && targetPoint.x * desired.x < 0) continue;
       const gap = targetPoint.distanceToSquared(desired);

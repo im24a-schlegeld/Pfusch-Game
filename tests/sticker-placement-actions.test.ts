@@ -13,7 +13,7 @@ function panels() {
   const left = new THREE.Mesh(right.geometry.clone(), material);
   left.position.set(-0.35, 0.7, 0.2);
   root.add(right, left);
-  const surfaces = new Map([['body/right:0', right], ['body/left:1', left]]);
+  const surfaces = new Map<string, THREE.Mesh>([['body/right:0', right], ['body/left:1', left]]);
   const placement: StickerPlacement = {
     id: 'same-sticker', productId: 'chrome', surface: 'body/right:0',
     point: [0.01, 0.13, 0.24], normal: [1, 0, 0], size: 0.09, rotation: 0.42,
@@ -22,61 +22,70 @@ function panels() {
 }
 
 describe('sticker position actions', () => {
-  it('centers against the whole motorcycle bounds, including non-stickerable parts', () => {
-    const { root, surfaces, placement } = panels();
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 2.8), new THREE.MeshBasicMaterial());
-    chassis.position.set(0, 0.7, 0.4);
-    root.add(chassis);
-    const hiddenRider = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 4), new THREE.MeshBasicMaterial());
-    hiddenRider.position.set(0, 4, 3); hiddenRider.visible = false;
-    const previousDecal = hiddenRider.clone(); previousDecal.visible = true; previousDecal.userData.bikeSticker = true;
-    root.add(hiddenRider, previousDecal);
+  it('centers on the motorcycle sagittal plane while retaining the selected sloped panel and nearest height', () => {
+    const { root, placement } = panels();
+    root.scale.set(1.4, 0.8, 1.2);
+    const shell = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial());
+    shell.position.set(0.2, 0.7, 1.3);
+    shell.rotation.y = 0.4;
+    shell.scale.set(1.2, 0.8, 1);
+    // Other parts and asymmetrical motorcycle bounds cannot change the axis
+    // or steal a sticker from the selected rear panel.
+    const distractor = new THREE.Mesh(shell.geometry, shell.material);
+    distractor.position.set(0, 0.7, 0);
+    root.add(shell, distractor, new THREE.Mesh(new THREE.BoxGeometry(8, 4, 12), shell.material));
+    const surfaces = new Map([['body/rear-shell', shell], ['body/other-shell', distractor]]);
+    placement.surface = 'body/rear-shell';
+    placement.point = [0.3, 0.12, 0];
+    placement.normal = [0, 0, 1];
     const before = structuredClone(placement);
     const centered = adjustStickerPlacement(root, surfaces, placement, 'center')!;
     expect(centered).toMatchObject({ id: placement.id, productId: placement.productId, surface: placement.surface, size: 0.09, rotation: 0.42 });
-    expect(centered.point[0]).toBeCloseTo(0.01);
-    expect(centered.point[1]).toBeCloseTo(0);
-    expect(centered.point[2]).toBeCloseTo(0.2);
-    expect(centered.normal[0]).toBeCloseTo(1);
-    expect(Math.hypot(centered.normal[1], centered.normal[2])).toBeCloseTo(0);
+    const actual = root.worldToLocal(shell.localToWorld(new THREE.Vector3(...centered.point)));
+    expect(actual.x).toBeCloseTo(0, 8);
+    expect(actual.y).toBeCloseTo(0.7 + 0.12 * 0.8, 8);
+    expect(actual.z).toBeCloseTo(1.3 + 0.2 * Math.tan(0.4), 8);
+    expect(centered.point[2]).toBeCloseTo(0, 8);
+    expect(centered.normal).toEqual([0, 0, 1]);
     expect(placement).toEqual(before);
   });
 
-  it.each([-1, 1])('moves from different distant parts to a central stickerable panel on side %s', side => {
-    const { root, right, left, surfaces, placement } = panels();
-    const middle = side > 0 ? right : left;
-    const starts = [-1.4, 1.8].map((z, index) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.2), right.material);
-      mesh.position.set(side * 0.35, 0.7, z);
-      root.add(mesh); surfaces.set(`body/part-${index}`, mesh);
-      return { ...placement, surface: `body/part-${index}`, point: [side * 0.01, 0.1, 0] as [number, number, number], normal: [side, 0, 0] as [number, number, number] };
-    });
-    for (const start of starts) {
-      const centered = adjustStickerPlacement(root, surfaces, start, 'center')!;
-      expect(surfaces.get(centered.surface)).toBe(middle);
-      expect(centered.point[0]).toBeCloseTo(side * 0.01);
-      expect(centered.point[1]).toBeCloseTo(0);
-      expect(centered.point[2]).toBeCloseTo(0);
-      expect(centered).toMatchObject({ id: start.id, productId: start.productId, size: start.size, rotation: start.rotation });
-    }
+  it('leaves a side panel unchanged when it has no sagittal intersection, even if another surface crosses it', () => {
+    const { root, surfaces, placement } = panels();
+    const other = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial());
+    root.add(other); surfaces.set('body/center-panel', other);
+    const before = structuredClone(placement);
+    expect(adjustStickerPlacement(root, surfaces, placement, 'center')).toBeUndefined();
+    expect(placement).toEqual(before);
   });
 
   it.each([
-    { position: [0.1, 0.7, -1.4], point: [0, 0, -0.1], normal: [0, 0, -1] },
-    { position: [0.1, 0.7, 1.8], point: [0, 0.25, 0], normal: [0, 1, 0] },
-  ])('centers a sticker from a differently facing part without requiring its old surface normal: $normal', ({ position, point, normal }) => {
-    const { root, right, surfaces, placement } = panels();
-    const part = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.2), right.material);
-    part.position.fromArray(position); root.add(part); surfaces.set('body/other-part', part);
-    // Keep the motorcycle's extent identical for front- and top-facing starts.
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 3.4), right.material);
-    chassis.position.set(0, 0.7, 0.2); root.add(chassis);
-    const start = { ...placement, surface: 'body/other-part', point: point as [number, number, number], normal: normal as [number, number, number] };
+    { name: 'coplanar triangle', vertices: [0, -1, -1, 0, 1, -1, 0, 0, 1], point: [0, 0.2, 0.3], normal: [1, 0, 0], expected: [0, 0.2, 0.3] },
+    { name: 'single touching vertex', vertices: [0, 0, 0, 1, -1, 0, 1, 1, 0], point: [0.5, 0, 0], normal: [0, 0, 1], expected: [0, 0, 0] },
+    { name: 'edge in the plane', vertices: [0, -1, 0, 1, 0, 0, 0, 1, 0], point: [0.3, 0.15, 0], normal: [0, 0, 1], expected: [0, 0.15, 0] },
+  ])('handles a $name without floating off the selected triangle', ({ vertices, point, normal, expected }) => {
+    const root = new THREE.Group(); root.position.set(2, 3, -1); root.rotation.y = 0.7;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    const shell = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); root.add(shell);
+    const start: StickerPlacement = { id: 'boundary', productId: 'chrome', surface: 'body/shell', point: point as [number, number, number], normal: normal as [number, number, number], size: 0.09, rotation: 0.42 };
+    const surfaces = new Map([[start.surface, shell]]);
     const centered = adjustStickerPlacement(root, surfaces, start, 'center')!;
-    expect(surfaces.get(centered.surface)).toBe(right);
-    expect(centered.point[1]).toBeCloseTo(0);
-    expect(centered.point[2]).toBeCloseTo(0);
-    expect(centered.rotation).toBe(start.rotation);
+    expect(centered).toMatchObject({ ...start, point: expected.map(value => expect.closeTo(value, 8)), normal: normal.map(value => expect.closeTo(value, 8)) });
+    expect(adjustStickerPlacement(root, surfaces, centered, 'center')).toMatchObject({ ...centered, point: centered.point.map(value => expect.closeTo(value, 8)), normal: centered.normal.map(value => expect.closeTo(value, 8)) });
+  });
+
+  it.each([-1, 1])('keeps the selected skin with authored winding %s', winding => {
+    const root = new THREE.Group();
+    const geometry = new THREE.BoxGeometry(1, 0.8, 0.012);
+    const index = geometry.getIndex()!;
+    if (winding < 0) for (let i = 0; i < index.count; i += 3) {
+      const b = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b);
+    }
+    const shell = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })); root.add(shell);
+    const start: StickerPlacement = { id: 'same-skin', productId: 'chrome', surface: 'body/shell', point: [0.3, 0.12, 0.006], normal: [0, 0, winding], size: 0.09, rotation: 0.42 };
+    const centered = adjustStickerPlacement(root, new Map([[start.surface, shell]]), start, 'center')!;
+    expect(centered).toMatchObject({ ...start, point: [expect.closeTo(0, 8), expect.closeTo(0.12, 8), expect.closeTo(0.006, 8)], normal: start.normal.map(value => expect.closeTo(value, 8)) });
   });
 
   it('mirrors attachment onto the real opposite panel in target space, preserving the print', () => {
