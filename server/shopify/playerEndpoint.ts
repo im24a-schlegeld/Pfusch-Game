@@ -2,7 +2,7 @@ import { ApiError, assertCustomerIdentity, authenticateProxy, createCsrf, verify
 import { loadCustomerPlayer, saveCustomerPlayer, type ShopifyFetch } from './playerStore.js';
 import { isRecord, retainGuardianBells, sanitizeDigitalPlayer } from './playerValidation.js';
 import type { Player } from '../../app/domain/types.js';
-import { canSave, retainRunCount, storageAccess, type StorageAccess } from './storagePolicy.js';
+import { retainRunCount, storageAccess, type StorageAccess } from './storagePolicy.js';
 import { assertPlausibleDigitalSave } from './progressAntiCheat.js';
 import type { VerifiedPurchases } from './purchaseStore.js';
 import { classifySaveDevice } from './playerDevice.js';
@@ -58,13 +58,10 @@ export async function handlePlayerRequest(input: PlayerRequest, dependencies: Pl
       if (body.compareDigest !== null && (typeof body.compareDigest !== 'string' || !/^[a-f0-9]{64}$/i.test(body.compareDigest)))
         throw new ApiError(400, 'invalid_compare_digest');
       const incoming = sanitizeDigitalPlayer(body.player, identity.customerId, purchases?.items);
-      // Re-read live consent on every save, including for a previously granted
-      // session. Never write consent or accept it from a browser field.
+      // Shopify identity and the compareDigest guard still protect every save.
       const current = await loadCustomerPlayer(config, identity.customerId, dependencies.request, purchases?.items);
       let player = retainRunCount(incoming, current.player);
       storage = storageAccess(current.marketingState, player.runsPlayed);
-      if (!canSave(current.marketingState, current.player?.runsPlayed ?? 0, player.runsPlayed))
-        return { status: 403, body: { error: storage.reason === 'unsubscribed' ? 'newsletter_unsubscribed' : 'newsletter_required', storage } };
       if (body.compareDigest !== current.compareDigest) throw new ApiError(409, 'conflict');
       player = retainGuardianBells(player, current.player, isRecord(body.player) && body.player.guardianBells !== undefined);
       assertPlausibleDigitalSave(current.player, player);

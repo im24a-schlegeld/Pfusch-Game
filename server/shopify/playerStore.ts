@@ -1,7 +1,7 @@
 import type { Player } from '../../app/domain/types.js';
 import { ApiError, type ShopifyConfig } from './auth.js';
 import { isRecord, MAX_BODY_BYTES, sanitizeDigitalPlayer } from './playerValidation.js';
-import { readMarketingState, type MarketingState } from './storagePolicy.js';
+import type { MarketingState } from './storagePolicy.js';
 import { shopifyAdminToken } from './adminToken.js';
 import { byteLength } from './crypto.js';
 import { GIFT_KEY, pendingGifts, readGiftLedger, type GiftNotification } from './giftLedger.js';
@@ -51,14 +51,15 @@ export async function shopifyGraphql(config: ShopifyConfig, query: string, varia
 export async function loadCustomerPlayer(config: ShopifyConfig, customerId: string, request: ShopifyFetch, verifiedItems: string[] = []): Promise<CustomerPlayer> {
   const data = await shopifyGraphql(config, `query GamePlayer($id: ID!, $namespace: String!, $key: String!, $gifts: String!) {
     customer(id: $id) {
-      id emailMarketingConsent { marketingState }
+      id
       metafield(namespace: $namespace, key: $key) { value compareDigest }
       gifts: metafield(namespace: $namespace, key: $gifts) { value compareDigest }
     }
   }`, { id: ownerId(customerId), namespace: PLAYER_NAMESPACE, key: PLAYER_KEY, gifts: GIFT_KEY }, request);
   if (data.customer === null) throw new ApiError(401, 'unauthorized');
   if (!isRecord(data.customer) || data.customer.id !== ownerId(customerId)) throw new ApiError(502, 'invalid_shopify_response');
-  const marketingState = readMarketingState(data.customer.emailMarketingConsent);
+  // Newsletter preferences are never read, changed, or required for game access.
+  const marketingState: MarketingState = 'NOT_SUBSCRIBED';
   const gifts = pendingGifts(readGiftLedger(data.customer.gifts).ledger);
   const field = data.customer.metafield;
   if (field === null) return { player: null, compareDigest: null, marketingState, gifts };

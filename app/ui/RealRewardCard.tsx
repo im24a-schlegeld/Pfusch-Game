@@ -38,6 +38,7 @@ export function WeeklyRewardProgress({ status, now, busy, onClaim }: { status: R
     {(campaign.phase !== 'claimed' || status.pending) && <button className="button" disabled={busy || !status.available || !(status.eligible || status.pending)} onClick={onClaim}>
       {busy ? 'CODE WIRD BESTÄTIGT …' : status.pending ? 'CODE BESTÄTIGEN' : status.eligible ? 'CODE ABHOLEN' : 'NOCH NICHT FREIGESCHALTET'}
     </button>}
+    {campaign.metric === 'points' && <p>Jeder serverseitig bestätigte Punkt zählt, auch aus kurzen Fahrten. Kein Tageslimit.</p>}
     {next && <p className="real-reward-next"><strong>Neue Wochenaufgabe danach:</strong> {fmt(next.target)} {rewardUnits[next.metric]} für CHF {next.rewardCHF} Rabatt.</p>}
     <p className="real-reward-offer">Nächster Angebotswechsel: <time dateTime={change}>{rewardDate(change)}</time>.
       {' '}Wochenangebote wechseln montags um 00:00 UTC. Ein laufender Versuch behält seine vollständigen 48 Stunden.</p>
@@ -155,9 +156,9 @@ export default function RealRewardCard({ service, onSignIn, loginHref }: { servi
         <p><strong>Deine Aufgabe:</strong> Sammle online und angemeldet {fmt(status!.pointsRequired)} Punkte in mindestens {status!.runsRequired} Fahrten.</p>
         <label className="real-reward-progress">Punkte für deinen Rabatt <strong>{fmt(status!.verifiedPoints)} / {fmt(status!.pointsRequired)}</strong>
           <progress max={status!.pointsRequired} value={Math.min(status!.verifiedPoints, status!.pointsRequired)} /></label>
-        <p>{status!.verifiedRuns} / {status!.runsRequired} bestätigte Fahrten · Heute {fmt(status!.dailyPoints)} / {fmt(status!.dailyCap)} Punkte</p>
+        <p>{status!.verifiedRuns} / {status!.runsRequired} bestätigte Fahrten · Heute {fmt(status!.dailyPoints)} Punkte ohne Tageslimit</p>
         <details className="real-reward-help"><summary>Welche Fahrten zählen?</summary>
-          <p>Eine Fahrt zählt ab 20 Sekunden und 100 Punkten. Pro Tag zählen höchstens {fmt(status!.dailyCap)} Punkte. Coins und XP zählen nicht.</p>
+          <p>Alle serverseitig bestätigten Fahrpunkte zählen ohne Mindestfahrzeit oder Tageslimit. Coins und XP zählen nicht.</p>
         </details>
         {status!.pending ? <p>Dein Code ist reserviert. Tippe auf «Code bestätigen», um ihn zu erhalten.</p>
           : status!.eligible ? <p><strong>Aufgabe geschafft!</strong> Du kannst deinen Rabattcode jetzt abholen.</p>

@@ -6,7 +6,7 @@ import { isRecord } from './playerValidation.js';
 import type { JsonResult, PlayerRequest } from './playerEndpoint.js';
 import type { ShopifyFetch } from './playerStore.js';
 import { issueRewardDiscount, reserveRewardDiscount } from './rewardDiscount.js';
-import { DAILY_REWARD_START_CAP, DAILY_VERIFIED_CAP, emptyRewardLedger, loadRewardLedger, saveRewardLedger,
+import { DAILY_REWARD_START_CAP, emptyRewardLedger, loadRewardLedger, saveRewardLedger,
   VERIFIED_POINTS_REQUIRED, VERIFIED_RUNS_REQUIRED, type RewardLedger, type RunChallenge } from './rewardStore.js';
 import { currentRewardOffer, freshRewardCampaign, publicRewardOffer, REWARD_ATTEMPT_MS, type RewardOffer } from './rewardCampaign.js';
 
@@ -65,7 +65,7 @@ function status(ledger: RewardLedger, offer: RewardOffer, now: number, unavailab
     : campaign.startedAt === null ? 'not_started' : now > campaign.expiresAt! ? 'expired' : 'active';
   return { available: !unavailableReason, ...(unavailableReason ? { reason: unavailableReason } : {}),
     verifiedPoints: ledger.points, verifiedRuns: ledger.runs, pointsRequired: VERIFIED_POINTS_REQUIRED, runsRequired: VERIFIED_RUNS_REQUIRED,
-    dailyPoints: ledger.dailyPoints, dailyCap: DAILY_VERIFIED_CAP,
+    dailyPoints: ledger.dailyPoints, dailyCap: null,
     eligible: !unavailableReason && campaign.completedAt !== null && !ledger.reward,
     reward: issued ? { code: issued.code, expiresAt: issued.expiresAt } : null,
     pending: [ledger.reward, ...ledger.rewardHistory].some(reward => reward?.state === 'reserved'),
@@ -143,7 +143,6 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
         if (ledger.dailyStarts >= DAILY_REWARD_START_CAP) throw new ApiError(429, 'reward_run_limit');
         if (ledger.lastStartAt && now - ledger.lastStartAt < MIN_REWARD_START_INTERVAL_MS)
           throw new RewardRunCooldownError(Math.min(MIN_REWARD_START_INTERVAL_MS, ledger.lastStartAt + MIN_REWARD_START_INTERVAL_MS - now));
-        if (ledger.dailyPoints >= DAILY_VERIFIED_CAP) throw new ApiError(429, 'reward_daily_limit');
         return { ...ledger, active: challenge, dailyStarts: ledger.dailyStarts + 1, lastStartAt: now };
       });
       const active = prepared.active!;
@@ -159,13 +158,17 @@ export async function handleRewardRequest(action: RewardAction, input: PlayerReq
         body.proof.ticks / 60 > (now - challenge.startedAt) / 1000 + 1.5) throw new ApiError(422, 'invalid_run_proof');
       const replay = replayVerifiedRunDetailed(challenge.bikeId, challenge.seed, body.proof);
       if (!replay || (!replay.crashed && replay.ticks !== MAX_VERIFIED_TICKS)) throw new ApiError(422, 'invalid_run_proof');
-      const validRun = replay.ticks >= 1200 && replay.score >= 100;
+      const validRun = replay.score > 0 || replay.jumps > 0 || replay.nearMisses > 0 || replay.policeEscapes > 0;
       let creditedPoints = 0;
       const ledger = await persist(async current => {
         const consumed = current.consumed.find(entry => entry.runId === challenge.runId);
         if (consumed) { creditedPoints = consumed.points; return current; }
         if (!sameChallenge(current.active, challenge)) throw new ApiError(409, 'run_not_active');
-        creditedPoints = validRun ? Math.max(0, Math.min(Math.floor(replay.score), Math.floor(replay.ticks / 60 * 100), DAILY_VERIFIED_CAP - current.dailyPoints)) : 0;
+        // Full score from the deterministic server replay, no minimum duration,
+        // no per-second throttle and no daily point budget.
+        creditedPoints = validRun ? Math.max(0, Math.floor(replay.score)) : 0;
+        if (!Number.isSafeInteger(creditedPoints) || !Number.isSafeInteger(current.points + creditedPoints)
+          || !Number.isSafeInteger(current.dailyPoints + creditedPoints)) throw new ApiError(422, 'invalid_run_proof');
         let campaign = current.campaign!, reward = current.reward;
         if (validRun && campaign.completedAt === null) {
           if (campaign.startedAt === null || now > campaign.expiresAt!) {

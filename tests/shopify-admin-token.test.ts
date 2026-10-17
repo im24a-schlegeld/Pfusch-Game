@@ -153,10 +153,11 @@ describe('Dev Dashboard server authentication', () => {
     });
     const integrationConfig = { ...config, clientId: 'integration-client' };
     const player = { ...newPlayer(), highScore: 100 };
-    expect((await loadCustomerPlayer(integrationConfig, '123', request)).marketingState).toBe('SUBSCRIBED');
+    expect((await loadCustomerPlayer(integrationConfig, '123', request)).marketingState).toBe('NOT_SUBSCRIBED');
     await saveCustomerPlayer(integrationConfig, '123', player, null, request);
     await updateRanking(integrationConfig, '123', player, request);
     expect(request).toHaveBeenCalledTimes(5);
     expect(requests).toHaveLength(4);
+    expect(requests.find(query => query.includes('query GamePlayer'))).not.toContain('emailMarketingConsent');
   });
 });

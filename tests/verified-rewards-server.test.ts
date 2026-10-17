@@ -95,26 +95,39 @@ function fixture() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('server-verified Shopify reward authority', () => {
-  it('starts exactly 48 hours on the first qualifying accepted proof, never on garage preparation or short runs', async () => {
+  it('starts exactly 48 hours on the first signed, score-positive proof including short runs', async () => {
     const f = fixture();
     const start = await f.call('run/start', { bikeId: '125' });
     expect((await f.call('status')).body.campaign).toMatchObject({ startedAt: null, expiresAt: null, attempt: 0 });
     const challenge = start.body.challenge as replayModule.VerifiedRunChallenge;
     f.state.clock += 2_000;
     const short = await f.call('run/finish', { token: challenge.token, proof: { ticks: 60, events: [{ tick: 60, input: { type: 'end' } }] } });
-    expect(short.body.campaign).toMatchObject({ startedAt: null, progress: 0 });
+    const firstAcceptedAt = f.state.clock;
+    expect(short.body).toMatchObject({ creditedPoints: 2, verifiedPoints: 2, verifiedRuns: 1 });
+    expect(short.body.campaign).toMatchObject({ startedAt: new Date(firstAcceptedAt).toISOString(), expiresAt: new Date(firstAcceptedAt + REWARD_ATTEMPT_MS).toISOString(), attempt: 1, progress: 2 });
     f.state.clock += 30_000;
     const next = (await f.call('run/start', { bikeId: '125' })).body.challenge as replayModule.VerifiedRunChallenge;
     vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 9999, ticks: 1200, crashed: true, jumps: 4, nearMisses: 7, policeEscapes: 1 });
     f.state.clock += 25_000;
-    const acceptedAt = f.state.clock;
+    // A subsequent ride must add score without restarting the first 48-hour window.
     const finished = await f.call('run/finish', { token: next.token, proof: { ticks: 1200, events: [] } });
     expect(finished.status).toBe(200);
-    expect(finished.body.campaign).toMatchObject({ progress: 2000, attempt: 1, startedAt: new Date(acceptedAt).toISOString(), expiresAt: new Date(acceptedAt + REWARD_ATTEMPT_MS).toISOString() });
-    expect(finished.body.creditedPoints).toBe(2000);
+    expect(finished.body.campaign).toMatchObject({ progress: 10001, attempt: 1, startedAt: new Date(firstAcceptedAt).toISOString(), expiresAt: new Date(firstAcceptedAt + REWARD_ATTEMPT_MS).toISOString() });
+    expect(finished.body.creditedPoints).toBe(9999);
     const writes = f.state.writes;
     expect((await f.call('run/finish', { token: next.token, proof: { ticks: 1200, events: [] } })).body.campaign).toEqual(finished.body.campaign);
     expect(f.state.writes).toBe(writes);
+  });
+
+  it('credits the entire 25k score after a short verified ride, not seconds multiplied by 100', async () => {
+    vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 25000, ticks: 120, crashed: true, jumps: 0, nearMisses: 0, policeEscapes: 0 });
+    const f = fixture(), { token } = await f.active();
+    f.state.clock += 3_000;
+    const finish = await f.call('run/finish', { token, proof: { ticks: 120, events: [] } });
+    expect(finish.status).toBe(200);
+    expect(finish.body.creditedPoints).toBe(25000);
+    expect(finish.body.campaign).toMatchObject({ progress: 25000 });
+    expect((await f.call('run/finish', { token, proof: { ticks: 120, events: [] } })).body.creditedPoints).toBe(25000);
   });
 
   it('restarts an expired attempt only with another qualifying proof and resets progress', async () => {
@@ -357,7 +370,7 @@ describe('server-verified Shopify reward authority', () => {
     expect((await f.call('run/finish', { token, proof: { ticks: 0, events: [] } })).body.error).toBe('run_expired');
   });
 
-  it('replays a real short run, consumes it once, and grants no qualifying run credit', async () => {
+  it('replays a real short run, credits its signed score exactly once', async () => {
     const f = fixture(), { token } = await f.active(); f.state.clock += 2000;
     // Shopify's JSON storage can reorder keys without changing the signed data.
     f.state.value = JSON.stringify(JSON.parse(f.state.value!), (_key, value: unknown) =>
@@ -366,13 +379,13 @@ describe('server-verified Shopify reward authority', () => {
     const proof = { ticks: 60, events: [{ tick: 60, input: { type: 'end' } }] };
     const finish = await f.call('run/finish', { token, proof });
     expect(finish.status).toBe(200);
-    expect(finish.body).toMatchObject({ accepted: true, creditedPoints: 0, verifiedRuns: 0, verifiedPoints: 0 });
+    expect(finish.body).toMatchObject({ accepted: true, creditedPoints: 2, verifiedRuns: 1, verifiedPoints: 2 });
     const writes = f.state.writes;
-    expect((await f.call('run/finish', { token, proof })).body.creditedPoints).toBe(0);
+    expect((await f.call('run/finish', { token, proof })).body.creditedPoints).toBe(2);
     expect(f.state.writes).toBe(writes);
   });
 
-  it('CAS-settles concurrent verified finishes once, clips the daily cap, and ignores claimed client points', async () => {
+  it('CAS-settles concurrent verified finishes once, without clipping daily points', async () => {
     // Isolate ledger concurrency from physics, which has its own deterministic replay tests above/in verified-run.test.ts.
     vi.spyOn(replayModule, 'replayVerifiedRunDetailed').mockReturnValue({ score: 5000, ticks: 1800, crashed: true, jumps: 0, nearMisses: 0, policeEscapes: 0 });
     const f = fixture(), { token } = await f.active({ points: 12000, runs: 3, dailyPoints: 999800 }); f.state.clock += 31_000;
@@ -380,11 +393,11 @@ describe('server-verified Shopify reward authority', () => {
       f.call('run/finish', { token, proof: { ticks: 1800, events: [] } })]);
     expect(responses.every(response => response.status === 200)).toBe(true);
     const saved = await loadRewardLedger(config, '123', f.state.clock, f.request);
-    expect(saved.ledger).toMatchObject({ points: 12200, runs: 4, dailyPoints: 1000000, active: null });
+    expect(saved.ledger).toMatchObject({ points: 17000, runs: 4, dailyPoints: 1004800, active: null });
     expect(saved.ledger.consumed).toHaveLength(1);
-    expect((await f.call('run/start', { bikeId: '125' })).body.error).toBe('reward_daily_limit');
+    expect((await f.call('run/start', { bikeId: '125' })).status).toBe(200);
     f.state.clock += 86_400_000;
-    expect((await f.call('status')).body).toMatchObject({ verifiedPoints: 12200, dailyPoints: 0 });
+    expect((await f.call('status')).body).toMatchObject({ verifiedPoints: 17000, dailyPoints: 0, dailyCap: null });
   });
 
   it('never imports an untrusted ledger or treats invalid stored data as a fresh reward account', async () => {

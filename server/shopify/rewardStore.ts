@@ -10,7 +10,7 @@ import { validRewardCampaign, type RewardCampaign } from './rewardCampaign.js';
 export const REWARD_KEY = 'verified_rewards_v1';
 export const VERIFIED_POINTS_REQUIRED = 1_000_000;
 export const VERIFIED_RUNS_REQUIRED = 0;
-export const DAILY_VERIFIED_CAP = 1_000_000;
+export const DAILY_VERIFIED_CAP = Number.MAX_SAFE_INTEGER; // Technical integer bound, not a daily reward quota.
 /** Bounds durable challenge issuance without cutting off legitimate short-crash sessions. */
 export const DAILY_REWARD_START_CAP = 2_000;
 export type RunChallenge = Omit<VerifiedRunChallenge, 'token'>;

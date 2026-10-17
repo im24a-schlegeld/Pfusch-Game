@@ -27,7 +27,7 @@ export interface RealRewardStatus {
   pointsRequired: number;
   runsRequired: number;
   dailyPoints: number;
-  dailyCap: number;
+  dailyCap: number | null;
   eligible: boolean;
   pending: boolean;
   reward: { code: string; expiresAt: string } | null;
@@ -79,7 +79,6 @@ export function rewardRunNotice(error: unknown, phase: 'start' | 'finish'): { me
   const suffix = phase === 'start' ? 'Diese Fahrt zählt nur im Spiel.' : 'Die Shop-Prüfung wird bei Verbindung wiederholt.';
   if (issue?.code === 'network_error') return { message: 'Du spielst offline. Dein Spielstand wird synchronisiert, sobald du wieder Internet hast.', transient: true };
   if (issue?.code === 'request_timeout') return { message: `Shop antwortet zu langsam. ${suffix}`, transient: true };
-  if (issue?.code === 'reward_daily_limit') return { message: 'Das Tageslimit für Rabattpunkte ist erreicht. Morgen geht es weiter; Punkte und Coins sammelst du weiter.', transient: true };
   if (issue?.code === 'reward_run_limit') return { message: 'Das heutige Startlimit für Shop-Fahrten ist erreicht. Punkte und Coins sammelst du weiter.', transient: true };
   if (issue?.code === 'reward_run_cooldown') return { message: 'Die nächste Shop-Fahrt ist gleich bereit. Bitte kurz warten.', transient: true };
   if (issue?.status === 429) return { message: `Shop ist ausgelastet. ${suffix}`, transient: true };
@@ -155,11 +154,11 @@ export class OxygenVerifiedRewards implements VerifiedRewardsService {
     } finally { clearTimeout(timeout); }
   }
   private parseStatus(data: Record<string, unknown>): RealRewardStatus {
-    const counters = ['verifiedPoints', 'verifiedRuns', 'pointsRequired', 'runsRequired', 'dailyPoints', 'dailyCap'] as const;
+    const counters = ['verifiedPoints', 'verifiedRuns', 'pointsRequired', 'runsRequired', 'dailyPoints'] as const;
     if (typeof data.available !== 'boolean' || typeof data.eligible !== 'boolean' || typeof data.pending !== 'boolean'
       || counters.some(key => !boundedInteger(data[key]))
       || (data.campaign === undefined ? data.pointsRequired !== 50000 || data.runsRequired !== 10 || data.dailyCap !== 10000
-        : data.pointsRequired !== 1000000 || data.runsRequired !== 0 || data.dailyCap !== 1000000 || !validCampaign(data.campaign)
+        : data.pointsRequired !== 1000000 || data.runsRequired !== 0 || data.dailyCap !== null || !validCampaign(data.campaign)
           || data.nextCampaign !== null && !validOffer(data.nextCampaign)
           || !Array.isArray(data.rewards) || data.rewards.length > 9 || !data.rewards.every(reward => isRecord(reward)
             && typeof reward.code === 'string' && /^[A-Z0-9-]{6,80}$/i.test(reward.code) && validDate(reward.expiresAt)

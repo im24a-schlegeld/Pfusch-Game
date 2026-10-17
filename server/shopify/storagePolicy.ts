@@ -7,7 +7,7 @@ const marketingStates = ['INVALID', 'NOT_SUBSCRIBED', 'PENDING', 'REDACTED', 'SU
 export type MarketingState = typeof marketingStates[number];
 export interface StorageAccess {
   allowed: boolean;
-  reason: 'subscribed' | 'trial' | 'newsletter_required' | 'unsubscribed';
+  reason: 'account' | 'subscribed' | 'trial' | 'newsletter_required' | 'unsubscribed';
   completedRuns: number;
   freeRuns: typeof FREE_RUNS;
 }
@@ -23,10 +23,9 @@ export function readMarketingState(consent: unknown): MarketingState {
   return consent.marketingState as MarketingState;
 }
 
-export function storageAccess(state: MarketingState, completedRuns: number): StorageAccess {
-  const reason = state === 'SUBSCRIBED' ? 'subscribed' : state === 'UNSUBSCRIBED' ? 'unsubscribed'
-    : completedRuns < FREE_RUNS ? 'trial' : 'newsletter_required';
-  return { allowed: reason === 'subscribed' || reason === 'trial', reason, completedRuns, freeRuns: FREE_RUNS };
+// Called only after server-verification of Shopify identity; newsletter consent is unrelated.
+export function storageAccess(_state: MarketingState, completedRuns: number): StorageAccess {
+  return { allowed: true, reason: 'account', completedRuns, freeRuns: FREE_RUNS };
 }
 
 /** Preserve the durable count even if a client restores an older local save.
@@ -42,6 +41,7 @@ export function retainRunCount(incoming: Player, saved: Player | null): Player {
 
 /** A fifth trial run can settle once, then both play and saving are locked.
  * A prior unsubscribe has no remaining trial, even before five runs. */
-export function canSave(state: MarketingState, savedRuns: number, incomingRuns: number): boolean {
-  return state === 'SUBSCRIBED' || (state !== 'UNSUBSCRIBED' && savedRuns < FREE_RUNS && incomingRuns <= FREE_RUNS);
+export function canSave(_state: MarketingState, _savedRuns: number, _incomingRuns: number): boolean {
+  // The caller has already established a trusted Shopify customer identity.
+  return true;
 }

@@ -95,11 +95,11 @@ describe('Server-verified customer adapter', () => {
     expect((await handlePlayerRequest(input({ ...valid, subscribed: true }), dependencies(request))).status).toBe(400);
     expect(request).not.toHaveBeenCalled();
   });
-  it('still rereads Shopify newsletter consent and refuses a save after unsubscribe', async () => {
+  it('permits an authenticated account without newsletter consent', async () => {
     const request = vi.fn<typeof fetch>(async () => read('UNSUBSCRIBED'));
-    const result = await handlePlayerRequest(input(await body()), dependencies(request));
-    expect(result.status).toBe(403);
-    expect(result.body.error).toBe('newsletter_unsubscribed');
+    const result = await handlePlayerRequest({ ...input({}), method: 'GET' }, dependencies(request));
+    expect(result.status).toBe(200);
+    expect(result.body.storage).toMatchObject({ allowed: true, reason: 'account' });
     expect(request).toHaveBeenCalledTimes(1);
   });
   it('uses the server session for ranking identity, preserves period validation and rejects other shops', async () => {

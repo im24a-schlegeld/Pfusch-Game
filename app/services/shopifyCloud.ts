@@ -392,7 +392,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     const copy = digitalPlayer(this.decode(JSON.stringify(player)), this.session.customer.id);
     this.lastUnsaved = copy;
     const mayQueue = this.access.allowed && !this.blocked
-      && (this.session.storage.reason === 'subscribed' || copy.runsPlayed <= 5);
+      && ((this.session.storage.reason === 'account' || this.session.storage.reason === 'subscribed') || copy.runsPlayed <= 5);
     this.localCompletedRuns = Math.max(this.localCompletedRuns, Math.floor(copy.runsPlayed));
     if (this.access.allowed || this.access.reason === 'newsletter_required' && this.session.storage.reason === 'trial')
       this.setAccess(this.session.storage);
@@ -407,7 +407,7 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
     this.storeOutbox(player);
     if (this.timer) clearTimeout(this.timer);
     if (this.offline || !this.isOnline()) { this.offlineStatus(); return; }
-    this.status('saving', 'Spielstand und Newsletter-Freigabe werden im Shop geprüft …');
+    this.status('saving', 'Spielstand und Kontozugriff werden im Shop geprüft …');
     this.timer = setTimeout(() => { void this.flush(); }, this.debounceMs);
   }
 
@@ -641,11 +641,11 @@ export class ShopifyCloudRepository implements PlayerRepository, AuthService {
       this.localCompletedRuns = Math.max(this.localCompletedRuns, next.storage.completedRuns);
       this.setAccess(next.storage);
       if (!next.storage.allowed) this.deny(next.storage);
-      else if (this.lastUnsaved && (next.storage.reason === 'subscribed' || this.lastUnsaved.runsPlayed <= 5)) {
+      else if (this.lastUnsaved && ((next.storage.reason === 'account' || next.storage.reason === 'subscribed') || this.lastUnsaved.runsPlayed <= 5)) {
         this.queue(this.lastUnsaved);
         await this.flush();
       } else if (!this.access.allowed) this.deny(this.access);
-      else this.status('synced', 'Newsletter-Freigabe im Shop bestätigt.');
+      else this.status('synced', 'PFUSCH-Konto erfolgreich bestätigt.');
       return this.access;
     } catch {
       if (authRevision !== this.authRevision) return this.access;

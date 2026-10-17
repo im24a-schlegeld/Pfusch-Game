@@ -12,7 +12,7 @@ it('describes the initial million-point campaign without starting its 48-hour ti
   expect(result.status).toBe(200);
   expect(result.body.campaign).toMatchObject({ metric: 'points', target: 1_000_000, rewardCHF: 5,
     offerEndsAt: '2026-10-26T00:00:00.000Z', phase: 'not_started', startedAt: null, expiresAt: null });
-  expect(result.body.dailyCap).toBe(1_000_000);
+  expect(result.body.dailyCap).toBeNull();
 });
 
 it('randomizes at runtime on UTC Mondays, remains stable across workers, and scales bounded rewards and effort', async () => {

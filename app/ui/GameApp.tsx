@@ -61,7 +61,7 @@ function shopRunConfirmation(status: RealRewardStatus) {
   const credited = (status as RealRewardStatus & { creditedPoints?: number }).creditedPoints;
   return typeof credited === 'number'
     ? credited > 0 ? `Shop-Server bestätigt: +${credited.toLocaleString('de-CH')} Punkte. Aufgabenfortschritt: ${progress}.`
-      : `Shop-Server bestätigt, aber 0 Punkte gutgeschrieben. Prüfe 20 s Mindestdauer, 100 Punkte und Tageslimit. Fortschritt: ${progress}.`
+      : `Shop-Server bestätigt, aber 0 Punkte gutgeschrieben. Die signierte Fahrt enthält keine anrechenbaren Punkte. Fortschritt: ${progress}.`
     : `Shop-Server antwortete. Aufgabenfortschritt: ${progress}.`;
 }
 export default function GameApp() {
@@ -159,8 +159,8 @@ export default function GameApp() {
   }, [loginHint]);
   // Dismiss a stale access dialog after a fresh server verification succeeds.
   useEffect(() => {
-    if (accessOpen && !checkingAccess && accessStatus?.allowed) setAccessOpen(false);
-  }, [accessOpen, checkingAccess, accessStatus?.allowed]);
+    if (accessOpen && !checkingAccess && !accessError && accessStatus?.allowed) setAccessOpen(false);
+  }, [accessOpen, checkingAccess, accessError, accessStatus?.allowed]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(''), 3800);
@@ -527,7 +527,6 @@ export default function GameApp() {
   const back = () => navigate('garage');
   const goToShop = () => window.location.assign(`${SHOPIFY_STOREFRONT_ORIGIN}/`);
   const access = accessError ? unavailableAccess(player.runsPlayed) : accessStatus ?? unavailableAccess(player.runsPlayed);
-  const newsletterOrigin = parentOrigin;
   const oxygenLoginHref = (() => {
     const login = new URL('/auth/login', SHOPIFY_OXYGEN_ORIGIN);
     let returnTo = `${SHOPIFY_OXYGEN_ORIGIN}/`;
@@ -637,11 +636,8 @@ export default function GameApp() {
         authenticated={accountKind === 'customer'}
         loginHref={oxygenLoginHref}
         onLogin={services.auth.login || oxygenRuntime ? () => { void beginLogin(); } : undefined}
-        message={accessError} onStart={start} back={() => setAccessOpen(false)}
-        onNewsletter={newsletterOrigin ? () => {
-          setAccessOpen(false);
-          window.parent.postMessage({ type: 'pfusch:open-newsletter', version: 1 }, newsletterOrigin);
-        } : undefined} />
+        message={accessError} onStart={start} onRetry={() => { void checkAccess(false); }}
+        back={() => setAccessOpen(false)} />
       {screen === 'settings' && (
         <SettingsScreen
           player={player}

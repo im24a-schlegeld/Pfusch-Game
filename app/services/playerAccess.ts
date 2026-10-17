@@ -1,6 +1,6 @@
 export interface PlayerAccess {
   allowed: boolean;
-  reason: 'subscribed' | 'trial' | 'newsletter_required' | 'unsubscribed' | 'unavailable';
+  reason: 'account' | 'subscribed' | 'trial' | 'newsletter_required' | 'unsubscribed' | 'unavailable';
   completedRuns: number;
   freeRuns: 5;
 }
@@ -22,7 +22,7 @@ export function serverAccess(value: unknown): PlayerAccess {
   const access = value as Record<string, unknown>;
   if (typeof access.allowed !== 'boolean' || access.freeRuns !== 5 || typeof access.completedRuns !== 'number'
     || !Number.isSafeInteger(access.completedRuns) || access.completedRuns < 0) throw new Error('Ungültige Freigabe');
-  const valid = access.reason === 'subscribed' ? access.allowed
+  const valid = access.reason === 'account' || access.reason === 'subscribed' ? access.allowed
     : access.reason === 'unsubscribed' ? !access.allowed
       : access.reason === 'trial' ? access.allowed && access.completedRuns < 5
         : access.reason === 'newsletter_required' ? !access.allowed && access.completedRuns >= 5 : false;
@@ -33,5 +33,5 @@ export function serverAccess(value: unknown): PlayerAccess {
 export const accessMessage = (access: PlayerAccess) => access.reason === 'unsubscribed'
   ? 'Newsletter abgemeldet. Weitere Fahrten und Speichern sind gesperrt.'
   : access.reason === 'newsletter_required'
-    ? 'Fünf Gratisfahrten abgeschlossen. Für weitere Fahrten und Speichern den Newsletter im Shop abonnieren.'
+    ? 'Fünf Gratisfahrten abgeschlossen. Bitte melde dich mit deinem PFUSCH-Konto an.'
     : 'Freigabe nicht bestätigt. Shop-Verbindung prüfen und den Status erneut prüfen.';

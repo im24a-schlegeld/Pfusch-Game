@@ -26,7 +26,7 @@ const services: Services = {
 };
 createRoot(document.getElementById('root')!).render(mode === 'gate'
   ? <SaveAccessGate open access={{ allowed: false, reason: 'newsletter_required', completedRuns: 5, freeRuns: 5 }}
-    checking={false} loginHref={loginHref} onLogin={onSignIn} onNewsletter={() => { document.body.dataset.newsletter = 'requested'; }}
+    checking={false} loginHref={loginHref} onLogin={onSignIn}
     onStart={() => { document.body.dataset.start = 'requested'; }} back={() => { document.body.dataset.back = 'requested'; }} />
   : mode === 'rewards'
     ? <Rewards player={player} services={services} update={() => {}} notify={() => {}} back={() => { document.body.dataset.back = 'requested'; }}

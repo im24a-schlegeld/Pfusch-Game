@@ -22,10 +22,9 @@ describe('server-owned real rewards adapter', () => {
     expect(notice.message).not.toMatch(/zählt nur|Rabatt.*synchronisiert|Shop.*gutgeschrieben/);
     expect(notice.transient).toBe(true);
   });
-  it('identifies the verified daily cap separately from an overloaded shop', () => {
-    expect(rewardRunNotice(new VerifiedRewardsError('reward_daily_limit', 429), 'start').message).toContain('Tageslimit');
+  it('keeps the issuance start limit separate from an overloaded shop', () => {
     expect(rewardRunNotice(new VerifiedRewardsError('reward_run_limit', 429), 'start').message).toContain('Startlimit');
-    expect(rewardRunNotice(new VerifiedRewardsError('reward_daily_limit', 429), 'start').message).not.toContain('ausgelastet');
+    expect(rewardRunNotice(new VerifiedRewardsError('reward_run_limit', 429), 'start').message).not.toContain('ausgelastet');
   });
   it('retains the actual preparation outage and does not invalidate login on server/network errors', async () => {
     const unauthorized = vi.fn();
@@ -74,7 +73,7 @@ describe('server-owned real rewards adapter', () => {
   const campaign = { id: 'launch-million-2026', metric: 'points', target: 1000000, progress: 0, rewardCHF: 5,
     minimumSubtotalCHF: 50, offerEndsAt: '2026-10-26T00:00:00.000Z', startedAt: null, expiresAt: null,
     completedAt: null, attempt: 0, phase: 'not_started' };
-  const weekly = () => ({ ...status, pointsRequired: 1000000, runsRequired: 0, dailyCap: 1000000,
+  const weekly = () => ({ ...status, pointsRequired: 1000000, runsRequired: 0, dailyCap: null,
     campaign: { ...campaign }, nextCampaign: null, rewards: [] });
 
   it('accepts bounded weekly campaign progress and rejects forged targets, amounts and counts', async () => {

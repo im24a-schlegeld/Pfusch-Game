@@ -183,12 +183,12 @@ describe('Customer-scoped cloud save', () => {
     const result = await handlePlayerRequest(input(), deps);
     expect(result.status).toBe(200);
     expect(result.body).toMatchObject({ customer: { id: '12345' }, player: null, compareDigest: null });
-    expect(result.body.storage).toEqual({ allowed: true, reason: 'trial', completedRuns: 0, freeRuns: 5 });
+    expect(result.body.storage).toEqual({ allowed: true, reason: 'account', completedRuns: 0, freeRuns: 5 });
     expect(result.body.csrfToken).toMatch(/^\d{10}\.[a-f0-9]{36}\.[a-f0-9]{64}$/);
     const [url, options] = deps.request.mock.calls[0];
     expect(url).toBe(`https://${config.shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`);
     expect(JSON.parse(options!.body as string).variables).toEqual({ id: gid, namespace: PLAYER_NAMESPACE, key: PLAYER_KEY, gifts: 'gifts_v1' });
-    expect(JSON.parse(options!.body as string).query).toContain('emailMarketingConsent { marketingState }');
+    expect(JSON.parse(options!.body as string).query).not.toContain('emailMarketingConsent');
     expect(options!.redirect).toBe('manual');
   });
   it('never serves a different customer object returned upstream', async () => {
@@ -263,138 +263,43 @@ describe('Customer-scoped cloud save', () => {
   });
 });
 
-describe('Live Shopify newsletter authority', () => {
+describe('Authenticated Shopify accounts have unlimited rides without a newsletter', () => {
   const played = (count: number) => ({ ...newPlayer(), runsPlayed: count,
     processedRuns: Array.from({ length: count }, (_, index) => `run-${index + 1}`) });
-  const mutationCount = (request: ReturnType<typeof shopify>) => request.mock.calls
-    .filter(([, options]) => JSON.parse(options!.body as string).query.startsWith('mutation')).length;
-
-  it('stores the fifth trial run once and returns a locked start/save state afterwards', async () => {
-    const request = shopify(played(4));
-    const result = await handlePlayerRequest(post(played(5), firstDigest), dependencies(request));
-    expect(result.status).toBe(200);
-    expect(result.body.storage).toEqual({ allowed: false, reason: 'newsletter_required', completedRuns: 5, freeRuns: 5 });
-    expect(result.body.player).toMatchObject({ runsPlayed: 5 });
-    expect(mutationCount(request)).toBe(1);
-
-    const completed = shopify(played(5));
-    const retry = await handlePlayerRequest(post(played(5), firstDigest), dependencies(completed));
-    expect(retry.status).toBe(403);
-    expect(retry.body).toMatchObject({ error: 'newsletter_required', storage: { allowed: false, completedRuns: 5 } });
-    expect(mutationCount(completed)).toBe(0);
-  });
-
-  it.each(['NOT_SUBSCRIBED', 'PENDING', 'INVALID', 'REDACTED'])('never treats %s as subscribed after the trial', async state => {
-    const request = shopify(played(5), state);
-    const existing = await handlePlayerRequest(input(), dependencies(request));
-    expect(existing.status).toBe(200);
-    expect(existing.body.player).toMatchObject({ runsPlayed: 5 });
-    expect(existing.body.storage).toMatchObject({ allowed: false, reason: 'newsletter_required' });
-    const result = await handlePlayerRequest(post(played(6), firstDigest), dependencies(request));
-    expect(result.status).toBe(403);
-    expect(result.body.error).toBe('newsletter_required');
-    expect(mutationCount(request)).toBe(0);
-  });
-
-  it('blocks a sixth run imported into an empty or still-eligible account', async () => {
-    for (const saved of [null, played(4)]) {
-      const request = shopify(saved);
-      const result = await handlePlayerRequest(post(played(6), saved ? firstDigest : null), dependencies(request));
-      expect(result.status).toBe(403);
-      expect(result.body).toMatchObject({ error: 'newsletter_required', storage: { completedRuns: 6, allowed: false } });
-      expect(mutationCount(request)).toBe(0);
-    }
-  });
-
-  it.each([0, 2, 5])('stops saving immediately on unsubscribe at %i runs without deleting existing progress', async runs => {
-    const saved = played(runs), request = shopify(saved, 'UNSUBSCRIBED'), afterSave = vi.fn();
+  it('accepts a customer without consent even after five rides', async () => {
+    const request = shopify(played(5), 'NOT_SUBSCRIBED');
     const loaded = await handlePlayerRequest(input(), dependencies(request));
     expect(loaded.status).toBe(200);
-    expect(loaded.body.player).toMatchObject({ runsPlayed: runs });
-    expect(loaded.body.storage).toEqual({ allowed: false, reason: 'unsubscribed', completedRuns: runs, freeRuns: 5 });
-    const result = await handlePlayerRequest(post(saved, firstDigest), { ...dependencies(request), afterSave });
-    expect(result.status).toBe(403);
-    expect(result.body.error).toBe('newsletter_unsubscribed');
-    expect(mutationCount(request)).toBe(0);
-    expect(afterSave).not.toHaveBeenCalled();
-  });
-
-  it('rechecks live consent after an earlier subscribed GET; its CSRF grants no newsletter permission', async () => {
-    const request = shopify(played(2), 'UNSUBSCRIBED');
-    request.mockResolvedValueOnce(getResponse(played(2), 'SUBSCRIBED'));
-    const loaded = await handlePlayerRequest(input(), dependencies(request));
-    expect(loaded.body.storage).toMatchObject({ allowed: true, reason: 'subscribed' });
-    const result = await handlePlayerRequest(input('POST', { player: played(3), compareDigest: firstDigest,
-      csrfToken: loaded.body.csrfToken }), dependencies(request));
-    expect(result.status).toBe(403);
-    expect(result.body.error).toBe('newsletter_unsubscribed');
-    expect(mutationCount(request)).toBe(0);
-  });
-
-  it('allows a live subscribed account beyond five runs and does not write marketing consent', async () => {
-    const request = shopify(played(5), 'SUBSCRIBED');
+    expect(loaded.body.storage).toEqual({ allowed: true, reason: 'account', completedRuns: 5, freeRuns: 5 });
     const result = await handlePlayerRequest(post(played(6), firstDigest), dependencies(request));
     expect(result.status).toBe(200);
-    expect(result.body.storage).toEqual({ allowed: true, reason: 'subscribed', completedRuns: 6, freeRuns: 5 });
-    const mutation = JSON.parse(request.mock.calls[1][1]!.body as string);
-    expect(mutation.query).toContain('metafieldsSet');
-    expect(mutation.variables.metafields).toHaveLength(1);
-    expect(mutation.variables.metafields[0].key).toBe(PLAYER_KEY);
-    expect(JSON.stringify(mutation)).not.toContain('emailMarketingConsent');
+    expect(result.body.storage).toEqual({ allowed: true, reason: 'account', completedRuns: 6, freeRuns: 5 });
+    expect(result.body.player).toMatchObject({ runsPlayed: 6 });
   });
-
-  it('preserves durable run counts and counts new settled IDs despite a reset browser counter', async () => {
-    const request = shopify(played(4));
-    const incoming = { ...played(5), runsPlayed: 0 };
+  it.each(['UNSUBSCRIBED', 'PENDING', 'INVALID', 'REDACTED', 'NOT_SUBSCRIBED'])('does not require the %s newsletter state', async state => {
+    const result = await handlePlayerRequest(post(played(6), firstDigest), dependencies(shopify(played(5), state)));
+    expect(result.status).toBe(200);
+    expect(result.body.storage).toMatchObject({ allowed: true, reason: 'account', completedRuns: 6 });
+  });
+  it('accepts a new authenticated customer whose marketing consent is absent', async () => {
+    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, metafield: null, gifts: null } }));
+    const result = await handlePlayerRequest(input(), dependencies(request));
+    expect(result.status).toBe(200);
+    expect(result.body.storage).toEqual({ allowed: true, reason: 'account', completedRuns: 0, freeRuns: 5 });
+  });
+  it('preserves verified run counts even when the browser reduces its counter', async () => {
+    const request = shopify(played(5), 'UNSUBSCRIBED');
+    const incoming = { ...played(6), runsPlayed: 0 };
     const result = await handlePlayerRequest(post(incoming, firstDigest), dependencies(request));
     expect(result.status).toBe(200);
-    expect(result.body.player).toMatchObject({ runsPlayed: 5 });
-    expect(result.body.storage).toMatchObject({ allowed: false, completedRuns: 5 });
-    const reset = shopify(played(5));
-    expect((await handlePlayerRequest(post(newPlayer(), firstDigest), dependencies(reset))).status).toBe(403);
-    expect(mutationCount(reset)).toBe(0);
+    expect(result.body.player).toMatchObject({ runsPlayed: 6 });
   });
-
-  it('does not count already settled IDs again during loadout-only saves', async () => {
-    const request = shopify(played(4));
-    const result = await handlePlayerRequest(post({ ...played(4), paint: '#556677' }, firstDigest), dependencies(request));
-    expect(result.status).toBe(200);
-    expect(result.body.player).toMatchObject({ runsPlayed: 4, paint: '#556677' });
-    expect(result.body.storage).toMatchObject({ allowed: true, completedRuns: 4 });
-  });
-
-  it('accepts an authenticated new customer with null consent as NOT_SUBSCRIBED for five trial rides', async () => {
-    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, emailMarketingConsent: null, metafield: null } }));
-    const result = await handlePlayerRequest(input(), dependencies(request));
-    expect(result.status).toBe(200);
-    expect(result.body.customer).toEqual({ id: '12345' });
-    expect(result.body.storage).toEqual({ allowed: true, reason: 'trial', completedRuns: 0, freeRuns: 5 });
-    expect(request).toHaveBeenCalledOnce();
-  });
-
-  it('does not grant a newsletter entitlement when a customer has null consent and five completed rides', async () => {
-    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, emailMarketingConsent: null, metafield: { value: JSON.stringify(played(5)), compareDigest: firstDigest } } }));
-    const result = await handlePlayerRequest(input(), dependencies(request));
-    expect(result.status).toBe(200);
-    expect(result.body.storage).toMatchObject({ allowed: false, reason: 'newsletter_required', completedRuns: 5 });
-  });
-
-  it.each([undefined, {}, { marketingState: 'UNKNOWN' }])('fails closed when live consent is unavailable: %j', async consent => {
-    const request = vi.fn<typeof fetch>(async () => response({ customer: { id: gid, emailMarketingConsent: consent, metafield: null } }));
-    const result = await handlePlayerRequest(post(), dependencies(request));
-    expect(result).toEqual({ status: 503, body: { error: 'consent_unavailable' } });
-    expect(request).toHaveBeenCalledOnce();
-  });
-
-  it('rejects browser-supplied subscription flags rather than using them', async () => {
+  it('rejects browser-supplied permission or marketing flags', async () => {
     const original = await post().readBody() as Record<string, unknown>;
     const request = shopify(null, 'UNSUBSCRIBED');
-    const result = await handlePlayerRequest(input('POST', { ...original, subscribed: true }), dependencies(request));
-    expect(result.status).toBe(400);
-    expect(request).not.toHaveBeenCalled();
-    const playerResult = await handlePlayerRequest(input('POST', { ...original,
-      player: { ...newPlayer(), storage: { allowed: true } } }), dependencies(request));
-    expect(playerResult.status).toBe(400);
+    expect((await handlePlayerRequest(input('POST', { ...original, subscribed: true }), dependencies(request))).status).toBe(400);
+    expect((await handlePlayerRequest(input('POST', { ...original,
+      player: { ...newPlayer(), storage: { allowed: true } } }), dependencies(request))).status).toBe(400);
     expect(request).not.toHaveBeenCalled();
   });
 });
