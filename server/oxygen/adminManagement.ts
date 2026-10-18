@@ -7,6 +7,7 @@ import { levelForXp } from '../../app/domain/progression.js';
 import { applyAdminCosmeticEdit, cosmeticEditSummary, adminCosmeticsCatalog } from './adminCosmetics.js';
 import type { Player } from '../../app/domain/types.js';
 import { sendCustomerGift } from '../shopify/giftStore.js';
+import { rankingCorrectionField } from '../shopify/leaderboard.js';
 
 const PRESENCE_KEY = 'last_active_v1';
 const AUDIT_KEY = 'dashboard_audit_v1';
@@ -133,6 +134,8 @@ async function updateGamePlayer(config: ShopifyConfig, request: ShopifyFetch, cu
     { ownerId: gid(customerId), namespace: PLAYER_NAMESPACE, key: AUDIT_KEY, type: 'json',
       value: JSON.stringify(changes), compareDigest: isRecord(auditField) && validDigest(auditField.compareDigest) ? auditField.compareDigest : null },
   ];
+  if (field === 'highScore') input.push(await rankingCorrectionField(config, customerId,
+    sanitizeDigitalPlayer(player, customerId), request, now));
   const result = await shopifyGraphql(config, `mutation PfuschAdminSave($fields:[MetafieldsSetInput!]!){
     metafieldsSet(metafields:$fields){ userErrors{code} metafields{key compareDigest} }
   }`, { fields: input }, request);

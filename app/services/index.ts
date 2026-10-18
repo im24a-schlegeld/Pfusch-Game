@@ -35,6 +35,7 @@ import { createAccountFetch } from './accountFetch';
 import { readGuardianBells } from '../domain/guardianBells';
 import type { PlayerGift } from './playerGifts';
 import { InstallHintReminder } from './installHintReminder';
+import { EconomyProductProvider } from './economyProducts';
 export type { PlayerAccess } from './playerAccess';
 
 export interface AuthService {
@@ -424,7 +425,7 @@ export function createServices(): Services {
         ? { getUser: () => cloud.getUser(), ...(shopifyLogin ? { login: shopifyLogin } : {}) }
         : new GuestAuthService(),
     players: cloud ?? local,
-    products: new LocalProductProvider(),
+    products: new EconomyProductProvider(new LocalProductProvider(), storage, oxygen ? accountFetch : undefined),
     rewards: new MockRewardService(oxygen ? new OxygenVerifiedRewards(accountFetch, undefined, () => cloud?.invalidateSession()) : undefined),
     leaderboard: transport ? new ShopifyLeaderboardService(transport, new LocalLeaderboardService(), cloud ?? undefined) : new LocalLeaderboardService(),
     analytics: new LocalAnalyticsService(),

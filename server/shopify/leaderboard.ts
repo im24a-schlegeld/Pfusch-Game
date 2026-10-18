@@ -2,13 +2,14 @@ import type { Player } from '../../app/domain/types.js';
 import { normalizeLeaderboardName } from '../../app/domain/progression.js';
 import { ApiError, assertCustomerIdentity, authenticateProxy, type CustomerAuthenticator, type ShopifyConfig } from './auth.js';
 import { hmacSha256 } from './crypto.js';
-import { shopifyGraphql, PLAYER_NAMESPACE, type ShopifyFetch } from './playerStore.js';
-import { isRecord } from './playerValidation.js';
+import { shopifyGraphql, PLAYER_KEY, PLAYER_NAMESPACE, type ShopifyFetch } from './playerStore.js';
+import { isRecord, MAX_BODY_BYTES, sanitizeDigitalPlayer } from './playerValidation.js';
 
 type Period = 'day' | 'week' | 'all';
 interface Row { alias: string; score: number; name?: string }
 interface Window { key: string; rows: Row[] }
 export interface Board { version: 1; day: Window; week: Window; all: Window }
+interface RankingField { ownerId: string; namespace: string; key: string; type: 'json'; value: string; compareDigest: string | null }
 const periods: Period[] = ['day', 'week', 'all'];
 const KEY = 'leaderboard_v1';
 const LIMIT = 50;
@@ -55,8 +56,8 @@ function decodeBoard(raw: unknown, now: number): Board {
 export function mergeRanking(board: Board, alias: string, player: Player, now: number): Board {
   const next = decodeBoard(board, now), keys = rankingWindows(now);
   for (const period of periods) {
-    const score = Math.floor(period === 'all' ? player.highScore : player.history.reduce((best, run) =>
-      run.date >= keys[period] && run.date <= keys.day ? Math.max(best, run.score) : best, 0));
+    const score = Math.floor(period === 'all' ? player.highScore : Math.min(player.highScore, player.history.reduce((best, run) =>
+      run.date >= keys[period] && run.date <= keys.day ? Math.max(best, run.score) : best, 0)));
     const rows = next[period].rows;
     const previous = rows.find(row => row.alias === alias);
     if (!validScore(score) && !previous) continue;
@@ -66,30 +67,86 @@ export function mergeRanking(board: Board, alias: string, player: Player, now: n
   }
   return next;
 }
-async function loadBoard(config: ShopifyConfig, request: ShopifyFetch, now: number) {
-  const data = await shopifyGraphql(config, `query GameRanking($namespace: String!, $key: String!) {
+/** An admin correction replaces the lifetime value, including downward or zero.
+ * Existing period records can only be reduced by this lifetime edit. */
+export function correctRankingHighScore(board: Board, alias: string, score: number, now: number): Board {
+  if (!/^[a-f0-9]{16}$/.test(alias) || !Number.isSafeInteger(score) || score < 0 || score > 1e12)
+    throw new ApiError(400, 'invalid_ranking_score');
+  const next = decodeBoard(board, now);
+  for (const period of periods) {
+    const previous = next[period].rows.find(row => row.alias === alias);
+    const corrected = period === 'all' ? score : Math.min(previous?.score ?? 0, score);
+    next[period].rows = next[period].rows.filter(row => row.alias !== alias);
+    if (corrected > 0) next[period].rows.push({ alias, score: corrected, ...(previous?.name ? { name: previous.name } : {}) });
+    next[period].rows.sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias));
+    next[period].rows = next[period].rows.slice(0, LIMIT);
+  }
+  return next;
+}
+
+async function loadBoard(config: ShopifyConfig, request: ShopifyFetch, now: number, customerId?: string) {
+  const query = customerId ? `query GameRanking($namespace: String!, $key: String!, $customerId: ID!, $player: String!) {
     shop { id metafield(namespace: $namespace, key: $key) { value compareDigest } }
-  }`, { namespace: PLAYER_NAMESPACE, key: KEY }, request);
+    customer(id: $customerId) { id metafield(namespace: $namespace, key: $player) { value compareDigest } }
+  }` : `query GameRanking($namespace: String!, $key: String!) {
+    shop { id metafield(namespace: $namespace, key: $key) { value compareDigest } }
+  }`;
+  const data = await shopifyGraphql(config, query, { namespace: PLAYER_NAMESPACE, key: KEY,
+    ...(customerId ? { customerId: `gid://shopify/Customer/${customerId}`, player: PLAYER_KEY } : {}) }, request);
   if (!isRecord(data.shop) || typeof data.shop.id !== 'string' || !/^gid:\/\/shopify\/Shop\/\d+$/.test(data.shop.id))
     throw new ApiError(502, 'invalid_ranking');
-  if (data.shop.metafield === null) return { ownerId: data.shop.id, board: emptyBoard(now), compareDigest: null };
+  let player: Player | undefined, guardField: RankingField | undefined;
+  if (customerId) {
+    const customer = data.customer;
+    if (!isRecord(customer) || customer.id !== `gid://shopify/Customer/${customerId}` || !isRecord(customer.metafield))
+      throw new ApiError(502, 'invalid_ranking_player');
+    const current = customer.metafield;
+    if (typeof current.value !== 'string' || new TextEncoder().encode(current.value).length > MAX_BODY_BYTES ||
+      typeof current.compareDigest !== 'string' || !/^[a-f0-9]{64}$/.test(current.compareDigest))
+      throw new ApiError(502, 'invalid_ranking_player');
+    try { player = sanitizeDigitalPlayer(JSON.parse(current.value), customerId); }
+    catch { throw new ApiError(502, 'invalid_ranking_player'); }
+    guardField = { ownerId: customer.id, namespace: PLAYER_NAMESPACE, key: PLAYER_KEY, type: 'json',
+      value: current.value, compareDigest: current.compareDigest };
+  }
+  if (data.shop.metafield === null) return { ownerId: data.shop.id, board: emptyBoard(now), compareDigest: null, player, guardField };
   const field = data.shop.metafield;
   if (!isRecord(field) || typeof field.value !== 'string' || field.value.length > 32768 || typeof field.compareDigest !== 'string' || !/^[a-f0-9]{64}$/.test(field.compareDigest))
     throw new ApiError(502, 'invalid_ranking');
   let raw: unknown;
   try { raw = JSON.parse(field.value); } catch { throw new ApiError(502, 'invalid_ranking'); }
-  return { ownerId: data.shop.id, board: decodeBoard(raw, now), compareDigest: field.compareDigest };
+  return { ownerId: data.shop.id, board: decodeBoard(raw, now), compareDigest: field.compareDigest, player, guardField };
 }
-export async function updateRanking(config: ShopifyConfig, customerId: string, player: Player, request: ShopifyFetch, now?: number) {
+
+/** Prepared for the same atomic mutation as the authenticated player edit. */
+export async function rankingCorrectionField(config: ShopifyConfig, customerId: string, player: Player,
+  request: ShopifyFetch, now: number): Promise<RankingField> {
+  const saved = await loadBoard(config, request, now);
+  const alias = await playerAlias(config, customerId);
+  const board = correctRankingHighScore(saved.board, alias, player.highScore, now);
+  const name = normalizeLeaderboardName(player.leaderboardName);
+  for (const period of periods) for (const row of board[period].rows) {
+    if (row.alias !== alias) continue;
+    if (name) row.name = name; else delete row.name;
+  }
+  return { ownerId: saved.ownerId, namespace: PLAYER_NAMESPACE, key: KEY, type: 'json',
+    value: JSON.stringify(board), compareDigest: saved.compareDigest };
+}
+
+export async function updateRanking(config: ShopifyConfig, customerId: string, _player: Player, request: ShopifyFetch, now?: number) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const attemptNow = now ?? Date.now();
-    const saved = await loadBoard(config, request, attemptNow);
-    const board = mergeRanking(saved.board, await playerAlias(config, customerId), player, attemptNow);
+    const saved = await loadBoard(config, request, attemptNow, customerId);
+    if (!saved.player || !saved.guardField) throw new ApiError(502, 'invalid_ranking_player');
+    const board = mergeRanking(saved.board, await playerAlias(config, customerId), saved.player, attemptNow);
     if (JSON.stringify(saved.board) === JSON.stringify(board)) return;
     const result = await shopifyGraphql(config, `mutation SaveGameRanking($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) { userErrors { code } }
     }`, { metafields: [{ ownerId: saved.ownerId, namespace: PLAYER_NAMESPACE, key: KEY, type: 'json',
-      value: JSON.stringify(board), compareDigest: saved.compareDigest }] }, request);
+      value: JSON.stringify(board), compareDigest: saved.compareDigest },
+      // Compare-and-set the unchanged raw player value as well. An admin edit
+      // or gift between read and publication must invalidate this transaction.
+      saved.guardField] }, request);
     if (!isRecord(result.metafieldsSet) || !Array.isArray(result.metafieldsSet.userErrors)) throw new ApiError(502, 'invalid_ranking');
     const errors = result.metafieldsSet.userErrors;
     if (!errors.length) return;

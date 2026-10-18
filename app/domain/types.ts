@@ -27,6 +27,8 @@ export interface Product {
   handle: string;
   url: string;
   price: number;
+  /** Validated runtime game setting; the Shopify merchandise price stays in price. */
+  digitalCoinPrice?: number;
   currency: string;
   image: string;
   localImage?: string;

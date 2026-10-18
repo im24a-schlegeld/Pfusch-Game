@@ -4,12 +4,13 @@ import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR, HELMET_INVENTORY_MIGRATION } from
 import { ownsProductColor } from './productOwnership.js';
 import { equipmentSlot, supportsHood } from './preview.js';
 import { DEFAULT_PANTS_COLOR, DEFAULT_SHOES_COLOR } from './riderColors.js';
+import { DEFAULT_GAME_ECONOMY, validFlagCoinPrice } from './economy.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const LEADERBOARD_NAME_MAX_LENGTH = 24;
 export function normalizeLeaderboardName(value: unknown): string {
   if (typeof value !== 'string') return '';
   const name = value.trim().replace(/\s+/g, ' ');
-  if (!name || name.length > LEADERBOARD_NAME_MAX_LENGTH || [...name].some((character) => {
+  if (!name || name.length > LEADERBOARD_NAME_MAX_LENGTH || Array.from(name).some((character) => {
     const code = character.charCodeAt(0);
     return code < 32 || code === 127;
   })) return '';
@@ -168,7 +169,7 @@ export function ownership(p: Player, product: Product, variantId = p.variants[pr
 }
 /** Shared by offers and checkout: shop-relative cosmetics, small consumable decals. */
 export function digitalPrice(product: Product): number {
-  if (product.category === 'cape') return 5000;
+  if (product.category === 'cape') return validFlagCoinPrice(product.digitalCoinPrice) ? product.digitalCoinPrice : DEFAULT_GAME_ECONOMY.flagCoinPrice;
   if (product.handle === 'chrome-sticker') return 15;
   if (equipmentSlot(product) === 'keychain') return 40;
   const shopPrice = Number.isFinite(product.price) && product.price > 0 ? product.price : 10;
