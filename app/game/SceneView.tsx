@@ -18,6 +18,7 @@ import { createCartoonOutline } from './cartoonOutline';
 import { makeCartoonSky } from './cartoonSky';
 import { createBikeHeadlightGlowUpdater, createBikeHeadlightRig } from './bikeHeadlight';
 import { createCrashAnimation } from './crashAnimation';
+import { shouldFreezeCrashTraffic } from './crashTraffic';
 import { createGarmentGlowUpdater } from './garmentGlow';
 import {
   TRAFFIC_KINDS,
@@ -925,7 +926,8 @@ export default function SceneView({
                 group.visible &&
                 Math.abs(group.position.z) < 16 &&
                 (TRAFFIC_KINDS.some((kind) => kind === obstacle.kind) ||
-                  obstacle.kind === 'barrier')
+                  obstacle.kind === 'barrier') &&
+                 shouldFreezeCrashTraffic(obstacle, obstacle === engine.crashObstacle)
               )
                 collisionTraffic.set(group, group.position.clone());
             });

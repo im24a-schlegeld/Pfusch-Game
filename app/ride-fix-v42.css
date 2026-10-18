@@ -538,3 +538,31 @@
 .ride-screen[data-reduced-motion='true'] .police-lights {
   animation: none;
 }
+
+/* PFUSCH-FIX-POLICE-SCORE: responsive uncut score and touch police glow. */
+.ride-screen .v42-score { overflow: visible; container-type: inline-size; }
+.ride-screen .v42-score > strong[data-digits] {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  font-size: clamp(11px, 31cqi, 36px) !important;
+  line-height: 1.05 !important;
+}
+.ride-screen .v42-score > strong[data-digits='5'],
+.ride-screen .v42-score > strong[data-digits='6'] { font-size: clamp(11px, 25cqi, 34px) !important; }
+.ride-screen .v42-score > strong[data-digits='7'] { font-size: clamp(11px, 21cqi, 30px) !important; }
+.ride-screen .v42-score > strong[data-digits='8'],
+.ride-screen .v42-score > strong[data-digits='9'] { font-size: clamp(10px, 17cqi, 27px) !important; }
+.ride-screen .v42-score > strong[data-digits='10'],
+.ride-screen .v42-score > strong[data-digits='11'],
+.ride-screen .v42-score > strong[data-digits='12'] { font-size: clamp(10px, 13cqi, 24px) !important; }
+.ride-screen .v42-score > strong[data-digits='13'],
+.ride-screen .v42-score > strong[data-digits='14'],
+.ride-screen .v42-score > strong[data-digits='15'],
+.ride-screen .v42-score > strong[data-digits='16'] { font-size: clamp(9px, 11cqi, 20px) !important; }
+/* Glow still begins at the lower screen edge; it extends above the touch buttons. */
+.ride-screen[data-touch-controls='buttons'] .police-lights {
+  bottom: 0 !important;
+  height: min(65vh, 540px);
+  min-height: min(280px, 48vh);
+}

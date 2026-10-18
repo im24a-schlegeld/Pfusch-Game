@@ -20,7 +20,7 @@ export default function RideHud({
       <div className="v42-hud" aria-label="Fahrdaten">
         <div className="v42-score">
           <span>PUNKTE</span>
-          <strong data-long={number(engine.score).length > 9}>
+          <strong data-digits={number(engine.score).length} data-long={number(engine.score).length > 9}>
             {number(engine.score)}
           </strong>
           <small>BESTE {number(best)}</small>
