@@ -7,7 +7,8 @@ import { levelForXp } from '../../app/domain/progression.js';
 import { applyAdminCosmeticEdit, cosmeticEditSummary, adminCosmeticsCatalog } from './adminCosmetics.js';
 import type { Player } from '../../app/domain/types.js';
 import { sendCustomerGift } from '../shopify/giftStore.js';
-import { rankingCorrectionField } from '../shopify/leaderboard.js';
+
+import { adminHighScoreRankingMetafield } from '../shopify/leaderboard.js';
 
 const PRESENCE_KEY = 'last_active_v1';
 const AUDIT_KEY = 'dashboard_audit_v1';
@@ -134,8 +135,13 @@ async function updateGamePlayer(config: ShopifyConfig, request: ShopifyFetch, cu
     { ownerId: gid(customerId), namespace: PLAYER_NAMESPACE, key: AUDIT_KEY, type: 'json',
       value: JSON.stringify(changes), compareDigest: isRecord(auditField) && validDigest(auditField.compareDigest) ? auditField.compareDigest : null },
   ];
-  if (field === 'highScore') input.push(await rankingCorrectionField(config, customerId,
-    sanitizeDigitalPlayer(player, customerId), request, now));
+  if (field === 'highScore') {
+    // One atomic Shopify metafieldsSet: player score, admin audit and public
+    // all-time rank. CompareDigest conflicts reject the entire admin edit.
+    const rankingField = await adminHighScoreRankingMetafield(config, customerId, value as number,
+      (player as Record<string, unknown>).leaderboardName, request, now);
+    if (rankingField) input.push(rankingField);
+  }
   const result = await shopifyGraphql(config, `mutation PfuschAdminSave($fields:[MetafieldsSetInput!]!){
     metafieldsSet(metafields:$fields){ userErrors{code} metafields{key compareDigest} }
   }`, { fields: input }, request);

@@ -56,8 +56,8 @@ function decodeBoard(raw: unknown, now: number): Board {
 export function mergeRanking(board: Board, alias: string, player: Player, now: number): Board {
   const next = decodeBoard(board, now), keys = rankingWindows(now);
   for (const period of periods) {
-    const score = Math.floor(period === 'all' ? player.highScore : Math.min(player.highScore, player.history.reduce((best, run) =>
-      run.date >= keys[period] && run.date <= keys.day ? Math.max(best, run.score) : best, 0)));
+    const score = Math.floor(period === 'all' ? player.highScore : player.history.reduce((best, run) =>
+      run.date >= keys[period] && run.date <= keys.day ? Math.max(best, run.score) : best, 0));
     const rows = next[period].rows;
     const previous = rows.find(row => row.alias === alias);
     if (!validScore(score) && !previous) continue;
@@ -68,19 +68,16 @@ export function mergeRanking(board: Board, alias: string, player: Player, now: n
   return next;
 }
 /** An admin correction replaces the lifetime value, including downward or zero.
- * Existing period records can only be reduced by this lifetime edit. */
+ * Dated day/week records remain tied to their genuine ride history. */
 export function correctRankingHighScore(board: Board, alias: string, score: number, now: number): Board {
   if (!/^[a-f0-9]{16}$/.test(alias) || !Number.isSafeInteger(score) || score < 0 || score > 1e12)
     throw new ApiError(400, 'invalid_ranking_score');
   const next = decodeBoard(board, now);
-  for (const period of periods) {
-    const previous = next[period].rows.find(row => row.alias === alias);
-    const corrected = period === 'all' ? score : Math.min(previous?.score ?? 0, score);
-    next[period].rows = next[period].rows.filter(row => row.alias !== alias);
-    if (corrected > 0) next[period].rows.push({ alias, score: corrected, ...(previous?.name ? { name: previous.name } : {}) });
-    next[period].rows.sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias));
-    next[period].rows = next[period].rows.slice(0, LIMIT);
-  }
+  const previous = next.all.rows.find(row => row.alias === alias);
+  next.all.rows = next.all.rows.filter(row => row.alias !== alias);
+  if (score > 0) next.all.rows.push({ alias, score, ...(previous?.name ? { name: previous.name } : {}) });
+  next.all.rows.sort((a, b) => b.score - a.score || a.alias.localeCompare(b.alias));
+  next.all.rows = next.all.rows.slice(0, LIMIT);
   return next;
 }
 
@@ -119,16 +116,15 @@ async function loadBoard(config: ShopifyConfig, request: ShopifyFetch, now: numb
 }
 
 /** Prepared for the same atomic mutation as the authenticated player edit. */
-export async function rankingCorrectionField(config: ShopifyConfig, customerId: string, player: Player,
-  request: ShopifyFetch, now: number): Promise<RankingField> {
+export async function adminHighScoreRankingMetafield(config: ShopifyConfig, customerId: string,
+  score: number, leaderboardName: unknown, request: ShopifyFetch, now = Date.now()): Promise<RankingField | null> {
   const saved = await loadBoard(config, request, now);
   const alias = await playerAlias(config, customerId);
-  const board = correctRankingHighScore(saved.board, alias, player.highScore, now);
-  const name = normalizeLeaderboardName(player.leaderboardName);
-  for (const period of periods) for (const row of board[period].rows) {
-    if (row.alias !== alias) continue;
-    if (name) row.name = name; else delete row.name;
-  }
+  const board = correctRankingHighScore(saved.board, alias, score, now);
+  const name = normalizeLeaderboardName(leaderboardName);
+  const row = board.all.rows.find(entry => entry.alias === alias);
+  if (row) { if (name) row.name = name; else delete row.name; }
+  if (JSON.stringify(board) === JSON.stringify(saved.board)) return null;
   return { ownerId: saved.ownerId, namespace: PLAYER_NAMESPACE, key: KEY, type: 'json',
     value: JSON.stringify(board), compareDigest: saved.compareDigest };
 }

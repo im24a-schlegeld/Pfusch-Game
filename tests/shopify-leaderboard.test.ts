@@ -85,15 +85,16 @@ describe('real saved rider leaderboard', () => {
     expect(retryFields[1]).toMatchObject({ ownerId: 'gid://shopify/Customer/123', key: 'player_v1',
       compareDigest: 'd'.repeat(64), value: JSON.stringify(player) });
   });
-  it('caps retained period history at the corrected lifetime highscore on later saves', () => {
+  it('preserves dated ride records independently of a corrected lifetime highscore on later saves', () => {
     const alias = 'a'.repeat(16);
     const board = empty();
     for (const period of ['day', 'week', 'all'] as const) board[period].rows = [{ alias, score: 500, name: 'Dario' }];
     const player = { ...newPlayer(), leaderboardName: 'Dario', highScore: 500,
       history: [{ date: '2026-10-05', score: 900 }] };
     const updated = mergeRanking(board, alias, player, now);
-    for (const period of ['day', 'week', 'all'] as const)
-      expect(updated[period].rows).toEqual([{ alias, score: 500, name: 'Dario' }]);
+    expect(updated.all.rows).toEqual([{ alias, score: 500, name: 'Dario' }]);
+    for (const period of ['day', 'week'] as const)
+      expect(updated[period].rows).toEqual([{ alias, score: 900, name: 'Dario' }]);
   });
   it('uses the freshly saved player when an older ranking publication finishes after an admin correction', async () => {
     const alias = await playerAlias(config, '123');
@@ -114,8 +115,9 @@ describe('real saved rider leaderboard', () => {
       compareDigest: 'd'.repeat(64), value: JSON.stringify(current) });
     const field = fields[0];
     const published = JSON.parse(field.value) as Board;
-    for (const period of ['day', 'week', 'all'] as const)
-      expect(published[period].rows).toEqual([{ alias, score: 500 }]);
+    expect(published.all.rows).toEqual([{ alias, score: 500 }]);
+    for (const period of ['day', 'week'] as const)
+      expect(published[period].rows).toEqual([{ alias, score: 900 }]);
   });
   it('retries a concurrent player correction even when its leaderboard CAS digest did not change', async () => {
     const alias = await playerAlias(config, '123');
@@ -162,11 +164,12 @@ describe('administrative highscore corrections', () => {
     board.all.rows = [{ alias, score: 1000, name: 'Dario' }, { alias: other, score: 600, name: 'Alex' }];
     return board;
   }
-  it('replaces a lifetime record downward and caps existing period rows while preserving other riders and names', () => {
+  it('replaces a lifetime record downward while preserving dated records, other riders and names', () => {
     const board = existing();
     const corrected = correctRankingHighScore(board, alias, 500, now);
-    for (const period of ['day', 'week', 'all'] as const)
-      expect(corrected[period].rows).toEqual([{ alias: other, score: 600, name: 'Alex' }, { alias, score: 500, name: 'Dario' }]);
+    expect(corrected.all.rows).toEqual([{ alias: other, score: 600, name: 'Alex' }, { alias, score: 500, name: 'Dario' }]);
+    expect(corrected.day).toEqual(board.day);
+    expect(corrected.week).toEqual(board.week);
     expect(board.all.rows[0].score).toBe(1000);
   });
   it('raises only the lifetime record without inventing period scores', () => {
@@ -179,10 +182,12 @@ describe('administrative highscore corrections', () => {
     expect(fresh.day.rows).toEqual([]);
     expect(fresh.week.rows).toEqual([]);
   });
-  it('removes every row belonging to a rider when their highscore is reset to zero', () => {
-    const corrected = correctRankingHighScore(existing(), alias, 0, now);
-    for (const period of ['day', 'week', 'all'] as const)
-      expect(corrected[period].rows).toEqual([{ alias: other, score: 600, name: 'Alex' }]);
+  it('removes a zeroed lifetime record while preserving dated ride records', () => {
+    const board = existing();
+    const corrected = correctRankingHighScore(board, alias, 0, now);
+    expect(corrected.all.rows).toEqual([{ alias: other, score: 600, name: 'Alex' }]);
+    expect(corrected.day).toEqual(board.day);
+    expect(corrected.week).toEqual(board.week);
   });
   it('keeps the best 50 sorted lifetime rows after inserting a corrected record', () => {
     const board = empty();

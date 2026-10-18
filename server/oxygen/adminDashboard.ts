@@ -174,6 +174,7 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 @media(max-width:760px){main{padding:18px 12px 35px;max-width:100%}.top{align-items:flex-start;flex-direction:column;gap:15px;margin-bottom:18px}.top h1{font-size:24px}.top .actions{width:100%;justify-content:space-between;gap:8px}.kpis{gap:9px;margin-bottom:16px}.stat{padding:13px}.stat .num{font-size:25px;margin:9px 0 4px}.stat .label{font-size:12px}.layout{gap:14px}.card-head,.card-body,.editor{padding:16px}.card-head h2{font-size:16px}.filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:13px}.filters input{min-width:0}.filters .filter-select{grid-column:1/-1;width:100%}.btn,.filter-select,.search,.editor input,.editor select,.catalog-grid select{min-height:44px}.table-wrap{padding:0 12px;overflow:visible}table,tbody{display:block;width:100%}thead{display:none}tbody tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 7px;border:1px solid #e3e3e3;border-radius:9px;padding:12px;margin:0 0 9px;background:#fff}tbody tr.selected{border-color:#9dbbea}tbody tr.selected td:first-child{box-shadow:none}.table-wrap td{display:block;width:auto;padding:5px 2px;border:0;min-width:0;overflow-wrap:anywhere;font-size:12px}.table-wrap td:first-child{grid-column:1/-1;border-bottom:1px solid #e6e6e6;padding-bottom:10px;font-size:14px}.table-wrap td:nth-child(2):before{content:'Fahrten';display:block;color:#616161;font-size:11px;margin-bottom:4px}.table-wrap td:nth-child(3):before{content:'Coins';display:block;color:#616161;font-size:11px;margin-bottom:4px}.table-wrap td:nth-child(4):before{content:'Aktivität';display:block;color:#616161;font-size:11px;margin-bottom:4px}.player-btn{min-height:36px;width:100%}.table-actions{padding:12px;align-items:flex-start;flex-wrap:wrap}.table-actions .btn{width:100%}.editor .cols,.cols{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.editor .buttons .btn{width:100%}.catalog-grid{padding:16px;gap:12px}.catalog-section{padding:0 16px 16px}.catalog-row{gap:7px;padding:11px 0}.catalog-row .asset-name{min-width:120px;flex-basis:100%}.catalog-row .asset-actions{width:100%;gap:6px;flex-wrap:wrap}.catalog-row .asset-actions button{flex:1 1 100px;min-height:44px}#inventorySearch{max-width:none;width:100%}.system-grid{grid-template-columns:1fr}.footer{font-size:11px}}
 @media(max-width:380px){.top .actions{align-items:stretch;flex-direction:column}.pill{align-self:flex-start}.editor .cols,.catalog-grid{grid-template-columns:1fr}.stat{padding:11px}.stat .num{font-size:23px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.game-price-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.game-price-cols input,.game-price-cols select{width:100%;min-height:46px;padding:10px;border:1px solid #aaa;border-radius:8px;background:#fff;color:#303030;font-size:16px}.game-price-cols label{display:block;font-size:12px;font-weight:600;margin:10px 0 5px}.game-price-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.game-price-actions button{min-height:44px}@media(max-width:600px){.game-price-cols{grid-template-columns:1fr}}
 </style></head><body><main>
 <header class="top"><div><div class="eyebrow">Wheelie Escape · Shopify</div><h1>Spielerverwaltung</h1></div><div class="actions"><span class="pill" id="connection">Verbindung wird geprüft</span><button class="btn" id="refresh" type="button">Aktualisieren</button></div></header>
 <div id="message" role="status" aria-live="polite"></div>
@@ -220,13 +221,6 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 </form></aside></div>
 
 </section>
-<details id="economyPanel" class="card dashboard-disclosure"><summary>Spielpreise</summary><div class="card-body">
-<label class="field-label" for="flagCoinPrice">Flagge · Preis in Coins</label>
-<input id="flagCoinPrice" class="search" type="number" min="1" max="1000000000" step="1" inputmode="numeric" disabled aria-describedby="economyHint">
-<p id="economyHint" class="section-sub">Gilt für die digitale Freischaltung im Spiel. Der neue Preis gilt beim nächsten Laden des Spiels. Offline gilt der zuletzt geladene Preis.</p>
-<div class="buttons"><button id="saveEconomy" class="btn primary" type="button" disabled>Flaggenpreis speichern</button><button id="reloadEconomy" class="btn" type="button">Preis neu laden</button></div>
-<div id="economyFeedback" class="mini" role="status" aria-live="polite"></div>
-</div></details>
 <details id="statisticsPanel" class="card dashboard-disclosure"><summary>Statistik</summary><div class="card-body"><section class="kpis" aria-label="Dashboard Kennzahlen">
 <div class="card stat"><div class="label">Live-Spieler</div><div class="num" id="live">–</div><div class="context">Aktuelle Kundenseite</div></div>
 <div class="card stat"><div class="label">Gespeicherte Spielstände</div><div class="num" id="players">–</div><div class="context">Stichprobe · bis zu 25 Kunden</div></div>
@@ -236,7 +230,15 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
 <section aria-label="Spielstatistik Stichprobe"><label class="field-label" for="statisticsTopic">Auswertung</label><select class="filter-select" id="statisticsTopic" aria-label="Statistikthema"><option>Daten werden geladen …</option></select><div id="statisticsRows" role="status">–</div><p class="section-sub" id="statisticsSample">Bis zu 25 zuletzt aktualisierte Kunden: letzter gespeicherter Spielstand, keine Besucher- oder Sessionstatistik. Fehlende Angaben bleiben unbekannt; Gerätekategorien sind unverifiziert.</p></section>
 <p class="section-sub">Live zählt angemeldete Spieler mit aktiver, sichtbarer Spielseite und Shopify-Verbindung auf der aktuellen Kundenseite. Gäste und andere Seiten sind nicht erfasst.</p></div></details>
 <details id="systemPanel" class="card dashboard-disclosure"><summary>System</summary><div class="card-body"><div class="cols system-grid"><div><div class="eyebrow">Shop</div><b id="shopName">–</b></div><div><div class="eyebrow">Berechtigung zum Bearbeiten</div><b id="role">Wird geprüft</b></div><div><div class="eyebrow">Shopify Staff-ID</div><b id="staff">–</b></div></div><p class="section-sub">Schreibzugriff: Staff-ID in der Oxygen-Variable <code>SHOPIFY_DASHBOARD_EDITOR_IDS</code> freigeben und neu deployen.</p></div></details>
-</main><script>
+<details id="pricesPanel" class="card dashboard-disclosure" aria-label="Spielpreise verwalten"><summary>Produktpreise · Coins</summary>
+  <div class="card-body"><p class="section-sub">Digitale Spielpreise in Coins. Flaggen starten bei 5000 Coins und lassen sich einzeln anpassen. Neue Preise gelten beim nächsten Laden des Spiels; offline gilt der zuletzt geladene Stand.</p>
+  <div class="game-price-cols"><div><label for="priceSearch">Artikel suchen</label><input type="search" id="priceSearch" maxlength="80" placeholder="Name oder Kategorie"></div>
+  <div><label for="priceProduct">Produkt</label><select id="priceProduct" aria-label="Produktpreis auswählen"></select></div>
+  <div><label for="priceAmount">Spielpreis in Coins</label><input id="priceAmount" type="number" min="0" max="10000" step="1" inputmode="numeric" disabled></div>
+  <div><label>Standard / Shopify</label><p id="priceBaseline" class="section-sub">Wird geladen …</p></div></div>
+  <div class="game-price-actions"><button id="priceSave" type="button" class="btn primary" disabled>Preis speichern</button><button id="priceReset" type="button" class="btn" disabled>Standardpreis</button><button id="priceRefresh" type="button" class="btn">Neu laden</button></div>
+  <div id="priceFeedback" role="status" aria-live="polite" class="mini">Preise werden geladen …</div></div></details>
+ </main><script>
 (function(){
  const $=id=>document.getElementById(id);let selected=null,rows=[],cursor=null,more=false,editor=false,busy=false,editing=false,search='',staffId='',catalog=null,full=null,giftDraft=null,giftBusy=false;
  const num=n=>new Intl.NumberFormat('de-CH').format(Number.isFinite(Number(n))?Number(n):0);
@@ -247,13 +249,6 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
  function status(text,kind){$('message').textContent=text||'';$('message').className=kind||''}
  function detail(text,kind){$('editMessage').textContent=text||'';$('editMessage').className=kind||'mini'}
  async function api(path,body){if(!window.shopify||typeof window.shopify.idToken!=='function')throw Error('Bitte das Dashboard in Shopify → Apps → Wheelie Escape öffnen.');const token=await window.shopify.idToken();const response=await fetch(path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,credentials:'omit',cache:'no-store'});let result;try{result=await response.json()}catch{result={error:'invalid_response'}}if(!response.ok)throw Error(response.status===401?'Shopify-Sitzung abgelaufen. Bitte App erneut öffnen.':(result.error||'Serverfehler')+' (HTTP '+response.status+')');return result}
- let economy=null,economyBusy=false;
- function economyError(error,action){const message=error instanceof Error?error.message:'';if(message.includes('edit_conflict_reload'))return 'Der Flaggenpreis wurde inzwischen geändert. Bitte Preis neu laden und erneut prüfen.';if(message.includes('admin_editor_not_authorized'))return 'Für deinen Shopify-Zugang ist das Bearbeiten der Spielpreise nicht freigegeben.';if(message.includes('Shopify-Sitzung abgelaufen'))return 'Deine Shopify-Sitzung ist abgelaufen. Bitte die App erneut öffnen.';if(message.includes('Bitte das Dashboard in Shopify'))return 'Bitte das Dashboard in Shopify → Apps → Wheelie Escape öffnen.';return action==='load'?'Der Flaggenpreis konnte nicht geladen werden. Bitte erneut versuchen.':'Der Flaggenpreis konnte nicht gespeichert werden. Bitte Preis neu laden und erneut versuchen.'}
- function economyControls(){for(const id of ['flagCoinPrice','saveEconomy'])$(id).disabled=economyBusy||!economy;$('reloadEconomy').disabled=economyBusy;$('saveEconomy').textContent=economyBusy?'Wird gespeichert …':'Flaggenpreis speichern'}
- async function loadEconomy(){if(economyBusy)return;economyBusy=true;economyControls();$('economyFeedback').textContent='Preis wird geladen …';try{economy=await api('/api/admin/economy');$('flagCoinPrice').value=economy.flagCoinPrice;$('economyFeedback').textContent='Aktueller Preis geladen.';$('economyFeedback').className='mini'}catch(e){economy=null;$('economyFeedback').textContent=economyError(e,'load');$('economyFeedback').className='error'}finally{economyBusy=false;economyControls()}}
- $('economyPanel').addEventListener('toggle',()=>{if($('economyPanel').open&&!economy)void loadEconomy()});
- $('reloadEconomy').addEventListener('click',()=>void loadEconomy());
- $('saveEconomy').addEventListener('click',async()=>{if(economyBusy||!economy)return;const value=$('flagCoinPrice').value.trim(),price=Number(value);if(!/^[0-9]+$/.test(value)||!Number.isSafeInteger(price)||price<1||price>1000000000){$('economyFeedback').textContent='Bitte eine ganze Zahl zwischen 1 und 1’000’000’000 eingeben.';$('economyFeedback').className='error';return}economyBusy=true;economyControls();$('economyFeedback').textContent='Preis wird gespeichert …';try{economy=await api('/api/admin/economy',{version:1,flagCoinPrice:price,compareDigest:economy.compareDigest});$('flagCoinPrice').value=economy.flagCoinPrice;$('economyFeedback').textContent='Flaggenpreis gespeichert. Für neu geladene Spiele innerhalb von 30 Sekunden verfügbar.';$('economyFeedback').className='success'}catch(e){$('economyFeedback').textContent=economyError(e,'save');$('economyFeedback').className='error'}finally{economyBusy=false;economyControls()}});
  function td(tr,val,cls){const el=document.createElement('td');el.textContent=val==null?'–':String(val);if(cls)el.className=cls;tr.appendChild(el);return el}
  const gameFields=[['coins','editCoins',1000000000],['xp','editXp',1000000000],['bellsEarned','editBells',100000],['highScore','editHighScore',1000000000],['runsPlayed','editRuns',1000000000],['totalDistance','editDistance',1000000000],['totalNearMisses','editNearMisses',1000000000],['totalWheelieMeters','editWheelie',1000000000]];
  function showEditor(row){
@@ -360,6 +355,75 @@ export function renderAdminDashboard(config: ShopifyConfig | null): Response {
  $('saveRiderName').addEventListener('click',()=>{if(!full)return;void cosmeticChange({kind:'leaderboardName',value:$('editRiderName').value},'Bestenlistenname')});
  $('resetStickers').addEventListener('click',()=>{void cosmeticChange({kind:'resetStickers',target:$('stickerTarget').value},'Sticker entfernen')});
  void api('/api/admin/players?catalog=1').then(d=>{catalog=d.catalog;if(full)renderGarage()}).catch(e=>status('Inventarkatalog konnte nicht geladen werden: '+e.message,'error'));
+// This is a source snippet used by the local installer. Kept independent of the
+// privileged product API: only signed staff tokens can change prices.
+(function(){
+  let priceState=null,priceBusy=false;
+  function priceError(error,action){const message=error instanceof Error?error.message:'';if(message.includes('game_price_conflict_reload'))return 'Die Spielpreise wurden inzwischen geändert. Bitte neu laden und erneut prüfen.';if(message.includes('admin_editor_not_authorized'))return 'Für deinen Shopify-Zugang ist das Bearbeiten der Spielpreise nicht freigegeben.';if(message.includes('Shopify-Sitzung abgelaufen'))return 'Deine Shopify-Sitzung ist abgelaufen. Bitte die App erneut öffnen.';if(message.includes('Bitte das Dashboard in Shopify'))return 'Bitte das Dashboard in Shopify → Apps → Wheelie Escape öffnen.';return action==='load'?'Die Spielpreise konnten nicht geladen werden. Bitte erneut versuchen.':'Der Spielpreis konnte nicht gespeichert werden. Bitte neu laden und erneut versuchen.'}
+  const priceEls = () => ({list:$('priceProduct'),amount:$('priceAmount'),feedback:$('priceFeedback')});
+  function productForPrice() { return priceState?.products.find(p=>p.id===$('priceProduct').value); }
+  function refreshPriceFields() {
+    const p=productForPrice(), els=priceEls();
+    const editable=Boolean(priceState?.editor && p?.editable && !priceBusy);
+    els.amount.disabled=!editable;
+    $('priceSave').disabled=!editable;
+    $('priceReset').disabled=!editable || priceState.prices[p.id]===undefined;
+    if (!p) { els.amount.value='';$('priceBaseline').textContent='Kein Produkt ausgewählt.';return; }
+    els.amount.value=priceState.prices[p.id]??p.defaultPrice;
+    $('priceBaseline').textContent='Standard '+p.defaultPrice+' Coins'+
+      ' · Shop '+p.shopPrice+' '+p.currency+(priceState.prices[p.id]!==undefined?' · überschrieben':'');
+  }
+  function renderPriceOptions() {
+    const current=$('priceProduct').value;
+    const query=$('priceSearch').value.trim().toLocaleLowerCase('de');
+    const list=$('priceProduct');list.replaceChildren();
+    for (const p of priceState?.products??[]) {
+      if(query && !(p.title+' '+p.category).toLocaleLowerCase('de').includes(query))continue;
+      const option=document.createElement('option');option.value=p.id;
+      option.textContent=p.title;list.append(option);
+    }
+    if ([...list.options].some(p=>p.value===current)) list.value=current;
+    refreshPriceFields();
+  }
+  async function loadPrices() {
+    try {
+      const data=await api('/api/admin/prices');
+      if(!Array.isArray(data.products)||!data.prices||typeof data.prices!=='object')throw Error('Ungültige Preisliste');
+      priceState=data;renderPriceOptions();
+      $('priceFeedback').textContent=data.editor?'Preise sind bearbeitbar.':'Nur Lesen – Staff-ID muss freigegeben sein.';
+      $('priceFeedback').className='mini';
+    } catch (error) {
+      $('priceFeedback').textContent=priceError(error,'load');
+      $('priceFeedback').className='error';
+    }
+  }
+  async function changeGamePrice(reset) {
+    if(!priceState?.editor || priceBusy)return;
+    const product=productForPrice();if(!product?.editable)return;
+    const raw=$('priceAmount').value.trim();
+    if(!reset && (!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw))||Number(raw)>10000)){
+      $('priceFeedback').textContent='Bitte 0 bis 10000 ganze Coins eingeben.';$('priceFeedback').className='error';return;
+    }
+    const before=$('priceProduct').value;
+    priceBusy=true;refreshPriceFields();$('priceFeedback').textContent='Speichere Spielpreis …';
+    try {
+      await api('/api/admin/prices',{id:product.id,price:reset?null:Number(raw),expected:priceState.digest});
+      await loadPrices();$('priceProduct').value=before;refreshPriceFields();
+      $('priceFeedback').textContent='Spielpreis gespeichert. Neue Preise werden beim nächsten Laden des Spiels übernommen.';
+      $('priceFeedback').className='success';
+    } catch(error){
+      $('priceFeedback').textContent=priceError(error,'save');
+      $('priceFeedback').className='error';
+    } finally {priceBusy=false;refreshPriceFields();}
+  }
+  $('priceSearch').addEventListener('input',renderPriceOptions);
+  $('priceProduct').addEventListener('change',refreshPriceFields);
+  $('priceSave').addEventListener('click',()=>void changeGamePrice(false));
+  $('priceReset').addEventListener('click',()=>void changeGamePrice(true));
+  $('priceRefresh').addEventListener('click',()=>void loadPrices());
+  void loadPrices();
+})();
+
  load(false);setInterval(()=>{if(document.visibilityState==='visible'&&!editing)load(false)},30000);
 })();
 </script></body></html>

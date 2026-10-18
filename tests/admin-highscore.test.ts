@@ -72,8 +72,8 @@ describe('authenticated dashboard highscore correction', () => {
     expect(board.all.rows.find(row => row.alias === alias)).toEqual(value ? { alias, score: value, name: 'Dario' } : undefined);
     for (const period of ['day', 'week', 'all'] as const)
       expect(board[period].rows.find(row => row.alias === other)).toEqual({ alias: other, score: 600, name: 'Alex' });
-    expect(board.day.rows.find(row => row.alias === alias)?.score).toBe(value ? Math.min(800, value) : undefined);
-    expect(board.week.rows.find(row => row.alias === alias)?.score).toBe(value ? Math.min(900, value) : undefined);
+    expect(board.day.rows.find(row => row.alias === alias)?.score).toBe(800);
+    expect(board.week.rows.find(row => row.alias === alias)?.score).toBe(900);
   });
   it('returns a conflict for the whole atomic edit when the leaderboard CAS digest changed', async () => {
     const { request, mutations } = await fixture([{ code: 'INVALID_COMPARE_DIGEST' }]);

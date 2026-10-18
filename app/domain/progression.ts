@@ -4,7 +4,6 @@ import { DEFAULT_HELMET, DEFAULT_HELMET_COLOR, HELMET_INVENTORY_MIGRATION } from
 import { ownsProductColor } from './productOwnership.js';
 import { equipmentSlot, supportsHood } from './preview.js';
 import { DEFAULT_PANTS_COLOR, DEFAULT_SHOES_COLOR } from './riderColors.js';
-import { DEFAULT_GAME_ECONOMY, validFlagCoinPrice } from './economy.js';
 import type { Player, Product, RunReward, RunStats, Ownership } from './types';
 export const LEADERBOARD_NAME_MAX_LENGTH = 24;
 export function normalizeLeaderboardName(value: unknown): string {
@@ -169,7 +168,9 @@ export function ownership(p: Player, product: Product, variantId = p.variants[pr
 }
 /** Shared by offers and checkout: shop-relative cosmetics, small consumable decals. */
 export function digitalPrice(product: Product): number {
-  if (product.category === 'cape') return validFlagCoinPrice(product.digitalCoinPrice) ? product.digitalCoinPrice : DEFAULT_GAME_ECONOMY.flagCoinPrice;
+  if (product.gameCoinPrice !== undefined && Number.isSafeInteger(product.gameCoinPrice) &&
+    product.gameCoinPrice >= 0 && product.gameCoinPrice <= 10000) return product.gameCoinPrice;
+  if (product.category === 'cape') return 5000;
   if (product.handle === 'chrome-sticker') return 15;
   if (equipmentSlot(product) === 'keychain') return 40;
   const shopPrice = Number.isFinite(product.price) && product.price > 0 ? product.price : 10;

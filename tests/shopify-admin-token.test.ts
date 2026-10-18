@@ -142,13 +142,17 @@ describe('Dev Dashboard server authentication', () => {
   it('authenticates customer reads, customer saves and ranking with the same server token provider', async () => {
     const requests: string[] = [];
     const request = vi.fn<typeof fetch>(async (url, options) => {
-      if (String(url).endsWith('/oauth/access_token')) return tokenResponse('integration-token');
+      const target = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+      if (target.endsWith('/oauth/access_token')) return tokenResponse('integration-token');
       expect(new Headers(options?.headers).get('X-Shopify-Access-Token')).toBe('integration-token');
       const { query } = JSON.parse(options!.body as string) as { query: string };
       requests.push(query);
       if (query.includes('query GamePlayer')) return json({ data: { customer: { id: 'gid://shopify/Customer/123',
         emailMarketingConsent: { marketingState: 'SUBSCRIBED' }, metafield: null } } });
-      if (query.includes('query GameRanking')) return json({ data: { shop: { id: 'gid://shopify/Shop/456', metafield: null } } });
+      if (query.includes('query GameRanking')) return json({ data: {
+        shop: { id: 'gid://shopify/Shop/456', metafield: null },
+        customer: { id: 'gid://shopify/Customer/123', metafield: { value: JSON.stringify(player), compareDigest: 'a'.repeat(64) } },
+      } });
       return json({ data: { metafieldsSet: { metafields: [{ compareDigest: 'a'.repeat(64) }], userErrors: [] } } });
     });
     const integrationConfig = { ...config, clientId: 'integration-client' };

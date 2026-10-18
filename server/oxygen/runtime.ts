@@ -9,8 +9,7 @@ import { authenticateOxygen, clearSessionCookies, finishLogin, readOxygenAuth, S
 import installManifest from '../../public/manifest.json' with { type: 'json' };
 import { handleAdminOverview, renderAdminDashboard } from './adminDashboard.js';
 import { handleDashboardPlayers, handleGamePresence } from './adminManagement.js';
-import { handleAdminEconomy } from './adminEconomy.js';
-import { readPublicEconomy } from '../shopify/economyStore.js';
+import { handleAdminGamePrices, handlePublicGamePrices } from './adminPrices.js';
 
 export type OxygenEnvironment = Record<string, string | undefined>;
 function harden(response: Response) {
@@ -44,14 +43,6 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       if (!html.includes('</head>')) throw new ApiError(503, 'shell_unavailable');
       return harden(new Response(request.method === 'HEAD' ? null : html.replace('</head>', `${config}</head>`), { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
     }
-    // Public digital price only. Guests do not need customer authentication.
-    if (path === '/api/game/economy') {
-      if (request.method !== 'GET') return harden(json(405, { error: 'method_not_allowed' }));
-      const shopify = readShopifyConfig(env), auth = readOxygenAuth(env);
-      if (!shopify || !auth) return harden(json(503, { error: 'not_configured' }));
-      if (url.origin !== auth.origin) return harden(json(403, { error: 'invalid_origin' }));
-      return harden(json(200, await readPublicEconomy(shopify, withFetchDeadline(fetcher, 10_000))));
-    }
     // Embedded Shopify Admin app: isolated from the storefront/customer routes.
     // Shell has no customer information; JSON requires a signed App Bridge ID token.
     if (path === '/admin' || path === '/admin/' || path === '/api/admin/overview') {
@@ -67,17 +58,36 @@ export async function handleOxygenRequest(request: Request, env: OxygenEnvironme
       return response;
     }
     // Dedicated Shopify Admin staff endpoints. Browser input never supplies an identity.
-    if (path === '/api/admin/players' || path === '/api/admin/economy') {
+    if (path === '/api/admin/players') {
       const shopify = readShopifyConfig(env), adminAuth = readOxygenAuth(env);
       if (!shopify?.clientId || !adminAuth) return harden(json(503, { error: 'admin_not_configured' }));
       if (url.origin !== adminAuth.origin) return harden(json(403, { error: 'invalid_origin' }));
       if (request.method === 'POST' && request.headers.get('origin') !== adminAuth.origin)
         return harden(json(403, { error: 'invalid_origin' }));
-      const response = await (path === '/api/admin/economy' ? handleAdminEconomy : handleDashboardPlayers)(request, shopify, withFetchDeadline(fetcher, 10000),
+      const response = await handleDashboardPlayers(request, shopify, withFetchDeadline(fetcher, 10000),
         env.SHOPIFY_DASHBOARD_EDITOR_IDS);
       harden(response);
       response.headers.set('Content-Security-Policy', `frame-ancestors https://admin.shopify.com https://${shopify.shop}`);
       response.headers.set('Referrer-Policy', 'no-referrer');
+      return response;
+    }
+    // Public game coin prices. Staff-only edits use a separate signed endpoint.
+    if(path==='/api/game-prices'){
+      const auth=readOxygenAuth(env),shopify=readShopifyConfig(env);
+      if(!auth||!shopify)return harden(json(503,{error:'not_configured'}));
+      if(url.origin!==auth.origin)return harden(json(403,{error:'invalid_origin'}));
+      return harden(await handlePublicGamePrices(request.method,shopify,withFetchDeadline(fetcher,10000)));
+    }
+    if(path==='/api/admin/prices'){
+      const shopify=readShopifyConfig(env),adminAuth=readOxygenAuth(env);
+      if(!shopify?.clientId||!adminAuth)return harden(json(503,{error:'admin_not_configured'}));
+      if(url.origin!==adminAuth.origin)return harden(json(403,{error:'invalid_origin'}));
+      if(request.method==='POST'&&request.headers.get('origin')!==adminAuth.origin)
+        return harden(json(403,{error:'invalid_origin'}));
+      const response=await handleAdminGamePrices(request,shopify,withFetchDeadline(fetcher,10000),env.SHOPIFY_DASHBOARD_EDITOR_IDS);
+      harden(response);
+      response.headers.set('Content-Security-Policy', 'frame-ancestors https://admin.shopify.com https://' + shopify.shop);
+      response.headers.set('Referrer-Policy','no-referrer');
       return response;
     }
     // Game play must never depend on presence telemetry; only valid customer sessions count.
