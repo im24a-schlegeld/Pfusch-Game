@@ -29,9 +29,11 @@ function fixture() {
   const state = { value: null as string | null, digest: null as string | null, writes: 0,
     currency: 'CHF', scopes: ['write_customers', 'write_discounts'], discount: null as ReturnType<typeof discountNode> | null,
     creates: 0, ambiguousCreate: false, failIssuedSave: false, firstSaveConflict: false, clock: now,
+    creationUserErrors: null as unknown[] | null, failRecoveryLookup: false,
     discounts: new Map<string, ReturnType<typeof discountNode>>() };
   const request = vi.fn<typeof fetch>(async (_url, options) => {
-    const { query, variables } = JSON.parse(String(options!.body)) as { query: string; variables: Record<string, unknown> };
+    if (typeof options?.body !== 'string') throw new Error('Expected a JSON request body');
+    const { query, variables } = JSON.parse(options.body) as { query: string; variables: Record<string, unknown> };
     if (query.includes('query GameRewardLedger')) {
       expect(variables.namespace).toBe(PLAYER_NAMESPACE);
       expect(variables.key).toBe(REWARD_KEY);
@@ -48,7 +50,10 @@ function fixture() {
       state.digest = state.writes.toString(16).padStart(64, '0');
       return json({ metafieldsSet: { metafields: [{ compareDigest: state.digest }], userErrors: [] } });
     }
-    if (query.includes('query GameRewardDiscount')) return json({ codeDiscountNodeByCode: state.discounts.get(String(variables.code)) ?? null });
+    if (query.includes('query GameRewardDiscount')) {
+      if (state.failRecoveryLookup && state.creates > 0) throw new ApiError(503, 'shopify_admin_timeout');
+      return json({ codeDiscountNodeByCode: state.discounts.get(String(variables.code)) ?? null });
+    }
     if (query.includes('mutation CreateGameRewardDiscount')) {
       state.creates++;
       // The reservation must already be durable before any financial mutation.
@@ -60,6 +65,7 @@ function fixture() {
         customerGets: { value: { discountAmount: { appliesOnEachItem: false } }, items: { all: true } },
         minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: '50.00' } },
         combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false } });
+      if (state.creationUserErrors) return json({ discountCodeBasicCreate: { codeDiscountNode: null, userErrors: state.creationUserErrors } });
       if (state.discounts.has(String(input.code))) return json({ discountCodeBasicCreate: { codeDiscountNode: null, userErrors: [{ code: 'TAKEN' }] } });
       state.discount = discountNode(input);
       state.discounts.set(String(input.code), state.discount);
@@ -419,6 +425,35 @@ describe('server-verified Shopify reward authority', () => {
     expect((await f.call('claim')).body.reward).toEqual(claim.body.reward);
     expect(f.state.creates).toBe(1);
     expect(firstCode).toMatch(/^PFUSCH5-[A-F0-9]{24}$/);
+  });
+
+  it.each([
+    { name: 'allowlisted context rejection even when recovery lookup fails',
+      userError: { code: 'INVALID', field: ['basicCodeDiscount', 'context', 'customers', 'add', '0'], message: 'Private buyer buyer@example.test was rejected' },
+      expected: 'reward_discount_create_failed_invalid_context', failRecoveryLookup: true },
+    { name: 'malformed upstream error code',
+      userError: { code: 'INVALID buyer@example.test', field: ['basicCodeDiscount', 'context'], message: 'Private buyer buyer@example.test was rejected' },
+      expected: 'reward_discount_create_failed_unknown', failRecoveryLookup: false },
+    { name: 'unsafe upstream field path',
+      userError: { code: 'INVALID', field: ['basicCodeDiscount', 'buyer@example.test'], message: 'Private buyer buyer@example.test was rejected' },
+      expected: 'reward_discount_create_failed_invalid', failRecoveryLookup: false },
+  ])('reports only a safe discount creation diagnostic for $name and preserves the reservation for retry', async ({ userError, expected, failRecoveryLookup }) => {
+    const f = fixture(); await f.seedLedger({ points: 1000000, runs: 1 });
+    f.state.creationUserErrors = [userError]; f.state.failRecoveryLookup = failRecoveryLookup;
+    const rejected = await f.call('claim');
+    expect(rejected).toEqual({ status: 503, body: { error: expected } });
+    expect(JSON.stringify(rejected.body)).not.toContain('buyer@example.test');
+    expect(f.state.discount).toBeNull();
+    expect(f.state.discounts.size).toBe(0);
+    const reserved = (await loadRewardLedger(config, '123', now, f.request)).ledger.reward;
+    expect(reserved).toMatchObject({ state: 'reserved' });
+    expect(reserved).not.toHaveProperty('discountId');
+    expect((await f.call('status')).body).toMatchObject({ pending: true, reward: null });
+    f.state.creationUserErrors = null; f.state.failRecoveryLookup = false;
+    const retried = await f.call('claim');
+    expect(retried.status).toBe(200);
+    expect(retried.body).toMatchObject({ pending: false, reward: { code: reserved!.code, expiresAt: reserved!.expiresAt } });
+    expect((await loadRewardLedger(config, '123', now, f.request)).ledger.reward).toMatchObject({ ...reserved, state: 'issued' });
   });
 
   it('recovers ambiguous Shopify creation and ledger acknowledgement without minting another code', async () => {

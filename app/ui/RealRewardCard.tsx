@@ -9,7 +9,7 @@ const rewardDate = (value: string) => new Intl.DateTimeFormat('de-CH', {
   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
 }).format(new Date(value)) + ' UTC';
 
-export function WeeklyRewardProgress({ status, now, busy, onClaim }: { status: RealRewardStatus; now: number; busy: boolean; onClaim(): void }) {
+export function WeeklyRewardProgress({ status, now, busy, onClaim }: { status: RealRewardStatus; now: number; busy: boolean; onClaim: () => void }) {
   const campaign = status.campaign;
   if (!campaign) return null;
   const minutes = campaign.expiresAt ? Math.max(0, Math.ceil((Date.parse(campaign.expiresAt) - now) / 60000)) : 0;
@@ -45,7 +45,7 @@ export function WeeklyRewardProgress({ status, now, busy, onClaim }: { status: R
   </div>;
 }
 
-export function RewardCodeHistory({ rewards, now, onCopy }: { rewards: RealRewardCoupon[]; now: number; onCopy(code: string): void }) {
+export function RewardCodeHistory({ rewards, now, onCopy }: { rewards: RealRewardCoupon[]; now: number; onCopy: (code: string) => void }) {
   const valid = rewards.filter(reward => Date.parse(reward.expiresAt) > now).slice(0, 12);
   if (!valid.length) return null;
   return <details className="real-reward-history" open><summary>Deine Rabattcodes ({valid.length})</summary>
@@ -133,6 +133,12 @@ export default function RealRewardCard({ service, onSignIn, loginHref }: { servi
     setBusy(true); setMessage(''); setLoginRequired(false);
     try { setStatus(await service.claim()); }
     catch (error: unknown) {
+      // Support gets a fixed error identifier only, never a coupon or request data.
+      const code = error instanceof VerifiedRewardsError && /^[a-z][a-z0-9_]{0,119}$/.test(error.code)
+        ? error.code : 'unknown_error';
+      const http = error instanceof VerifiedRewardsError && Number.isInteger(error.status)
+        && error.status! >= 100 && error.status! <= 599 ? error.status : null;
+      console.warn('[PFUSCH Rabatt] claim failed', { code, http });
       setMessage(`Der Code wurde noch nicht bestätigt. ${rewardErrorMessage(error)}`);
       setLoginRequired(error instanceof VerifiedRewardsError && error.status === 401);
       if (error instanceof VerifiedRewardsError && error.status === 401) setStatus(null);

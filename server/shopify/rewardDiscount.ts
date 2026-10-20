@@ -26,6 +26,17 @@ const selection = `id codeDiscount { __typename ... on DiscountCodeBasic {
   minimumRequirement { __typename ... on DiscountMinimumSubtotal { greaterThanOrEqualToSubtotal { amount currencyCode } } }
 } }`;
 const titleFor = (reward: DiscountReservation) => `PFUSCH Wheelie Escape · CHF ${reward.amountCHF ?? 5}`;
+const discountInputFields = new Set(['title', 'code', 'startsAt', 'endsAt', 'context', 'customerGets',
+  'minimumRequirement', 'usageLimit', 'appliesOncePerCustomer', 'combinesWith', 'recurringCycleLimit']);
+/** Only schema error enums and known field names may enter the public diagnostic. */
+function creationFailure(errors: unknown[]): ApiError {
+  const issue = errors.find(isRecord);
+  const reason = typeof issue?.code === 'string' && /^[A-Z][A-Z_]{1,63}$/.test(issue.code)
+    ? issue.code.toLowerCase() : 'unknown';
+  const field = reason !== 'unknown' && Array.isArray(issue?.field)
+    ? issue.field.find((part: unknown): part is string => typeof part === 'string' && discountInputFields.has(part)) : undefined;
+  return new ApiError(503, `reward_discount_create_failed_${reason}${field ? `_${field.toLowerCase()}` : ''}`);
+}
 
 /** A matching code alone is insufficient: verify amount, buyer, dates and all restrictions. */
 export function verifyRewardDiscount(node: unknown, reward: DiscountReservation, customerId: string): string {
@@ -61,7 +72,7 @@ export async function issueRewardDiscount(config: ShopifyConfig, customerId: str
   if (existing) return existing;
   try {
     const data = await shopifyGraphql(config, `mutation CreateGameRewardDiscount($discount: DiscountCodeBasicInput!) {
-      discountCodeBasicCreate(basicCodeDiscount: $discount) { codeDiscountNode { ${selection} } userErrors { code } }
+      discountCodeBasicCreate(basicCodeDiscount: $discount) { codeDiscountNode { ${selection} } userErrors { code field } }
     }`, { discount: { title: titleFor(reward), code: reward.code, startsAt: reward.startsAt, endsAt: reward.expiresAt,
       context: { customers: { add: [`gid://shopify/Customer/${customerId}`] } },
       customerGets: { value: { discountAmount: { amount: (reward.amountCHF ?? 5).toFixed(2), appliesOnEachItem: false } }, items: { all: true } },
@@ -70,12 +81,15 @@ export async function issueRewardDiscount(config: ShopifyConfig, customerId: str
       combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false }, recurringCycleLimit: 1,
     } }, request);
     const result = data.discountCodeBasicCreate;
-    if (!isRecord(result) || !Array.isArray(result.userErrors) || result.userErrors.length) throw new ApiError(503, 'reward_discount_create_failed');
+    if (!isRecord(result) || !Array.isArray(result.userErrors)) throw new ApiError(503, 'reward_discount_create_failed_invalid_response');
+    if (result.userErrors.length) throw creationFailure(result.userErrors);
     return verifyRewardDiscount(result.codeDiscountNode, reward, customerId);
   } catch (error) {
     // Includes duplicate-code races and ambiguous network failures after Shopify committed.
-    const recovered = await lookup();
-    if (recovered) return recovered;
+    try {
+      const recovered = await lookup();
+      if (recovered) return recovered;
+    } catch { /* Preserve the original failure when recovery is also unavailable. */ }
     throw error;
   }
 }
