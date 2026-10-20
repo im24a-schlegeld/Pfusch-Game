@@ -138,7 +138,7 @@ export default function RealRewardCard({ service, onSignIn, loginHref }: { servi
         ? error.code : 'unknown_error';
       const http = error instanceof VerifiedRewardsError && Number.isInteger(error.status)
         && error.status! >= 100 && error.status! <= 599 ? error.status : null;
-      console.warn('[PFUSCH Rabatt] claim failed', { code, http });
+      console.warn(`[PFUSCH Rabatt] claim failed: ${code}; HTTP ${http ?? 'unknown'}`);
       setMessage(`Der Code wurde noch nicht bestätigt. ${rewardErrorMessage(error)}`);
       setLoginRequired(error instanceof VerifiedRewardsError && error.status === 401);
       if (error instanceof VerifiedRewardsError && error.status === 401) setStatus(null);
