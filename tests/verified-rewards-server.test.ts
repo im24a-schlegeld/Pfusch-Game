@@ -427,6 +427,32 @@ describe('server-verified Shopify reward authority', () => {
     expect(firstCode).toMatch(/^PFUSCH5-[A-F0-9]{24}$/);
   });
 
+  it('omits recurringCycleLimit when creating a one-time shop reward and reuses the confirmed reservation', async () => {
+    const f = fixture(); await f.seedLedger({ points: 1000000, runs: 1 });
+    const claimed = await f.call('claim');
+    expect(claimed.status).toBe(200);
+    const createInputs = f.request.mock.calls.flatMap(([, options]) => {
+      if (typeof options?.body !== 'string') return [];
+      const { query, variables } = JSON.parse(options.body) as { query: string; variables: { discount: Record<string, unknown> } };
+      return query.includes('mutation CreateGameRewardDiscount') ? [variables.discount] : [];
+    });
+    expect(createInputs).toHaveLength(1);
+    expect(createInputs[0]).not.toHaveProperty('recurringCycleLimit');
+    expect(createInputs[0]).toMatchObject({ usageLimit: 1, appliesOncePerCustomer: true,
+      startsAt: '2026-10-07T12:00:00.000Z', endsAt: '2026-11-06T12:00:00.000Z',
+      context: { customers: { add: ['gid://shopify/Customer/123'] } },
+      customerGets: { value: { discountAmount: { amount: '5.00', appliesOnEachItem: false } }, items: { all: true } },
+      minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: '50.00' } },
+      combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false } });
+    const confirmed = (await loadRewardLedger(config, '123', now, f.request)).ledger.reward;
+    expect(confirmed).toMatchObject({ state: 'issued' });
+    expect(claimed.body.reward).toMatchObject({ code: confirmed!.code, expiresAt: confirmed!.expiresAt });
+    const writes = f.state.writes;
+    expect((await f.call('claim')).body.reward).toEqual(claimed.body.reward);
+    expect(f.state.creates).toBe(1);
+    expect(f.state.writes).toBe(writes);
+  });
+
   it.each([
     { name: 'allowlisted context rejection even when recovery lookup fails',
       userError: { code: 'INVALID', field: ['basicCodeDiscount', 'context', 'customers', 'add', '0'], message: 'Private buyer buyer@example.test was rejected' },

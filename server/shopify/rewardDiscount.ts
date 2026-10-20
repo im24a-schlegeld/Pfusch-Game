@@ -78,7 +78,8 @@ export async function issueRewardDiscount(config: ShopifyConfig, customerId: str
       customerGets: { value: { discountAmount: { amount: (reward.amountCHF ?? 5).toFixed(2), appliesOnEachItem: false } }, items: { all: true } },
       minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: '50.00' } },
       usageLimit: 1, appliesOncePerCustomer: true,
-      combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false }, recurringCycleLimit: 1,
+      // This is a one-time purchase reward; Shopify rejects the subscription-cycle option here.
+      combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false },
     } }, request);
     const result = data.discountCodeBasicCreate;
     if (!isRecord(result) || !Array.isArray(result.userErrors)) throw new ApiError(503, 'reward_discount_create_failed_invalid_response');
