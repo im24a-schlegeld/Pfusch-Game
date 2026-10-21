@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Raycaster, Texture, TextureLoader, Vector3 } from 'three';
+import { BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Raycaster, ShaderLib, Texture, TextureLoader, UniformsUtils, Vector3, type WebGLRenderer } from 'three';
 import type { Product } from '../app/domain/types';
 import catalog from '../public/catalog/products.json';
 import { addFlagCape, FLAG_CAPE, flagCapeUv } from '../app/game/flagCape';
@@ -7,6 +7,7 @@ import { createSceneInvalidation } from '../app/game/sceneInvalidation';
 import { installImportedBikeFixtures } from './importedBikeFixture';
 import { makeBike } from '../app/game/vehicle';
 import { newPlayer } from '../app/domain/progression';
+import { applyCartoonHeroStyle } from '../app/game/cartoonStyle';
 
 installImportedBikeFixtures();
 vi.mock('../app/game/garmentTexture', () => ({
@@ -67,6 +68,41 @@ describe('original PFUSCH flag as a neck cape', () => {
     expect([uv.getX(uv.count - 1), uv.getY(uv.count - 1)]).toEqual([1, 1]);
     expect(FLAG_CAPE.length / FLAG_CAPE.width).toBeCloseTo(1.04 / .626);
     expect(flagCapeUv({ ...product.preview!.artwork!, crop: { x: 0, y: 0, width: 3000, height: 1 } })).toBeNull();
+  });
+  it('keeps a pixel-sized perimeter on the moving double-sided cloth in its existing artwork pass', () => {
+    const { mesh, texture, torso, update } = cape();
+    const position = mesh.geometry.getAttribute('position'), uv = mesh.geometry.getAttribute('uv');
+    const original = Array.from(position.array), originalUv = Array.from(uv.array);
+    const children = [...mesh.children], geometry = mesh.geometry;
+    applyCartoonHeroStyle(torso);
+    applyCartoonHeroStyle(torso);
+    const shader = {
+      vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader,
+      uniforms: UniformsUtils.clone(ShaderLib.standard.uniforms),
+    };
+    const renderer = { getPixelRatio: () => 2 } as WebGLRenderer;
+    mesh.material.onBeforeCompile(shader as Parameters<MeshStandardMaterial['onBeforeCompile']>[0], renderer);
+    mesh.onBeforeRender(renderer, {} as never, {} as never, geometry, mesh.material, {} as never);
+    // The stroke uses physical pixel derivatives, while its width follows CSS
+    // pixels on high-DPI phones. Cropped map UVs must never move the perimeter.
+    expect(shader.uniforms.flagCapeOutlineWidth?.value).toBeCloseTo(2.3);
+    expect(shader.vertexShader).toContain('vFlagCapeUv = uv;');
+    expect(shader.fragmentShader).toContain('fwidth(vFlagCapeUv)');
+    expect(shader.fragmentShader.indexOf('float flagCapeInk')).toBeGreaterThan(shader.fragmentShader.indexOf('#include <colorspace_fragment>'));
+    expect(shader.fragmentShader.match(/float flagCapeInk/g)).toHaveLength(1);
+    expect(shader.fragmentShader).toContain('// PFUSCH_CARTOON');
+    const width = shader.uniforms.flagCapeOutlineWidth;
+    mesh.onBeforeRender({ getPixelRatio: () => 1 } as WebGLRenderer, {} as never, {} as never, geometry, mesh.material, {} as never);
+    expect(width.value).toBeCloseTo(1.15);
+    update({ speed: 40, lateralAcceleration: 4 }, 1 / 60);
+    expect(Array.from(position.array)).not.toEqual(original);
+    expect(mesh.geometry).toBe(geometry);
+    expect(mesh.geometry.getAttribute('position')).toBe(position);
+    expect(mesh.geometry.getAttribute('uv')).toBe(uv);
+    expect(Array.from(uv.array)).toEqual(originalUv);
+    expect(mesh.material.map).toBe(texture);
+    expect(mesh.material.side).toBe(DoubleSide);
+    expect(mesh.children).toEqual(children);
   });
   it('supports the original eyelet corners and joins them to a narrow closed neck tie', () => {
     const { mesh } = cape();

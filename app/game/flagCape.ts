@@ -585,6 +585,29 @@ export function addFlagCape(torso: THREE.Group, product: Product, loadTexture: T
   const material = new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: 1, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0 });
   material.addEventListener('dispose', () => map.dispose());
   const mesh = new THREE.Mesh(createFlagCapeGeometry(), material);
+  // An open, double-sided sheet has no dependable backface-shell silhouette.
+  // Ink its four material edges in the existing pass. Raw cloth UVs follow
+  // every fold and stay independent of the photograph's cropped map transform.
+  const outlineWidth = { value: 1.15 };
+  material.onBeforeCompile = shader => {
+    shader.uniforms.flagCapeOutlineWidth = outlineWidth;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vFlagCapeUv;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlagCapeUv = uv;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vFlagCapeUv;\nuniform float flagCapeOutlineWidth;')
+      .replace('#include <colorspace_fragment>', `#include <colorspace_fragment>
+        vec2 flagCapeEdge = min(vFlagCapeUv, 1.0 - vFlagCapeUv);
+        vec2 flagCapePixels = flagCapeEdge / max(fwidth(vFlagCapeUv), vec2(0.000001));
+        float flagCapeInk = 1.0 - smoothstep(flagCapeOutlineWidth - 0.5, flagCapeOutlineWidth + 0.5,
+          min(flagCapePixels.x, flagCapePixels.y));
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.008, 0.010, 0.014), flagCapeInk);
+      `);
+  };
+  material.customProgramCacheKey = () => 'pfusch-flag-cape-outline-v1';
+  // Derivatives use physical pixels; match the hero outline's CSS-pixel width
+  // on high-DPI phones without changing cloth buffers or adding another draw.
+  mesh.onBeforeRender = renderer => { outlineWidth.value = 1.15 * renderer.getPixelRatio(); };
   mesh.name = 'pfusch-flag-cape'; mesh.userData.productId = product.id;
   mesh.castShadow = false; mesh.receiveShadow = false;
   const fitTie = addTiedEyelets(mesh, torso);

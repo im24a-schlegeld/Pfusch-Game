@@ -16,17 +16,35 @@ type Entry = { front: Side; back: Side; number?: unknown };
 const entries = audit.products as unknown as Record<string, Entry>;
 const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, Promise<HTMLCanvasElement>>();
+async function requestImage(url: string) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        const finish = (loaded: boolean) => {
+          clearTimeout(timer);
+          img.onload = img.onerror = null;
+          if (loaded) resolve(img);
+          else reject(new Error(`Cannot load garment artwork: ${url}`));
+        };
+        const timer = setTimeout(() => finish(false), 8000);
+        img.onload = () => finish(true);
+        img.onerror = () => finish(false);
+        img.src = url;
+      });
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await new Promise<void>(resolve => setTimeout(resolve, attempt === 0 ? 250 : 1000));
+    }
+  }
+}
 function load(url: string) {
   let value = images.get(url);
   if (!value) {
-    value = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => {
-        images.delete(url);
-        reject(new Error(`Cannot load garment artwork: ${url}`));
-      };
-      img.src = url;
+    // All material consumers share the same bounded retry, including caps and sleeves.
+    value = requestImage(url).catch((error: unknown) => {
+      images.delete(url);
+      throw error;
     });
     images.set(url, value);
   }
@@ -213,7 +231,8 @@ export function garmentMaterial(
       c.variantIds.includes(player.variants[product.id]),
     ) ?? product?.preview?.colors[0];
   const draw = async () => {
-    await paintFabric(ctx, 1024, product, player, color);
+    // A missing weave photograph must not suppress the independent real prints.
+    await paintFabric(ctx, 1024, product, player, color).catch((error: unknown) => console.error(error));
     if (disposed) return;
     texture.needsUpdate = true;
     if (entry)
@@ -325,7 +344,7 @@ export function sleeveMaterial(
   });
   // Authoritative supplied RGBA artwork. Its alpha already separates the ink;
   // re-extracting it from a white/black background would erase genuine details.
-  void paintFabric(ctx, 512, product, player, color)
+  void paintFabric(ctx, 512, product, player, color).catch((error: unknown) => console.error(error))
     .then(() => load('/images/artwork/tribal-racing.png'))
     .then((img) => {
       if (disposed) return;
